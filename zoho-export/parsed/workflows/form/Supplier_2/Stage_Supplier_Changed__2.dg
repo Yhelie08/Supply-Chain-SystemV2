@@ -1,0 +1,75 @@
+// form: Stage_Supplier_Changed  form=Supplier_2 event=on add or edit on success  [.ds line 35474]
+    inqNo = input.INQ_No_Supplier;
+inqRecords = Inquiry_Form[INQ_No == inqNo];
+for each  inq in inqRecords
+{
+    for each  sq in inq.Supplier_Quotes
+    {
+        sidRawD1 = sq.Supplier_ID.removeFirstOccurence("[").removeLastOccurence("]");
+        quoteBooksIdD1 = "";
+        if(sidRawD1 != "")
+        {
+            for each  supRecD1 in Suppliers
+            {
+                if(supRecD1.ID + "" == sidRawD1)
+                {
+                    quoteBooksIdD1 = supRecD1.Supplier_ID + "";
+                }
+            }
+        }
+        if(quoteBooksIdD1 == "2680178000002735078")
+        {
+            for each  s2q in input.Supplier_quotes
+            {
+                sq.Availability=s2q.Availability_Supplier;
+                sq.Initial_Price=s2q.Initial_Price_Supplier;
+                sq.Negotiated=s2q.Negotiated_Supplier;
+                sq.Final_Price=s2q.Final_Price_Supplier;
+                sq.Lead_Time=s2q.Lead_Time_Supplier;
+                sq.Stage=s2q.Stage_Supplier;
+                break;
+            }
+            break;
+        }
+    }
+    if(inq.Product_Sample != "HideToSupplier")
+    {
+        inq.Product_Sample=input.Product_Sample_Supplier;
+    }
+    if(inq.D_Image != "HideToSupplier")
+    {
+        inq.D_Image=input.D_Image_Supplier;
+    }
+    if(inq.Specification != "HideToSupplier")
+    {
+        inq.Specification=input.Specification_Supplier;
+        inq.Specification_Details=input.Specification_Details_Supplier;
+    }
+    if(inq.Technical_Drawing != "HideToSupplier")
+    {
+        inq.Technical_Drawing=input.Technical_Drawing_Supplier;
+    }
+    simPhotoStr = input.Similar_Design_Photo_Supplier + "";
+    if(input.Similar_Design_Photo_Supplier != null && simPhotoStr != "" && simPhotoStr != "{}" && simPhotoStr != "[]")
+    {
+        simDesignImgList = List();
+        simDesignImgList.add(input.Similar_Design_Photo_Supplier);
+        inq.Similar_Design_Photo=simDesignImgList;
+    }
+    for each  leRow in inq.Supplier_Quotes_Last_Edited
+    {
+        for each  s2q in input.Supplier_quotes
+        {
+            if(leRow.Suppliers_Last_Edited == s2q.SupplierName)
+            {
+                leRow.Availability_Last_Edited=s2q.Availability_Supplier;
+                leRow.Initial_Price_Last_Edited=s2q.Initial_Price_Supplier;
+                leRow.Negotiated_Last_Edited=s2q.Negotiated_Supplier;
+                leRow.Final_Price_Last_Edited=s2q.Final_Price_Supplier;
+                leRow.Lead_Time_Last_Edited=s2q.Lead_Time_Supplier;
+            }
+        }
+    }
+    break;
+}
+openUrl("#Report:Supplier_2_Report","same window");

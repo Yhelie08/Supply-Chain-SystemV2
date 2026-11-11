@@ -1,0 +1,61 @@
+
+			displayName = "Timeline History"
+			show all rows from Inquiry_Form    
+			(
+				Select_Final_Cost as "Select Final Cost"
+				SRP_Approved1 as "SRP (Approved)"
+				Collateral_Comple_NA as "Collateral Comple/NA"
+				SRP_Approved as "SRP Approved"
+				Commission
+				Product_Image as "Product Image"
+				Similar_Design_Photo as "Similar Design Photo"
+				Order_Type as "Order Type"
+				Technical_Drawing as "Technical Drawing"
+				Designer_Architect as "Designer/Architect"
+				Customer
+				Project_Name as "Project Name"
+				D_Image as "3D Image"
+				Sales_Owner as "Sales Owner"
+				Project_Type as "Project Type"
+				Attachments
+				Ready_for_Estimates as "Ready for Estimates"
+				Margin as "Margin%"
+				Design_Partner as "Design Partner"
+				Availability as "Availability Confirmed"
+				Design_Company as "Design Company"
+				For_Bidding as "For Bidding"
+				Final_Price_Exists as "Final Price Exists"
+				Specification
+				Specification_Details as "Specification Details"
+				Addtl_Disc_Needed1 as "Additional Discount Needed"
+				Supplier_Selected as "Supplier Selected"
+				Suppliers
+				Open_to_similar_design as "Open to similar design"
+				Addtional_Description
+				Estimate_Created as "Estimate Created"
+				Books_Estimate_ID as "Books Estimate ID"
+				Books_Estimate_No as "Books Estimate No."
+				Product_Sample as "Product Sample"
+				Items
+				description as "Description"
+				Waiting_On as "Waiting On"
+				sku as "SKU"
+				unit as "Unit"
+				quantity as "Quantity"
+				target_date as "Target Date"
+				INQ_No as "INQ No."
+				quote_group as "Quote Group"
+				SRP_Status as "SRP Status"
+				created_date as "Created Date"
+				Customer_Type as "Customer Type"
+				Group_Discount_Pct as "Group Discount Percentage"
+				Projects
+				Added_Time as "Added Time"
+			)
+			options
+			(
+				display field = INQ_No
+				start date = Added_Time
+				end date = target_date
+			)
+		

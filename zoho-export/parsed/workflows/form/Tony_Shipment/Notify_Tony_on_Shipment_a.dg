@@ -1,0 +1,28 @@
+// form: Notify Tony on Shipment added  form=Tony_Shipment event=on add on success  [.ds line 45864]
+    page_base_url = "https://creator.zoho.com/homecartel/supply-chain-app";
+ts = zoho.currenttime.toString().replaceAll(" ","").replaceAll(":","").replaceAll("-","");
+deep_link_token = "SHP-" + input.ID + "-" + ts;
+insert into Tony_Notifications
+[
+    Recipient_Email="184319330@qq.com"
+    Notification_Type="Shipment added"
+    Message="Shipment " + input.Shipment_No + " was added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=page_base_url + "/#Page:Tony_Shipments?tonyshipmentid=" + deep_link_token
+    Source_Record_No=input.Shipment_No
+    Source_Record_ID=input.ID
+    Deep_Link_Token=deep_link_token
+    Added_User=zoho.loginuser
+]
+sendmail
+[
+    from :zoho.adminuserid
+    to :"184319330@qq.com"
+    cc:""
+    bcc :""
+    reply to :zoho.adminuserid
+    subject :"Shipment added"
+    message :"A new shipment has been added in your portal."
+    content type :Plain Text
+]

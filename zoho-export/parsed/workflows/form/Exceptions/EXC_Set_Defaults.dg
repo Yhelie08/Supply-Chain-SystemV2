@@ -1,0 +1,5 @@
+// form: EXC_Set_Defaults  form=Exceptions event=on add on validate  [.ds line 39686]
+    // === EXC_Set_Defaults ===
+// Form: Exceptions | Event: Created | Validations on form submission
+input.Exception_Status = "Open";
+input.Opened_On = zoho.currenttime;

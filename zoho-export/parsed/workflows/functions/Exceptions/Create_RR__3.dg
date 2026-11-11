@@ -1,0 +1,233 @@
+// functions: Create_RR  form=Exceptions event= on start > on click  [.ds line 53753]
+excRecT = Exceptions[ID == input.ID];
+                groupKeysT = List();
+                groupSkuT = Map();
+                groupItemT = Map();
+                groupSupplierT = Map();
+                groupTypeT = Map();
+                groupQtyT = Map();
+                // ADDED 2026-08-08 — same spare-part aggregation as Action 1, see that block's
+                // own comment for the full reasoning. FIXED same day, code review: paired
+                // "Type: Qty" string, see Action 1's own comment for the full explanation.
+                groupSpareTypeT = Map();
+                groupSparePairsT = Map();
+                // ADDED 2026-10-12 — the officer confirms the supplier on the Exception Control
+                // widget before Create RR runs, and the choice lands in the Exceptions header field
+                // RR_Supplier_Override. Blank = use the supplier tagged on the exception line, i.e.
+                // exactly today's behaviour. This is what makes the supplier gate below test the
+                // CHOSEN supplier rather than the tagged one, so an overridden RR routes to the
+                // right supplier and only to that one. Mirrors createRRFenteng/createRRTony.
+                rrSupOverrideT = ifnull(input.RR_Supplier_Override,"") + "";
+                rrSupOverrideT = rrSupOverrideT.trim();
+                for each  pc in excRecT.Product_Context1
+                {
+                    /* ADDED 2026-07-21 — same repair-tracking gate as Action 1, see that block's
+                       own comment. */
+                    if(pc.Type_field == "Damage" && pc.Repairable == "Yes" && pc.Repair_Outcome != "Not Fixed")
+                    {
+                        continue;
+                    }
+                    gKeyT = pc.SKU + "||" + pc.Type_field;
+                    if(!groupKeysT.contains(gKeyT))
+                    {
+                        groupKeysT.add(gKeyT);
+                        groupSkuT.put(gKeyT,pc.SKU);
+                        groupItemT.put(gKeyT,pc.Item);
+                        if(rrSupOverrideT != "")
+                        {
+                            groupSupplierT.put(gKeyT,rrSupOverrideT);
+                        }
+                        else
+                        {
+                            groupSupplierT.put(gKeyT,pc.Supplier);
+                        }
+                        groupTypeT.put(gKeyT,pc.Type_field);
+                        groupQtyT.put(gKeyT,0);
+                        groupSpareTypeT.put(gKeyT,"");
+                        groupSparePairsT.put(gKeyT,"");
+                    }
+                    groupQtyT.put(gKeyT,groupQtyT.get(gKeyT) + ifnull(pc.Qty,0));
+                    pcQtyRawT = pc.Quantity_of_damage_spare_s + "";
+                    if(pcQtyRawT != "" && pcQtyRawT != "null")
+                    {
+                        // CHANGED 2026-08-08d — see the plain Action's own comment above for the
+                        // full per-type-qty reasoning.
+                        pcOtherTextT = pc.Spare_Part_Type_Other + "";
+                        segsT = pcQtyRawT.toList(",");
+                        pcSpareTypeT = "";
+                        pcPairsThisRowT = "";
+                        for each  segT in segsT
+                        {
+                            segTrimT = segT.trim();
+                            segTypeT = segTrimT.getPrefix(":").trim();
+                            segQtyT = segTrimT.getSuffix(":").trim();
+                            if(segQtyT == "" || segQtyT == "null")
+                            {
+                                segQtyT = "—";
+                            }
+                            if(segTypeT == "Others" && pcOtherTextT != "" && pcOtherTextT != "null")
+                            {
+                                segTypeT = pcOtherTextT;
+                            }
+                            if(pcSpareTypeT == "")
+                            {
+                                pcSpareTypeT = segTypeT;
+                            }
+                            else
+                            {
+                                pcSpareTypeT = pcSpareTypeT + ", " + segTypeT;
+                            }
+                            segPairT = segTypeT + ": " + segQtyT;
+                            if(pcPairsThisRowT == "")
+                            {
+                                pcPairsThisRowT = segPairT;
+                            }
+                            else
+                            {
+                                pcPairsThisRowT = pcPairsThisRowT + ", " + segPairT;
+                            }
+                        }
+                        existingSpareTypeT = groupSpareTypeT.get(gKeyT);
+                        if(existingSpareTypeT == "")
+                        {
+                            groupSpareTypeT.put(gKeyT,pcSpareTypeT);
+                        }
+                        else
+                        {
+                            groupSpareTypeT.put(gKeyT,existingSpareTypeT + ", " + pcSpareTypeT);
+                        }
+                        existingPairT = groupSparePairsT.get(gKeyT);
+                        if(existingPairT == "")
+                        {
+                            groupSparePairsT.put(gKeyT,pcPairsThisRowT);
+                        }
+                        else
+                        {
+                            groupSparePairsT.put(gKeyT,existingPairT + ", " + pcPairsThisRowT);
+                        }
+                    }
+                }
+                existingSupPairsT = List();
+                existingSupRRsT = Tony_Fan_Replacement_Request[Source_Exception_No == input.Exception_No];
+                for each  esrT in existingSupRRsT
+                {
+                    for each  ssrowT in esrT.Replacement_Summary
+                    {
+                        existingSupPairsT.add(ssrowT.SKU + "||" + esrT.Source_Type);
+                    }
+                }
+                for each  gKeyT in groupKeysT
+                {
+                    // FIXED 2026-08-07 — same real bug/fix as the Fenteng loop above.
+                    supplierValT = groupSupplierT.get(gKeyT) + "";
+                    if(supplierValT != "Tony" && !supplierValT.contains("Tony"))
+                    {
+                        continue;
+                    }
+                    gSkuT = groupSkuT.get(gKeyT);
+                    gTypeT = groupTypeT.get(gKeyT);
+                    sourceTypeT = "";
+                    if(input.Source_Module == "Receiving")
+                    {
+                        if(gTypeT == "Damage")
+                        {
+                            sourceTypeT = "Receiving Damage";
+                        }
+                        else
+                        {
+                            sourceTypeT = "Receiving Missing";
+                        }
+                    }
+                    else if(input.Source_Module == "Fulfillment QC")
+                    {
+                        sourceTypeT = "QC Failure";
+                    }
+                    else
+                    {
+                        sourceTypeT = "Management Decision";
+                    }
+                    pairKeyT = gSkuT + "||" + sourceTypeT;
+                    if(existingSupPairsT.contains(pairKeyT))
+                    {
+                        continue;
+                    }
+                    parentRRNoT = "";
+                    parentRRSupT = "";
+                    parentRRsT = Replacement_Request[Source_Exception_No == input.Exception_No];
+                    for each  prrT in parentRRsT
+                    {
+                        if(prrT.Source_Type == sourceTypeT)
+                        {
+                            for each  prsRowT in prrT.Replacement_Summary
+                            {
+                                if(prsRowT.SKU == gSkuT)
+                                {
+                                    parentRRNoT = prrT.RR_No;
+                                    parentRRSupT = prrT.RR_Supplier + "";
+                                }
+                            }
+                        }
+                    }
+                    /* ADDED 2026-10-12, real bug found in live testing (EXC-00001): the officer
+                       changed the supplier on an Exception that ALREADY had RR-00001 routed to
+                       Tony and acknowledged by him. Action 1 correctly deduped and did not create
+                       a new parent, so RR_Supplier stayed "Tony" — but this action deduped only
+                       against its OWN form, found nothing, passed the overridden gate, and attached
+                       a record to that same RR-00001. Both suppliers ended up holding the same RR.
+                       A supplier-side record must never disagree with its parent. A BLANK parent
+                       supplier is allowed through deliberately: RR_Supplier only exists from
+                       2026-07-20, so older parents genuinely have none and must keep working. */
+                    if(parentRRNoT != "" && parentRRSupT.trim() != "" && parentRRSupT != "Tony" && !parentRRSupT.contains("Tony"))
+                    {
+                        continue;
+                    }
+                    if(parentRRNoT != "")
+                    {
+                        newSupRRIDT = insert into Tony_Fan_Replacement_Request
+                        [
+                            RR_No=parentRRNoT
+                            RR_Date=zoho.currentdate
+                            RR_Status="Open"
+                            Source_Type=sourceTypeT
+                            Source_Exception_No=input.Exception_No
+                            Last_Updated=zoho.currenttime
+                            RR_Item_to_Replace=groupSpareTypeT.get(gKeyT)
+                            RR_Damage_Qty=groupQtyT.get(gKeyT)
+                            RR_Spare_Parts=groupSparePairsT.get(gKeyT)
+                            Added_User=zoho.loginuser
+                        ];
+                        newSupRRT = Tony_Fan_Replacement_Request[ID == newSupRRIDT];
+                        newSupRowT = Tony_Fan_Replacement_Request.Replacement_Summary();
+                        newSupRowT.PR_No=input.Receiving_Line_ID;
+                        newSupRowT.Supplier=groupSupplierT.get(gKeyT);
+                        newSupRowT.SKU=gSkuT;
+                        newSupRowT.Item=groupItemT.get(gKeyT);
+                        newSupRowT.SO_No=input.Sales_Order;
+                        newSupRowT.Original_PO_No=input.PO_No;
+                        newSupRowT.Priority=input.Priority;
+                        newSupRowT.RR_Qty=groupQtyT.get(gKeyT);
+                        newSupRRT.Replacement_Summary.insert(newSupRowT);
+                        /* ADDED 2026-07-20 — supplier-side counterpart of Action 1's Missing_SKUs
+                           stamp / new PO creation, see that Action's own comment for why this moved
+                           here instead of approve_rr_supplier.txt. */
+                        if(sourceTypeT == "Receiving Missing")
+                        {
+                            targetSupPOsT2 = Tony_Fan_Purchase_Order[PO_No_Supplier2 == input.PO_No];
+                            for each  spoT2 in targetSupPOsT2
+                            {
+                                spoT2.Missing_SKUs_Supplier2=gSkuT;
+                            }
+                        }
+                        else
+                        {
+                            /* CHANGED 2026-07-20 — supplier-side counterpart of Action 1's Damage_SKUs
+                               change above. No new supplier PO created — stamps the new
+                               Damage_SKUs_Supplier2 field on the EXISTING supplier PO instead. */
+                            targetSupPOsDmgT2 = Tony_Fan_Purchase_Order[PO_No_Supplier2 == input.PO_No];
+                            for each  spoDmgT2 in targetSupPOsDmgT2
+                            {
+                                spoDmgT2.Damage_SKUs_Supplier2=gSkuT;
+                            }
+                        }
+                    }
+                }

@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crate Checklist</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  Reads rows from the "All_Crates" report (form: Crate_Checklist), latest
+  activity first. The report has no "group by" clause, so this list is flat.
+
+  1. Zoho Creator → Settings → Widgets → New Widget → "Upload HTML". Zip this file and upload.
+  2. CONFIG.APP_NAME below is already set to "supply-chain-app" to match the other
+     widgets in this app. Change it if this ever moves to a different app.
+  3. Add the widget to a page.
+  4. This widget always attempts to load live data — there's no standalone preview
+     mode. Opening this file outside Zoho Creator will just show a "must be opened
+     inside Zoho Creator" toast.
+
+  Uses JS API v2 (ZOHO.CREATOR.DATA.getRecords/updateRecords, field_config: "all")
+  — same approach as the other widgets in this app.
+
+  Built directly from the "QC Checklist" widget in this same app (most mature
+  template here) — list/detail/edit are three views inside this one file, same
+  pattern established there. Trimmed down since this form has no subform, no
+  signature, and only one checklist group.
+
+  Assign_Crater is a picklist with "others option = true" (single defined
+  value "Lito" plus free text) — handled in the edit form as a <select> with
+  a "Lito"/"Other…" choice; picking "Other…" reveals a text input for the
+  custom name, same pattern as Assign_Picker/Assign_Packer in the sibling
+  Picker/Pack widgets.
+
+  VIEWING Images/Video: same confirmed-working approach as QC Checklist —
+  ZOHO.CREATOR.UTIL.setImageData(imgEl, url, callback) resolves a Creator file
+  field's relative download path into a same-origin data:/blob: URL via an
+  authenticated internal call. Works for any file type, not just images: for
+  Video_Documentation, the bridge is triggered on an off-DOM <img>, and its
+  resolved .src is copied onto a real <video> element instead (the <img>
+  itself can't render non-image bytes, but the resolved URL is still valid
+  video data). See imgUrlFromRawValue()/applyCreatorImage() and the
+  `if (rawVideo)` block in renderDocumentation().
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+        boxShadow: { card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)' }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { min-height: 100%; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  .field-input {
+    width: 100%; font-size: 0.875rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;
+    background: #f8fafc; padding: 0.5rem 0.75rem; transition: all .15s ease;
+  }
+  .field-input:focus { outline: none; background: white; box-shadow: 0 0 0 2px #cbd5e1; }
+  .checkbox-row { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8125rem; color: #334155; padding: 0.25rem 0; }
+</style>
+</head>
+<body class="min-h-full bg-slate-100 text-slate-800 antialiased">
+
+  <div id="listView" class="w-full px-4 sm:px-6 py-5 flex flex-col min-h-screen">
+
+    <!-- Top header -->
+    <header id="topHeader" class="shrink-0 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Crate Checklist</h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Latest Activity First ·
+          <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+          </span>
+        </p>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+          <span id="pendingCount">0</span> Pending
+        </span>
+        <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+          <span id="doneCount">0</span> Done
+        </span>
+      </div>
+    </header>
+
+    <!-- Stat cards -->
+    <div id="statCards" class="shrink-0 grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5"></div>
+
+    <!-- Report card — flex-1 so it stretches to fill remaining vertical
+         space instead of sitting at its natural (short) content height with
+         a bare gap of page background below it. Its own table area (not
+         this whole card) is what scrolls internally when there are more
+         rows than fit. -->
+    <div id="reportCard" class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex-1 flex flex-col min-h-0">
+
+      <div id="tableToolbar" class="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b border-slate-100">
+        <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase">All Crates</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative">
+            <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+            </svg>
+            <input id="searchInput" type="text" placeholder="Search SO#, PACK#, crater, checker, SKU…"
+              class="w-56 sm:w-64 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-auto flex-1 min-h-0">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
+              <th class="px-5 py-2.5 font-bold">Crating Status</th>
+              <th class="px-3 py-2.5 font-bold">Next Step</th>
+              <th class="px-3 py-2.5 font-bold">SO #</th>
+              <th class="px-3 py-2.5 font-bold">PACK #</th>
+              <th class="px-3 py-2.5 font-bold">Item Name</th>
+              <th class="px-3 py-2.5 font-bold">SKU</th>
+              <th class="px-3 py-2.5 font-bold text-right">Qty</th>
+              <th class="px-3 py-2.5 font-bold">Assign Crater</th>
+              <th class="px-3 py-2.5 font-bold">Assigned Checker</th>
+              <th class="px-3 py-2.5 font-bold">Order Type</th>
+              <th class="px-3 py-2.5 font-bold">Forecast</th>
+              <th class="px-5 py-2.5 font-bold">Added Time</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-50"></tbody>
+        </table>
+      </div>
+
+      <div id="paginationBar" class="shrink-0 flex items-center px-5 py-3 border-t border-slate-100 text-xs text-slate-500">
+        <span>Total Count: <strong id="totalCount" class="text-slate-700">0</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crate Detail view -->
+  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+      <div class="flex items-center gap-2 font-semibold text-slate-600">
+        <span>HC Systems</span><span class="text-slate-300">/</span><span>Crate Detail</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
+        ← Back to Crate Dashboard
+      </button>
+      <span class="text-slate-300">|</span>
+      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    </div>
+
+    <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+    <div id="nsBanner"></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="detailSoNo" class="text-xl font-bold text-slate-900"></h2>
+            <p id="detailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+            <p id="detailSubline" class="text-xs text-slate-400 mt-1"></p>
+          </div>
+          <button id="editRecordBtn" class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">
+            ✏️ Edit
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="detailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div id="detailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div id="detailItemFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📦 Crating Checklist</h3>
+          <div id="detailChecklists" class="space-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📎 Documentation</h3>
+          <div id="detailDocumentation" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4 flex items-center gap-1.5">🔍 Crate Summary</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Crating Status</span>
+              <span id="detailCratingStatus"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Assign Crater</span>
+              <span id="detailAssignCrater" class="text-sm text-slate-800 font-medium"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Assigned Checker</span>
+              <span id="detailAssignedChecker" class="text-sm text-slate-800 font-medium"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crate Edit view -->
+  <div id="editView" class="hidden w-full px-4 sm:px-6 py-5">
+
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+      <div class="flex items-center gap-2 font-semibold text-slate-600">
+        <span>HC Systems</span><span class="text-slate-300">/</span><span>Edit Crate Checklist</span>
+      </div>
+    </div>
+
+    <div class="max-w-4xl">
+      <div class="flex items-center justify-between mb-4">
+        <button id="cancelEditBtn" class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">
+          ← Cancel
+        </button>
+        <button id="saveEditBtn" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">
+          Save Changes
+        </button>
+      </div>
+
+      <h2 id="editTitle" class="text-lg font-bold text-slate-900 mb-4"></h2>
+
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🙋 Assignment</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="text-xs text-slate-500">Assign Crater
+              <select id="f_Assign_Crater" class="field-input mt-1">
+                <option value="">— Select —</option>
+                <option value="Lito">Lito</option>
+                <option value="__other__">Other…</option>
+              </select>
+              <input id="f_Assign_Crater_Other" type="text" placeholder="Enter name" class="field-input mt-2 hidden">
+            </label>
+            <label class="text-xs text-slate-500">Assigned Checker<input id="f_Assigned_Checker" class="field-input mt-1"></label>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">SO #<input id="f_SO" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">PACK #<input id="f_Package_Order" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">PR # (if any)<input id="f_PR_if_any" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">RR # (if any)<input id="f_RR_if_any" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Order Type<input id="f_Order_Type" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Delivery Type<input id="f_Delivery_Type" class="field-input mt-1"></label>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">Customer Name<input id="f_Customer_Name" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Customer Type<input id="f_Customer_Type" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Customer Address<input id="f_Customer_Address" class="field-input mt-1"></label>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">Item Name<input id="f_Item_Name" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">SKU<input id="f_SKU" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Quantity<input id="f_Quantity" class="field-input mt-1"></label>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📦 Crating Checklist</h3>
+          <div id="g_Crating_Checklist"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📎 Documentation</h3>
+
+          <div class="mb-4">
+            <p class="text-xs text-slate-500 mb-1">Photo Documentation (JPG, JPEG, PNG · max 10)</p>
+            <p id="imageStatusNote" class="text-[11px] text-slate-400 mb-1.5"></p>
+            <input id="f_Images" type="file" accept="image/jpeg,image/png" multiple class="field-input text-xs">
+            <p class="text-[11px] text-slate-400 mt-1">Selected files are added to the existing photos — they don't replace them.</p>
+          </div>
+
+          <div>
+            <p class="text-xs text-slate-500 mb-1">Video Documentation (max 3 min 30 sec)</p>
+            <p id="videoStatusNote" class="text-[11px] text-slate-400 mb-1.5"></p>
+            <input id="f_Video" type="file" accept="video/*" class="field-input text-xs">
+            <p class="text-[11px] text-slate-400 mt-1">Uploading a new video replaces the existing one.</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🚦 Crating Status</h3>
+          <div class="flex items-center gap-6">
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input type="radio" name="cratingStatus" id="f_Status_Pending" value="Pending"> Pending
+            </label>
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input type="radio" name="cratingStatus" id="f_Status_Done" value="Done"> Done
+            </label>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pb-8">
+          <button id="cancelEditBtn2" class="text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-4 py-2 transition">Cancel</button>
+          <button id="saveEditBtn2" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+  <!-- Image lightbox — click a thumbnail to zoom, with a download button -->
+  <div id="lightboxOverlay" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-8 bg-slate-900/85">
+    <button id="lightboxDownloadBtn" class="absolute top-4 right-16 h-9 px-4 rounded-full bg-white/15 hover:bg-white/25 text-white text-sm font-medium flex items-center gap-1.5 transition">⬇ Download</button>
+    <button id="lightboxCloseBtn" class="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-lg transition">✕</button>
+    <img id="lightboxImg" class="max-w-full max-h-full rounded-lg shadow-lg bg-white p-2" alt="">
+  </div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // CONFIG
+  // ---------------------------------------------------------------------
+  const CONFIG = {
+    APP_NAME: "supply-chain-app",
+    REPORT_NAME: "All_Crates",
+    MAX_RECORDS: 1000,   // JS API v2 single-call ceiling; add cursor pagination if this app ever exceeds it
+  };
+
+  const PALETTE = {
+    amber:   { border: "border-amber-400",   text: "text-amber-600",   badgeBg: "bg-amber-50",   badgeText: "text-amber-700",   badgeBorder: "border-amber-200",   dot: "bg-amber-500" },
+    emerald: { border: "border-emerald-400", text: "text-emerald-600", badgeBg: "bg-emerald-50", badgeText: "text-emerald-700", badgeBorder: "border-emerald-200", dot: "bg-emerald-500" },
+    blue:    { border: "border-blue-400",    text: "text-blue-600",    badgeBg: "bg-blue-50",    badgeText: "text-blue-700",    badgeBorder: "border-blue-200",    dot: "bg-blue-500" },
+    slate:   { border: "border-slate-300",   text: "text-slate-500",   badgeBg: "bg-slate-50",   badgeText: "text-slate-500",   badgeBorder: "border-slate-200",   dot: "bg-slate-400" },
+  };
+
+  const CRATING_STATUS_COLOR = { "Done": "emerald" }; // Pending falls back to amber
+
+  const CRATER_OPTIONS = ["Lito"]; // matches the form's Assign_Crater picklist values
+  const OTHER_CRATER_VALUE = "__other__";
+
+  // Matches the form's Crating_Checklist "list" field values exactly.
+  const CRATING_CHECKLIST_OPTIONS = [
+    "Maayos at matibay ang pagkaka-crate",
+    "Walang sira o bitak sa kahon o crate",
+    "Lahat ng bahagi ng item ay ligtas at nakapaloob (walang gumagalaw sa loob)",
+    "May foam o proteksyon sa mga gilid at sulok",
+    "May tamang label ng item sa crate",
+    "Naselyuhan o nailagay ng maayos ang takip ng crate",
+    "May larawan bago i-seal ang crate (for record)",
+    "Na-check ng checker bago ipadala",
+  ];
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  let allRecords = [];
+  let orderedRows = [];
+  let currentEditRecord = null;
+  // ADDED 2026-09-03 — clickable stat cards (see renderStats()/matchesStat()
+  // below): which card, if any, the list is currently filtered to. null = no filter.
+  let statFilter = null;
+
+  const tableBody = document.getElementById("tableBody");
+  const statCards = document.getElementById("statCards");
+  const searchInput = document.getElementById("searchInput");
+
+  // ---------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------
+  function displayVal(v) {
+    if (v === null || v === undefined || v === "" || v === "null") return "—";
+    if (typeof v === "object" && !Array.isArray(v)) return v.zc_display_value || v.display_value || v.ID || "—";
+    return String(v);
+  }
+
+  function isBlank(v) {
+    return v === null || v === undefined || v === "" || v === "null" || (Array.isArray(v) && v.length === 0);
+  }
+
+  // Multi-select "list" fields can come back as an array, a comma-separated
+  // string, or a single string depending on field type — normalize to an
+  // array of non-empty strings either way.
+  function toArray(v) {
+    if (v === null || v === undefined || v === "") return [];
+    if (Array.isArray(v)) return v.map((x) => (typeof x === "object" ? displayVal(x) : String(x))).filter(Boolean);
+    if (typeof v === "string") return v.split(",").map((s) => s.trim()).filter(Boolean);
+    return [String(v)];
+  }
+
+  function parseZohoDateTime(str) {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const mon = months[m[2]];
+      if (mon !== undefined) {
+        return new Date(+m[3], mon, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+      }
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  }
+
+  function formatDateTime(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${datePart} ${timePart}`;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  function badgePill(text, colorKey) {
+    const p = PALETTE[colorKey] || PALETTE.slate;
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${p.badgeBg} ${p.badgeText} ${p.badgeBorder}">
+      <span class="h-1.5 w-1.5 rounded-full ${p.dot}"></span>${escapeHtml(text)}
+    </span>`;
+  }
+
+  function toast(message, type) {
+    const container = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    const styles = { success: "bg-slate-900 text-white", error: "bg-rose-600 text-white" };
+    el.className = `px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${styles[type] || styles.success}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  // ---------------------------------------------------------------------
+  // Edit-form helpers
+  // ---------------------------------------------------------------------
+  function textVal(v) {
+    if (v === null || v === undefined || v === "null") return "";
+    return String(v);
+  }
+
+  function renderCheckboxGroup(containerId, options, checkedValues) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = options.map((opt) => `
+      <label class="checkbox-row">
+        <input type="checkbox" class="mt-0.5" value="${escapeHtml(opt)}" ${checkedValues.includes(opt) ? "checked" : ""}>
+        <span>${escapeHtml(opt)}</span>
+      </label>`).join("");
+  }
+
+  function readCheckboxGroup(containerId) {
+    return Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)).map((el) => el.value);
+  }
+
+  // Assign Crater — picklist with "others option" (single defined value
+  // "Lito" plus free text). Same pattern as Assign_Picker/Assign_Packer in
+  // the sibling Picker/Pack widgets: a <select> with an "Other…" sentinel
+  // that reveals a text input for the custom name.
+  const craterSelect = document.getElementById("f_Assign_Crater");
+  const craterOtherInput = document.getElementById("f_Assign_Crater_Other");
+  craterSelect.addEventListener("change", () => {
+    craterOtherInput.classList.toggle("hidden", craterSelect.value !== OTHER_CRATER_VALUE);
+  });
+
+  function populateCrater(currentValue) {
+    const val = textVal(currentValue);
+    if (val && !CRATER_OPTIONS.includes(val)) {
+      craterSelect.value = OTHER_CRATER_VALUE;
+      craterOtherInput.value = val;
+      craterOtherInput.classList.remove("hidden");
+    } else {
+      craterSelect.value = val;
+      craterOtherInput.value = "";
+      craterOtherInput.classList.add("hidden");
+    }
+  }
+
+  function collectCrater() {
+    return craterSelect.value === OTHER_CRATER_VALUE ? craterOtherInput.value.trim() : craterSelect.value;
+  }
+
+  function populateEditForm(r) {
+    document.getElementById("editTitle").textContent = !isBlank(r.SO) ? `Edit Crate Checklist — SO ${r.SO}` : "Edit Crate Checklist";
+
+    populateCrater(r.Assign_Crater);
+    document.getElementById("f_Assigned_Checker").value = textVal(r.Assigned_Checker);
+
+    document.getElementById("f_SO").value = textVal(r.SO);
+    document.getElementById("f_Package_Order").value = textVal(r.Package_Order);
+    document.getElementById("f_PR_if_any").value = textVal(r.PR_if_any);
+    document.getElementById("f_RR_if_any").value = textVal(r.RR_if_any);
+    document.getElementById("f_Order_Type").value = textVal(r.Order_Type);
+    document.getElementById("f_Delivery_Type").value = textVal(r.Delivery_Type);
+
+    document.getElementById("f_Customer_Name").value = textVal(r.Customer_Name);
+    document.getElementById("f_Customer_Type").value = textVal(r.Customer_Type);
+    document.getElementById("f_Customer_Address").value = textVal(r.Customer_Address);
+
+    document.getElementById("f_Item_Name").value = textVal(r.Item_Name);
+    document.getElementById("f_SKU").value = textVal(r.SKU);
+    document.getElementById("f_Quantity").value = textVal(r.Quantity);
+
+    renderCheckboxGroup("g_Crating_Checklist", CRATING_CHECKLIST_OPTIONS, toArray(r.Crating_Checklist));
+
+    const imageCount = toArray(r.Photo_Documentation).length;
+    document.getElementById("imageStatusNote").textContent = imageCount ? `${imageCount} currently attached.` : "None attached yet.";
+    document.getElementById("f_Images").value = "";
+
+    const videoCount = toArray(r.Video_Documentation).length;
+    document.getElementById("videoStatusNote").textContent = videoCount ? "A video is currently attached." : "None attached yet.";
+    document.getElementById("f_Video").value = "";
+
+    const status = textVal(r.Crating_Status1);
+    document.getElementById("f_Status_Pending").checked = status !== "Done";
+    document.getElementById("f_Status_Done").checked = status === "Done";
+  }
+
+  function collectEditFormData() {
+    const statusEl = document.querySelector('input[name="cratingStatus"]:checked');
+    return {
+      Assign_Crater: collectCrater(),
+      Assigned_Checker: document.getElementById("f_Assigned_Checker").value.trim(),
+      SO: document.getElementById("f_SO").value.trim(),
+      Package_Order: document.getElementById("f_Package_Order").value.trim(),
+      PR_if_any: document.getElementById("f_PR_if_any").value.trim(),
+      RR_if_any: document.getElementById("f_RR_if_any").value.trim(),
+      Order_Type: document.getElementById("f_Order_Type").value.trim(),
+      Delivery_Type: document.getElementById("f_Delivery_Type").value.trim(),
+      Customer_Name: document.getElementById("f_Customer_Name").value.trim(),
+      Customer_Type: document.getElementById("f_Customer_Type").value.trim(),
+      Customer_Address: document.getElementById("f_Customer_Address").value.trim(),
+      Item_Name: document.getElementById("f_Item_Name").value.trim(),
+      SKU: document.getElementById("f_SKU").value.trim(),
+      Quantity: document.getElementById("f_Quantity").value.trim(),
+      Crating_Checklist: readCheckboxGroup("g_Crating_Checklist"),
+      Crating_Status1: statusEl ? statusEl.value : "Pending",
+    };
+  }
+
+  function uploadFileToField(recordId, fieldName, file) {
+    return ZOHO.CREATOR.FILE.uploadFile({
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      id: recordId,
+      field_name: fieldName,
+      file: file,
+    });
+  }
+
+  // Sequential, not parallel — uploading several files to the same
+  // multi-file field at once risks races on whichever internal list Zoho
+  // appends to. One at a time is slower but predictable.
+  async function uploadFilesSequentially(recordId, fieldName, files) {
+    let failures = 0;
+    for (const file of files) {
+      try {
+        const response = await uploadFileToField(recordId, fieldName, file);
+        if (!response || response.code !== 3000) failures++;
+      } catch (err) {
+        console.error(err);
+        failures++;
+      }
+    }
+    return failures;
+  }
+
+  async function saveEditForm() {
+    if (!currentEditRecord) return;
+    const data = collectEditFormData();
+    const saveBtns = [document.getElementById("saveEditBtn"), document.getElementById("saveEditBtn2")];
+    saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
+
+    const recordId = currentEditRecord.ID;
+    const imageFiles = Array.from(document.getElementById("f_Images").files || []);
+    const videoFiles = Array.from(document.getElementById("f_Video").files || []);
+
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      payload: {
+        criteria: `(ID == ${recordId})`,
+        data: data,
+      },
+    };
+
+    try {
+      const response = await ZOHO.CREATOR.DATA.updateRecords(config);
+      if (!response || response.code !== 3000) throw new Error("update-failed");
+      Object.assign(currentEditRecord, data);
+
+      const failures = [];
+
+      // File bytes can't ride in the Data API payload above — each of these
+      // is a separate ZOHO.CREATOR.FILE.uploadFile call.
+      if (imageFiles.length) {
+        const failCount = await uploadFilesSequentially(recordId, "Photo_Documentation", imageFiles);
+        if (failCount) failures.push(`${failCount} photo${failCount === 1 ? "" : "s"}`);
+        else currentEditRecord.Photo_Documentation = "uploaded";
+      }
+      if (videoFiles.length) {
+        const resp = await uploadFileToField(recordId, "Video_Documentation", videoFiles[0]);
+        if (!resp || resp.code !== 3000) failures.push("video"); else currentEditRecord.Video_Documentation = "uploaded";
+      }
+
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast(failures.length ? `Saved, but failed to upload: ${failures.join(", ")}.` : "Crate checklist saved.", failures.length ? "error" : "success");
+      orderedRows = computeOrderedRows(allRecords);
+      renderAll();
+      switchToDetail(recordId);
+    } catch (err) {
+      console.error(err);
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast("Couldn't save changes.", "error");
+    }
+  }
+
+  function switchToEdit(r) {
+    currentEditRecord = r;
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("editView").classList.remove("hidden");
+    populateEditForm(r);
+    window.scrollTo(0, 0);
+  }
+
+  function cancelEdit() {
+    document.getElementById("editView").classList.add("hidden");
+    if (currentEditRecord) {
+      switchToDetail(currentEditRecord.ID);
+    } else {
+      document.getElementById("listView").classList.remove("hidden");
+    }
+  }
+  document.getElementById("cancelEditBtn").addEventListener("click", cancelEdit);
+  document.getElementById("cancelEditBtn2").addEventListener("click", cancelEdit);
+  document.getElementById("saveEditBtn").addEventListener("click", saveEditForm);
+  document.getElementById("saveEditBtn2").addEventListener("click", saveEditForm);
+
+  // ---------------------------------------------------------------------
+  // Ordering (latest Added_Time first) — flat list, no grouping (the report
+  // has no "group by" clause).
+  // ---------------------------------------------------------------------
+  function isEmptyRecord(r) {
+    return isBlank(r.SO) && isBlank(r.PR_if_any) && isBlank(r.RR_if_any)
+      && isBlank(r.Customer_Name) && isBlank(r.Item_Name) && isBlank(r.SKU);
+  }
+
+  function computeOrderedRows(records) {
+    return records.filter((r) => !isEmptyRecord(r)).slice().sort((a, b) =>
+      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+  }
+
+  // ---------------------------------------------------------------------
+  // Stats
+  // ---------------------------------------------------------------------
+  function computeStats() {
+    let pending = 0, done = 0;
+    orderedRows.forEach((r) => {
+      if (r.Crating_Status1 === "Done") done++; else pending++;
+    });
+    return { pending, done, total: orderedRows.length };
+  }
+
+  // Shared by computeStats() (totals) and getFilteredRows() (applies
+  // whichever stat is currently selected, if any). This widget's own list
+  // never hides Done rows by default (unlike Pick/Pack/QC Checklist), so no
+  // active-only-base override is needed here — every card's rows are always
+  // reachable from the same base row set.
+  function matchesStat(r, key) {
+    switch (key) {
+      case "pending": return r.Crating_Status1 !== "Done";
+      case "done": return r.Crating_Status1 === "Done";
+      case "total": return true;
+      default: return true;
+    }
+  }
+
+  // Stat cards are clickable — ADDED 2026-09-03, per user request: clicking a
+  // card filters the crate list below to just that card's rows. Click the
+  // same card again to clear. Wired via delegation on #statCards since the
+  // cards are rebuilt on every renderStats() call.
+  function renderStats() {
+    const stats = computeStats();
+    const cardHtml = (label, caption, value, color, statKey) => {
+      const p = PALETTE[color];
+      const active = statFilter === statKey;
+      return `
+        <div class="stat-card cursor-pointer select-none bg-white rounded-xl border-t-4 ${p.border} border-x border-b border-slate-200 shadow-card px-4 py-3 transition hover:shadow-md ${active ? "ring-2 ring-offset-1 ring-slate-400" : ""}" data-stat="${statKey}">
+          <p class="text-[10px] font-bold tracking-wide text-slate-400 uppercase">${escapeHtml(label)}</p>
+          <p class="text-3xl font-bold ${p.text} mt-1">${value}</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(caption)}</p>
+        </div>`;
+    };
+
+    statCards.innerHTML = [
+      cardHtml("Pending", "not yet crated", stats.pending, "amber", "pending"),
+      cardHtml("Done", "crating complete", stats.done, "emerald", "done"),
+      cardHtml("Total Crates", "all records", stats.total, "blue", "total"),
+    ].join("");
+
+    document.getElementById("pendingCount").textContent = stats.pending;
+    document.getElementById("doneCount").textContent = stats.done;
+  }
+
+  statCards.addEventListener("click", (ev) => {
+    const card = ev.target.closest(".stat-card");
+    if (!card) return;
+    const key = card.dataset.stat;
+    statFilter = (statFilter === key) ? null : key;
+    renderAll();
+  });
+
+  // ---------------------------------------------------------------------
+  // Table rendering
+  // ---------------------------------------------------------------------
+  function getFilteredRows() {
+    const base = statFilter ? orderedRows.filter((r) => matchesStat(r, statFilter)) : orderedRows;
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((r) => {
+      const hay = [r.SO, r.Package_Order, r.Assign_Crater, r.Assigned_Checker, r.Item_Name, r.SKU]
+        .map(displayVal).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  function cratingStatusHtml(r) {
+    return !isBlank(r.Crating_Status1) ? badgePill(r.Crating_Status1, CRATING_STATUS_COLOR[r.Crating_Status1] || "amber") : badgePill("Pending", "amber");
+  }
+
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+  function nextStepFor(r) {
+    if (r.Crating_Status1 === "Done") return { here: "Crated", action: "Moved to Order Aggregation", who: "Dispatcher", tone: "done" };
+    if (isBlank(r.Assign_Crater)) return { here: "Crate", action: "Assign a crater", who: "Warehouse", tone: "next" };
+    return { here: "Crate", action: "Crate the item, then mark Done", who: "Crater", tone: "next" };
+  }
+/* ───────── FORECAST (added 2026-11-04) ─────────
+   Read-only. Written by the Forecast_Stamp_Daily schedule onto this form's
+   Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+   displays them.
+
+   The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+   title attribute rather than the cell, so the column stays one line wide. The
+   date shown is the midpoint of that window, never a promise.
+
+   Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+   #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+   separation. Status also carries its own word, so it is never colour-alone.
+
+   fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+   esc there), so this picks whichever exists and carries its own as a last
+   resort - it must never be the reason a row fails to render. */
+var fcEsc = (function () {
+  if (typeof escapeHtml === "function") return escapeHtml;
+  if (typeof esc === "function") return esc;
+  return function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+})();
+
+var FORECAST_TONE = {
+  "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+  "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+  "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+};
+
+/* Creator hands dates back in whichever format the app is set to; this accepts the
+   four shapes seen across this app and returns "" rather than "Invalid Date". */
+function forecastDateText(v) {
+  if (!v) return "";
+  var s = String(v).trim();
+  var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  if (m) return m[2] + " " + m[1] + ", " + m[3];
+  var d = new Date(s.replace(/-/g, "/"));
+  if (isNaN(d.getTime())) return s.split(" ")[0];
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+function forecastCell(r) {
+  r = r || {};
+  var raw = r.Forecast_Delivery;
+  var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+  var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+  var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+  var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+  var tip = fcEsc(win || status || "");
+
+  return (
+    '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+    "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+    "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+    ';flex:none"></span>' + date +
+    (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+    "</span>"
+  );
+}
+
+  function dataRow(r) {
+    return `
+      <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}">
+        <td class="px-5 py-2.5">${cratingStatusHtml(r)}</td>
+        <td class="px-3 py-2.5">${nextStepCell(r.ID, nextStepFor(r))}</td>
+        <td class="px-3 py-2.5 text-slate-700 font-medium">${escapeHtml(displayVal(r.SO))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Package_Order))}</td>
+        <td class="px-3 py-2.5 text-slate-800 font-medium max-w-[220px] truncate">${escapeHtml(displayVal(r.Item_Name))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.SKU))}</td>
+        <td class="px-3 py-2.5 text-slate-700 text-right">${escapeHtml(displayVal(r.Quantity))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Assign_Crater))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Assigned_Checker))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Order_Type))}</td>
+        <td class="px-3 py-2.5">${forecastCell(r)}</td>
+        <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
+      </tr>`;
+  }
+
+  function renderTable() {
+    const filtered = getFilteredRows();
+    const totalCount = filtered.length;
+
+    tableBody.innerHTML = filtered.length
+      ? filtered.map(dataRow).join("")
+      : `<tr><td colspan="12" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+
+    tableBody.querySelectorAll(".record-row").forEach((row) => {
+      row.addEventListener("click", () => switchToDetail(row.dataset.id));
+    });
+
+    document.getElementById("totalCount").textContent = totalCount;
+  }
+
+  function renderAll() {
+    renderStats();
+    renderTable();
+  }
+
+  // ---------------------------------------------------------------------
+  // Crate detail view
+  // ---------------------------------------------------------------------
+  function checklistGroupHtml(title, items) {
+    if (!items.length) return "";
+    return `
+      <div>
+        <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">${escapeHtml(title)}</p>
+        <div class="space-y-1.5">
+          ${items.map((item) => `
+            <div class="flex items-start gap-2 text-sm text-slate-700">
+              <span class="h-4 w-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] mt-0.5 shrink-0">✓</span>
+              <span>${escapeHtml(item)}</span>
+            </div>`).join("")}
+        </div>
+      </div>`;
+  }
+
+  // ZOHO.CREATOR.UTIL.setImageData(imgEl, url, cb) is a confirmed-working SDK
+  // bridge for loading a Creator file field's content into an <img> — no CORS
+  // failure, no manual readFile/btoa decoding. Also confirmed (see QC
+  // Checklist widget) to work for ANY file type, not just images: the bridge
+  // resolves imgEl.src to a data:/blob: URL via an authenticated internal
+  // call regardless of mime type, so it's reused below for Video too (an
+  // off-DOM <img> triggers the bridge, then its resolved .src is copied onto
+  // a real <video> element).
+  // Confirmed against live data: file field values here are plain strings
+  // holding a Zoho REST v2.1 relative download path (e.g.
+  // "/api/v2.1/homecartel/supply-chain-app/report/All_Crates/<id>/
+  // Photo_Documentation/download?filepath=..."), not an absolute http(s) URL
+  // and not an object. setImageData resolves that relative path itself, so
+  // it's passed through as-is instead of requiring an "http" prefix.
+  function imgUrlFromRawValue(v) {
+    if (v == null || v === "") return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "object") {
+      const candidates = [v.url, v.download_url, v.href, v.display_value, v.zc_display_value, v.value];
+      for (const c of candidates) {
+        if (c && typeof c === "string") return c;
+      }
+    }
+    return "";
+  }
+
+  function applyCreatorImage(imgEl, rawValue) {
+    if (!imgEl || rawValue == null || rawValue === "") return;
+    const url = imgUrlFromRawValue(rawValue);
+    if (!url) { imgEl.dispatchEvent(new Event("error")); return; }
+    if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData) {
+      ZOHO.CREATOR.UTIL.setImageData(imgEl, url, function () {});
+    } else {
+      imgEl.src = url;
+    }
+  }
+
+  function filenameFromRawValue(v, fallback) {
+    if (typeof v !== "string") return fallback;
+    const m = v.match(/[?&]filepath=([^&]+)/);
+    return m ? decodeURIComponent(m[1]) : fallback;
+  }
+
+  // ---------------------------------------------------------------------
+  // Lightbox (zoom) + download — same setImageData bridge as previews.
+  // Downloading works by loading the image into an off-DOM <img> via
+  // setImageData, then reading its resolved src back out as a Blob — reading
+  // an already-loaded <img>'s src is local/same-document, not a new
+  // cross-origin request, which is why this works where a raw fetch() to the
+  // file's own URL is CORS-blocked.
+  // ---------------------------------------------------------------------
+  let lightboxRawValue = null;
+  let lightboxFilename = "image";
+
+  function openLightbox(rawValue, filename) {
+    lightboxRawValue = rawValue;
+    lightboxFilename = filename || "image";
+    document.getElementById("lightboxOverlay").classList.remove("hidden");
+    applyCreatorImage(document.getElementById("lightboxImg"), rawValue);
+  }
+  function closeLightbox() {
+    document.getElementById("lightboxOverlay").classList.add("hidden");
+    lightboxRawValue = null;
+  }
+  document.getElementById("lightboxCloseBtn").addEventListener("click", closeLightbox);
+  document.getElementById("lightboxOverlay").addEventListener("click", (ev) => {
+    if (ev.target.id === "lightboxOverlay") closeLightbox();
+  });
+
+  function base64ToBlob(b64, mime) {
+    try {
+      const byteChars = atob(b64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      return new Blob([bytes], { type: mime || "application/octet-stream" });
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getBlobViaImageBridge(rawValue) {
+    return new Promise((resolve) => {
+      if (!(typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData)) { resolve(null); return; }
+      const img = new Image();
+      let done = false;
+      const finish = (blob) => { if (done) return; done = true; resolve(blob); };
+      const timer = setTimeout(() => finish(null), 15000);
+      img.onload = () => {
+        clearTimeout(timer);
+        try {
+          const src = img.src;
+          if (src.indexOf("data:") === 0) {
+            const commaIdx = src.indexOf(",");
+            const meta = src.slice(5, commaIdx);
+            const mime = meta.split(";")[0] || "application/octet-stream";
+            const payload = src.slice(commaIdx + 1);
+            finish(meta.indexOf("base64") !== -1 ? base64ToBlob(payload, mime) : new Blob([decodeURIComponent(payload)], { type: mime }));
+          } else {
+            finish(null);
+          }
+        } catch (e) {
+          finish(null);
+        }
+      };
+      img.onerror = () => { clearTimeout(timer); finish(null); };
+      ZOHO.CREATOR.UTIL.setImageData(img, rawValue, function () {});
+    });
+  }
+
+  function downloadViaImageBridge(rawValue, filename) {
+    return getBlobViaImageBridge(rawValue).then((blob) => {
+      if (!blob) return false;
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl; a.download = filename || "download";
+      document.body.appendChild(a); a.click();
+      URL.revokeObjectURL(dlUrl); a.remove();
+      return true;
+    });
+  }
+
+  document.getElementById("lightboxDownloadBtn").addEventListener("click", async () => {
+    if (!lightboxRawValue) return;
+    const btn = document.getElementById("lightboxDownloadBtn");
+    btn.disabled = true;
+    btn.textContent = "Downloading…";
+    const ok = await downloadViaImageBridge(lightboxRawValue, lightboxFilename);
+    btn.disabled = false;
+    btn.innerHTML = "⬇ Download";
+    toast(ok ? "Downloaded." : "Couldn't download.", ok ? "success" : "error");
+  });
+
+  function renderDocumentation(r) {
+    const rawImages = Array.isArray(r.Photo_Documentation) ? r.Photo_Documentation
+      : (isBlank(r.Photo_Documentation) ? [] : [r.Photo_Documentation]);
+    const rawVideo = Array.isArray(r.Video_Documentation) ? r.Video_Documentation[0]
+      : (isBlank(r.Video_Documentation) ? null : r.Video_Documentation);
+
+    document.getElementById("detailDocumentation").innerHTML = `
+      <div>
+        <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Photos ${rawImages.length ? `(${rawImages.length})` : ""}</p>
+        <div id="docImagesGrid" class="flex flex-wrap gap-2">${rawImages.length ? "" : `<span class="text-slate-300 text-sm">—</span>`}</div>
+      </div>
+      <div class="mt-4">
+        <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Video</p>
+        <div id="docVideoBox">${rawVideo ? "" : `<span class="text-slate-300 text-sm">—</span>`}</div>
+      </div>
+    `;
+
+    if (rawImages.length) {
+      const grid = document.getElementById("docImagesGrid");
+      rawImages.forEach((rawVal, i) => {
+        const filename = filenameFromRawValue(rawVal, `photo-${i + 1}.png`);
+        const wrap = document.createElement("div");
+        wrap.className = "w-20 h-20 rounded-lg border border-slate-200 bg-slate-100 overflow-hidden cursor-zoom-in";
+        const img = document.createElement("img");
+        img.className = "w-full h-full object-cover";
+        img.addEventListener("error", () => {
+          wrap.innerHTML = `<div class="w-full h-full flex items-center justify-center text-[9px] text-slate-400 text-center px-1">Preview unavailable</div>`;
+        });
+        wrap.addEventListener("click", () => openLightbox(rawVal, filename));
+        wrap.appendChild(img);
+        grid.appendChild(wrap);
+        applyCreatorImage(img, rawVal);
+      });
+    }
+    if (rawVideo) {
+      const box = document.getElementById("docVideoBox");
+      box.innerHTML = `<video width="320" height="240" controls preload="metadata">Preview unavailable.</video><button type="button" id="videoFullscreenBtn" class="flex items-center gap-1 mt-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>Fullscreen</button>`;
+      const videoEl = box.querySelector("video");
+      document.getElementById("videoFullscreenBtn").addEventListener("click", () => {
+        const req = videoEl.requestFullscreen || videoEl.webkitRequestFullscreen || videoEl.msRequestFullscreen;
+        if (req) req.call(videoEl);
+      });
+      if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData) {
+        const hiddenImg = new Image();
+        ZOHO.CREATOR.UTIL.setImageData(hiddenImg, imgUrlFromRawValue(rawVideo), function () {
+          const resolvedSrc = hiddenImg.src || "";
+          if (resolvedSrc && (resolvedSrc.startsWith("blob:") || resolvedSrc.startsWith("data:"))) {
+            videoEl.src = resolvedSrc;
+          } else {
+            box.innerHTML = `<span class="text-slate-800 text-sm font-medium">1 attached</span><p class="text-[11px] text-slate-400 mt-1">Preview unavailable.</p>`;
+          }
+        });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Deep link from FulfillmentKanban's Crate column (and, same pattern as
+  // Pick/Pack, ready for a future notification bell too) — same
+  // ZOHO.CREATOR.UTIL.navigateParentURL + getQueryParams() pattern proven in
+  // Pick/Pack/QCChecklist. Added 2026-08-11, per user ("QC does the right
+  // flow... can we do the same in other module").
+  //   Target URL = "https://creator.zoho.com/homecartel/supply-chain-app/" +
+  //     "#Page:Crate_Checklist?crateRecordId=" + recordId
+  // Needs a Page Variable named `crateRecordId` registered on whichever page
+  // this widget gets placed on (Page Builder -> Variables tab) — same manual
+  // step every other deep-link in this app needed. Page Link Name used in
+  // the kanban's own navigateToCrateWidget() is "Crate_Checklist" — rename
+  // both sides together if the actual page ends up named differently.
+  // ---------------------------------------------------------------------
+  let deepLinkChecked = false;
+  function checkDeepLinkOpenCrate() {
+    if (deepLinkChecked) return;
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams !== "function") return;
+    deepLinkChecked = true;
+    ZOHO.CREATOR.UTIL.getQueryParams().then((params) => {
+      const id = params && params.crateRecordId;
+      if (id) switchToDetail(id);
+    }).catch(() => {});
+  }
+
+  function switchToDetail(recordId) {
+    const r = allRecords.find(rec => String(rec.ID) === String(recordId));
+    if (!r) return;
+    renderNextStepBanner("nsBanner", r.ID, nextStepFor(r));
+
+    document.getElementById("editRecordBtn").onclick = () => switchToEdit(r);
+
+    document.getElementById("detailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
+    document.getElementById("detailSoNo").textContent = displayVal(r.SO) !== "—" ? displayVal(r.SO) : "Crate Checklist";
+    document.getElementById("detailCustomer").textContent = displayVal(r.Customer_Name);
+    document.getElementById("detailSubline").textContent = `${displayVal(r.Order_Type)} · ${displayVal(r.Delivery_Type)}`;
+
+    const fieldsHtml = [
+      ["SO #", displayVal(r.SO)],
+      ["PACK #", displayVal(r.Package_Order)],
+      ["PR # (if any)", displayVal(r.PR_if_any)],
+      ["RR # (if any)", displayVal(r.RR_if_any)],
+      ["Order Type", displayVal(r.Order_Type)],
+      ["Delivery Type", displayVal(r.Delivery_Type)],
+      ["Added Time", escapeHtml(formatDateTime(r.Added_Time))],
+    ];
+    document.getElementById("detailFields").innerHTML = fieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const customerFieldsHtml = [
+      ["Customer Name", displayVal(r.Customer_Name)],
+      ["Customer Type", displayVal(r.Customer_Type)],
+      ["Customer Address", displayVal(r.Customer_Address)],
+    ];
+    document.getElementById("detailCustomerFields").innerHTML = customerFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const itemFieldsHtml = [
+      ["Item Name", displayVal(r.Item_Name)],
+      ["SKU", displayVal(r.SKU)],
+      ["Qty", displayVal(r.Quantity)],
+    ];
+    document.getElementById("detailItemFields").innerHTML = itemFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 font-medium mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    document.getElementById("detailChecklists").innerHTML = checklistGroupHtml("Crating Checklist", toArray(r.Crating_Checklist))
+      || `<p class="text-xs text-slate-400">No checklist items recorded.</p>`;
+
+    renderDocumentation(r);
+
+    document.getElementById("detailCratingStatus").innerHTML = cratingStatusHtml(r);
+    document.getElementById("detailAssignCrater").textContent = displayVal(r.Assign_Crater);
+    document.getElementById("detailAssignedChecker").textContent = displayVal(r.Assigned_Checker);
+
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("editView").classList.add("hidden");
+    document.getElementById("detailView").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }
+
+  function switchToList() {
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("editView").classList.add("hidden");
+    document.getElementById("listView").classList.remove("hidden");
+  }
+  document.getElementById("backToListBtn").addEventListener("click", switchToList);
+
+  // ---------------------------------------------------------------------
+  // Data loading (All_Crates)
+  // ---------------------------------------------------------------------
+  function fetchAllRecords() {
+    // field_config: "all" returns raw form field data instead of whatever the
+    // report's display columns would otherwise collapse fields to.
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+
+  function loadLive() {
+    fetchAllRecords().then((records) => {
+      allRecords = records;
+      orderedRows = computeOrderedRows(allRecords);
+      renderAll();
+      checkDeepLinkOpenCrate();
+    }).catch((err) => {
+      // Logged silently, no error toast — an empty All_Crates report isn't a
+      // failure, and the table's own "No records found" empty state already
+      // communicates that without an alarming red banner. Still render with
+      // empty data so the table/stats reach that proper empty state instead
+      // of sitting on the raw static HTML placeholders.
+      console.error(err);
+      allRecords = [];
+      orderedRows = [];
+      renderAll();
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  searchInput.addEventListener("input", () => { renderTable(); });
+
+  const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+  if (sdkReady) {
+    loadLive();
+  } else {
+    toast("This widget must be opened inside Zoho Creator to load data.", "error");
+  }
+})();
+</script>
+</body>
+</html>

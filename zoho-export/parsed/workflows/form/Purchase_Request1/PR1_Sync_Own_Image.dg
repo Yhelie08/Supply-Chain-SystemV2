@@ -1,0 +1,7 @@
+// form: PR1_Sync_Own_Image  form=Purchase_Request1 event=on add or edit on success  [.ds line 39606]
+    itemRecOwn = Items[ID == input.Items];
+if(itemRecOwn != null && itemRecOwn.Image != null)
+{
+    r = Purchase_Request1[ID == input.ID];
+    r.Product_Image_PR=itemRecOwn.Image;
+}

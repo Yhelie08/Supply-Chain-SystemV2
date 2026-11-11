@@ -1,0 +1,9 @@
+// form: Show Release on Picker Assigned  form=Sales_Order_Readiness_Gate event=on add or edit on user input of Assign_Picker  [.ds line 44351]
+    if(Assign_Picker != null && Assign_Picker != "")
+{
+    show Release;
+}
+else
+{
+    hide Release;
+}

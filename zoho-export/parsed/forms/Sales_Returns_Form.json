@@ -1,0 +1,241 @@
+{
+  "name": "Sales_Returns_Form",
+  "label": "Sales Returns Form",
+  "successMessage": "Data Added Successfully!",
+  "line": 14038,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "RMA",
+      "label": "RMA#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Service_Request",
+      "label": "Service Request#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order",
+      "label": "Sales Order#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Address",
+      "label": "Customer Address",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "City",
+      "label": "City",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Email",
+      "label": "Email",
+      "type": "email",
+      "required": false,
+      "maxchar": "80",
+      "personalData": "true"
+    },
+    {
+      "name": "Contact",
+      "label": "Contact",
+      "type": "phonenumber",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Date_field",
+      "label": "Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Warehouse_Name",
+      "label": "Warehouse Name",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "WH1 BANAWE",
+        "WH2 SPEAKER",
+        "WH3 BAESA",
+        "WH4 HC-Damage Repairable",
+        "WH5 Commune Home",
+        "WH6 FR-Tagaytay",
+        "WH7 HC-Flagship Showroom",
+        "WH8 FR-Q Ave.",
+        "WH9 FR-Bay Area",
+        "WH10 FR-Shang",
+        "WH11 FR-Glorietta",
+        "WH12 FR-Festival Mall",
+        "WH13 FR-Taytay",
+        "WH14 FR-Anabu",
+        "WH15 FR-Davao",
+        "WH16 FR-Vermosa",
+        "WH17 FR-Lipa",
+        "WH19 FR-Balintawak",
+        "WH20 FR-Makati",
+        "WH21 FR-Kawit",
+        "WH22 FR-Bacoor",
+        "INVENTORY"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Reason",
+      "label": "Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Sub_Reason",
+      "label": "Sub Reason",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Change of Mind",
+        "Damaged Item",
+        "Demo",
+        "Replacement"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Returned_by",
+      "label": "Returned by",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SR_CREATION_STATUS",
+      "label": "SR CREATION STATUS",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "CREATED",
+        "PENDING"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Items",
+      "label": "Items",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Qty_Shipped_Fulfilled",
+          "label": "Qty Shipped/Fulfilled",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Return_Quantity",
+          "label": "Return Quantity",
+          "type": "number",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Documentation",
+      "label": "Documentation",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Image",
+      "label": "Image",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "Video",
+      "label": "Video",
+      "type": "video",
+      "required": false
+    },
+    {
+      "name": "Signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Section1",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Complaint_Record_ID",
+      "label": "Complaint Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "app",
+      "label": "Appointment Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section2",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Books_SalesReturn_ID",
+      "label": "Books SalesReturn ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Books_SalesReturn_No",
+      "label": "Books SalesReturn No",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

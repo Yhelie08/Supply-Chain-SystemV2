@@ -1,0 +1,725 @@
+{
+  "name": "Inquiry_Form",
+  "label": "Inquiry Form",
+  "successMessage": "Inquiry Added Successfully",
+  "line": 6348,
+  "fields": [
+    {
+      "name": "Product_Info",
+      "label": "Product Info",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "created_date",
+      "label": "Created Date",
+      "type": "datetime",
+      "required": false,
+      "initialValue": "${zoho.currentdate}",
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "INQ_No",
+      "label": "INQ No.",
+      "type": "text",
+      "required": false,
+      "unique": true
+    },
+    {
+      "name": "Customer",
+      "label": "Add New",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Customer",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[customer_name]"
+    },
+    {
+      "name": "Sales_Owner",
+      "label": "Sales Owner",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "HC Sales 1",
+        "HC Sales 2",
+        "HC Sales 3",
+        "HC Sales 4",
+        "HC Sales 5",
+        "HC Sales 6",
+        "HC Sales 7",
+        "HC Sales 8",
+        "HC Sales 9",
+        "HC Sales Coordinator"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Design_Company",
+      "label": "Design Company",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Design_Partner",
+      "label": "Design Partner",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Customer_Type",
+      "label": "Customer Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Projects",
+      "label": "Add New",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Projects",
+        "criteria": "Customer.ID == input.Customer",
+        "field": "ID"
+      },
+      "displayformat": "[Project_Name]"
+    },
+    {
+      "name": "Project_Name",
+      "label": "Project Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Project_Type",
+      "label": "Project Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Commercial",
+        "Residential"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Addtl_Disc_Needed1",
+      "label": "Additional Discount Needed",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "No",
+        "Yes"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "quote_group",
+      "label": "Quote Group",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Group_Discount_Pct",
+      "label": "Group Discount Percentage",
+      "type": "percentage",
+      "required": false
+    },
+    {
+      "name": "Waiting_On",
+      "label": "Waiting On",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "None",
+        "Supplier",
+        "Internal"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "target_date",
+      "label": "Target Date",
+      "type": "date",
+      "required": true,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Product_Image",
+      "label": "Product Image",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "Items",
+      "label": "Items",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Items",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[item_name]"
+    },
+    {
+      "name": "sku",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "unit",
+      "label": "Unit",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "pcs",
+        "box",
+        "meter",
+        "cm"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "quantity",
+      "label": "Quantity",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "description",
+      "label": "Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Addtional_Description",
+      "label": "Addtional Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Designer_Architect",
+      "label": "Designer/Architect",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Order_Type",
+      "label": "Order Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Normal",
+        "Pre Order",
+        "(Partly) Pre Order",
+        "Service"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Commission",
+      "label": "Commission",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "0",
+        "5",
+        "10",
+        "15",
+        "20",
+        "25",
+        "30"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "For_Bidding",
+      "label": "For Bidding",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "True",
+        "False"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Open_to_similar_design",
+      "label": "Open to similar design",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Suppliers",
+      "label": "Suppliers",
+      "type": "list",
+      "required": false,
+      "lookup": {
+        "form": "Suppliers",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[\" \" + Supplier_Name.first_name]"
+    },
+    {
+      "name": "Attachments",
+      "label": "Attachments",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Supplier_Quotes",
+      "label": "Supplier Quotes",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Final",
+        "Not Selected",
+        "Negotiating",
+        "Declined"
+      ],
+      "helpText": "If the item is in stock",
+      "fields": [
+        {
+          "name": "Supplier_ID",
+          "label": "Supplier ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Suppliers",
+          "label": "Suppliers",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Availability",
+          "label": "Availability (if On stock)",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Confirmed",
+            "Pending",
+            "Unavailable",
+            "Cannot Produce"
+          ],
+          "helpText": "If the item is in stock",
+          "maxchar": "100"
+        },
+        {
+          "name": "Initial_Price",
+          "label": "Initial Price",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Negotiated",
+          "label": "Negotiated",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Final_Price",
+          "label": "Final Price",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Lead_Time",
+          "label": "Lead Time",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Stage",
+          "label": "Stage",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Final",
+            "Not Selected",
+            "Negotiating",
+            "Declined"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Prev_Stage",
+          "label": "Prev Stage",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Selected",
+          "label": "Selected",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "Supplier_Quotes_Last_Edited",
+      "label": "Supplier Quotes History",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Confirmed",
+        "Pending",
+        "Unavailable"
+      ],
+      "fields": [
+        {
+          "name": "Suppliers_Last_Edited",
+          "label": "Suppliers",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Availability_Last_Edited",
+          "label": "Availability Last Edited",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Confirmed",
+            "Pending",
+            "Unavailable"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Initial_Price_Last_Edited",
+          "label": "Initial Price Last Edited",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Negotiated_Last_Edited",
+          "label": "Negotiated Last Edited",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Final_Price_Last_Edited",
+          "label": "Final Price Last Edited",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Lead_Time_Last_Edited",
+          "label": "Lead Time Last Edited",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Product_Collateral",
+      "label": "Product Collateral ",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Product_Sample",
+      "label": "Product Sample",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Required",
+        "HideToSupplier",
+        "Completed",
+        "Pending",
+        "N/A"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Technical_Drawing",
+      "label": "Technical Drawing",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Required",
+        "HideToSupplier",
+        "Completed",
+        "Pending",
+        "N/A"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "D_Image",
+      "label": "3D Image",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Required",
+        "HideToSupplier",
+        "Completed",
+        "Pending",
+        "N/A"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Similar_Design_Photo",
+      "label": "Similar Design Photo",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Specification",
+      "label": "Specification",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Required",
+        "HideToSupplier",
+        "Completed",
+        "Pending",
+        "N/A"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Specification_Details",
+      "label": "Specification Details",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Readiness_Checklist",
+      "label": "Readiness Checklist",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Supplier_Selected",
+      "label": "Supplier Selected",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Availability",
+      "label": "Availability Confirmed",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Final_Price_Exists",
+      "label": "Final Price Exists",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Collateral_Comple_NA",
+      "label": "Collateral Comple/NA",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "SRP_Approved",
+      "label": "SRP Approved",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Ready_for_Estimates",
+      "label": "Ready for Estimates",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "SRP_Pricing_Summary",
+      "label": "SRP & Pricing Summary",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Select_Final_Cost",
+      "label": "Select Final Cost",
+      "type": "CNY",
+      "required": false,
+      "format": "commadotwestern"
+    },
+    {
+      "name": "SRP_Approved1",
+      "label": "SRP (Approved)",
+      "type": "PHP",
+      "required": false,
+      "format": "commadotwestern"
+    },
+    {
+      "name": "Margin",
+      "label": "Margin%",
+      "type": "decimal",
+      "required": false
+    },
+    {
+      "name": "SRP_Status",
+      "label": "SRP Status",
+      "type": "radiobuttons",
+      "required": false,
+      "options": [
+        "Approved",
+        "Pending"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Zoho_Books",
+      "label": "Zoho Books",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Books_Estimate_No",
+      "label": "Books Estimate No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Books_Estimate_ID",
+      "label": "Books Estimate ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Hie",
+      "label": "Hie",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Estimate_Created",
+      "label": "Estimate Created",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "INQ_Seq",
+      "label": "INQ Seq",
+      "type": "autonumber",
+      "required": false
+    },
+    {
+      "name": "Deep_Link_Token",
+      "label": "Deep Link Token",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Specification1",
+      "label": "Specification",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Dimension",
+      "label": "Dimension",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Color_Body",
+      "label": "Color Body",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Voltage",
+      "label": "Voltage",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Lumens",
+      "label": "Lumens",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Color_Temperature",
+      "label": "Color Temperature",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "2700K",
+        "3000K",
+        "3500K",
+        "4000K",
+        "4500K",
+        "5000K"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Type_of_Bulb",
+      "label": "Type of Bulb",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "A60 - E27",
+        "LED Strip",
+        "A60 - E27 Dimmable",
+        "c35 - L E14",
+        "c35 - L E14 Dimmable",
+        "Corn type E14",
+        "Corn type E14 Dimmable",
+        "Corn type E27",
+        "Corn type E27 Dimmable",
+        "E14-Candle",
+        "G4",
+        "G4 Dimmable",
+        "G4 Jelly",
+        "G9",
+        "G-95",
+        "G9 Dimmable",
+        "G45 - E27",
+        "G45 - E27 Dimmable",
+        "G80 - E27",
+        "GU10",
+        "G125 - E27",
+        "GU10 Dimmable",
+        "ST64"
+      ],
+      "maxchar": "100"
+    }
+  ]
+}

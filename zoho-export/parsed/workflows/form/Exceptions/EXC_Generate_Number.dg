@@ -1,0 +1,39 @@
+// form: EXC_Generate_Number  form=Exceptions event=on add on validate  [.ds line 39630]
+    // === EXC_Generate_Number ===
+// Form: Exceptions | Event: Created | Validations on form submission
+maxNum = 0;
+existingEXCs = Exceptions[ID != 0];
+for each  exc in existingEXCs
+{
+    excNoStr = exc.Exception_No;
+    if(excNoStr != null && excNoStr != "")
+    {
+        numPart = excNoStr.removeFirstOccurence("EXC-");
+        num = numPart.toLong();
+        if(num > maxNum)
+        {
+            maxNum = num;
+        }
+    }
+}
+newNum = maxNum + 1;
+if(newNum < 10)
+{
+    input.Exception_No = "EXC-0000" + newNum;
+}
+else if(newNum < 100)
+{
+    input.Exception_No = "EXC-000" + newNum;
+}
+else if(newNum < 1000)
+{
+    input.Exception_No = "EXC-00" + newNum;
+}
+else if(newNum < 10000)
+{
+    input.Exception_No = "EXC-0" + newNum;
+}
+else
+{
+    input.Exception_No = "EXC-" + newNum;
+}

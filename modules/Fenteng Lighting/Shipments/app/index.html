@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fenteng Lighting — Shipments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="notification_component/notification.css" />
+<style>
+  :root {
+    --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+    --green:#16A34A; --green-light:#DCFCE7; --green-mid:#86EFAC;
+    --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+    --red:#DC2626; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+    --orange:#EA580C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0;
+    --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B;
+    --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+    --white:#FFFFFF;
+    --radius-sm:4px; --radius:8px; --radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+    --t:150ms ease;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-sm{height:32px;padding:0 13px;font-size:13px}
+  .btn-orange{background:var(--orange);color:var(--white);font-weight:600;box-shadow:0 1px 3px rgba(234,88,12,.3)}
+  .btn-orange:hover{background:#C2410C;transform:translateY(-1px);box-shadow:0 4px 12px rgba(234,88,12,.3)}
+  .btn-orange:disabled{background:var(--gray-300);color:var(--gray-500);box-shadow:none;cursor:not-allowed;transform:none}
+  .confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;z-index:200}
+  .confirm-overlay.show{display:flex}
+  .confirm-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:100%;max-width:360px;padding:20px}
+  .confirm-title{font-weight:700;font-size:15px;color:var(--gray-800);margin-bottom:8px}
+  .confirm-msg{font-size:13px;color:var(--gray-600);margin-bottom:16px}
+  .confirm-actions{display:flex;justify-content:flex-end;gap:8px}
+
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transform:translateY(6px);transition:opacity 200ms ease,transform 200ms ease;pointer-events:none;max-width:340px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  .list-page{padding:24px;display:flex;flex-direction:column;gap:20px;min-height:100vh;box-sizing:border-box}
+  .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .page-header-left h1{font-size:24px;font-weight:700;color:var(--orange);letter-spacing:-.02em;line-height:1.2}
+  .page-header-left p{font-size:13px;color:var(--gray-500);margin-top:4px}
+  .page-header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+  .supplier-pill{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 6px;border-radius:999px;background:var(--white);border:1px solid var(--gray-200);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .supplier-pill span.name{font-size:13px;font-weight:600;color:var(--gray-800)}
+  .supplier-avatar{width:26px;height:26px;border-radius:50%;background:var(--orange);color:var(--white);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+  .lang-toggle{display:flex;align-items:center;gap:4px;height:36px;padding:0 12px;border-radius:999px;background:var(--white);border:1px solid var(--gray-200);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .lang-toggle:hover{border-color:var(--gray-400)}
+  .lang-opt{opacity:.4;transition:opacity var(--t),color var(--t)}
+  .lang-opt.active{opacity:1;color:var(--orange)}
+  .lang-sep{opacity:.3;font-size:11px}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:900px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:16px 20px;box-shadow:var(--shadow)}
+  .stat-label{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em}
+  .stat-value{font-size:28px;font-weight:700;line-height:1.1;margin:6px 0 4px;color:var(--gray-800)}
+  .stat-value.amber{color:var(--amber)}
+  .stat-value.green{color:var(--green)}
+
+  .main-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .search-wrap{position:relative;flex:0 1 220px;min-width:160px;margin-left:auto}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400);pointer-events:none}
+  .search-input{width:100%;height:32px;padding:0 10px 0 32px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--gray-50);color:var(--gray-700);font-family:inherit;font-size:13px;outline:none;transition:all var(--t);box-sizing:border-box}
+  .search-input:focus{border-color:var(--orange);background:var(--white)}
+
+  .table-wrap{overflow-x:auto}
+  .inq-table{width:100%;border-collapse:collapse;min-width:720px}
+  .inq-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .inq-table th{padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+  .inq-table tbody tr{border-bottom:1px solid var(--gray-100);transition:background var(--t);cursor:pointer}
+  .inq-table tbody tr:hover{background:var(--gray-50)}
+  .inq-table tbody tr:last-child{border-bottom:none}
+  .inq-table td{padding:12px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle}
+  .empty{text-align:center;padding:48px 20px;color:var(--gray-400);font-size:13px}
+  .spin{display:inline-block;width:16px;height:16px;border:2.5px solid var(--gray-200);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .badge-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .badge-gray{background:var(--gray-100);color:var(--gray-600);border-color:var(--gray-200)}
+  .badge-blue{background:var(--blue-light);color:var(--blue-dark);border-color:var(--blue-mid)}
+  .badge-green{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .badge-amber{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+
+  .detail-page{display:flex;flex-direction:column;min-height:100vh;background:var(--gray-100)}
+  .detail-topbar{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .detail-topbar-title{font-size:15px;font-weight:600;color:var(--gray-800);letter-spacing:-.01em}
+  .detail-subheader{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .detail-ship-no{font-size:16px;font-weight:800;color:var(--orange);letter-spacing:-.01em}
+  .detail-body{padding:16px 24px 28px}
+  .sec-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+  .sec-card:last-child{margin-bottom:0}
+  .sec-header{padding:12px 20px;background:var(--orange-light);border-left:4px solid var(--orange);border-bottom:1px solid var(--gray-100)}
+  .sec-title{font-size:13px;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:.08em}
+  .line-table{width:100%;border-collapse:collapse}
+  .line-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);padding:9px 12px;text-align:left;border-bottom:1px solid var(--gray-100);white-space:nowrap}
+  .line-table td{padding:10px 12px;font-size:12.5px;border-bottom:1px solid var(--gray-50);vertical-align:middle;color:var(--gray-700)}
+  .line-table tbody tr:last-child td{border-bottom:none}
+  .line-table tr.row-synced{background:var(--gray-50)}
+  .cell-sku{font-family:monospace;font-size:11.5px;color:var(--gray-500);background:var(--gray-100);padding:2px 6px;border-radius:var(--radius-sm);white-space:nowrap}
+  .form-input,.form-select{font:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;color:var(--gray-800);background:var(--white)}
+  .form-input:focus,.form-select:focus{outline:none;border-color:var(--orange)}
+  .form-input:disabled,.form-select:disabled{background:var(--gray-100);color:var(--gray-400)}
+  input[type=checkbox].chk-select{width:18px;height:18px;cursor:pointer}
+  input[type=checkbox].chk-select:disabled{cursor:not-allowed}
+
+  .submit-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;flex-wrap:wrap}
+  .submit-note{font-size:11.5px;color:var(--gray-400);max-width:420px}
+  .btn-submit{height:40px;padding:0 20px;font-size:14px;font-weight:700;box-shadow:0 2px 6px rgba(234,88,12,.3)}
+
+  .hidden{display:none !important}
+
+  /* ADDED 2026-09-21, per user ("Lagyan mo ng groupings ang PO, shipment at replacement") —
+     "Groups" tab, same idea as the sibling PR widget's own PR Groups tab: rows clustered by
+     the buyer-side Sales Order, which is resolved quietly and NEVER shown to the supplier
+     (card header only says "Total <things>: N"). */
+  .tab-nav{display:flex;gap:4px;padding:0 20px;border-bottom:1.5px solid var(--gray-200);background:var(--white)}
+  .tab-btn2{display:flex;align-items:center;gap:7px;padding:14px 4px 12px;margin-right:22px;border:none;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;background:transparent;color:var(--gray-500);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:color var(--t),border-color var(--t)}
+  .tab-btn2:hover{color:var(--gray-700)}
+  .tab-btn2.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+  .grp-empty{padding:60px 20px;text-align:center;color:var(--gray-400);font-size:13px}
+  .grp-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;margin:16px 20px}
+  .grp-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .grp-card-title{font-size:14px;font-weight:700;color:var(--gray-800)}
+  .grp-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:820px}
+  .grp-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .grp-table th{padding:8px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grp-table tbody tr{border-bottom:1px solid var(--gray-100);transition:background var(--t);cursor:pointer}
+  .grp-table tbody tr:hover{background:var(--gray-50)}
+  .grp-table tbody tr:last-child{border-bottom:none}
+  .grp-table td{padding:10px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
+  /* ADDED 2026-09-21, per user ("sa shipment lagyan mo ng tab na (All, Lcl, FCL and Air Freight)") */
+  .filter-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 14px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .pill:hover{border-color:var(--blue);color:var(--blue)}
+  .pill.active{background:var(--blue);border-color:var(--blue);color:var(--white)}
+</style>
+<script>
+/* ════════════════════════════════
+   PR ON HOLD — PR On Hold plan, Phase 3 (ADDED 2026-10-01)
+   A PR can be put On Hold / Cancelled in the Purchase Request widget
+   (Purchase_Request1.Hold_Status). Every line in this widget carries its PR No,
+   so this looks up the held PRs and lets the widget badge and lock just that
+   line. Read-only here: Hold / Resume / Cancel / Restore live only in the
+   Purchase Request widget.
+════════════════════════════════ */
+var PRHold = (function(){
+  var map = {}, busy = false, waiters = [];
+  function v(x){
+    if(x===null||x===undefined) return '';
+    if(typeof x==='object') return x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'';
+    return String(x);
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function zh(){ try{ return typeof LANG!=='undefined' && LANG==='zh'; }catch(e){ return false; } }
+  function key(prNo){ return String(prNo===null||prNo===undefined ? '' : prNo).trim(); }
+  /* Re-fetches every call (cheap: only held PRs match), so a Resume/Restore shows up
+     on the next list load. A failed fetch keeps the last known map. */
+  function load(cb){
+    if(cb) waiters.push(cb);
+    if(busy) return;
+    busy = true;
+    function done(next){
+      if(next) map = next;
+      busy = false;
+      var w = waiters; waiters = [];
+      w.forEach(function(f){ try{ f(); }catch(e){ console.warn('[PRHold] callback error', e); } });
+    }
+    if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function'){ done(null); return; }
+    ZOHO.CREATOR.DATA.getRecords({ report_name:'All_Purchase_Request', criteria:'(Hold_Status == "On Hold" || Hold_Status == "Cancelled")', field_config:'all', max_records:200 })
+      .then(function(resp){
+        var next = {};
+        if(resp && resp.code===3000 && Array.isArray(resp.data)){
+          resp.data.forEach(function(r){
+            var pr = key(v(r.PR_No)), st = v(r.Hold_Status);
+            if(pr && (st==='On Hold' || st==='Cancelled')) next[pr] = { state:st, reason:v(r.Hold_Reason), date:v(r.Hold_Date) };
+          });
+        }
+        done(next);
+      })
+      .catch(function(err){
+        /* 9220 = no PR is held right now, which is a real (empty) answer. */
+        var empty = false;
+        try{
+          var txt = err && (err.responseText || (err.content && err.content.responseText));
+          var p = txt ? JSON.parse(txt) : err;
+          if(p && String(p.code)==='9220') empty = true;
+        }catch(e){}
+        if(!empty) console.warn('[PRHold] could not load held PRs:', err);
+        done(empty ? {} : null);
+      });
+  }
+  function state(prNo){ var m = map[key(prNo)]; return m ? m.state : ''; }
+  function locked(prNo){ return !!state(prNo); }
+  function label(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消' : 'CANCELLED';
+    return zh() ? '暂停' : 'ON HOLD';
+  }
+  function text(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消 — 客户已取消此产品，请勿继续。' : 'CANCELLED — the client cancelled this item. Do not proceed.';
+    return zh() ? '暂停 — 客户已暂停此产品，请勿继续。' : 'ON HOLD — the client paused this item. Do not proceed.';
+  }
+  function badge(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    var m = map[key(prNo)];
+    var c = s==='Cancelled' ? 'background:#FEE2E2;color:#DC2626;border:1px solid #FCA5A5' : 'background:#FEF3C7;color:#92400E;border:1px solid #FCD34D';
+    var tip = text(prNo) + (m.date ? ' (' + m.date + ')' : '');
+    return ' <span class="pr-hold-badge" title="'+esc(tip)+'" style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;'+c+'">'+label(prNo)+'</span>';
+  }
+  /* Which of these PR numbers are held (for PO / shipment level summaries). */
+  function heldOf(prNos){ return (prNos||[]).filter(function(p){ return locked(p); }); }
+  return { load:load, state:state, locked:locked, label:label, text:text, badge:badge, heldOf:heldOf };
+})();
+</script>
+</head>
+<body>
+
+<!-- ══ LIST VIEW ══ -->
+<div id="view-list" class="list-page">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 data-i18n="appTitle">Supplier Portal</h1>
+      <p data-i18n="pageSubtitle">Shipments — mark what you're shipping today, per item.</p>
+    </div>
+    <div class="page-header-right">
+      <button class="lang-toggle" id="langToggleBtn" onclick="toggleLang()" title="Switch language / 切换语言">
+        <span class="lang-opt" id="langOptEn">EN</span><span class="lang-sep">/</span><span class="lang-opt" id="langOptZh">中</span>
+      </button>
+      <div class="supplier-pill">
+        <span class="supplier-avatar" id="avatarMark">F</span>
+        <span class="name" id="supplierNameLabel">Fenteng Lighting</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-cards" id="statStrip"></div>
+
+  <div class="tab-nav">
+    <button class="tab-btn2 active" data-maintab="all" onclick="switchMainTab('all')" data-i18n="grpTabAll">All Shipments</button>
+    <button class="tab-btn2" data-maintab="groups" onclick="switchMainTab('groups')" data-i18n="grpTabGroups">Shipment Groups</button>
+  </div>
+
+  <div id="panel-main-all">
+  <div class="main-card">
+    <div class="filter-row">
+      <div class="filter-pills" data-modepills><div class="pill active" data-mode="all" onclick="setModeFilter('all')" data-i18n="modeAll">All</div><div class="pill" data-mode="lcl" onclick="setModeFilter('lcl')" data-i18n="modeLcl">LCL</div><div class="pill" data-mode="fcl" onclick="setModeFilter('fcl')" data-i18n="modeFcl">FCL</div><div class="pill" data-mode="air" onclick="setModeFilter('air')" data-i18n="modeAir">Air Freight</div></div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" class="search-input" id="searchBox" placeholder="Search Shipment No…" data-i18n-placeholder="searchPlaceholder" oninput="renderList()">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="inq-table">
+        <thead><tr><th data-i18n="thShipmentNo">Shipment No</th><th data-i18n="thTotalItems">Total Items</th><th data-i18n="thPending">Pending</th><th data-i18n="thShipped">Shipped</th><th data-i18n="thShipmentStatus">Shipment Status</th><th></th></tr></thead>
+        <tbody id="listBody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--gray-400)"><span class="spin"></span><span data-i18n="loadingList">Loading from Zoho Creator…</span></td></tr></tbody>
+      </table>
+      <div class="empty" id="emptyState" style="display:none;" data-i18n="emptyList">No shipments assigned to you yet.</div>
+    </div>
+  </div>
+  </div>
+
+  <div id="panel-main-groups" style="display:none">
+    <div class="main-card">
+      <div class="filter-row">
+        <div class="filter-pills" data-modepills><div class="pill active" data-mode="all" onclick="setModeFilter('all')" data-i18n="modeAll">All</div><div class="pill" data-mode="lcl" onclick="setModeFilter('lcl')" data-i18n="modeLcl">LCL</div><div class="pill" data-mode="fcl" onclick="setModeFilter('fcl')" data-i18n="modeFcl">FCL</div><div class="pill" data-mode="air" onclick="setModeFilter('air')" data-i18n="modeAir">Air Freight</div></div>
+        <div style="font-size:13px;color:var(--gray-500)" id="grpSummary"></div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" class="search-input" id="grpSearch" placeholder="Search Shipment No…" data-i18n-placeholder="grpSearch" oninput="renderGroupCards()">
+        </div>
+      </div>
+      <div id="grpCardsWrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DETAIL VIEW ══ -->
+<div id="view-detail" style="display:none">
+  <div class="detail-page">
+    <div class="detail-topbar">
+      <span class="detail-topbar-title" data-i18n="detailTitle">Shipment</span>
+      <button class="btn btn-ghost btn-sm" onclick="showList()" data-i18n="backToList">← Back to list</button>
+    </div>
+    <div class="detail-subheader">
+      <span class="detail-ship-no" id="d-shipno"></span>
+      <span id="d-fulfillment"></span>
+    </div>
+    <div class="detail-body">
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title" data-i18n="itemsSectionTitle">Items on this Shipment</span></div>
+        <div style="overflow-x:auto;">
+          <table class="line-table">
+            <thead>
+              <tr><th data-i18n="thSku">SKU</th><th data-i18n="thItem">Item</th><th data-i18n="thDateShipped">Date Shipped</th><th data-i18n="thMode">Mode</th><th data-i18n="thShipThis">Ship this item?</th><th data-i18n="thStatus">Status</th></tr>
+            </thead>
+            <tbody id="d-line-tbody"></tbody>
+          </table>
+        </div>
+        <div class="submit-row">
+          <div class="submit-note" data-i18n="submitNote">Check "Ship this item?" for whatever you're sending today, fill Date Shipped + Mode, then Ship. Already-shipped rows are locked.</div>
+          <button class="btn btn-orange btn-submit" id="saveBtn" onclick="saveShipment()" data-i18n="shipBtn">Ship</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ADDED 2026-07-28, per user ("add confirmation in supplier's shipment") — this
+     widget had no confirm mechanism at all, plain native browser confirm() is
+     avoided app-wide (raw iframe origin shows in the dialog chrome). Minimal. -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">Ship these items?</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeConfirm()" data-i18n="cancelBtn">Cancel</button>
+      <button class="btn btn-orange btn-sm" id="confirmYesBtn" onclick="doSaveShipment()">Yes, Ship</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script src="notification_component/notification.js"></script>
+<div id="fentengNotifMount"></div>
+<script>
+/* ════════════════════════════════
+   CREATOR CONFIG — the only block that differs between the Fenteng and Tony copies.
+   Keep everything else identical across both (per [[feedback-verify-mirrored-edits]]).
+   Per plan.txt (Supplier Shipment self-report feature) — one Fenteng_Shipment record
+   per parent Shipments record, pre-populated by shipments_auto_create_supplier_
+   shipment.txt with that supplier's own PO_Shipments line items. Supplier only ever
+   fills Date_Shipped/Shipment_Mode/Select_To_Ship per row here — PR_No/RR_No/Synced
+   are deliberately never rendered (internal bookkeeping, see supplier_shipment_
+   forms.txt's own NOTES). Saving fires Edited > Successful form submission, which is
+   exactly what supplier_shipment_sync.txt (DelugeScripts) listens for to generate a
+   real Shipment_ID and append into the parent Shipments.Supplier_Shipment_Details.
+   REPORT_NAME follows this app's established FormName_Report convention — NOT yet
+   confirmed live, verify first if getRecords errors on report-not-found. */
+const REPORT_NAME = 'Fenteng_Shipment_Report';
+const SUPPLIER_LABEL = 'Fenteng Lighting';
+const SUPPLIER_INITIAL = 'F';
+const SUBFORM_NAME = 'Supplier1_Shipment_Details';
+
+/* ADDED 2026-07-23, per user ("when the po isnt acknowledged yet by supplier,
+   shipment will not show in supplier's Shipment yet") — Fenteng_Shipment records
+   are pre-created at PR_Approved time (pr_to_po_grouping.txt Actions 2/3), well
+   before the supplier ever acknowledges the PO on Fenteng-PO — showing them here
+   immediately let the supplier see a shipment for a PO they haven't confirmed yet.
+   Gate: Parent_Shipment_ID -> Shipments.PO_No (dispVal, dot-chained lookup text)
+   -> Fenteng_Lighting_Purchase_Order_Report[PO_No_Supplier1==that].PO_Status_Supplier1
+   == "Confirmed" (the exact field Acknowledged_PO_Supplier1 stamps, same one
+   Fenteng-PO's own gate already reads). Fails CLOSED (hidden) on any lookup miss —
+   deliberately, since the whole point is "don't show until proven acknowledged". */
+const SHIPMENTS_REPORT = 'All_Shipments';
+const SUPPLIER_PO_REPORT = 'Fenteng_Lighting_Purchase_Order_Report';
+const PO_NO_FIELD = 'PO_No_Supplier1';
+const PO_STATUS_FIELD = 'PO_Status_Supplier1';
+function dispVal(field){
+  if(field === null || field === undefined) return '';
+  if(typeof field === 'object') return field.zc_display_value || field.display_value || field.ID || '';
+  return field;
+}
+document.getElementById('supplierNameLabel').textContent = SUPPLIER_LABEL;
+document.getElementById('avatarMark').textContent = SUPPLIER_INITIAL;
+
+/* Notification System (Fenteng-only) — bottom-right bell, not scoped to this (or any)
+   record; see notification_component/README.md. Same shared Fenteng_Notifications form
+   as Fenteng-Inquiries/Fenteng-PR/Fenteng-RR/Fenteng-PO. No currentUserEmail/roleMap
+   needed — this form is already exclusively Fenteng's own data. */
+var fentengNotifications = FentengNotifications.init({
+  mountId:    'fentengNotifMount',
+  appName:    'supply-chain-app',
+  reportName: 'Fenteng_Notifications_Report',
+  title:      'Notifications',
+  onNotificationClick: function(n){
+    if(n.Notification_Type === 'Shipment added' && n.Source_Record_No){
+      var match = ALL_ROWS.find(function(r){ return r.shipmentNo === n.Source_Record_No; });
+      if(match){ openDetail(match.id); return true; }
+    }
+    return false;
+  }
+});
+
+/* ════════════════════════════════
+   STATE
+════════════════════════════════ */
+const $ = id => document.getElementById(id);
+let ALL_ROWS = [];
+let currentId = null;
+let CURRENT_ITEMS = []; // live-editable copy of this record's own subform rows
+
+/* ════════════════════════════════
+   LANGUAGE TOGGLE (EN / 中文) — shared localStorage key across every supplier
+   widget so a supplier's language choice persists as they move between
+   Inquiry/PO/PR/RR/Shipment. Static labels use [data-i18n]/[data-i18n-placeholder]
+   attributes applied by applyStaticI18n(); JS-generated strings (list rows, badges,
+   toasts) call t('key') directly and get refreshed by refreshDynamicUI().
+════════════════════════════════ */
+const I18N = {
+  en: {
+    modeAll:'All', modeLcl:'LCL', modeFcl:'FCL', modeAir:'Air Freight',
+    grpTabAll:'All Shipments', grpTabGroups:'Shipment Groups', grpTotal:'Total Shipments: {n}', grpSummary:'{groups} groups · {n} shipments total', grpSearch:'Search Shipment No…', grpNone:'No shipments found.', grpLoading:'Loading…',
+    appTitle:'Supplier Portal', pageSubtitle:"Shipments — mark what you're shipping today, per item.",
+    searchPlaceholder:'Search Shipment No…',
+    thShipmentNo:'Shipment No', thTotalItems:'Total Items', thPending:'Pending', thShipped:'Shipped', thShipmentStatus:'Shipment Status',
+    loadingList:'Loading from Zoho Creator…', emptyList:'No shipments assigned to you yet.',
+    detailTitle:'Shipment', backToList:'← Back to list', itemsSectionTitle:'Items on this Shipment',
+    thSku:'SKU', thItem:'Item', thDateShipped:'Date Shipped', thMode:'Mode', thShipThis:'Ship this item?', thStatus:'Status',
+    submitNote:'Check "Ship this item?" for whatever you\'re sending today, fill Date Shipped + Mode, then Ship. Already-shipped rows are locked.',
+    /* CHANGED 2026-10-21, per user — the button now says Ship, not Save. The save-only
+       wording below is still used when nothing is checked to ship, so the dialog and the
+       toast stay truthful on that branch; saveShipment()/doSaveShipment() pick between them. */
+    shipBtn:'Ship', shippingBtn:'Shipping…', toastShipped:'Shipped',
+    confirmTitleShip:'Ship these items?', yesShipBtn:'Yes, Ship',
+    saveBtn:'Save', savingBtn:'Saving…',
+    confirmTitleSave:'Save changes?', cancelBtn:'Cancel', yesSaveBtn:'Yes, Save',
+    detailLoading:'Loading…', noItemsOnShipment:'No items on this shipment', selectOption:'-Select-',
+    badgeDelivered:'Delivered', badgeNotDelivered:'Not Delivered', badgeInTransit:'In Transit', badgeNotShipped:'Not shipped', badgeArrived:'Arrived',
+    reviewBtn:'Review', viewBtn:'View', badgePendingCount:'{n} pending', badgeShippedCount:'{n} shipped',
+    statShipments:'Shipments', statTotalItems:'Total Items', statPending:'Pending', statShipped:'Shipped',
+    confirmMsgMark:'This marks {n} item(s) as shipped and cannot be undone from here. Continue?',
+    confirmMsgSaveOnly:'Save changes to this shipment?',
+    toastNoRecord:'No record loaded', toastFillFields:'Fill Date Shipped and Mode for every item you checked to ship.',
+    toastSaved:'Saved', toastSaveFailedCode:'Save failed — code {code}', toastSaveFailedConsole:'Save failed — see console',
+    toastSdkUnavailable:'Creator SDK not available', toastTimeout:'Creator timeout — check widget permissions',
+    toastLoadShipmentFail:'Could not load this shipment', toastLoadListFail:'Could not load shipments — see console',
+    toastShipmentNotFound:'Shipment not found'
+  },
+  zh: {
+    modeAll:'全部', modeLcl:'拼箱 LCL', modeFcl:'整箱 FCL', modeAir:'空运',
+    grpTabAll:'全部发货单', grpTabGroups:'发货单分组', grpTotal:'发货单总数：{n}', grpSummary:'{groups} 个分组 · 共 {n} 张发货单', grpSearch:'搜索发货单号…', grpNone:'未找到发货单。', grpLoading:'加载中…',
+    appTitle:'供应商门户', pageSubtitle:'发货 — 请逐项标记您今天发出的货物。',
+    searchPlaceholder:'搜索发货单号…',
+    thShipmentNo:'发货单号', thTotalItems:'总项目数', thPending:'待处理', thShipped:'已发货', thShipmentStatus:'发货状态',
+    loadingList:'正在从 Zoho Creator 加载…', emptyList:'目前没有分配给您的发货单。',
+    detailTitle:'发货单', backToList:'← 返回列表', itemsSectionTitle:'此发货单的项目',
+    thSku:'SKU', thItem:'品项', thDateShipped:'发货日期', thMode:'运输方式', thShipThis:'发运此项？', thStatus:'状态',
+    submitNote:'请为今天要发运的项目勾选"发运此项？"，填写发货日期和运输方式，然后点击发货。已发货的行将被锁定，无法修改。',
+    shipBtn:'发货', shippingBtn:'发货中…', toastShipped:'已发货',
+    confirmTitleShip:'确认发货？', yesShipBtn:'是，发货',
+    saveBtn:'保存', savingBtn:'保存中…',
+    confirmTitleSave:'保存更改？', cancelBtn:'取消', yesSaveBtn:'是，保存',
+    detailLoading:'加载中…', noItemsOnShipment:'此发货单没有项目', selectOption:'-请选择-',
+    badgeDelivered:'已送达', badgeNotDelivered:'未送达', badgeInTransit:'运输中', badgeNotShipped:'未发货', badgeArrived:'已到达',
+    reviewBtn:'审核', viewBtn:'查看', badgePendingCount:'{n} 待处理', badgeShippedCount:'{n} 已发货',
+    statShipments:'发货单数', statTotalItems:'总项目数', statPending:'待处理', statShipped:'已发货',
+    confirmMsgMark:'这将把 {n} 项标记为已发货，且无法在此撤销。是否继续？',
+    confirmMsgSaveOnly:'保存对此发货单的更改？',
+    toastNoRecord:'未加载任何记录', toastFillFields:'请为每个勾选要发运的项目填写发货日期和运输方式。',
+    toastSaved:'已保存', toastSaveFailedCode:'保存失败 — 代码 {code}', toastSaveFailedConsole:'保存失败 — 请查看控制台',
+    toastSdkUnavailable:'Creator SDK 不可用', toastTimeout:'Creator 超时 — 请检查小组件权限',
+    toastLoadShipmentFail:'无法加载此发货单', toastLoadListFail:'无法加载发货单 — 请查看控制台',
+    toastShipmentNotFound:'未找到该发货单'
+  }
+};
+let LANG = localStorage.getItem('supplierPortalLang') || 'en';
+function t(key, vars){
+  var s = (I18N[LANG] && I18N[LANG][key]) || (I18N.en && I18N.en[key]) || key;
+  if(vars){ Object.keys(vars).forEach(function(k){ s = s.replace('{'+k+'}', vars[k]); }); }
+  return s;
+}
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){ el.placeholder = t(el.getAttribute('data-i18n-placeholder')); });
+  document.documentElement.lang = LANG;
+}
+function updateLangToggleUI(){
+  $('langOptEn').classList.toggle('active', LANG==='en');
+  $('langOptZh').classList.toggle('active', LANG==='zh');
+}
+function refreshDynamicUI(){
+  applyStaticI18n();
+  updateLangToggleUI();
+  if(currentId){
+    var _dc = CURRENT_ITEMS.filter(isArrived).length;
+    var _f = (CURRENT_ITEMS.length>0 && _dc===CURRENT_ITEMS.length) ? 'delivered' : 'not_delivered';
+    $('d-fulfillment').innerHTML = fulfillmentBadgeHtml(_f);
+    renderLineItems();
+  } else {
+    renderList();
+  }
+}
+function toggleLang(){
+  LANG = (LANG==='en') ? 'zh' : 'en';
+  localStorage.setItem('supplierPortalLang', LANG);
+  refreshDynamicUI();
+}
+
+function escapeHtml(v){
+  return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function extractSubformRows(raw){
+  if(Array.isArray(raw)) return raw;
+  if(raw && typeof raw==='object'){
+    if(Array.isArray(raw.data)) return raw.data;
+    if(Array.isArray(raw.records)) return raw.records;
+    if(Object.keys(raw).length) return [raw];
+  }
+  return [];
+}
+function isSynced(it){ return it.Synced===true || it.Synced==='true'; }
+function isArrived(it){ return (it.Status||'').trim().toLowerCase()==='arrived'; }
+
+/* ════════════════════════════════
+   MAPPING
+════════════════════════════════ */
+function mapRow(raw){
+  const items = extractSubformRows(raw[SUBFORM_NAME]);
+  const total = items.length;
+  const shipped = items.filter(isSynced).length;
+  /* ADDED 2026-07-22, per user — per-shipment Delivered/Not Delivered rollup,
+     reusing the real per-item Status field (Arrived/In Transit) this widget
+     already renders (see statusBadgeHtml) — that field is kept live by
+     receiving_sync_shipment_arrived.txt + shipment_status_back_sync.txt. No new
+     fetch needed, just a rollup over data already loaded. Delivered only once
+     EVERY item on the shipment has Status=="Arrived" (and there's at least 1). */
+  const delivered = items.filter(isArrived).length;
+  const fulfillment = (total>0 && delivered===total) ? 'delivered' : 'not_delivered';
+  return {
+    id: raw.ID,
+    shipmentNo: raw.Shipment_No || '',
+    parentShipmentId: raw.Parent_Shipment_ID || '',
+    total: total,
+    pending: total - shipped,
+    shipped: shipped,
+    delivered: delivered,
+    fulfillment: fulfillment,
+    prNos: items.map(function(it){ return grpExtractVal(it.PR_No); }).filter(Boolean),
+    modes: items.map(function(it){ return modeKey(grpExtractVal(it.Shipment_Mode)); }).filter(Boolean),
+    blankModePrNos: items.filter(function(it){ return !modeKey(grpExtractVal(it.Shipment_Mode)); }).map(function(it){ return grpExtractVal(it.PR_No); }).filter(Boolean),
+    plannedModes: []
+  };
+}
+function fulfillmentBadgeHtml(status){
+  if(status==='delivered') return '<span class="badge-pill badge-green">' + t('badgeDelivered') + '</span>';
+  return '<span class="badge-pill badge-gray">' + t('badgeNotDelivered') + '</span>';
+}
+
+/* ════════════════════════════════
+   LIST RENDER
+════════════════════════════════ */
+function renderStats(){
+  const totalItems = ALL_ROWS.reduce((s,r)=>s+r.total,0);
+  const pendingItems = ALL_ROWS.reduce((s,r)=>s+r.pending,0);
+  const shippedItems = ALL_ROWS.reduce((s,r)=>s+r.shipped,0);
+  $('statStrip').innerHTML = `
+    <div class="stat-card"><div class="stat-label">${t('statShipments')}</div><div class="stat-value">${ALL_ROWS.length}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('statTotalItems')}</div><div class="stat-value">${totalItems}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('statPending')}</div><div class="stat-value amber">${pendingItems}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('statShipped')}</div><div class="stat-value green">${shippedItems}</div></div>
+  `;
+}
+
+function renderList(){
+  renderStats();
+  if(typeof CURRENT_MAIN_TAB!=='undefined' && CURRENT_MAIN_TAB==='groups') renderGroupCards();
+  const q = $('searchBox').value.trim().toLowerCase();
+  const filtered = ALL_ROWS.filter(r => modeMatches(r) && (!q || r.shipmentNo.toLowerCase().includes(q)));
+  const body = $('listBody');
+  const empty = $('emptyState');
+  if(filtered.length===0){ body.innerHTML=""; empty.style.display="block"; return; }
+  empty.style.display = "none";
+  body.innerHTML = filtered.map(listRowHtml).join('');
+}
+
+/* PR On Hold (Phase 3): only the held item's row is affected, never the whole shipment. */
+function shipHoldBadge(r){
+  var held = PRHold.heldOf(r.prNos);
+  if(!held.length) return '';
+  return PRHold.badge(held[0]) + ' <span style="font-size:11px;color:var(--gray-500)">' + held.length + '/' + r.total + '</span>';
+}
+function listRowHtml(r){
+    const pendingBadge = r.pending>0 ? `<span class="badge-pill badge-amber">${t('badgePendingCount',{n:r.pending})}</span>` : `<span class="badge-pill badge-gray">0</span>`;
+    const shippedBadge = r.shipped>0 ? `<span class="badge-pill badge-green">${t('badgeShippedCount',{n:r.shipped})}</span>` : `<span class="badge-pill badge-gray">0</span>`;
+    return `<tr onclick="openDetail('${r.id}')">
+      <td style="font-weight:700;color:var(--orange)">${escapeHtml(r.shipmentNo)}</td>
+      <td>${r.total}</td>
+      <td>${pendingBadge}</td>
+      <td>${shippedBadge}</td>
+      <td>${fulfillmentBadgeHtml(r.fulfillment)}${shipHoldBadge(r)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); openDetail('${r.id}')">${r.pending>0?t('reviewBtn'):t('viewBtn')}</button></td>
+    </tr>`;
+}
+
+function showList(){
+  $('view-list').style.display = "flex";
+  $('view-detail').style.display = "none";
+  currentId = null;
+  CURRENT_ITEMS = [];
+  loadFromCreator();
+}
+
+/* ════════════════════════════════
+   DETAIL
+════════════════════════════════ */
+/* Deep link from a notification click — same pattern as Fenteng-Inquiries'/
+   Fenteng-PR's/Fenteng-RR's/Fenteng-PO's checkDeepLinkParam(). Matches by
+   Shipment_No (r.shipmentNo, from raw.Shipment_No in ALL_ROWS) instead of the
+   raw Zoho record ID, so a deleted/recreated shipment record doesn't break the
+   link. Page variable is named `fentengshipmentid` (Page Builder -> Variables
+   tab) — needs to be created on this widget's page if it doesn't exist yet.
+   openDetail() itself still takes the resolved row's raw .id — it does a live
+   getRecordById fetch, unlike the other widgets' cache-only openDetail(). */
+let deepLinkChecked = false;
+function checkDeepLinkParam(){
+  if(deepLinkChecked) return;
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams !== 'function') return;
+  deepLinkChecked = true;
+  ZOHO.CREATOR.UTIL.getQueryParams().then(function(params){
+    var shipmentNo = params && params.fentengshipmentid;
+    if(!shipmentNo) return;
+    var match = ALL_ROWS.find(function(r){ return r.shipmentNo === shipmentNo; });
+    if(match){
+      openDetail(match.id);
+    } else {
+      showToast(t('toastShipmentNotFound'));
+    }
+  }).catch(function(){});
+}
+
+function openDetail(id){
+  currentId = String(id);
+  $('view-list').style.display = "none";
+  $('view-detail').style.display = "block";
+  window.scrollTo(0,0);
+  $('d-line-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)"><span class="spin"></span>' + t('detailLoading') + '</td></tr>';
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecordById!=='function'){
+    showToast(t('toastSdkUnavailable')); return;
+  }
+  ZOHO.CREATOR.DATA.getRecordById({ report_name: REPORT_NAME, id: currentId, field_config: 'all' })
+    .then(function(resp){
+      if(resp && resp.code===3000 && resp.data){
+        const raw = resp.data;
+        $('d-shipno').textContent = raw.Shipment_No || '—';
+        /* Deep-copy so edits never mutate resp.data in place before Save; every
+           field carried verbatim (incl. PR_No/RR_No/Synced, hidden from the UI but
+           must round-trip on save or the full-array replace would drop them). */
+        CURRENT_ITEMS = extractSubformRows(raw[SUBFORM_NAME]).map(function(it){
+          return {
+            SKU: it.SKU, Item_Name: it.Item_Name, PR_No: it.PR_No, RR_No: it.RR_No,
+            Date_Shipped: it.Date_Shipped, Shipment_Mode: it.Shipment_Mode,
+            Select_To_Ship: (it.Select_To_Ship===true || it.Select_To_Ship==='true'),
+            Synced: (it.Synced===true || it.Synced==='true'), Status: it.Status
+          };
+        });
+        var _deliveredCount = CURRENT_ITEMS.filter(isArrived).length;
+        var _fulfillment = (CURRENT_ITEMS.length>0 && _deliveredCount===CURRENT_ITEMS.length) ? 'delivered' : 'not_delivered';
+        $('d-fulfillment').innerHTML = fulfillmentBadgeHtml(_fulfillment);
+        renderLineItems();
+      } else {
+        console.warn('[Shipment Portal] getRecordById non-3000:', resp && resp.code);
+        showToast(t('toastLoadShipmentFail'));
+      }
+    })
+    .catch(function(err){ console.error('[Shipment Portal] getRecordById error:', JSON.stringify(err)); showToast(t('toastLoadShipmentFail')); });
+}
+
+var SHIP_MODE_CHOICES = ['Airfreight','LCL','FCL'];
+function shipModeOptionsHtml(sel, disabled){
+  var html = '<option value=""' + (!sel?' selected':'') + '>' + t('selectOption') + '</option>';
+  SHIP_MODE_CHOICES.forEach(function(c){
+    html += '<option value="' + c + '"' + (sel===c?' selected':'') + '>' + c + '</option>';
+  });
+  return html;
+}
+function statusBadgeHtml(it){
+  var s = (it.Status||'').trim();
+  if(!s) return isSynced(it) ? '<span class="badge-pill badge-blue">' + t('badgeInTransit') + '</span>' : '<span class="badge-pill badge-gray">' + t('badgeNotShipped') + '</span>';
+  if(s.toLowerCase()==='arrived') return '<span class="badge-pill badge-green">' + t('badgeArrived') + '</span>';
+  return '<span class="badge-pill badge-blue">' + escapeHtml(s) + '</span>';
+}
+
+function renderLineItems(){
+  const body = $('d-line-tbody');
+  if(CURRENT_ITEMS.length===0){
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)">' + t('noItemsOnShipment') + '</td></tr>';
+    return;
+  }
+  body.innerHTML = CURRENT_ITEMS.map(function(it, idx){
+    /* PR On Hold (Phase 3): a held item that has not shipped yet cannot be marked
+       to ship. One already shipped (synced) only shows the status. */
+    const held = PRHold.locked(grpExtractVal(it.PR_No));
+    const locked = isSynced(it) || held;
+    return `<tr class="${locked?'row-synced':''}">
+      <td><span class="cell-sku">${escapeHtml(it.SKU)}</span></td>
+      <td>${escapeHtml(it.Item_Name)}</td>
+      <td><input type="date" class="form-input" id="dateShipped_${idx}" value="${escapeHtml(it.Date_Shipped||'')}" ${locked?'disabled':''} onchange="onDateInput(${idx})" /></td>
+      <td><select class="form-select" id="shipMode_${idx}" ${locked?'disabled':''} onchange="onModeInput(${idx})">${shipModeOptionsHtml(it.Shipment_Mode, locked)}</select></td>
+      <td style="text-align:center"><input type="checkbox" class="chk-select" id="selectToShip_${idx}" ${it.Select_To_Ship?'checked':''} ${locked?'disabled':''} onchange="onSelectInput(${idx})" /></td>
+      <td>${statusBadgeHtml(it)}${PRHold.badge(grpExtractVal(it.PR_No))}</td>
+    </tr>`;
+  }).join('');
+}
+
+function onDateInput(idx){ CURRENT_ITEMS[idx].Date_Shipped = $('dateShipped_'+idx).value; }
+function onModeInput(idx){ CURRENT_ITEMS[idx].Shipment_Mode = $('shipMode_'+idx).value; }
+function onSelectInput(idx){ CURRENT_ITEMS[idx].Select_To_Ship = $('selectToShip_'+idx).checked; }
+
+/* ════════════════════════════════
+   SAVE — full no-ID subform replace, same proven-safe pattern used throughout this
+   app (e.g. UI/EndUser/Shipments/app/index.html's own saveShipment()). Fires this
+   record's own Edited > Successful form submission — that's what
+   supplier_shipment_sync.txt (DelugeScripts) is listening for.
+════════════════════════════════ */
+function saveShipment(){
+  if(!currentId){ showToast(t('toastNoRecord')); return; }
+  var toSelect = CURRENT_ITEMS.filter(function(it){ return !isSynced(it) && it.Select_To_Ship; });
+  var heldToShip = toSelect.filter(function(it){ return PRHold.locked(grpExtractVal(it.PR_No)); });
+  if(heldToShip.length){ showToast(PRHold.text(grpExtractVal(heldToShip[0].PR_No))); return; }
+  var missing = toSelect.filter(function(it){ return !it.Date_Shipped || !it.Shipment_Mode; });
+  if(missing.length){
+    showToast(t('toastFillFields'));
+    return;
+  }
+  /* CHANGED 2026-10-21 — the title and the confirm button follow the same branch the
+     message already did, so pressing Ship with nothing checked still reads as a save. */
+  var shipping = toSelect.length > 0;
+  $('confirmTitle').textContent = shipping ? t('confirmTitleShip') : t('confirmTitleSave');
+  $('confirmYesBtn').textContent = shipping ? t('yesShipBtn') : t('yesSaveBtn');
+  $('confirmMsg').textContent = shipping
+    ? t('confirmMsgMark',{n:toSelect.length})
+    : t('confirmMsgSaveOnly');
+  $('confirmOverlay').classList.add('show');
+}
+function closeConfirm(){
+  $('confirmOverlay').classList.remove('show');
+}
+function doSaveShipment(){
+  closeConfirm();
+  const btn = $('saveBtn');
+  /* CHANGED 2026-10-21 — same branch as the dialog: "Shipping…"/"Shipped" only when
+     something is actually being shipped, otherwise the old save wording. The button's
+     resting label is always Ship. */
+  const shipping = CURRENT_ITEMS.some(function(it){ return !isSynced(it) && it.Select_To_Ship; });
+  btn.disabled = true; btn.textContent = shipping ? t('shippingBtn') : t('savingBtn');
+  const payload = {};
+  payload[SUBFORM_NAME] = CURRENT_ITEMS.map(function(it){
+    return {
+      SKU: it.SKU, Item_Name: it.Item_Name, PR_No: it.PR_No, RR_No: it.RR_No,
+      Date_Shipped: it.Date_Shipped || '', Shipment_Mode: it.Shipment_Mode || '',
+      Select_To_Ship: it.Select_To_Ship, Synced: it.Synced, Status: it.Status || ''
+    };
+  });
+  console.log('[Shipment Portal] save payload:', JSON.stringify(payload));
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: currentId,
+    payload: { data: payload }
+  }).then(function(resp){
+    console.log('[Shipment Portal] updateRecordById resp:', JSON.stringify(resp));
+    if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+      showToast(shipping ? t('toastShipped') : t('toastSaved'));
+      openDetail(currentId);
+    } else {
+      showToast(t('toastSaveFailedCode',{code:(resp && resp.code)}));
+    }
+    btn.disabled = false; btn.textContent = t('shipBtn');
+  }).catch(function(err){
+    console.error('[Shipment Portal] save error:', JSON.stringify(err));
+    showToast(t('toastSaveFailedConsole'));
+    btn.disabled = false; btn.textContent = t('shipBtn');
+  });
+}
+
+/* ════════════════════════════════
+   CREATOR SDK LOAD
+════════════════════════════════ */
+function loadFromCreator(){
+  /* PR On Hold (Phase 3): refresh the held-PR map on every list load, then repaint. */
+  PRHold.load(function(){ if(ALL_ROWS.length) renderList(); });
+  const _timeout = setTimeout(function(){
+    console.warn('[Shipment Portal] getRecords timed out');
+    showToast(t('toastTimeout'));
+    ALL_ROWS = []; renderList();
+  }, 10000);
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    clearTimeout(_timeout);
+    console.warn('[Shipment Portal] SDK not available');
+    ALL_ROWS = []; renderList();
+    return;
+  }
+
+  ZOHO.CREATOR.DATA.getRecords({ report_name: REPORT_NAME, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      clearTimeout(_timeout);
+      console.log('[Shipment Portal] getRecords code:', resp && resp.code, '| records:', resp && resp.data && resp.data.length);
+      if(resp && resp.code===3000){
+        const raw = Array.isArray(resp.data) ? resp.data : [];
+        var mapped = raw.map(mapRow);
+        filterByPoAcknowledged(mapped).then(function(filtered){
+          ALL_ROWS = filtered;
+          renderList();
+          checkDeepLinkParam();
+        });
+        return;
+      } else if(resp && resp.code===9220){
+        ALL_ROWS = [];
+      } else {
+        console.warn('[Shipment Portal] getRecords non-3000:', resp && resp.code);
+        ALL_ROWS = [];
+      }
+      renderList();
+      checkDeepLinkParam();
+    })
+    .catch(function(err){
+      clearTimeout(_timeout);
+      var isEmptyReport = false;
+      try{
+        var text = err && (err.responseText || (err.content && err.content.responseText));
+        var parsed = text ? JSON.parse(text) : null;
+        if(parsed && (parsed.code === 9220 || String(parsed.code) === '9220')) isEmptyReport = true;
+      } catch(e){ }
+      if(isEmptyReport){
+        console.log('[Shipment Portal] getRecords: empty report (9220), not a real error');
+        ALL_ROWS = []; renderList();
+        return;
+      }
+      console.error('[Shipment Portal] getRecords error:', JSON.stringify(err));
+      showToast(t('toastLoadListFail'));
+      ALL_ROWS = []; renderList();
+    });
+}
+
+/* Batch-fetches Shipments (for Parent_Shipment_ID -> PO_No) + this supplier's own PO
+   report (for PO_No -> PO_Status) ONCE, builds 2 lookup maps, filters the mapped
+   Fenteng_Shipment rows down to only those whose PO is Confirmed (acknowledged).
+   Fails CLOSED per-row on any lookup miss (unresolved Parent_Shipment_ID, PO not
+   found, PO_Status blank) — hidden until positively confirmed, not shown by default. */
+function filterByPoAcknowledged(rows){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    return Promise.resolve(rows); // SDK unavailable — can't gate, fall back to showing everything
+  }
+  var shipFetch = ZOHO.CREATOR.DATA.getRecords({ report_name: SHIPMENTS_REPORT, page: 1, pageSize: 200, field_config: 'all' }).catch(function(){ return null; });
+  var poFetch   = ZOHO.CREATOR.DATA.getRecords({ report_name: SUPPLIER_PO_REPORT, page: 1, pageSize: 200, field_config: 'all' }).catch(function(){ return null; });
+  return Promise.all([shipFetch, poFetch]).then(function(results){
+    var shipResp = results[0], poResp = results[1];
+    var shipFound = {};  // Shipments.ID -> true if the Shipments record itself was located
+    var shipToPoNo = {}; // Shipments.ID -> PO_No display text (blank if this Shipment has no PO at all)
+    if(shipResp && shipResp.code===3000 && Array.isArray(shipResp.data)){
+      shipResp.data.forEach(function(s){ shipFound[String(s.ID)] = true; shipToPoNo[String(s.ID)] = dispVal(s.PO_No); });
+    }
+    var poLineModes = {}; // PO_No -> { PR_No -> planned mode key }
+    var poNoToStatus = {}; // PO_No_Supplier1 text -> PO_Status_Supplier1 text
+    if(poResp && poResp.code===3000 && Array.isArray(poResp.data)){
+      poResp.data.forEach(function(p){ poNoToStatus[String(p[PO_NO_FIELD]||'')] = String(p[PO_STATUS_FIELD]||''); });
+      /* planned Shipping_Mode per PO line, keyed PO_No -> PR_No -> mode key (fallback for items the supplier hasn't picked a mode for yet) */
+      poResp.data.forEach(function(p){
+        var pn = String(p[PO_NO_FIELD]||''); if(!pn) return;
+        var lines = extractSubformRows(p['PO_Line_Items_Supplier1']);
+        poLineModes[pn] = poLineModes[pn] || {};
+        lines.forEach(function(ln){ var pr = grpExtractVal(ln['PR_No_Supplier1']); var mk = modeKey(grpExtractVal(ln['Shipping_Mode_Supplier1'])); if(pr && mk) poLineModes[pn][pr] = mk; });
+      });
+    }
+    /* FIXED 2026-08-12, real bug found live — stock-item replacement shipments
+       (see clone_shipment_for_replacement.txt's 2026-08-12 fix) have NO PO at
+       all by design, and never appeared here even after the Fenteng_Shipment
+       record itself existed. This gate's original intent was "don't show a
+       shipment until its PO is Acknowledged" — it never accounted for a
+       Shipment that has no PO to begin with. Old logic couldn't tell "Shipments
+       record not found at all" apart from "found, but PO_No is genuinely
+       blank" — both collapsed to the same falsy poNo and got hidden either way.
+       Now: if the Shipments record can't be located at all, still fail closed
+       (hidden, same as before — unresolved lookup, not proven safe to show).
+       If it WAS found but has no PO_No, there's no PO to acknowledge — show it
+       unconditionally, skip the Confirmed check entirely. */
+    rows.forEach(function(r){
+      var pn = shipToPoNo[String(r.parentShipmentId)];
+      var lm = pn && poLineModes[pn];
+      if(lm) r.plannedModes = (r.blankModePrNos||[]).map(function(pr){ return lm[pr]; }).filter(Boolean);
+    });
+    return rows.filter(function(r){
+      if(!r.parentShipmentId) return false;
+      var sid = String(r.parentShipmentId);
+      if(!shipFound[sid]) return false;
+      var poNo = shipToPoNo[sid];
+      if(!poNo) return true;
+      return poNoToStatus[poNo] === 'Confirmed';
+    });
+  });
+}
+
+/* ════════════════════════════════
+   GROUPS TAB — ADDED 2026-09-21, per user ("Lagyan mo ng groupings ang PO, shipment at
+   replacement"). Same idea as the sibling PR widget's PR Groups tab: every row is
+   clustered by the buyer-side Sales Order it traces back to, but the SO# itself is
+   NEVER rendered (card header is just "Total ...: N"), and it is deliberately not
+   searchable either. Resolution chain: this row's PR No(s) -> All_Purchase_Request.
+   Sales_Order (one lazy fetch, first time the tab is opened; same call the PR widget
+   already makes). RR additionally carries SO_No directly on its Replacement_Summary
+   row, which wins over the lookup. Rows that touch several SOs are grouped with other
+   rows that touch the exact same SO set; rows with no resolvable SO (e.g. stock
+   replacements with no PR) show as their own single-row card, never dropped.
+════════════════════════════════ */
+var GRP_PR_NO_TO_SO = {};
+var grpSoMapLoaded = false;
+function grpExtractVal(x){
+  if(x===null||x===undefined) return '';
+  if(typeof x==='object') return String(x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'').trim();
+  return String(x).trim();
+}
+function grpLoadSoMap(cb){
+  if(grpSoMapLoaded){ cb(); return; }
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    grpSoMapLoaded = true; cb(); return;
+  }
+  ZOHO.CREATOR.DATA.getRecords({ report_name: 'All_Purchase_Request', page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      if(resp && resp.code===3000 && Array.isArray(resp.data)){
+        resp.data.forEach(function(r){
+          var pr = grpExtractVal(r['PR_No']);
+          var so = grpExtractVal(r['Sales_Order']);
+          if(pr) GRP_PR_NO_TO_SO[pr] = so || '';
+        });
+      }
+      grpSoMapLoaded = true; cb();
+    })
+    .catch(function(err){
+      console.warn('[Groups] SO lookup failed (rows fall back to standalone cards):', err);
+      grpSoMapLoaded = true; cb();
+    });
+}
+
+var CURRENT_MAIN_TAB = 'all';
+function switchMainTab(tab){
+  CURRENT_MAIN_TAB = tab;
+  document.querySelectorAll('.tab-btn2').forEach(function(b){ b.classList.toggle('active', b.dataset.maintab===tab); });
+  $('panel-main-all').style.display = tab==='all' ? '' : 'none';
+  $('panel-main-groups').style.display = tab==='groups' ? '' : 'none';
+  if(tab==='groups'){
+    $('grpCardsWrap').innerHTML = '<div class="grp-empty">'+t('grpLoading')+'</div>';
+    grpLoadSoMap(function(){ renderGroupCards(); });
+  }
+}
+
+function grpSoList(r){
+  var set = {};
+  (r.prNos||[]).forEach(function(p){ var so = GRP_PR_NO_TO_SO[p]; if(so) set[so] = true; });
+  return Object.keys(set).sort();
+}
+var GRP_COLGROUP = '<colgroup><col style="width:24%"><col style="width:14%"><col style="width:16%"><col style="width:16%"><col style="width:20%"><col style="width:10%"></colgroup>';
+function renderGroupCards(){
+  var wrap = $('grpCardsWrap');
+  if(!wrap) return;
+  var q = (($('grpSearch') && $('grpSearch').value)||'').toLowerCase().trim();
+  var map = {};
+  ALL_ROWS.forEach(function(r){
+    if(!modeMatches(r)) return;
+    if(q && [r.shipmentNo].join(' ').toLowerCase().indexOf(q)===-1) return;
+    var sos = grpSoList(r);
+    var key = sos.length ? ('SO::'+sos.join('|')) : ('STANDALONE::'+r.id);
+    if(!map[key]) map[key] = { standalone: !sos.length, key: key, rows: [] };
+    map[key].rows.push(r);
+  });
+  var buckets = Object.keys(map).map(function(k){ return map[k]; });
+  buckets.sort(function(a,b){
+    if(a.standalone !== b.standalone) return a.standalone ? 1 : -1;
+    return a.key.localeCompare(b.key);
+  });
+  var groupCount = buckets.filter(function(b){ return !b.standalone; }).length;
+  var total = buckets.reduce(function(s,b){ return s+b.rows.length; }, 0);
+  $('grpSummary').textContent = t('grpSummary',{groups:groupCount, n:total});
+  if(!buckets.length){
+    wrap.innerHTML = '<div class="grp-empty">'+t('grpNone')+'</div>';
+    return;
+  }
+  var head = '<thead><tr>'+['thShipmentNo','thTotalItems','thPending','thShipped','thShipmentStatus'].map(function(k){ return '<th>'+t(k)+'</th>'; }).join('')+'<th></th></tr></thead>';
+  wrap.innerHTML = buckets.map(function(b){
+    return '<div class="grp-card">'
+      +'<div class="grp-card-hdr"><div class="grp-card-title">'+t('grpTotal',{n:b.rows.length})+'</div></div>'
+      +'<div class="table-wrap"><table class="grp-table">'+GRP_COLGROUP+head
+      +'<tbody>'+b.rows.map(listRowHtml).join('')+'</tbody></table></div>'
+    +'</div>';
+  }).join('');
+}
+
+/* ════════════════════════════════
+   MODE FILTER (All / LCL / FCL / Air Freight) — ADDED 2026-09-21, per user. A shipment
+   matches a mode when ANY of its items is on that mode: the supplier's own
+   Shipment_Mode once picked, otherwise the PO line's planned Shipping_Mode (see
+   filterByPoAcknowledged, which fills r.plannedModes). Stored values are
+   'Airfreight' / 'LCL' / 'FCL' — normalised so 'Air Freight' etc. also match.
+════════════════════════════════ */
+var currentMode = 'all';
+function modeKey(v){
+  var s = String(v||'').toLowerCase().replace(/[^a-z]/g,'');
+  if(!s) return '';
+  if(s.indexOf('air')===0) return 'air';
+  if(s==='lcl' || s==='fcl') return s;
+  return '';
+}
+function rowModes(r){
+  var m = {};
+  (r.modes||[]).forEach(function(k){ if(k) m[k]=true; });
+  (r.plannedModes||[]).forEach(function(k){ if(k) m[k]=true; });
+  return m;
+}
+function modeMatches(r){
+  return currentMode==='all' || !!rowModes(r)[currentMode];
+}
+function setModeFilter(m){
+  currentMode = m;
+  document.querySelectorAll('[data-modepills] .pill').forEach(function(p){ p.classList.toggle('active', p.dataset.mode===m); });
+  renderList();
+}
+
+applyStaticI18n();
+updateLangToggleUI();
+loadFromCreator();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+// form: INQ_Load_Unit_Choices  form=Inquiry_Form event=on add on load  [.ds line 35149]
+    records = Items[ID != null];
+units = List();
+for each  rec in records
+{
+    u = rec.Unit;
+    if(u != "" && units.contains(u) == false)
+    {
+        units.add(u);
+    }
+}
+clear unit;
+input.unit:ui.add(units);

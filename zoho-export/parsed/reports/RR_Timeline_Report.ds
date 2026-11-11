@@ -1,0 +1,12 @@
+
+			displayName = "Replacement_Request_Timeline Report"
+			show all rows from RR_Timeline    
+			(
+				RR_No as "RR No"
+				Action_Type as "Action Type"
+				Changes
+				Actor
+				Logged_On as "Logged On"
+				Action_Title as "Action"
+			)
+		

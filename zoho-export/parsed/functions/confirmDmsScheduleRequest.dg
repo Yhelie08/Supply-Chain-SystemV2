@@ -1,0 +1,169 @@
+// map confirmDmsScheduleRequest(String dmsRecordId)   [.ds lines 26008-26177]
+orgId = "751117756";
+response = Map();
+recId = dmsRecordId.trim();
+if(recId == "")
+{
+    response.put("status","error");
+    response.put("message","dmsRecordId is required.");
+    return response;
+}
+found = false;
+salesOrderVal = "";
+customerVal = "";
+cmsIdVal = "";
+requestedDateVal = "";
+requestedTimeVal = "";
+booksSoIdVal = "";
+typeOfDeliveryVal = "";
+for each  rec in DMS_Schedule_Request[ID == recId.toLong()]
+{
+    found = true;
+    salesOrderVal = rec.Sales_Order_Number;
+    customerVal = rec.Customer_Name;
+    cmsIdVal = rec.CMS_Schedule_Request_ID;
+    requestedDateVal = rec.Requested_Date;
+    requestedTimeVal = rec.Requested_Time;
+    booksSoIdVal = ifnull(rec.Books_Sales_Order_ID,"") + "";
+    typeOfDeliveryVal = ifnull(rec.Type_of_Delivery,"") + "";
+}
+if(!found)
+{
+    response.put("status","error");
+    response.put("message","DMS Schedule Request not found.");
+    return response;
+}
+addressVal = "";
+cityVal = "";
+contactVal = "";
+emailVal = "";
+soDetail = null;
+if(booksSoIdVal != "")
+{
+    soResp = invokeurl
+    [
+        url :"https://www.zohoapis.com/books/v3/salesorders/" + booksSoIdVal + "?organization_id=" + orgId
+        type :GET
+        connection:"zhbooks3"
+    ];
+    soDetail = soResp.get("salesorder");
+    if(soDetail != null)
+    {
+        emailVal = ifnull(soDetail.get("email"),"");
+        shippingAddr = soDetail.get("shipping_address");
+        if(shippingAddr != null)
+        {
+            addressVal = ifnull(shippingAddr.get("address"),"");
+            street2Val = ifnull(shippingAddr.get("street2"),"");
+            if(street2Val != "")
+            {
+                addressVal = addressVal + ", " + street2Val;
+            }
+            cityVal = ifnull(shippingAddr.get("city"),"");
+            contactVal = ifnull(shippingAddr.get("phone"),"");
+        }
+    }
+}
+itemRows = List();
+if(soDetail != null)
+{
+    lineItems = soDetail.get("line_items");
+    if(lineItems != null && lineItems.size() > 0)
+    {
+        for each  li in lineItems
+        {
+            row = Map();
+            row.put("Item_Name",ifnull(li.get("name"),""));
+            row.put("SKU",ifnull(li.get("sku"),""));
+            row.put("Quantity",li.get("quantity"));
+            itemRows.add(row);
+        }
+    }
+}
+nameMap = Map();
+nameMap.put("last_name",customerVal);
+recordData = Map();
+recordData.put("Sales_Order",salesOrderVal);
+recordData.put("Customer_Name",nameMap);
+recordData.put("Customer_Address",addressVal);
+recordData.put("City",cityVal);
+recordData.put("Contact",contactVal);
+recordData.put("Email",emailVal);
+recordData.put("Type_of_Delivery",typeOfDeliveryVal);
+if(itemRows.size() > 0)
+{
+    recordData.put("Item_Details",itemRows);
+}
+dateFormatError = "";
+try 
+{
+    if(requestedDateVal != null)
+    {
+        formattedDate = requestedDateVal.toString("yyyy-MM-dd");
+        recordData.put("Requested_Delivery_Date",formattedDate);
+    }
+    if(requestedTimeVal != null)
+    {
+        formattedTime = requestedTimeVal + "";
+        recordData.put("Requested_Delivery_Time",formattedTime);
+    }
+}    catch (dateErr)
+{
+    dateFormatError = "" + dateErr;
+}
+createBody = Map();
+createBody.put("data",recordData);
+newSaId = "";
+itemPatchStatus = "skipped";
+try 
+{
+    createResp = invokeurl
+    [
+        url :"https://www.zohoapis.com/creator/v2.1/data/homecartel/supply-chain-app/form/Service_Appointment_Form"
+        type :POST
+        body:createBody.toString()
+        headers:{"Content-Type":"application/json"}
+        connection:"sca_creator_write_conn"
+    ];
+    createdRec = createResp.get("data");
+    if(createdRec != null)
+    {
+        newSaId = ifnull(createdRec.get("ID"),"") + "";
+    }
+    if(itemRows.size() > 0)
+    {
+        if(newSaId != "")
+        {
+            itemPatchStatus = "included_in_create";
+        }
+        else
+        {
+            itemPatchStatus = "create_failed";
+        }
+    }
+}    catch (e)
+{
+    response.put("status","error");
+    response.put("message","Failed to create Service Appointment: " + e);
+    return response;
+}
+if(newSaId == "")
+{
+    response.put("status","error");
+    response.put("message","Service Appointment creation returned no ID.");
+    response.put("dateFormatError",dateFormatError);
+    return response;
+}
+update DMS_Schedule_Request[ID == recId.toLong()]
+[
+    Status="Confirmed"
+    Service_Appointment_Record_ID=newSaId
+];
+pushResp = thisapp.pushDmsStatusToCms(cmsIdVal,"Confirmed");
+response.put("status","success");
+response.put("message","Confirmed — Service Appointment created.");
+response.put("serviceAppointmentId",newSaId);
+response.put("cmsPushStatus",pushResp.get("status"));
+response.put("itemPatchStatus",itemPatchStatus);
+response.put("dateFormatError",dateFormatError);
+return response;

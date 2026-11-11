@@ -1,0 +1,863 @@
+// string fcStampBySoNo(string soNo)   [.ds lines 32666-33529]
+/* ---- 1. SETTINGS — isang basa ng Forecast_Settings, may fallback ----
+   Kapareho ng fcStampPurchaseRequest. Isang record lang ang hinahanap, kaya
+   ang `for each` ang gamit: ang Form[criteria] na walang katugma ay
+   nagbabalik ng WALANG-LAMANG RECORD, hindi null — gotcha #28. */
+airTMin = 5;
+airTMax = 7;
+airCMin = 2;
+airCMax = 3;
+lclTMin = 35;
+lclTMax = 60;
+lclCMin = 7;
+lclCMax = 10;
+fclTMin = 35;
+fclTMax = 60;
+fclCMin = 7;
+fclCMax = 10;
+locTMin = 0;
+locTMax = 0;
+locCMin = 0;
+locCMax = 0;
+prepMin = 7;
+prepMax = 7;
+delMin = 0;
+delMax = 0;
+reAnchor = true;
+addSupLead = false;
+fsTaken = false;
+fsRecs = Forecast_Settings[ID != 0];
+for each  fs in fsRecs
+{
+    if(!fsTaken)
+    {
+        fsTaken = true;
+        if(fs.Air_Transit_Min != null)
+        {
+            airTMin = fs.Air_Transit_Min.toLong();
+        }
+        if(fs.Air_Transit_Max != null)
+        {
+            airTMax = fs.Air_Transit_Max.toLong();
+        }
+        if(fs.Air_Customs_to_WH_Min != null)
+        {
+            airCMin = fs.Air_Customs_to_WH_Min.toLong();
+        }
+        if(fs.Air_Customs_to_WH_Max != null)
+        {
+            airCMax = fs.Air_Customs_to_WH_Max.toLong();
+        }
+        if(fs.LCL_Transit_Min != null)
+        {
+            lclTMin = fs.LCL_Transit_Min.toLong();
+        }
+        if(fs.LCL_Transit_Max != null)
+        {
+            lclTMax = fs.LCL_Transit_Max.toLong();
+        }
+        if(fs.LCL_Customs_to_WH_Min != null)
+        {
+            lclCMin = fs.LCL_Customs_to_WH_Min.toLong();
+        }
+        if(fs.LCL_Customs_to_WH_Max != null)
+        {
+            lclCMax = fs.LCL_Customs_to_WH_Max.toLong();
+        }
+        if(fs.FCL_Transit_Min != null)
+        {
+            fclTMin = fs.FCL_Transit_Min.toLong();
+        }
+        if(fs.FCL_Transit_Max != null)
+        {
+            fclTMax = fs.FCL_Transit_Max.toLong();
+        }
+        if(fs.FCL_Customs_to_WH_Min != null)
+        {
+            fclCMin = fs.FCL_Customs_to_WH_Min.toLong();
+        }
+        if(fs.FCL_Customs_to_WH_Max != null)
+        {
+            fclCMax = fs.FCL_Customs_to_WH_Max.toLong();
+        }
+        if(fs.Local_Transit_Days != null)
+        {
+            locTMin = fs.Local_Transit_Days.toLong();
+            locTMax = fs.Local_Transit_Days.toLong();
+        }
+        if(fs.Local_Customs_Days != null)
+        {
+            locCMin = fs.Local_Customs_Days.toLong();
+            locCMax = fs.Local_Customs_Days.toLong();
+        }
+        if(fs.Prep_Days_Thru_QC != null)
+        {
+            prepMin = fs.Prep_Days_Thru_QC.toLong();
+            prepMax = fs.Prep_Days_Thru_QC.toLong();
+        }
+        if(fs.Delivery_Days != null)
+        {
+            delMin = fs.Delivery_Days.toLong();
+            delMax = fs.Delivery_Days.toLong();
+        }
+        chk = fs.Re_anchor_on_Latest_Real_Event.toString().toLowerCase();
+        reAnchor = chk == "true";
+        chk = fs.Include_Supplier_Lead_Time.toString().toLowerCase();
+        addSupLead = chk == "true";
+    }
+}
+today = zoho.currentdate;
+if(soNo == null || soNo == "" || soNo == "null")
+{
+    return "walang SO number na ipinasa";
+}
+/* ---- 2. Ang SOF: dito nakatira ang stage, ang order type at ang petsang
+          hinihintay ng client ------------------------------------------- */
+hasSof = false;
+prNo = "";
+stage = "";
+otype = "";
+modeVal = "";
+/* Nagsisimula sa PETSA at may kasamang flag, HINDI sa literal na null: ang
+   null-initialised na variable ay walang type, at mahigpit ang Deluge sa
+   DALAWANG panig — bilang receiver at bilang argumento ng .daysBetween().
+   Dalawang magkahiwalay na live save error ito noong 2026-11-04.
+   Hindi ito kailangan ng schedule: `clientTarget = sof.target_delivery_date`
+   ang gamit doon, kaya galing sa DATE FIELD ang type nito kahit walang laman
+   ang field. Ang function na ito ay pwedeng walang SOF, kaya walang
+   mapagkukunan ng type. */
+clientTarget = today;
+clientTargetFound = false;
+sofId = 0;
+/* Nagsisimula sa PETSA, hindi sa null: walang type ang null-initialised na
+   variable at hindi mahanap ng Deluge ang .addDay() o .daysBetween() dito.
+   Nasa flag ang kahulugang "wala pang nakita" — gotcha #27. */
+sofCreated = today;
+sofCreatedFound = false;
+sofRecs = Sales_Order_Fulfillment[SO_No == soNo];
+for each  sc in sofRecs
+{
+    if(!hasSof)
+    {
+        hasSof = true;
+        sofId = sc.ID;
+        prNo = sc.PR_No + "";
+        stage = sc.Fulfillment_Stage + "";
+        otype = (sc.order_type + "").toUpperCase();
+        modeVal = sc.Shipment_Mode + "";
+        if(sc.target_delivery_date != null)
+        {
+            clientTarget = sc.target_delivery_date;
+            clientTargetFound = true;
+        }
+        if(sc.SO_Created_Date != null)
+        {
+            sofCreated = sc.SO_Created_Date;
+            sofCreatedFound = true;
+        }
+    }
+}
+/* ---- 3. Ang mga stage record ng SO na ito ----------------------------
+   Isang fetch kada form, ginagamit sa DALAWANG bagay: sa pag-alam kung
+   kailan nagsimula ang prep, at sa pagtatatak mamaya. Walang dagdag query. */
+gateRecs = Sales_Order_Readiness_Gate[sales_order_number == soNo];
+pickRecs = Pick1[SO == soNo];
+qcRecs = Checker_Checklist[SO == soNo];
+oaRecs = Order_Aggregation1[SO == soNo];
+crateRecs = Crate_Checklist[SO == soNo];
+/* Ang petsa ng pinakaunang record na nakita natin para sa SO na ito. Ito ang
+   PANGHULING panangga ng anchor: kahit walang PR at walang SO_Created_Date,
+   may forecast pa rin dahil may record na pumasok — iyon ang hinihingi mong
+   "pag pasok palang ng data". */
+rowAdded = today;
+rowAddedFound = false;
+/* ---- 3a. WALANG SOF PA? Ang Gate row na lang ang pagkukunan ----------
+   Nangyayari ito sa unang save: may Gate row na, hindi pa nakakarating ang
+   SOF o hindi pa tugma ang SO_No. Dati, walang forecast sa ganitong oras.
+   Lahat ng kailangan ay nasa Gate row mismo: Order_Type, Target_Delivery_Date,
+   pr_number. */
+if(!hasSof)
+{
+    gTaken = false;
+    for each  g0 in gateRecs
+    {
+        if(!gTaken)
+        {
+            gTaken = true;
+            otype = (g0.Order_Type + "").toUpperCase();
+            if(g0.Target_Delivery_Date != null)
+            {
+                clientTarget = g0.Target_Delivery_Date;
+                clientTargetFound = true;
+            }
+            prNo = g0.pr_number + "";
+            /* Nasa Gate na ang record, kaya Order Readiness ang kinalagyan
+               nito kahit hindi pa sinasabi ng SOF. Ito ang nagpapasok nito
+               sa prep ladder sa ibaba. */
+            stage = "Order Readiness";
+        }
+    }
+}
+/* ---- 3b. PRE_ORDER_FF — kapag dito pumasok ang data --------------------
+   Hindi pa nakarating sa Gate ang order na ito: hinihintay pa ang gamit.
+   Kaya HINDI ito stock on hand, at ang PR ang magsasabi ng biyahe. Ang
+   Pre_Order_FF lang ang kukunan kapag wala pang SOF at wala pang Gate row.
+
+   AYAW MO ANG PRE-ORDER? Burahin ang buong block na ito at ang kapareha
+   nitong "STAMP: Pre_Order_FF" sa ibaba. */
+if(!hasSof && stage == "")
+{
+    poTaken = false;
+    for each  po0 in Pre_Order_FF[SO == soNo]
+    {
+        if(!poTaken)
+        {
+            poTaken = true;
+            otype = (po0.Order_Type + "").toUpperCase();
+            if(po0.Target_Delivery != null)
+            {
+                clientTarget = po0.Target_Delivery;
+                clientTargetFound = true;
+            }
+            prNo = po0.PR + "";
+        }
+    }
+}
+/* STOCK ON HAND: nasa Fulfillment na ang order at hindi ito pre-order, kaya
+   WALA NANG import leg — prep + delivery na lang. Parehong linya, parehong
+   kahulugan ng schedule. Ang "(Partly) Pre Order" ay pre-order pa rin. */
+stockOnHand = !otype.contains("PRE ORDER");
+/* ---- 4. Galing sa PR: ang simula ng chain, ang sourcing at ang mode ---- */
+/* Nagsisimula sa null dahil may kahulugan ang pagkawala nito sa ladder, at
+   hindi ito dumadaan sa .addDay() hangga't hindi nakakapasa sa null check. */
+prAdded = null;
+sourcing = "";
+supLead = 0;
+if(prNo != null && prNo != "")
+{
+    prRecs = Purchase_Request1[PR_No == prNo];
+    prTaken = false;
+    for each  prRec in prRecs
+    {
+        if(!prTaken)
+        {
+            prTaken = true;
+            if(prRec.Added_Time != null)
+            {
+                /* Datetime ang Added_Time — .toDate() bago ikumpara o
+                   gamitin bilang petsa. */
+                prAdded = prRec.Added_Time.toDate();
+            }
+            sourcing = prRec.Sourcing_Type + "";
+            if(prRec.Required_Days_Lead != null)
+            {
+                supLead = prRec.Required_Days_Lead.toLong();
+            }
+            if(modeVal == null || modeVal == "")
+            {
+                modeVal = prRec.Shipment_Mode + "";
+            }
+        }
+    }
+}
+/* ---- 5a. Kailan nagsimula ang prep? ---------------------------------
+   Ang Added_Time ng pinakaunang stage record ng SO na ito. Walang
+   stage-entry timestamp kahit saan sa app, kaya ito lang ang ebidensya. */
+prepStart = today;
+prepFound = false;
+for each  g in gateRecs
+{
+    matchG = true;
+    if(prNo != "" && g.pr_number != null && g.pr_number != "" && g.pr_number != prNo)
+    {
+        matchG = false;
+    }
+    if(matchG)
+    {
+        gd = null;
+        if(g.Added_Time != null)
+        {
+            gd = g.Added_Time.toDate();
+        }
+        if(gd != null)
+        {
+            if(!prepFound || gd < prepStart)
+            {
+                prepStart = gd;
+                prepFound = true;
+            }
+            if(!rowAddedFound || gd < rowAdded)
+            {
+                rowAdded = gd;
+                rowAddedFound = true;
+            }
+        }
+    }
+}
+for each  p in pickRecs
+{
+    matchP = true;
+    if(prNo != "" && p.PR_if_any != null && p.PR_if_any != "" && p.PR_if_any != prNo)
+    {
+        matchP = false;
+    }
+    if(matchP)
+    {
+        pd = null;
+        if(p.Added_Time != null)
+        {
+            pd = p.Added_Time.toDate();
+        }
+        if(pd != null)
+        {
+            if(!prepFound || pd < prepStart)
+            {
+                prepStart = pd;
+                prepFound = true;
+            }
+        }
+    }
+}
+for each  q in qcRecs
+{
+    matchQ = true;
+    if(prNo != "" && q.PR != null && q.PR != "" && q.PR != prNo)
+    {
+        matchQ = false;
+    }
+    if(matchQ)
+    {
+        qd = null;
+        if(q.Added_Time != null)
+        {
+            qd = q.Added_Time.toDate();
+        }
+        if(qd != null)
+        {
+            if(!prepFound || qd < prepStart)
+            {
+                prepStart = qd;
+                prepFound = true;
+            }
+        }
+    }
+}
+for each  c in crateRecs
+{
+    matchC = true;
+    if(prNo != "" && c.PR_if_any != null && c.PR_if_any != "" && c.PR_if_any != prNo)
+    {
+        matchC = false;
+    }
+    if(matchC)
+    {
+        cd = null;
+        if(c.Added_Time != null)
+        {
+            cd = c.Added_Time.toDate();
+        }
+        if(cd != null)
+        {
+            if(!prepFound || cd < prepStart)
+            {
+                prepStart = cd;
+                prepFound = true;
+            }
+        }
+    }
+}
+/* ---- 5b. Ang anchor kapag wala pang PR ------------------------------
+   Pagkakasunod ng panangga: PR Added_Time -> SO_Created_Date -> ang petsa ng
+   unang record na pumasok. Ang pangatlo ang bago: dahil doon, WALANG order
+   na mapupunta sa "No Start Date" sa pintong ito. */
+if(prAdded == null)
+{
+    if(sofCreatedFound)
+    {
+        prAdded = sofCreated;
+    }
+    else if(rowAddedFound)
+    {
+        prAdded = rowAdded;
+    }
+    else
+    {
+        prAdded = today;
+    }
+}
+/* ---- 5c. Galing sa Shipment -----------------------------------------
+   HINAHANAP LANG KAPAG MAAABOT ITO NG LADDER. Kapag nasa prep stage na o
+   stock on hand, ang mga branch sa taas ang mananaig at hindi na tinitingnan
+   ang shipment — kaya sayang na buong pagbasa ng Shipments ang gagawin.
+   Ito ang pinakamabigat na bahagi, at sa Gate ay laging nalalaktawan. */
+dateShipped = null;
+shipStatus = "";
+shipId = null;
+atPrepStage = stage == "For Delivery" || stage == "Order Readiness" || stage == "Picking" || stage == "Pack" || stage == "Quality Checking" || stage == "Crate";
+needShip = true;
+if(reAnchor && atPrepStage)
+{
+    needShip = false;
+}
+if(stockOnHand)
+{
+    needShip = false;
+}
+if(prNo != "" && needShip)
+{
+    allShips = Shipments[ID != 0];
+    for each  sh in allShips
+    {
+        for each  srow in sh.Supplier_Shipment_Details
+        {
+            if(srow.PR_No + "" == prNo)
+            {
+                shipId = sh.ID;
+                shipStatus = sh.Shipment_Status + "";
+                /* TEXT ang Date_Shipped sa live na form (hindi date), kaya
+                   dito kailangan ang != "" — kabaligtaran ng tunay na date
+                   field sa taas. .toDate() agad para hindi string ang
+                   pagkukumpara ng petsa. */
+                if(srow.Date_Shipped != null && srow.Date_Shipped != "")
+                {
+                    dateShipped = srow.Date_Shipped.toDate();
+                }
+                if(modeVal == null || modeVal == "")
+                {
+                    modeVal = srow.Shipment_Mode + "";
+                }
+            }
+        }
+    }
+}
+/* ======================================================================
+   6. ANG ENGINE — KINOPYA, HINDI SINULAT MULI.
+      Teksto-por-tekstong kapareho ng Section 3d ng forecast_stamp_schedule.txt,
+      hanggang sa pangalan ng variable, para iisang transliteration na lang
+      ang kailangan ng agreement test. Binabantayan ng
+      tools/forecast_ladder_identity_check.py.
+      HUWAG BAGUHIN ANG ALIN MAN SA DALAWA NANG WALANG ISA.
+   ====================================================================== */
+modeKey = modeVal.toUpperCase();
+srcKey = sourcing.toUpperCase();
+if(srcKey == "LOCAL")
+{
+    tMin = locTMin;
+    tMax = locTMax;
+    cMin = locCMin;
+    cMax = locCMax;
+    bucket = "Local";
+}
+else if(modeKey.contains("AIR"))
+{
+    tMin = airTMin;
+    tMax = airTMax;
+    cMin = airCMin;
+    cMax = airCMax;
+    bucket = "Air";
+}
+else if(modeKey == "FCL")
+{
+    tMin = fclTMin;
+    tMax = fclTMax;
+    cMin = fclCMin;
+    cMax = fclCMax;
+    bucket = "FCL";
+}
+else
+{
+    /* Blanko o hindi kilalang mode: LCL ang ipinapalagay (iyon ang karaniwan
+       dito), pero sinasabi ito sa Forecast_Window para walang mabigla. */
+    tMin = lclTMin;
+    tMax = lclTMax;
+    cMin = lclCMin;
+    cMax = lclCMax;
+    bucket = "LCL";
+    if(modeKey != "LCL")
+    {
+        bucket = "LCL?";
+    }
+}
+anchor = today;
+anchorFound = false;
+sumMin = 0;
+sumMax = 0;
+position = "";
+if(reAnchor && stage == "For Delivery")
+{
+    anchor = today;
+    anchorFound = true;
+    sumMin = delMin;
+    sumMax = delMax;
+    position = "Ready";
+}
+else if(reAnchor && stage == "Order Readiness" || stage == "Picking" || stage == "Pack" || stage == "Quality Checking" || stage == "Crate")
+{
+    anchor = today;
+    anchorFound = true;
+    usedDays = 0;
+    if(prepFound)
+    {
+        usedDays = prepStart.daysBetween(today);
+        if(usedDays < 0)
+        {
+            usedDays = usedDays * -1;
+        }
+    }
+    if(usedDays < 0)
+    {
+        usedDays = 0;
+    }
+    leftMin = prepMin - usedDays;
+    if(leftMin < 0)
+    {
+        leftMin = 0;
+    }
+    leftMax = prepMax - usedDays;
+    if(leftMax < 0)
+    {
+        leftMax = 0;
+    }
+    sumMin = leftMin + delMin;
+    sumMax = leftMax + delMax;
+    position = stage;
+}
+else if(stockOnHand)
+{
+    anchor = today;
+    anchorFound = true;
+    sumMin = prepMin + delMin;
+    sumMax = prepMax + delMax;
+    position = "Stock on hand";
+}
+else if(reAnchor && shipStatus == "Delivered")
+{
+    anchor = today;
+    anchorFound = true;
+    sumMin = prepMin + delMin;
+    sumMax = prepMax + delMax;
+    position = "At WH";
+}
+else if(reAnchor && dateShipped != null)
+{
+    anchor = dateShipped;
+    anchorFound = true;
+    sumMin = tMin + cMin + prepMin + delMin;
+    sumMax = tMax + cMax + prepMax + delMax;
+    position = "In transit";
+}
+else
+{
+    if(prAdded != null)
+    {
+        anchor = prAdded;
+        anchorFound = true;
+    }
+    sumMin = tMin + cMin + prepMin + delMin;
+    sumMax = tMax + cMax + prepMax + delMax;
+    if(addSupLead)
+    {
+        sumMin = sumMin + supLead;
+        sumMax = sumMax + supLead;
+    }
+    position = "Procurement";
+}
+if(!anchorFound)
+{
+    /* Hindi dapat mangyari: tatlong panangga ang prAdded sa Section 5b, kaya
+       laging may petsa. Pero kung mangyari man, WALANG itatatak — mas mabuti
+       nang blangko kaysa burahin ng null ang naitatak nang petsa. */
+    return soNo + " — walang mapagsimulang petsa, hindi nagtatak";
+}
+earliest = anchor.addDay(sumMin);
+latest = anchor.addDay(sumMax);
+pastIts = false;
+if(latest < today)
+{
+    pastIts = true;
+}
+if(earliest < today)
+{
+    earliest = today;
+}
+if(latest < today)
+{
+    latest = today;
+}
+/* .daysBetween(), hindi (petsa - petsa): STRING ang pagbabawas ng petsa sa
+   Deluge na ito at hindi mahahati — gotcha #26. Hindi rin umaasa sa sign
+   convention: kinukuha ang laki, saka pinipilit na positibo. */
+spanDays = earliest.daysBetween(latest);
+if(spanDays < 0)
+{
+    spanDays = spanDays * -1;
+}
+/* .addDay() ay buong numero lang ang tanggap — kaya .round(0).toLong(). */
+fcDate = earliest.addDay((spanDays / 2).round(0).toLong());
+fcDelivery = fcDate;
+fcWindow = earliest.toString("MMM dd") + " - " + latest.toString("MMM dd, yyyy") + " | " + bucket + " | " + position;
+if(pastIts)
+{
+    fcWindow = fcWindow + " | lampas na sa tantiya";
+}
+/* -- Status laban sa HINIHINTAY NG CLIENT. Walang laman = HINDI ituturing
+      na on-time; ibinubukod. */
+if(!clientTargetFound)
+{
+    fcStatus = "No Client Date";
+}
+else if(today > clientTarget)
+{
+    fcStatus = "Overdue";
+}
+else if(latest <= clientTarget)
+{
+    fcStatus = "On Track";
+}
+else if(earliest <= clientTarget)
+{
+    fcStatus = "At Risk";
+}
+else
+{
+    fcStatus = "Will Miss";
+}
+if(clientTargetFound)
+{
+    /* Dito MAY KAHULUGAN ang sign (+ = huli, - = maaga), kaya hindi
+       hinuhulaan: ang paghahambing ng petsa ang naglalagay nito. */
+    varDays = clientTarget.daysBetween(fcDate);
+    if(varDays < 0)
+    {
+        varDays = varDays * -1;
+    }
+    if(fcDate < clientTarget)
+    {
+        varDays = varDays * -1;
+    }
+    if(varDays > 0)
+    {
+        fcWindow = fcWindow + " | +" + varDays + "d vs client";
+    }
+    else if(varDays < 0)
+    {
+        fcWindow = fcWindow + " | " + varDays * -1 + "d early";
+    }
+    else
+    {
+        fcWindow = fcWindow + " | sakto sa client";
+    }
+}
+/* ======================================================================
+   7. STAMP — pareho ang tatlong field sa lahat.
+      LAGING MAY `!=` GUARD BAGO SUMULAT, at hindi lang para sa bilis: ang
+      write mismo ang pwedeng magpaputok ulit ng parehong workflow. Sa
+      ikalawang putok ay pareho ang kinalkula, kaya walang nagbago, kaya
+      walang write — at doon humihinto. Walang guard, walang hinto.
+   ====================================================================== */
+stamped = 0;
+// STAMP: Sales_Order_Fulfillment
+if(sofId != 0)
+{
+    for each  sof2 in Sales_Order_Fulfillment[ID == sofId]
+    {
+        if(sof2.Forecast_Delivery != fcDelivery)
+        {
+            sof2.Forecast_Delivery=fcDelivery;
+        }
+        if(sof2.Forecast_Window != fcWindow)
+        {
+            sof2.Forecast_Window=fcWindow;
+        }
+        if(sof2.Forecast_Status != fcStatus)
+        {
+            sof2.Forecast_Status=fcStatus;
+        }
+        stamped = stamped + 1;
+    }
+}
+// STAMP: Purchase_Request1
+if(prNo != null && prNo != "")
+{
+    for each  pr2 in Purchase_Request1[PR_No == prNo]
+    {
+        if(pr2.Forecast_Delivery != fcDelivery)
+        {
+            pr2.Forecast_Delivery=fcDelivery;
+        }
+        if(pr2.Forecast_Window != fcWindow)
+        {
+            pr2.Forecast_Window=fcWindow;
+        }
+        if(pr2.Forecast_Status != fcStatus)
+        {
+            pr2.Forecast_Status=fcStatus;
+        }
+        stamped = stamped + 1;
+    }
+}
+// STAMP: Sales_Order_Readiness_Gate
+for each  g2 in gateRecs
+{
+    matchG2 = true;
+    if(prNo != "" && g2.pr_number != null && g2.pr_number != "" && g2.pr_number != prNo)
+    {
+        matchG2 = false;
+    }
+    if(matchG2)
+    {
+        if(g2.Forecast_Delivery != fcDelivery)
+        {
+            g2.Forecast_Delivery=fcDelivery;
+        }
+        if(g2.Forecast_Window != fcWindow)
+        {
+            g2.Forecast_Window=fcWindow;
+        }
+        if(g2.Forecast_Status != fcStatus)
+        {
+            g2.Forecast_Status=fcStatus;
+        }
+        stamped = stamped + 1;
+    }
+}
+// STAMP: Pre_Order_FF
+for each  po2 in Pre_Order_FF[SO == soNo]
+{
+    if(po2.Forecast_Delivery != fcDelivery)
+    {
+        po2.Forecast_Delivery=fcDelivery;
+    }
+    if(po2.Forecast_Window != fcWindow)
+    {
+        po2.Forecast_Window=fcWindow;
+    }
+    if(po2.Forecast_Status != fcStatus)
+    {
+        po2.Forecast_Status=fcStatus;
+    }
+    stamped = stamped + 1;
+}
+// STAMP: Pick1
+for each  p2 in pickRecs
+{
+    matchP2 = true;
+    if(prNo != "" && p2.PR_if_any != null && p2.PR_if_any != "" && p2.PR_if_any != prNo)
+    {
+        matchP2 = false;
+    }
+    if(matchP2)
+    {
+        if(p2.Forecast_Delivery != fcDelivery)
+        {
+            p2.Forecast_Delivery=fcDelivery;
+        }
+        if(p2.Forecast_Window != fcWindow)
+        {
+            p2.Forecast_Window=fcWindow;
+        }
+        if(p2.Forecast_Status != fcStatus)
+        {
+            p2.Forecast_Status=fcStatus;
+        }
+        stamped = stamped + 1;
+    }
+}
+// STAMP: Checker_Checklist
+for each  q2 in qcRecs
+{
+    matchQ2 = true;
+    if(prNo != "" && q2.PR != null && q2.PR != "" && q2.PR != prNo)
+    {
+        matchQ2 = false;
+    }
+    if(matchQ2)
+    {
+        if(q2.Forecast_Delivery != fcDelivery)
+        {
+            q2.Forecast_Delivery=fcDelivery;
+        }
+        if(q2.Forecast_Window != fcWindow)
+        {
+            q2.Forecast_Window=fcWindow;
+        }
+        if(q2.Forecast_Status != fcStatus)
+        {
+            q2.Forecast_Status=fcStatus;
+        }
+        stamped = stamped + 1;
+    }
+}
+// STAMP: Order_Aggregation1
+for each  oa2 in oaRecs
+{
+    matchOa2 = true;
+    if(prNo != "" && oa2.PR != null && oa2.PR != "" && oa2.PR != prNo)
+    {
+        matchOa2 = false;
+    }
+    if(matchOa2)
+    {
+        if(oa2.Forecast_Delivery != fcDelivery)
+        {
+            oa2.Forecast_Delivery=fcDelivery;
+        }
+        if(oa2.Forecast_Window != fcWindow)
+        {
+            oa2.Forecast_Window=fcWindow;
+        }
+        if(oa2.Forecast_Status != fcStatus)
+        {
+            oa2.Forecast_Status=fcStatus;
+        }
+        stamped = stamped + 1;
+    }
+}
+// STAMP: Crate_Checklist
+for each  c2 in crateRecs
+{
+    matchC2 = true;
+    if(prNo != "" && c2.PR_if_any != null && c2.PR_if_any != "" && c2.PR_if_any != prNo)
+    {
+        matchC2 = false;
+    }
+    if(matchC2)
+    {
+        if(c2.Forecast_Delivery != fcDelivery)
+        {
+            c2.Forecast_Delivery=fcDelivery;
+        }
+        if(c2.Forecast_Window != fcWindow)
+        {
+            c2.Forecast_Window=fcWindow;
+        }
+        if(c2.Forecast_Status != fcStatus)
+        {
+            c2.Forecast_Status=fcStatus;
+        }
+        stamped = stamped + 1;
+    }
+}
+// STAMP: Receiving
+for each  rcv in Receiving[SO_No == soNo]
+{
+    if(rcv.Forecast_Delivery != fcDelivery)
+    {
+        rcv.Forecast_Delivery=fcDelivery;
+    }
+    if(rcv.Forecast_Window != fcWindow)
+    {
+        rcv.Forecast_Window=fcWindow;
+    }
+    if(rcv.Forecast_Status != fcStatus)
+    {
+        rcv.Forecast_Status=fcStatus;
+    }
+    stamped = stamped + 1;
+}
+/* HINDI tinatatakan ng pintong ito ang Shipments: ang paghahanap ng shipment
+   ng isang PR ay buong pagbasa ng Shipments (walang PR field sa header,
+   nasa subform row lang ito), at sa Gate ay nalalaktawan pa ang shipment
+   branch. Ang SHP_Forecast_Stamp at ang araw-araw na schedule ang may hawak
+   doon. */
+return soNo + " -> " + fcDate.toString("MMM dd, yyyy") + " | " + fcWindow + " | " + fcStatus + " | " + stamped + " record";

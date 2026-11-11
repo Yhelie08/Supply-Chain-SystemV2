@@ -1,0 +1,12 @@
+
+			displayName = "SOF Internal Messages Report"
+			show all rows from SOF_Internal_Messages    
+			(
+				Package
+				Sender_Email
+				Sender_Role
+				Message
+				Sent_On
+				From
+			)
+		

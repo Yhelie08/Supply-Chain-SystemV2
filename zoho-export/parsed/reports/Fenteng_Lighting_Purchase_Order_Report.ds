@@ -1,0 +1,40 @@
+
+			displayName = "Fenteng Lighting Purchase Order Report"
+			show all rows from Fenteng_Lighting_Purchase_Order    
+			(
+				PO_No_Supplier1 as "PO No."
+				Total_PO_Value_Supplier1 as "Total PO Value"
+				Total_Lines_Supplier1 as "Total Lines"
+				Mixed_Shipping_Supplier1 as "Mixed Shipping"
+				Followed_Recommendation_Supplier1 as "Followed Recommendation"
+				Supplier_Load_At_PO_Supplier1 as "Supplier Load At PO"
+				PO_Date_Supplier1 as "PO Date"
+				Is_Locked_Supplier1 as "Is Locked"
+				Notes_Supplier1 as "Notes"
+				Override_Reason_Supplier1 as "Override Reason"
+				PO_Status_Supplier1 as "PO Status"
+				Sent_On_Supplier1 as "Sent On"
+				Acknowledge_On_Supplier1 as "Acknowledge On"
+				Completed_On_Supplier1 as "Completed On"
+				custom action "Acknowledged"
+				(
+	  			workflow = Acknowledged_PO_Supplier1
+				show action in edit record menu = true
+				column header = "Acknowledged"
+				condition = (PO_Status_Supplier1 != "Confirmed")
+				confirmation before execution
+				(
+					message for individual record = "Execute the Acknowledged action for this record?"
+					confirm button text = "Yes"		
+					cancel button text = "No"
+				)
+				)
+				RR_Reference_No_Supplier1 as "RR Reference No"
+				Missing_SKUs_Supplier1 as "Missing SKUs"
+				PO_Line_Items_Supplier1 as "PO Line Items"
+				(
+					field = PO_Line_Items_Supplier1.Item_Status_Supplier1 + " " + PO_Line_Items_Supplier1.Delay_Status_Supplier1 + " " + PO_Line_Items_Supplier1.Final_Price_Supplier1 + " " + PO_Line_Items_Supplier1.Followed_Recommendation_Supplier1 + " " + PO_Line_Items_Supplier1.Item_Supplier1 + " " + PO_Line_Items_Supplier1.Line_Total_Supplier1 + " " + PO_Line_Items_Supplier1.Override_Reason_Supplier1 + " " + PO_Line_Items_Supplier1.PR_No_Supplier1 + " " + PO_Line_Items_Supplier1.QTY_Supplier1 + " " + PO_Line_Items_Supplier1.SKU_Supplier1 + " " + PO_Line_Items_Supplier1.Shipping_Mode_Supplier1 + " " + PO_Line_Items_Supplier1.Single_Line_Supplier1 + " " + PO_Line_Items_Supplier1.Supplier_Supplier1 + " " + PO_Line_Items_Supplier1.supplier_target_date_Supplier1 + " " + PO_Line_Items_Supplier1.Target_Delivery_Supplier1 + " " + PO_Line_Items_Supplier1.Unit_Supplier1 + " " + PO_Line_Items_Supplier1.Added_Time + " " + PO_Line_Items_Supplier1.Added_User + " " + PO_Line_Items_Supplier1.ID + " " + PO_Line_Items_Supplier1.Modified_Time
+				)
+				Damage_SKUs_Supplier1 as "Damage SKUs Supplier1"
+			)
+		

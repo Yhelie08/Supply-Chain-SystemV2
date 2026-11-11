@@ -1,0 +1,753 @@
+{
+  "head": "menu",
+  "children": [
+    {
+      "head": "unused",
+      "children": [
+        {
+          "head": "systemcomponent"
+        },
+        {
+          "head": "systemcomponent"
+        },
+        {
+          "head": "systemcomponent"
+        },
+        {
+          "head": "systemcomponent"
+        },
+        {
+          "head": "report Supp_1_Portal"
+        },
+        {
+          "head": "report Tony_Fan1_Report"
+        },
+        {
+          "head": "form  Tony_Fan1"
+        },
+        {
+          "head": "form  Fenteng_Lighting"
+        },
+        {
+          "head": "report Fenteng_Lighting_Report"
+        },
+        {
+          "head": "form  Supplier_2"
+        },
+        {
+          "head": "form  Tony_Fan_Purchase_Request"
+        },
+        {
+          "head": "report Supplier_2_Report"
+        },
+        {
+          "head": "report Tony_Fan_Purchase_Request_Report"
+        },
+        {
+          "head": "form  Tony_Fan_Purchase_Order"
+        },
+        {
+          "head": "report Tony_Fan_Purchase_Order_Report"
+        },
+        {
+          "head": "form  Tony_Shipment"
+        },
+        {
+          "head": "report Tony_Shipment_Report"
+        },
+        {
+          "head": "form  Tony_Fan_Replacement_Request"
+        },
+        {
+          "head": "report Tony_Fan_Replacement_Request_Report"
+        },
+        {
+          "head": "form  Tony_Notifications"
+        },
+        {
+          "head": "report Tony_Notifications_Report"
+        },
+        {
+          "head": "form  Inquiry_Form"
+        },
+        {
+          "head": "report All_Inquiries"
+        },
+        {
+          "head": "report Quote_Groups"
+        },
+        {
+          "head": "form  Purchase_Request1"
+        },
+        {
+          "head": "report All_Purchase_Request"
+        },
+        {
+          "head": "report PO_Grouping"
+        },
+        {
+          "head": "form  Purchase_Order"
+        },
+        {
+          "head": "report All_Purchase_Orders"
+        },
+        {
+          "head": "form  Shipments"
+        },
+        {
+          "head": "report All_Shipments"
+        },
+        {
+          "head": "report Shipment_Groupings"
+        },
+        {
+          "head": "form  Receiving"
+        },
+        {
+          "head": "report Receiving_Report"
+        },
+        {
+          "head": "report Receiving_Group"
+        },
+        {
+          "head": "form  Exceptions"
+        },
+        {
+          "head": "report Exceptions_Report"
+        },
+        {
+          "head": "form  Replacement_Request"
+        },
+        {
+          "head": "report Replacement_Request_Report"
+        },
+        {
+          "head": "report Timeline_History"
+        },
+        {
+          "head": "form  Inquiry_Timeline"
+        },
+        {
+          "head": "report Inquiry_Timeline_Report"
+        },
+        {
+          "head": "form  Inquiry_Internal_Messages"
+        },
+        {
+          "head": "report Inquiry_Internal_Messages_Report"
+        },
+        {
+          "head": "form  Fenteng_Notifications"
+        },
+        {
+          "head": "report Fenteng_Notifications_Report"
+        },
+        {
+          "head": "form  Receiving_Timeline"
+        },
+        {
+          "head": "report Receiving_Timeline_Report"
+        },
+        {
+          "head": "form  Exception_Timeline"
+        },
+        {
+          "head": "report Exception_Timeline_Report"
+        },
+        {
+          "head": "form  RR_Timeline"
+        },
+        {
+          "head": "report RR_Timeline_Report"
+        },
+        {
+          "head": "form  PR_Internal_Messages"
+        },
+        {
+          "head": "report PR_Internal_Messages_Report"
+        },
+        {
+          "head": "form  App_Notifications"
+        },
+        {
+          "head": "report App_Notifications_Report"
+        },
+        {
+          "head": "form  Inquiry_Messages"
+        },
+        {
+          "head": "report All_Inquiry_Messages"
+        },
+        {
+          "head": "form  PR_Messages"
+        },
+        {
+          "head": "report All_PR_Messages"
+        },
+        {
+          "head": "form  PO_Messages"
+        },
+        {
+          "head": "report All_PO_Messages"
+        },
+        {
+          "head": "form  RR_Internal_Messages"
+        },
+        {
+          "head": "report RR_Internal_Messages_Report"
+        },
+        {
+          "head": "form  Shipment_Internal_Messages"
+        },
+        {
+          "head": "report Shipment_Internal_Messages_Report"
+        },
+        {
+          "head": "form  Exception_Internal_Messages"
+        },
+        {
+          "head": "report Exception_Internal_Messages_Report"
+        },
+        {
+          "head": "form  Receiving_Internal_Messages"
+        },
+        {
+          "head": "report Receiving_Internal_Messages_Report"
+        },
+        {
+          "head": "form  PO_Internal_Messages"
+        },
+        {
+          "head": "report PO_Internal_Messages_Report"
+        },
+        {
+          "head": "form  Policy_Settings"
+        },
+        {
+          "head": "report All_Policy_Settings"
+        },
+        {
+          "head": "form  PR_Timeline"
+        },
+        {
+          "head": "report PR_Timeline_Report"
+        },
+        {
+          "head": "form  Pre_Order_FF"
+        },
+        {
+          "head": "report Sales_Order_Fulfillment_Report"
+        },
+        {
+          "head": "form  Sales_Order_Fulfillment"
+        },
+        {
+          "head": "report Pre_Order1_Report"
+        },
+        {
+          "head": "form  Sales_Order_Readiness_Gate"
+        },
+        {
+          "head": "report Sales_Order_Readiness_Gate_Report"
+        },
+        {
+          "head": "form  Pick1"
+        },
+        {
+          "head": "report Pick1_Report"
+        },
+        {
+          "head": "form  Pack"
+        },
+        {
+          "head": "report Pack_Report"
+        },
+        {
+          "head": "form  Checker_Checklist"
+        },
+        {
+          "head": "report All_Qc_Reports1"
+        },
+        {
+          "head": "form  Exception_Control1"
+        },
+        {
+          "head": "report Exception_Control_Report"
+        },
+        {
+          "head": "form  Crate_Checklist"
+        },
+        {
+          "head": "report All_Crates"
+        },
+        {
+          "head": "form  Order_Aggregation1"
+        },
+        {
+          "head": "report Order_Aggregation1_Report"
+        },
+        {
+          "head": "form  Warehouse_Request"
+        },
+        {
+          "head": "report All_Warehouse_Requests"
+        },
+        {
+          "head": "form  Transfer_Warehouse"
+        },
+        {
+          "head": "report Transfer_Warehouse_Report"
+        },
+        {
+          "head": "form  SOF_Internal_Messages"
+        },
+        {
+          "head": "report SOF_Internal_Messages_Report"
+        },
+        {
+          "head": "form  SOF_Timeline"
+        },
+        {
+          "head": "report SOF_Timeline_Report"
+        },
+        {
+          "head": "form  ExceptionControl_Notifications"
+        },
+        {
+          "head": "report ExceptionControl_Notifications_Report"
+        },
+        {
+          "head": "form  Pick_Notifications"
+        },
+        {
+          "head": "report Pick_Notifications_Report"
+        },
+        {
+          "head": "form  Pack_Notifications"
+        },
+        {
+          "head": "report Pack_Notifications_Report"
+        },
+        {
+          "head": "form  OrderAgg_Notifications"
+        },
+        {
+          "head": "report OrderAgg_Notifications_Report"
+        },
+        {
+          "head": "form  QC_Notifications"
+        },
+        {
+          "head": "report QC_Notifications_Report"
+        },
+        {
+          "head": "form  ReadinessGate_Notifications"
+        },
+        {
+          "head": "report ReadinessGate_Notifications_Report"
+        },
+        {
+          "head": "form  PreOrder_Notifications"
+        },
+        {
+          "head": "report PreOrder_Notifications_Report"
+        },
+        {
+          "head": "form  SO_Notifications"
+        },
+        {
+          "head": "report SO_Notifications_Report"
+        },
+        {
+          "head": "form  Exception_Control_Media"
+        },
+        {
+          "head": "report Exception_Control_Media_Report"
+        },
+        {
+          "head": "form  Evidence_Photos"
+        },
+        {
+          "head": "report All_Evidence_Photos"
+        },
+        {
+          "head": "form  DMS_Exception_Queue"
+        },
+        {
+          "head": "report All_DMS_Exception_Queue"
+        },
+        {
+          "head": "form  Package_Shipments"
+        },
+        {
+          "head": "report Package_Shipments_Report"
+        },
+        {
+          "head": "form  Daily_Team_Availability"
+        },
+        {
+          "head": "report All_Daily_Team_Availability"
+        },
+        {
+          "head": "form  Delivery_Scheduling"
+        },
+        {
+          "head": "form  Service_Request1"
+        },
+        {
+          "head": "form  Service_Appointment_Form"
+        },
+        {
+          "head": "form  Field_Work"
+        },
+        {
+          "head": "report Field_Work_Report"
+        },
+        {
+          "head": "form  Pick_Up_Request_Form"
+        },
+        {
+          "head": "form  Shipment_Order_Form"
+        },
+        {
+          "head": "form  Sales_Returns_Form"
+        },
+        {
+          "head": "report Sales_Returns_Form_Report"
+        },
+        {
+          "head": "form  Field_Service_Site_Visit_Form"
+        },
+        {
+          "head": "report Field_Service_Site_Visit_Form_Report"
+        },
+        {
+          "head": "report Service_Appointment"
+        },
+        {
+          "head": "form  Items"
+        },
+        {
+          "head": "report All_Items"
+        },
+        {
+          "head": "form  Customer"
+        },
+        {
+          "head": "report All_Customers"
+        },
+        {
+          "head": "form  Suppliers"
+        },
+        {
+          "head": "report All_Suppliers"
+        },
+        {
+          "head": "form  Projects"
+        },
+        {
+          "head": "report Projects_Report"
+        },
+        {
+          "head": "form  Sales_Order"
+        },
+        {
+          "head": "report Sales_Order_form1_Report"
+        },
+        {
+          "head": "form  Supplier_1"
+        },
+        {
+          "head": "report Supplier_1_Report"
+        },
+        {
+          "head": "form  Fenteng_Lighting_Purchase_Request"
+        },
+        {
+          "head": "report Fenteng_Lighting_Purchase_Request_Report"
+        },
+        {
+          "head": "form  Fenteng_Lighting_Purchase_Order"
+        },
+        {
+          "head": "report Fenteng_Lighting_Purchase_Order_Report"
+        },
+        {
+          "head": "form  Fenteng_Shipment"
+        },
+        {
+          "head": "report Fenteng_Shipment_Report"
+        },
+        {
+          "head": "form  Fenteng_Lighting_Replacement_Request"
+        },
+        {
+          "head": "report Fenteng_Lighting_Replacement_Request_Report"
+        },
+        {
+          "head": "form  Shipment_ID_Counter"
+        },
+        {
+          "head": "report Shipment_ID_Counter_Report"
+        },
+        {
+          "head": "form  Schedule_Test_Settings"
+        },
+        {
+          "head": "report Schedule_Test_Settings_Report"
+        },
+        {
+          "head": "form  Site_Visit_Photos"
+        },
+        {
+          "head": "report All_Site_Visit_Photos"
+        },
+        {
+          "head": "form  Shipment_Timeline"
+        },
+        {
+          "head": "report Shipment_Timeline_Report"
+        },
+        {
+          "head": "form  DelQ_Timeline"
+        },
+        {
+          "head": "report DelQ_Timeline_Report"
+        },
+        {
+          "head": "form  DTA_Timeline"
+        },
+        {
+          "head": "report DTA_Timeline_Report"
+        },
+        {
+          "head": "form  DMS_Schedule_Request"
+        },
+        {
+          "head": "report DMS_Schedule_Request_Report"
+        },
+        {
+          "head": "form  DMS_Schedule_Request_Messages"
+        },
+        {
+          "head": "report DMS_Schedule_Request_Messages_Report"
+        },
+        {
+          "head": "form  Daily_Checklist_for_Vehicle"
+        },
+        {
+          "head": "report Daily_Checklist_for_Vehicle_Report"
+        },
+        {
+          "head": "form  Fuel_Entries"
+        },
+        {
+          "head": "report All_Fuel_Entries"
+        },
+        {
+          "head": "form  Service_Entries"
+        },
+        {
+          "head": "report All_Service_Entries"
+        },
+        {
+          "head": "form  Dispatch_Checklist"
+        },
+        {
+          "head": "report All_Dispatch_Checklists"
+        },
+        {
+          "head": "page Delivery_Queue"
+        },
+        {
+          "head": "report Delivery_Scheduling_Report"
+        },
+        {
+          "head": "report Service_Request"
+        },
+        {
+          "head": "page Pack1"
+        },
+        {
+          "head": "report All_Settings"
+        },
+        {
+          "head": "form  Forecast_Settings"
+        },
+        {
+          "head": "page KANBAN"
+        },
+        {
+          "head": "page Policy_Setting"
+        },
+        {
+          "head": "section SharedAnalytics_Section"
+        }
+      ]
+    },
+    {
+      "head": "space Analytic",
+      "children": [
+        {
+          "head": "page Supply_Chain_Analytic"
+        }
+      ]
+    },
+    {
+      "head": "space Procurement",
+      "children": [
+        {
+          "head": "page Dashboard"
+        },
+        {
+          "head": "page Inquiry"
+        },
+        {
+          "head": "page Purchase_Request"
+        },
+        {
+          "head": "page Purchase_Order1"
+        },
+        {
+          "head": "page Shipments1"
+        },
+        {
+          "head": "page Receiving1"
+        },
+        {
+          "head": "page Replacement_Request1"
+        },
+        {
+          "head": "page Exceptions1"
+        },
+        {
+          "head": "page Forecast_Setting"
+        }
+      ]
+    },
+    {
+      "head": "space Tony_Fan",
+      "children": [
+        {
+          "head": "page Tony_Fan_Inquiries"
+        },
+        {
+          "head": "page Tony_Fan_PR"
+        },
+        {
+          "head": "page Tony_Fan_PO"
+        },
+        {
+          "head": "page Tony_Shipments"
+        },
+        {
+          "head": "page Replacement_Request_Tony"
+        }
+      ]
+    },
+    {
+      "head": "space Fenteng_Lighting",
+      "children": [
+        {
+          "head": "page Fenteng_Lighting_Inquiries"
+        },
+        {
+          "head": "page Fenteng_Lighting_PR"
+        },
+        {
+          "head": "page Fenteng_Lighting_PO"
+        },
+        {
+          "head": "page Fenteng_Shipments"
+        },
+        {
+          "head": "page Replacement_Request_Fenteng"
+        }
+      ]
+    },
+    {
+      "head": "space Fulfillment",
+      "children": [
+        {
+          "head": "page Fulfillment_Dashboard"
+        },
+        {
+          "head": "page SOR"
+        },
+        {
+          "head": "page Pre_Order2"
+        },
+        {
+          "head": "page Order_Readiness1"
+        },
+        {
+          "head": "page Pick2"
+        },
+        {
+          "head": "page Quality_Check"
+        },
+        {
+          "head": "page Crate1"
+        },
+        {
+          "head": "page Order_Aggregation2"
+        },
+        {
+          "head": "page Exception_Control2"
+        },
+        {
+          "head": "page Transfer_Item"
+        }
+      ]
+    },
+    {
+      "head": "space Delivery_Management",
+      "children": [
+        {
+          "head": "page Delivery_Analytics1"
+        },
+        {
+          "head": "page Daily_Team_Availability1"
+        },
+        {
+          "head": "page Initial_Scheduling1"
+        },
+        {
+          "head": "page Service_Request2"
+        },
+        {
+          "head": "page Service_Appointment1"
+        },
+        {
+          "head": "page Ongoing_Service1"
+        },
+        {
+          "head": "page Archived"
+        },
+        {
+          "head": "page Field_Service_Site_Visits1"
+        },
+        {
+          "head": "page Sales_Returns1"
+        },
+        {
+          "head": "page DMS_Exception_Queue1"
+        },
+        {
+          "head": "page Truck_Maintenance"
+        },
+        {
+          "head": "page Schedule_Requests"
+        }
+      ]
+    },
+    {
+      "head": "preference",
+      "children": [
+        {
+          "head": "icon"
+        }
+      ]
+    }
+  ]
+}

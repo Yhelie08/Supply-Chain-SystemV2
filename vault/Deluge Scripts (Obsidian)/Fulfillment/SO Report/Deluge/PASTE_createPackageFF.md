@@ -1,0 +1,1209 @@
+---
+title: "PASTE_createPackageFF"
+source_file: "NEw/PASTE_createPackageFF.txt"
+category: "Fulfillment/SO Report/Deluge"
+associated_widget: "[[Fulfillment/Pack/Widget/Pack Widget|Pack Widget]]"
+lines: 1163
+tags:
+  - crate
+  - delivery-management
+  - deluge
+  - dms
+  - fulfillment
+  - inquiry
+  - kanban
+  - order-aggregation
+  - pack
+  - pick
+  - procurement
+  - purchase-order
+  - purchase-request
+  - qc
+  - readiness-gate
+  - zoho-books
+---
+
+# PASTE_createPackageFF
+
+> [!INFO] Script & Widget Details
+> - **Associated Widget:** [[Fulfillment/Pack/Widget/Pack Widget|Pack Widget]]
+> - **Category:** `Fulfillment/SO Report/Deluge`
+> - **Source File:** `NEw/PASTE_createPackageFF.txt`
+> - **Lines of Code:** 1,163
+> - **Tags:** `#crate`, `#delivery-management`, `#deluge`, `#dms`, `#fulfillment`, `#inquiry`, `#kanban`, `#order-aggregation`, `#pack`, `#pick`, `#procurement`, `#purchase-order`, `#purchase-request`, `#qc`, `#readiness-gate`, `#zoho-books`
+
+---
+
+## ⚡ Role in Widget Architecture
+This script powers the **[[Fulfillment/Pack/Widget/Pack Widget|Pack Widget]]**. Any changes here affect the backend workflows, data calculations, or Zoho Creator / Books sync for this widget.
+
+---
+
+## Deluge Script Code
+
+````deluge
+﻿map createPackageFF(string recordIdsCsv, string deliveryType)
+{
+	orgId = "751117756";
+	resultList = List();
+
+	// fetch every requested record, group by SO
+	// DEDUPED 2026-07-29, real bug found live: 2 Books packages both errored
+	// with the SAME recordId listed twice in one call's own result â€” traced to
+	// the SAME so_line_item_id being sent twice in one POST (qty summed above
+	// what's actually left to pack, e.g. 3+3 on a line only 3 remain on),
+	// which only happens if this function processed the same Pre_Order_FF
+	// record twice within one run. Root cause upstream (client CSV / a double
+	// click) unconfirmed, but never assume the input is clean â€” dedupe here
+	// so a repeated ID can never double-count a line item regardless of why
+	// it arrived twice.
+	idListRaw = recordIdsCsv.toList(",");
+	idList = List();
+	for each ridDedupe in idListRaw
+	{
+		ridD = ridDedupe.trim();
+		if(ridD != "" && !idList.contains(ridD))
+		{
+			idList.add(ridD);
+		}
+	}
+
+	// ADDED 2026-08-13, per user request ("hindi na sa Pre Order mapupunta, sa
+	// Sales Order Readiness na siya mapupunta... kasama yung RR# pati yung
+	// orginal package number") â€” RR-tagged Pre_Order_FF rows (own
+	// Replacement_Request subform non-empty) never have real headroom on the
+	// ORIGINAL Books SO line â€” it was already fully packed/shipped once
+	// already. Same class of "no headroom for a replacement" gap already
+	// fixed on the Purchasing/Receiving side in
+	// clone_shipment_for_replacement.txt (real Books rejection there too,
+	// code 36012). Confirmed live here as well: SO-16468/JF-001 errored
+	// "Only 0 left to pack on SO SO-16468 (requested 1)" when run through the
+	// normal Books path below. These rows now skip the Books package call
+	// entirely (no new package created) and go straight into
+	// Sales_Order_Readiness_Gate instead â€” referencing the SAME package
+	// number the item's ORIGINAL (non-RR) shipment already used (read off
+	// Sales_Order_Fulfillment), marked Paid, tagged with its own RR#. Split
+	// off BEFORE soGroups/the Books path below so an RR row can never enter
+	// that path, whether hand-picked by the widget or auto-expanded onto a
+	// sibling's SO group (see the matching guard added to that expand query
+	// further down).
+	rrIdList = List();
+	normalIdList = List();
+	for each ridSplit in idList
+	{
+		isRrRow = false;
+		for each rSplit in Pre_Order_FF[ID == ridSplit.toLong()]
+		{
+			// FIXED 2026-08-13, real bug found live (SO-16468, Aqi/JF-001) â€” this
+			// record's RR tag lives on a PLAIN "RR" header field (checker_checklist_
+			// qc_sync.txt's own RR-driven Pre_Order_FF insert sets RR=rrValCC directly,
+			// no subform), but this check only ever looked at a "Replacement_Request"
+			// subform (used by a DIFFERENT, older creation path per preorder_to_
+			// readiness_gate.txt). Since the subform was never populated by THIS
+			// record's actual creation path, isRrRow stayed false â€” the row fell
+			// through to the normal Books path and hit "Only 0 left to pack" again.
+			// Checks both possible representations now, whichever is actually populated.
+			rrPlainCheck = rSplit.RR + "";
+			if(rrPlainCheck != "" && rrPlainCheck != "null")
+			{
+				isRrRow = true;
+			}
+			for each rrCheckRow in rSplit.Replacement_Request
+			{
+				isRrRow = true;
+			}
+		}
+		if(isRrRow == true)
+		{
+			rrIdList.add(ridSplit);
+		}
+		else
+		{
+			normalIdList.add(ridSplit);
+		}
+	}
+
+	for each ridRr in rrIdList
+	{
+		for each r in Pre_Order_FF[ID == ridRr.toLong()]
+		{
+			rrJoined = "";
+			rrPlainVal = r.RR + "";
+			if(rrPlainVal != "" && rrPlainVal != "null")
+			{
+				rrJoined = rrPlainVal;
+			}
+			for each rrRow in r.Replacement_Request
+			{
+				rrVal = rrRow.RR + "";
+				if(rrVal != "" && rrVal != "null" && !rrJoined.contains(rrVal))
+				{
+					if(rrJoined == "")
+					{
+						rrJoined = rrVal;
+					}
+					else
+					{
+						rrJoined = rrJoined + ", " + rrVal;
+					}
+				}
+			}
+
+			rrSO = r.SO + "";
+			rrSKU = r.SKU + "";
+
+			if(rrJoined == "")
+			{
+				resultList.add({"recordId":ridRr, "status":"error", "message":"Replacement_Request subform present but no RR# found on it â€” cannot tag Readiness Gate"});
+			}
+			else
+			{
+				origPkgNo = "";
+				// ALSO grabs Bin_Location/target_delivery_date off this SAME
+				// Sales_Order_Fulfillment lookup (ADDED 2026-08-13, real gap found live
+				// â€” user asked "complete details ba ito? Bin location at RR# as in
+				// complete detail lahat target date") â€” the NEW direct Create Receive
+				// insert (receiving_create_bin_receiving.txt, this same day) never sets
+				// Bin_Location/Target_Delivery on the Pre_Order_FF row at all, so
+				// r.Bin_Location/r.Target_Delivery below are genuinely blank on this
+				// specific record. Falls back to the ORIGINAL item's own values here,
+				// same source already used for origPkgNo, only when this record's own
+				// value is blank.
+				origBinLocRr = "";
+				origTargetDelivRr = null;
+				sofMatchesRr = Sales_Order_Fulfillment[SO_No == rrSO];
+				for each sofRecRr in sofMatchesRr
+				{
+					for each sofRowRr in sofRecRr.Item_Details1
+					{
+						if((sofRowRr.SKU + "") == rrSKU && (sofRecRr.Package + "") != "")
+						{
+							origPkgNo = sofRecRr.Package + "";
+						}
+						if((sofRowRr.SKU + "") == rrSKU)
+						{
+							sofBinRr = sofRowRr.Bin_Location + "";
+							if(sofBinRr != "" && sofBinRr != "null")
+							{
+								origBinLocRr = sofBinRr;
+							}
+						}
+					}
+					if(sofRecRr.target_delivery_date != null)
+					{
+						origTargetDelivRr = sofRecRr.target_delivery_date;
+					}
+				}
+
+				if(origPkgNo == "")
+				{
+					resultList.add({"recordId":ridRr, "status":"error", "message":"No original package number found on Sales_Order_Fulfillment for SKU " + rrSKU + " â€” cannot link RR replacement"});
+				}
+				else
+				{
+					// REFINED 2026-08-14, real live bug found via this exact RR branch
+					// (RR-00005/PR test, "Linked to original package PAC-16497... no new
+					// Books package created") â€” per user, RR replacements should follow
+					// the SAME rule just added to the normal (non-RR) branch above: reusing
+					// the ORIGINAL package# as a pure reference is fine while that original
+					// item is still Pending/not yet shipped, but once it's actually
+					// Dispatched, a genuinely separate LABEL is needed so this replacement
+					// doesn't silently merge into an already-completed delivery's own
+					// tracking. Still explicitly does NOT create a real new Books package
+					// here â€” Books' side is unchanged (pure reference, no POST) â€” only the
+					// text label used for this app's own Package_Number/Package_Order
+					// changes, same disambiguation approach (bare or "-N" suffix) as the
+					// normal branch.
+					origIsDispatched = false;
+					for each aggCheckRecRr in Order_Aggregation1[SO == rrSO]
+					{
+						for each aggCheckRowRr in aggCheckRecRr.Item_Details
+						{
+							if((aggCheckRowRr.SKU + "") == rrSKU && (aggCheckRowRr.PAC + "") == origPkgNo && aggCheckRowRr.Dispatched == true)
+							{
+								origIsDispatched = true;
+							}
+						}
+					}
+					origPkgNoForRr = origPkgNo;
+					realBooksPkgCreated = false;
+					rrFallbackReason = "";
+					if(origIsDispatched == true)
+					{
+						// ATTEMPT ADDED 2026-08-15, per user direction change ("dapat create
+						// new package sa zoho books. then the existing package... mag
+						// babawas yung isang item then ng 1 qty" / "kasi sa DMS per package
+						// ang paglabas ng Item. kaya hindi pwede same package parin sila") â€”
+						// a text-only label (the disambiguation fallback below) has NO real
+						// Books object behind it, confirmed live: this exact RR-00005/
+						// PR-00006 record's own Books_Package_ID was blank before this fix,
+						// since the RR branch never called Books at all. DMS dispatch needs
+						// a REAL package per delivery event, so we now try to get one: first
+						// reduce the ORIGINAL package's own recorded qty in Books (the SO
+						// line itself shows 0 remaining while the original package still
+						// holds the full packed qty â€” same "Only 0 left to pack" constraint
+						// this whole RR branch was built to route around), then create a
+						// genuinely new package for just the replacement qty.
+						// UNCONFIRMED LIVE: Books' `PUT /packages/{id}` shape below is not
+						// documented in Books' current public API reference (checked
+						// 2026-08-15, WebSearch/WebFetch both came up empty) â€” mirrored off
+						// the confirmed-live-working POST shape on the assumption update
+						// accepts the same body. This is the first live run of this exact
+						// code. Every step checks Books' own response before proceeding;
+						// any failure at any point falls through to the proven-safe
+						// label-only path further below â€” Books_Package_ID stays untouched
+						// (blank) whenever that happens, nothing is left half-done.
+						rrQtyDec = r.Qty.toDecimal();
+						rrBinForPkg = r.Bin_Location + "";
+						if(rrBinForPkg == "null" || rrBinForPkg == "")
+						{
+							rrBinForPkg = origBinLocRr;
+						}
+						if(rrBinForPkg == "")
+						{
+							rrBinForPkg = "Receiving Area";
+						}
+
+						soListRr = invokeurl
+						[
+							url : "https://www.zohoapis.com/books/v3/salesorders?organization_id=" + orgId + "&salesorder_number=" + rrSO.toString().replaceAll(" ","%20")
+							type : GET
+							connection : "zhbooks3"
+						];
+						soArrRr = soListRr.get("salesorders");
+						soArrFoundRr = false;
+						if(soArrRr != null && soArrRr.size() > 0)
+						{
+							soArrFoundRr = true;
+						}
+						info "RR-DEBUG step1: SO lookup for " + rrSO + " -> found=" + soArrFoundRr;
+						if(soArrRr == null || soArrRr.size() == 0)
+						{
+							rrFallbackReason = "SO " + rrSO + " not found in Books";
+						}
+						if(soArrRr != null && soArrRr.size() > 0)
+						{
+							soIdRr = soArrRr.get(0).get("salesorder_id");
+							soDetRespRr = invokeurl
+							[
+								url : "https://www.zohoapis.com/books/v3/salesorders/" + soIdRr + "?organization_id=" + orgId
+								type : GET
+								connection : "zhbooks3"
+							];
+							bookLinesRr = soDetRespRr.get("salesorder").get("line_items");
+							soLineIdRr = "";
+							whIdRr = "";
+							itemIdRr = "";
+							for each blRr in bookLinesRr
+							{
+								if(blRr.get("sku") == rrSKU)
+								{
+									soLineIdRr = blRr.get("line_item_id");
+									whIdRr = blRr.get("warehouse_id");
+									itemIdRr = blRr.get("item_id");
+									break;
+								}
+							}
+							info "RR-DEBUG step2: SKU " + rrSKU + " on SO " + rrSO + " -> soLineIdRr=" + soLineIdRr + " whIdRr=" + whIdRr + " itemIdRr=" + itemIdRr;
+
+							// FIXED 2026-08-15, real gap found live â€” Pre_Order_FF.Books_Package_ID
+							// turned out blank on the ORIGINAL (non-RR) records too (PR-00003/4/5,
+							// packaged 2026-08-14 before this whole disambiguation saga even
+							// started, confirmed live via PR-00003's own edit form), so the first
+							// version of this fix (sourcing origBooksPkgId from that Creator field)
+							// always came up empty and silently fell through to the label-only path
+							// every single time, regardless of whether Books itself could actually
+							// support the real-package flow. Resolved directly from Books instead â€”
+							// lists this SO's own packages and matches by the display package_number
+							// (origPkgNo, already known from Sales_Order_Fulfillment) â€” no dependency
+							// on any Creator-side field at all. Also confirmed live (native Books UI)
+							// that PAC-16497's real status is "Not Shipped" â€” lower actual risk than
+							// originally feared, no Shipment/Invoice is linked to it yet.
+							origBooksPkgId = "";
+							pkgListRespRr = invokeurl
+							[
+								url : "https://www.zohoapis.com/books/v3/packages?organization_id=" + orgId + "&salesorder_id=" + soIdRr
+								type : GET
+								connection : "zhbooks3"
+							];
+							pkgListArrRr = pkgListRespRr.get("packages");
+							if(pkgListArrRr != null)
+							{
+								for each pkgListItemRr in pkgListArrRr
+								{
+									if((pkgListItemRr.get("package_number") + "") == origPkgNo)
+									{
+										origBooksPkgId = pkgListItemRr.get("package_id") + "";
+									}
+								}
+							}
+							pkgListCountRr = 0;
+							if(pkgListArrRr != null)
+							{
+								pkgListCountRr = pkgListArrRr.size();
+							}
+							info "RR-DEBUG step3: looking for package_number=" + origPkgNo + " among " + pkgListCountRr + " Books packages on SO " + rrSO + " -> origBooksPkgId=" + origBooksPkgId;
+
+							if(soLineIdRr == "")
+							{
+								rrFallbackReason = "SKU " + rrSKU + " not found on SO " + rrSO + "'s Books line items";
+							}
+							if(soLineIdRr != "" && origBooksPkgId == "")
+							{
+								rrFallbackReason = "original package " + origPkgNo + " not found in Books' package list for SO " + rrSO;
+							}
+							if(soLineIdRr != "" && origBooksPkgId != "")
+							{
+								origPkgGetResp = invokeurl
+									[
+										url : "https://www.zohoapis.com/books/v3/packages/" + origBooksPkgId + "?organization_id=" + orgId
+										type : GET
+										connection : "zhbooks3"
+									];
+									origPkgObjGet = origPkgGetResp.get("package");
+									origPkgObjFoundRr = false;
+									if(origPkgObjGet != null)
+									{
+										origPkgObjFoundRr = true;
+									}
+									info "RR-DEBUG step4: fetched original package " + origBooksPkgId + " -> found=" + origPkgObjFoundRr + " raw=" + origPkgGetResp.toString();
+									if(origPkgObjGet == null)
+									{
+										rrFallbackReason = "could not fetch original package " + origBooksPkgId + " detail from Books";
+									}
+									if(origPkgObjGet != null)
+									{
+										origLineItemsGet = origPkgObjGet.get("line_items");
+										origLineQtyFound = -1;
+										newOrigLineItemsRr = List();
+										for each opLineRr in origLineItemsGet
+										{
+											opSoLineIdRr = opLineRr.get("so_line_item_id") + "";
+											opQtyRr = opLineRr.get("quantity").toString().toDecimal();
+											// FIXED 2026-08-15, real Books rejection found live via RR-DEBUG step6:
+											// code 76014 "Associate bin details for item Baltazar..." â€” the PUT body
+											// only ever carried so_line_item_id+quantity for every line, dropping
+											// the "storages" (bin) array Books already had on file for every
+											// OTHER bin-tracked line on this same package (Baltazar/Andres, not
+											// just the CUSTOMIZED FLOOR LAMP line being reduced). Books validates
+											// the WHOLE line_items array on a PUT, not just the changed line, so a
+											// bin-tracked line submitted with no storages rejects the entire
+											// request. Fix: carry over each line's own existing "storages" from
+											// the GET response verbatim for untouched lines, and â€” for the line
+											// actually being reduced â€” carry over the same storage_id(s) with
+											// out_quantity scaled down to match the new (reduced) quantity, same
+											// single-bin-per-line assumption this whole app already uses
+											// everywhere else (Receiving/Create Package never split one line
+											// across 2 bins).
+											opStoragesRr = opLineRr.get("storages");
+											if(opSoLineIdRr == soLineIdRr)
+											{
+												origLineQtyFound = opQtyRr;
+												remainOrigRr = opQtyRr - rrQtyDec;
+												if(remainOrigRr > 0)
+												{
+													opMapRr = Map();
+													opMapRr.put("so_line_item_id", opSoLineIdRr);
+													opMapRr.put("quantity", remainOrigRr);
+													if(opStoragesRr != null && opStoragesRr.size() > 0)
+													{
+														newStoragesRr = List();
+														for each opStRr in opStoragesRr
+														{
+															newStMapRr = Map();
+															newStMapRr.put("storage_id", opStRr.get("storage_id"));
+															newStMapRr.put("out_quantity", remainOrigRr);
+															newStoragesRr.add(newStMapRr);
+														}
+														opMapRr.put("storages", newStoragesRr);
+													}
+													newOrigLineItemsRr.add(opMapRr);
+												}
+											}
+											else
+											{
+												opMapRr2 = Map();
+												opMapRr2.put("so_line_item_id", opSoLineIdRr);
+												opMapRr2.put("quantity", opQtyRr);
+												if(opStoragesRr != null && opStoragesRr.size() > 0)
+												{
+													opMapRr2.put("storages", opStoragesRr);
+												}
+												newOrigLineItemsRr.add(opMapRr2);
+											}
+										}
+										info "RR-DEBUG step5: original package line for so_line_item_id=" + soLineIdRr + " -> origLineQtyFound=" + origLineQtyFound + ", need=" + rrQtyDec;
+
+										if(origLineQtyFound >= rrQtyDec)
+										{
+											origPutBodyRr = Map();
+											origPutBodyRr.put("date", origPkgObjGet.get("date"));
+											origPutBodyRr.put("line_items", newOrigLineItemsRr);
+											origPutRespRr = invokeurl
+											[
+												url : "https://www.zohoapis.com/books/v3/packages/" + origBooksPkgId + "?organization_id=" + orgId
+												type : PUT
+												parameters : origPutBodyRr.toString()
+												connection : "zhbooks3"
+											];
+											info "RR-DEBUG step6: PUT to reduce original package " + origBooksPkgId + " -> raw response=" + origPutRespRr.toString();
+
+											if(origPutRespRr.get("code") == 0)
+											{
+												itemRespRr = invokeurl
+												[
+													url : "https://www.zohoapis.com/books/v3/items/" + itemIdRr + "?organization_id=" + orgId
+													type : GET
+													connection : "zhbooks3"
+												];
+												itemObjRr = itemRespRr.get("item");
+												binTrackedRr = false;
+												if(itemObjRr != null)
+												{
+													whListRr = itemObjRr.get("warehouses");
+													for each wRr in whListRr
+													{
+														if(wRr.get("warehouse_id") == whIdRr)
+														{
+															binTrackedRr = wRr.get("is_storage_location_enabled");
+															break;
+														}
+													}
+												}
+
+												newLineMapRr = Map();
+												newLineMapRr.put("so_line_item_id", soLineIdRr);
+												newLineMapRr.put("quantity", rrQtyDec);
+												binOkRr = true;
+												if(binTrackedRr == true)
+												{
+													storageIdRr = "";
+													stRespRr = invokeurl
+													[
+														url : "https://www.zohoapis.com/books/v3/settings/warehouses/" + whIdRr + "/storagelocations?organization_id=" + orgId
+														type : GET
+														connection : "zhbooks3"
+													];
+													stLocsRr = stRespRr.get("storage_locations");
+													for each stRr in stLocsRr
+													{
+														if(stRr.get("name") == rrBinForPkg)
+														{
+															storageIdRr = stRr.get("storage_id");
+															break;
+														}
+													}
+													if(storageIdRr != "")
+													{
+														storagesListRr = List();
+														storagesListRr.add({"storage_id":storageIdRr, "out_quantity":rrQtyDec});
+														newLineMapRr.put("storages", storagesListRr);
+													}
+													else
+													{
+														binOkRr = false;
+														rrFallbackReason = "item is bin-tracked but no '" + rrBinForPkg + "' bin found at this warehouse";
+														info "RR replacement: item is bin-tracked but no '" + rrBinForPkg + "' bin found at this warehouse â€” falling back to label-only reference, Books left untouched beyond the already-reduced original.";
+													}
+												}
+
+												if(binOkRr == true)
+												{
+													newLineItemsListRr = List();
+													newLineItemsListRr.add(newLineMapRr);
+													newPkgBodyRr = Map();
+													newPkgBodyRr.put("date", zoho.currentdate.toString("yyyy-MM-dd"));
+													newPkgBodyRr.put("line_items", newLineItemsListRr);
+
+													newPkgRespRr = invokeurl
+													[
+														url : "https://www.zohoapis.com/books/v3/packages?organization_id=" + orgId + "&salesorder_id=" + soIdRr
+														type : POST
+														parameters : newPkgBodyRr.toString()
+														connection : "zhbooks3"
+													];
+													info "RR-DEBUG step7: POST to create new package for so_line_item_id=" + soLineIdRr + " qty=" + rrQtyDec + " -> raw response=" + newPkgRespRr.toString();
+													newPkgObjRr = newPkgRespRr.get("package");
+													if(newPkgObjRr != null)
+													{
+														origPkgNoForRr = newPkgObjRr.get("package_number");
+														r.Books_Package_ID = newPkgObjRr.get("package_id") + "";
+														realBooksPkgCreated = true;
+														info "RR replacement: reduced original Books package " + origBooksPkgId + " (" + origPkgNo + ") by " + rrQtyDec + ", created genuine new package " + origPkgNoForRr + " for SO " + rrSO + " / SKU " + rrSKU + ".";
+													}
+													else
+													{
+														rrFallbackReason = "original package ALREADY reduced by " + rrQtyDec + " but NEW package creation FAILED (NEEDS MANUAL CHECK in Books): " + newPkgRespRr.toString();
+														info "RR replacement: original Books package " + origBooksPkgId + " (" + origPkgNo + ") was ALREADY reduced by " + rrQtyDec + ", but creating the new package FAILED: " + newPkgRespRr.toString() + " â€” NEEDS MANUAL CHECK in Books, original package qty may now be understated. Falling back to label-only tracking for this app's own display.";
+													}
+												}
+											}
+											else
+											{
+												rrFallbackReason = "Books rejected reducing original package: " + origPutRespRr.toString();
+												info "RR replacement: could not reduce original Books package " + origBooksPkgId + " (" + origPkgNo + "): " + origPutRespRr.toString() + " â€” falling back to label-only reference, Books left untouched.";
+											}
+										}
+										else
+										{
+											rrFallbackReason = "original package line only has " + origLineQtyFound + ", less than the " + rrQtyDec + " needed";
+											info "RR replacement: original Books package " + origBooksPkgId + " line for SKU " + rrSKU + " only has " + origLineQtyFound + ", less than the " + rrQtyDec + " needed â€” falling back to label-only reference.";
+										}
+									}
+								}
+							}
+						}
+					if(realBooksPkgCreated == false && origIsDispatched == true)
+					{
+						rrPkgCollisionCount = 0;
+						for each otherPoRecRr in Pre_Order_FF[SO == rrSO && SKU == rrSKU && ID != r.ID]
+						{
+							otherPkgStrRr = otherPoRecRr.Package_Number + "";
+							if(otherPkgStrRr == origPkgNo || otherPkgStrRr.startsWith(origPkgNo + "-"))
+							{
+								rrPkgCollisionCount = rrPkgCollisionCount + 1;
+							}
+						}
+						origPkgNoForRr = origPkgNo + "-" + (rrPkgCollisionCount + 1);
+						info "RR replacement's original package " + origPkgNo + " already has a DISPATCHED item on it (SO " + rrSO + " / SKU " + rrSKU + ") â€” disambiguated to " + origPkgNoForRr + " for this app's own tracking, no new Books package created.";
+					}
+					r.Package_Number = origPkgNoForRr;
+					r.Select_To_Package = false;
+					if(deliveryType != null && deliveryType != "")
+					{
+						r.Delivery_Type = deliveryType;
+					}
+
+					rrOrderType = r.Order_Type + "";
+					rrDeliveryType = r.Delivery_Type + "";
+					rrPR = r.PR + "";
+					rrCustName = r.Customer_Name + "";
+					rrCustType = r.Customer_Type + "";
+					rrCustAddress = r.Customer_Address + "";
+					rrItemName = r.Item_Name + "";
+					rrQty = r.Qty + "";
+					rrBin = r.Bin_Location + "";
+					if(rrBin == "null" || rrBin == "")
+					{
+						rrBin = origBinLocRr;
+					}
+					rrForCrate = r.For_Crate;
+					rrTargetDelivery = r.Target_Delivery;
+					if(rrTargetDelivery == null)
+					{
+						rrTargetDelivery = origTargetDelivRr;
+					}
+
+					// Matched on SO+SKU+rr_number (NOT Package_Order) so this never
+					// collides with/overwrites the ORIGINAL shipment's own gate row
+					// for the same SO+SKU+Package_Order â€” this is a distinct RR
+					// event referencing that package, not an edit of the original.
+					matchingGateRr = Sales_Order_Readiness_Gate[sales_order_number == rrSO && SKU == rrSKU && rr_number == rrJoined];
+					foundExistingRr = false;
+					for each gateRecRr in matchingGateRr
+					{
+						update gateRecRr
+						[
+							Order_Type=rrOrderType
+							Package_Order=origPkgNoForRr
+							Delivery_Type=rrDeliveryType
+							For_Crate=rrForCrate
+							payment_status="Yes"
+							customer_name=rrCustName
+							customer_type=rrCustType
+							customer_address=rrCustAddress
+							pr_number=rrPR
+							rr_number=rrJoined
+							Item_Name=rrItemName
+							Quantity=rrQty
+							Bin_Location=rrBin
+							Target_Delivery_Date=rrTargetDelivery
+						];
+						foundExistingRr = true;
+					}
+					if(foundExistingRr == false)
+					{
+						insert into Sales_Order_Readiness_Gate
+						[
+							sales_order_number=rrSO
+							Order_Type=rrOrderType
+							Package_Order=origPkgNoForRr
+							Delivery_Type=rrDeliveryType
+							For_Crate=rrForCrate
+							payment_status="Yes"
+							customer_name=rrCustName
+							customer_type=rrCustType
+							customer_address=rrCustAddress
+							pr_number=rrPR
+							rr_number=rrJoined
+							Item_Name=rrItemName
+							SKU=rrSKU
+							Quantity=rrQty
+							Bin_Location=rrBin
+							Target_Delivery_Date=rrTargetDelivery
+							Added_User=zoho.loginuser
+						];
+					}
+
+					rrResultMsg = "Linked to original package " + origPkgNoForRr + " (RR " + rrJoined + ") â€” no new Books package created";
+					// ADDED 2026-08-15, per user report ("still error") after the first
+					// direct-Books-lookup fix still fell through with no way to tell WHY from
+					// the widget's own toast/Network response alone (only Execution History
+					// shows `info` lines, and that's proven hard for the user to locate/use
+					// live). rrFallbackReason is set at every single point the real-package
+					// attempt can give up, so the actual API response itself is now
+					// self-diagnosing â€” no more guessing rounds needed.
+					if(origIsDispatched == true && rrFallbackReason != "")
+					{
+						rrResultMsg = rrResultMsg + " [real Books package skipped: " + rrFallbackReason + "]";
+					}
+					if(realBooksPkgCreated == true)
+					{
+						rrResultMsg = "Created NEW Books package " + origPkgNoForRr + " for RR " + rrJoined + " (original package " + origPkgNo + " reduced accordingly)";
+					}
+					// ADDED 2026-08-15, per user request ("can u create a report... para
+					// makita natin yung logs") â€” originally wrote the result message onto a
+					// new Last_Package_Result field. REMOVED 2026-08-15 â€” user chose not to
+					// add that field to Pre_Order_FF ("wag muna tayo mag lagay ng field"),
+					// and pasting this into the live createPackageFF Custom Function with
+					// the write still present threw "'Last_Package_Result' does not exist
+					// in 'r'... 'Pre_Order_FF' form" (same error the native-test copy hit
+					// first). The RR-DEBUG step1-7 info logs + rrFallbackReason in the
+					// message below already cover the same diagnostic need without any
+					// field at all â€” re-add this write (and the field in Zoho) later only
+					// if the user explicitly wants a persistent on-record log again.
+					resultList.add({"recordId":ridRr, "status":"success", "message":rrResultMsg});
+				}
+			}
+		}
+	}
+
+	// CHANGED 2026-07-29, real bug found live: "Error at line number: 74
+	// Invalid collection object found" â€” soGroups originally held actual
+	// Pre_Order_FF RECORD OBJECTS (`grpList.add(r)`), then a later dedup check
+	// read a field off one of those held objects (`rCheck.ID`) several nested
+	// loop boundaries away from where it was fetched â€” the exact documented
+	// "exotic object lifetime" Deluge gotcha already hit once before in this
+	// codebase (clone_shipment_for_replacement.txt's own "Invalid collection
+	// object found"): a query-result record held across 2+ nested loop
+	// boundaries then dot-read later. Fixed the proven way â€” never hold the
+	// record itself, only its plain ID STRING; soGroups now maps SO -> List of
+	// ID strings, and every place that needs real field data does a FRESH
+	// `Pre_Order_FF[ID==...]` fetch scoped to its own `for each` loop (same
+	// pattern the "apply Package_Number" block below already used safely).
+	soGroups = Map();
+	seenSoForExpand = List();
+	for each ridRaw in normalIdList
+	{
+		rid = ridRaw.trim();
+		if(rid == "")
+		{
+			continue;
+		}
+		for each r in Pre_Order_FF[ID == rid.toLong()]
+		{
+			soVal = r.SO;
+			rIdForGroup = r.ID + "";
+			if(soVal == null || soVal == "")
+			{
+				resultList.add({"recordId":rIdForGroup, "status":"error", "message":"Missing SO number on this record"});
+			}
+			else
+			{
+				grpList = List();
+				if(soGroups.containKey(soVal))
+				{
+					grpList = soGroups.get(soVal);
+				}
+				if(!grpList.contains(rIdForGroup))
+				{
+					grpList.add(rIdForGroup);
+				}
+				soGroups.put(soVal, grpList);
+
+				// ADDED 2026-07-29, per user ("only one created... they should both
+				// inside PAC-16341") â€” auto-include every OTHER not-yet-packaged item
+				// on this SAME SO via a FRESH server-side query, not just the exact
+				// IDs the client happened to send. Confirmed via live debugging: the
+				// widget-side "auto-expand to same SO" fix alone wasn't reliable
+				// enough â€” it depends on the WIDGET'S OWN cached record list being
+				// current at click time, which can lag behind real Creator data
+				// (browser caching, a list not yet re-fetched since a data patch,
+				// etc). Doing the expansion here instead â€” a live query at the exact
+				// moment the function runs â€” removes that whole class of staleness
+				// risk. `seenSoForExpand` guards against running this same expand
+				// query twice if 2 explicit IDs for the same SO were both in the
+				// input CSV.
+				if(!seenSoForExpand.contains(soVal))
+				{
+					seenSoForExpand.add(soVal);
+					for each rExpand in Pre_Order_FF[SO == soVal && Package_Number == "" && Pre_Order_Status == "Received"]
+					{
+						// ADDED 2026-08-13 â€” never auto-sweep an RR-tagged sibling into
+						// the Books group (see the RR split block above); it would hit
+						// the exact same "no headroom" rejection this whole change
+						// exists to avoid.
+						rExpandIsRr = false;
+						for each rExpandRrRow in rExpand.Replacement_Request
+						{
+							rExpandIsRr = true;
+						}
+						if(rExpandIsRr == true)
+						{
+							continue;
+						}
+						rExpandIdStr = rExpand.ID + "";
+						grpListCheck = soGroups.get(soVal);
+						if(!grpListCheck.contains(rExpandIdStr))
+						{
+							grpListCheck.add(rExpandIdStr);
+							soGroups.put(soVal, grpListCheck);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// process each SO group
+	for each soNo in soGroups.keys()
+	{
+		grpRecs = soGroups.get(soNo);   // List of ID strings now, not record objects â€” see the note above
+
+		soListResp = invokeurl
+		[
+			url : "https://www.zohoapis.com/books/v3/salesorders?organization_id=" + orgId + "&salesorder_number=" + soNo.toString().replaceAll(" ","%20")
+			type : GET
+			connection : "zhbooks3"
+		];
+		soList = soListResp.get("salesorders");
+		if(soList == null || soList.size() == 0)
+		{
+			for each ridInGrp in grpRecs
+			{
+				resultList.add({"recordId":ridInGrp, "status":"error", "message":"SO " + soNo + " not found in Books"});
+			}
+			continue;
+		}
+
+		soId = soList.get(0).get("salesorder_id");
+		soDetResp = invokeurl
+		[
+			url : "https://www.zohoapis.com/books/v3/salesorders/" + soId + "?organization_id=" + orgId
+			type : GET
+			connection : "zhbooks3"
+		];
+		soDetail = soDetResp.get("salesorder");
+		bookLines = soDetail.get("line_items");
+
+		lineItemsPayload = List();
+		matchedIds = List();
+		errMap = Map();
+		binCache = Map();   // (warehouse_id|bin_name) -> storage_id, resolved once per combo per run
+		seenInGroup = List();   // 2nd layer of dedup insurance â€” belt-and-suspenders on top of the idList dedupe above
+
+		for each ridInGrp2 in grpRecs
+		{
+			if(seenInGroup.contains(ridInGrp2))
+			{
+				continue;
+			}
+			seenInGroup.add(ridInGrp2);
+			for each r in Pre_Order_FF[ID == ridInGrp2.toLong()]
+			{
+			skuVal = r.SKU;
+			qtyVal = r.Qty.toDecimal();
+			matched = false;
+			for each bl in bookLines
+			{
+				blSku = bl.get("sku");
+				if(blSku == skuVal)
+				{
+					matched = true;
+					blQty = bl.get("quantity").toString().toDecimal();
+					blPacked = bl.get("quantity_packed").toString().toDecimal();
+					remaining = blQty - blPacked;
+					if(remaining < qtyVal)
+					{
+						errMap.put(r.ID + "", "Only " + remaining + " left to pack on SO " + soNo + " (requested " + qtyVal + ")");
+					}
+					else
+					{
+						lineMap = Map();
+						lineMap.put("so_line_item_id", bl.get("line_item_id"));
+						lineMap.put("quantity", qtyVal);
+
+						// Bin-tracked items REQUIRE a storages array or Books rejects the whole
+						// package with code 76014 "Associate bin details for item X" â€” confirmed
+						// live 2026-07-24. CHANGED 2026-07-29, per user ("use the bin location
+						// in creator to create both packages") â€” prefers THIS record's own
+						// Bin_Location (already known/populated by Receiving's own bin-push,
+						// e.g. "Receiving Area") over a hardcoded default, so the package's real
+						// storage assignment matches what Creator already shows. Falls back to
+						// "Receiving Area" only when the record's own Bin_Location is blank.
+						// Resolved once per (warehouse, target bin name) per run.
+						targetBinName = r.Bin_Location + "";
+						if(targetBinName == null || targetBinName == "")
+						{
+							targetBinName = "Receiving Area";
+						}
+						whId = bl.get("warehouse_id");
+						itemId = bl.get("item_id");
+						itemResp = invokeurl
+						[
+							url : "https://www.zohoapis.com/books/v3/items/" + itemId + "?organization_id=" + orgId
+							type : GET
+							connection : "zhbooks3"
+						];
+						itemObj = itemResp.get("item");
+						binTracked = false;
+						if(itemObj != null)
+						{
+							whList = itemObj.get("warehouses");
+							for each w in whList
+							{
+								if(w.get("warehouse_id") == whId)
+								{
+									binTracked = w.get("is_storage_location_enabled");
+									break;
+								}
+							}
+						}
+
+						if(binTracked == true)
+						{
+							binCacheKey = whId + "|" + targetBinName;
+							storageId = "";
+							if(binCache.containKey(binCacheKey))
+							{
+								storageId = binCache.get(binCacheKey);
+							}
+							else
+							{
+								stResp = invokeurl
+								[
+									url : "https://www.zohoapis.com/books/v3/settings/warehouses/" + whId + "/storagelocations?organization_id=" + orgId
+									type : GET
+									connection : "zhbooks3"
+								];
+								stLocs = stResp.get("storage_locations");
+								for each st in stLocs
+								{
+									if(st.get("name") == targetBinName)
+									{
+										storageId = st.get("storage_id");
+										break;
+									}
+								}
+								binCache.put(binCacheKey, storageId);
+							}
+
+							if(storageId != "")
+							{
+								storagesList = List();
+								storagesList.add({"storage_id":storageId, "out_quantity":qtyVal});
+								lineMap.put("storages", storagesList);
+							}
+							else
+							{
+								errMap.put(r.ID + "", "Item is bin-tracked but no '" + targetBinName + "' bin found at this warehouse â€” needs manual bin assignment in Books");
+							}
+						}
+
+						if(!errMap.containKey(r.ID + ""))
+						{
+							lineItemsPayload.add(lineMap);
+							matchedIds.add(r.ID + "");
+						}
+					}
+					break;
+				}
+			}
+			if(!matched)
+			{
+				errMap.put(r.ID + "", "SKU " + skuVal + " not found on SO " + soNo);
+			}
+			}
+		}
+
+		if(lineItemsPayload.size() > 0)
+		{
+			pkgBody = Map();
+			pkgBody.put("date", zoho.currentdate.toString("yyyy-MM-dd"));
+			pkgBody.put("line_items", lineItemsPayload);
+			// ADDED 2026-07-30, per user request â€” widget now collects a mandatory
+			// Delivery Type before Create Package (exact same picklist as Books' own
+			// `cf_delivery_type` custom field on the Package module, confirmed via
+			// so_fulfillment_sync.txt's own READ side of this same field â€” that script
+			// reads api_name "cf_delivery_type"; label-keyed write matches this app's
+			// own proven-working custom_fields write pattern, e.g.
+			// create_estimates_inq_action.txt's ucf1.put("label", ...)).
+			if(deliveryType != null && deliveryType != "")
+			{
+				pkgCfList = List();
+				pkgCf1 = Map();
+				pkgCf1.put("label", "Delivery Type");
+				pkgCf1.put("value", deliveryType);
+				pkgCfList.add(pkgCf1);
+				pkgBody.put("custom_fields", pkgCfList);
+			}
+
+			pkgResp = invokeurl
+			[
+				url : "https://www.zohoapis.com/books/v3/packages?organization_id=" + orgId + "&salesorder_id=" + soId
+				type : POST
+				parameters : pkgBody.toString()
+				connection : "zhbooks3"
+			];
+			pkgObj = pkgResp.get("package");
+			if(pkgObj != null)
+			{
+				pkgNo = pkgObj.get("package_number");
+				pkgIdVal = pkgObj.get("package_id") + "";
+				for each midRaw in matchedIds
+				{
+					for each r in Pre_Order_FF[ID == midRaw.toLong()]
+					{
+						// ADDED 2026-08-14, real live bug (SO-16476/PR-00006, "CUSTOMIZED
+						// (FLOOR LAMP)") â€” this POST always creates a genuinely fresh Books
+						// package object (no reuse/lookup logic anywhere in this file), but
+						// Books itself returned the SAME package_number as an earlier,
+						// already-Dispatched package for the same SO+SKU line (confirmed live
+						// via the native Pre Order Report â€” PR-00003 and PR-00006 both showed
+						// PAC-16497). Per user decision, the ORIGINAL already-sent package must
+						// NOT be touched/reduced in Books (risk: it may already be linked to a
+						// Shipment/Invoice) â€” instead, disambiguate on OUR OWN side only, so
+						// checker_checklist_qc_sync.txt's SO+SKU+PAC match (and every other
+						// PAC-keyed match in this pipeline â€” Readiness Gate/Pick1/Pack/QC) sees
+						// this as a genuinely separate package/delivery event, never merging its
+						// qty into the old one. Scans every OTHER Pre_Order_FF row for the same
+						// SO+SKU whose own Package_Number is either the bare pkgNo or an already-
+						// suffixed "pkgNo-N" (handles a 3rd+ collision on the same SKU, not just
+						// a 2nd), and appends the next free "-N" suffix if any collision exists.
+						// Books_Package_ID below is UNCHANGED â€” the real Books-side identifier
+						// stays accurate; only this display/matching Package_Number is suffixed.
+						// REFINED 2026-08-14, per user ("if pending pa to pwedeng old package or
+						// yung existing package ang gagamitin. if Dispatched na ang status niya
+						// dapat magcreate ng new package") â€” only counts as a real collision
+						// needing a NEW label when the package Books reused already has a
+						// DISPATCHED item on it (Order_Aggregation1.Item_Details, this SO+SKU+PAC,
+						// Dispatched==true). A still-pending sibling sharing the same package is
+						// fine/expected â€” nothing has physically shipped yet, so consolidating
+						// into the one package is the normal, desired case, no need to force a
+						// new label. dispatchedPacsForSku computed once (not per otherPoRec) â€”
+						// small, bounded by this SO's own Order_Aggregation1 record (normally
+						// just one).
+						dispatchedPacsForSku = List();
+						for each aggCheckRec in Order_Aggregation1[SO == r.SO]
+						{
+							for each aggCheckRow in aggCheckRec.Item_Details
+							{
+								if((aggCheckRow.SKU + "") == r.SKU && aggCheckRow.Dispatched == true)
+								{
+									dpPac = aggCheckRow.PAC + "";
+									if(!dispatchedPacsForSku.contains(dpPac))
+									{
+										dispatchedPacsForSku.add(dpPac);
+									}
+								}
+							}
+						}
+						pkgNoForRow = pkgNo;
+						pkgCollisionCount = 0;
+						for each otherPoRec in Pre_Order_FF[SO == r.SO && SKU == r.SKU && ID != r.ID]
+						{
+							otherPkgStr = otherPoRec.Package_Number + "";
+							if((otherPkgStr == pkgNo || otherPkgStr.startsWith(pkgNo + "-")) && dispatchedPacsForSku.contains(otherPkgStr))
+							{
+								pkgCollisionCount = pkgCollisionCount + 1;
+							}
+						}
+						if(pkgCollisionCount > 0)
+						{
+							pkgNoForRow = pkgNo + "-" + (pkgCollisionCount + 1);
+							info "Package number collision: Books returned " + pkgNo + " again for SO " + r.SO + " / SKU " + r.SKU + " but that package already has a DISPATCHED item on it â€” disambiguated to " + pkgNoForRow + " for this app's own tracking, original Books package left untouched.";
+						}
+						r.Package_Number = pkgNoForRow;
+						r.Books_Package_ID = pkgIdVal;
+						r.Select_To_Package = false;
+						// FIXED 2026-08-05, real gap found â€” deliveryType was collected by the
+						// widget and forwarded into the Books package's own custom field above,
+						// but never written back onto this native Pre_Order_FF record. Since
+						// Pre_Order1_Report (what PreOrderReport widget reads) is a report over
+						// this same form, its "Delivery Type" field in Sales Order Details was
+						// always blank as a result. gwDeliveryType below (used for the
+						// Readiness Gate push) reads r.Delivery_Type too, so it was always
+						// blank there as well â€” this one write fixes both.
+						if(deliveryType != null && deliveryType != "")
+						{
+							r.Delivery_Type = deliveryType;
+						}
+
+						gwPreOrderStatus = r.Pre_Order_Status + "";
+						if(gwPreOrderStatus == "Received")
+						{
+							gwSO = r.SO + "";
+							gwSKU = r.SKU + "";
+
+							// RESTORED 2026-07-30, per user request ("bring back when creating
+							// package successfully -> put it in Sales Order Readiness Gate
+							// again") â€” was removed 2026-07-29, now reinstated. Mirrors
+							// preorder_to_readiness_gate.txt's own Pre_Order_FF ->
+							// Sales_Order_Readiness_Gate upsert â€” kept as an inline,
+							// duplicate-but-consistent push here (not relying on that native
+							// Edited-trigger workflow firing off this Custom Function's own
+							// r.Package_Number write above, same "cross-form workflow trigger
+							// is unproven from inside a Custom Function" caution already
+							// documented elsewhere in this app) â€” same reasoning the
+							// Sales_Order_Fulfillment sync right below already uses.
+							// Match key is SO+SKU only (no Package_Order), same known,
+							// flagged-not-fixed limitation as preorder_to_readiness_gate.txt
+							// itself (docs/2026-07-29-partial-quantity-fulfillment-design.md
+							// â€” collides if the same SKU is packaged across 2 separate
+							// events) â€” restoring prior behavior only, not fixing that gap
+							// here. `rr_number` (Replacement_Request subform) deliberately
+							// left blank â€” reading a subform off a criteria-queried record
+							// inside a Custom Function is a separately-documented unreliable
+							// pattern, not worth the risk for one reference-only field.
+							gwOrderType = r.Order_Type + "";
+							gwDeliveryType = r.Delivery_Type + "";
+							// FIXED 2026-08-05, real bug found live (SO-16399, PAC-16408/PAC-16409 both
+							// showed payment_status="Paid" on the native Sales_Order_Readiness_Gate_Report
+							// instead of the real Yes/No/Partial vocabulary) â€” same stale-label-translation
+							// bug already fixed in so_fulfillment_to_readiness_gate.txt (see that file's own
+							// NOTES for the full writeup: Sales_Order_Readiness_Gate.payment_status no longer
+							// uses Paid/Partially Paid/Pending). Direct passthrough is correct â€” also fixes a
+							// SECOND bug that was here: the old check compared against "Partially" (with the
+							// extra "ly"), but the real value this app ever writes is "Partial" (no "ly", per
+							// payment_status_to_kanban/Temp.txt) â€” that branch could never have fired at all.
+							gwPaymentRaw = r.Status + "";
+							gwPaymentStatus = gwPaymentRaw;
+							gwPR = r.PR + "";
+							gwCustName = r.Customer_Name + "";
+							gwCustType = r.Customer_Type + "";
+							gwCustAddress = r.Customer_Address + "";
+							gwItemName = r.Item_Name + "";
+							gwQty = r.Qty + "";
+							gwBin = r.Bin_Location + "";
+							gwForCrate = r.For_Crate;
+							gwTargetDelivery = r.Target_Delivery;
+							// FIXED 2026-08-07 â€” same real bug/fix as so_fulfillment_to_readiness_gate.txt
+							// (see that file's own comment for the full writeup). Independent code path,
+							// must be fixed separately â€” confirmed not shared code.
+							matchingGateRecs = Sales_Order_Readiness_Gate[sales_order_number == gwSO && SKU == gwSKU && Package_Order == pkgNoForRow];
+							gwFoundExisting = false;
+							for each gateRec in matchingGateRecs
+							{
+								update gateRec
+								[
+									Order_Type=gwOrderType
+									Package_Order=pkgNoForRow
+									Delivery_Type=gwDeliveryType
+									For_Crate=gwForCrate
+									payment_status=gwPaymentStatus
+									customer_name=gwCustName
+									customer_type=gwCustType
+									customer_address=gwCustAddress
+									pr_number=gwPR
+									Item_Name=gwItemName
+									Quantity=gwQty
+									Bin_Location=gwBin
+									Target_Delivery_Date=gwTargetDelivery
+								];
+								gwFoundExisting = true;
+							}
+							if(gwFoundExisting == false)
+							{
+								insert into Sales_Order_Readiness_Gate
+								[
+									sales_order_number=gwSO
+									Order_Type=gwOrderType
+									Package_Order=pkgNoForRow
+									Delivery_Type=gwDeliveryType
+									For_Crate=gwForCrate
+									payment_status=gwPaymentStatus
+									customer_name=gwCustName
+									customer_type=gwCustType
+									customer_address=gwCustAddress
+									pr_number=gwPR
+									Item_Name=gwItemName
+									SKU=gwSKU
+									Quantity=gwQty
+									Bin_Location=gwBin
+									Target_Delivery_Date=gwTargetDelivery
+									Added_User=zoho.loginuser
+								];
+							}
+
+							// ===== INLINE Sales_Order_Fulfillment sync, added 2026-07-28 =====
+							// Per user request ("when package is created in Pre Order Report
+							// let's add it's number in Sales Order Report too").
+							// FIXED 2026-07-29, real bug found live â€” this used to match by
+							// SO_No ONLY, which meant creating a package for JUST 2 of a SO's 3
+							// items still overwrote the `Package` field on ALL 3 of that SO's
+							// Sales_Order_Fulfillment records â€” including the 3rd item's own,
+							// genuinely different, ALREADY-EXISTING package number (confirmed
+							// live: SO-16335's Aqi item had real PAC-16336, a brand-new
+							// FLOOR LAMP+STEPLGHT-only package PAC-16344 silently clobbered it
+							// to also show PAC-16344). Sales_Order_Fulfillment turned out to be
+							// one record PER ITEM after all (confirmed via live data â€” 3 separate
+							// records for one SO, each with exactly 1 row in its own
+							// Item_Details1), not one-per-SO as this block's original comment
+							// assumed â€” so the fix is a real per-item match: only update a
+							// Sales_Order_Fulfillment record whose own Item_Details1 actually
+							// contains the SKU that was just packaged.
+							sofMatches = Sales_Order_Fulfillment[SO_No == gwSO];
+							for each sofRec in sofMatches
+							{
+								sofSkuMatch = false;
+								for each sofRow in sofRec.Item_Details1
+								{
+									if((sofRow.SKU + "") == gwSKU)
+									{
+										sofSkuMatch = true;
+										break;
+									}
+								}
+								if(sofSkuMatch == true)
+								{
+									// FIXED 2026-08-05, same gap as the Pre_Order_FF write above â€”
+									// SO widget's own detail view also has a "Delivery Type" row
+									// reading Sales_Order_Fulfillment.Delivery_Type, always blank
+									// until now for the same reason.
+									update sofRec
+									[
+										Package=pkgNoForRow
+										Package_Date=zoho.currentdate
+										Delivery_Type=gwDeliveryType
+									];
+								}
+							}
+						}
+					}
+					resultList.add({"recordId":midRaw, "status":"success", "message":"Packaged as " + pkgNoForRow});
+				}
+			}
+			else
+			{
+				for each midRaw in matchedIds
+				{
+					resultList.add({"recordId":midRaw, "status":"error", "message":"Books package create failed: " + pkgResp.toString()});
+				}
+			}
+		}
+
+		for each ridInGrp3 in grpRecs
+		{
+			if(errMap.containKey(ridInGrp3))
+			{
+				resultList.add({"recordId":ridInGrp3, "status":"error", "message":errMap.get(ridInGrp3)});
+			}
+		}
+	}
+
+	response = Map();
+	response.put("results", resultList);
+	return response;
+}
+
+````

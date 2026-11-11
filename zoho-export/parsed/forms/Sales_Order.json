@@ -1,0 +1,262 @@
+{
+  "name": "Sales_Order",
+  "label": "Sales Order",
+  "successMessage": "Data Added Successfully!",
+  "line": 13033,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Sales_Order_Record_Id",
+      "label": "Sales Order Record Id",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order_Number",
+      "label": "Sales Order Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Branch",
+      "label": "Branch",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Order_Status",
+      "label": "Order Status",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Invoice_Status",
+      "label": "Invoice Status",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Payment_Status",
+      "label": "Payment Status",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipment_Status",
+      "label": "Shipment Status",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Person",
+      "label": "Sales Person",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Agent",
+      "label": "Sales Agent",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Project_Name",
+      "label": "Project Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Design_Company",
+      "label": "Design Company",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Design_Architect",
+      "label": "Design/ Architect",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Design_Partner",
+      "label": "Design Partner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Commission",
+      "label": "Commission",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Type",
+      "label": "Customer Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Order_Type",
+      "label": "Order Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Reason_For_Replacement",
+      "label": "Reason For Replacement",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Original_Sales_Order",
+      "label": "Original Sales Order",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Project_Type",
+      "label": "Project Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Target_Delivery_Date",
+      "label": "Target Delivery Date",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "For_Crate",
+      "label": "For Crate",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "If_Rush_Order",
+      "label": "If Rush Order",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Business_Partner",
+      "label": "Business Partner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Billing_Address_Section",
+      "label": "Billing Address Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Billing_Address_Section1",
+      "label": "Billing Street 1",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Billing_Street_2",
+      "label": "Billing Street 2",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Billing_City",
+      "label": "Billing City",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Billing_State",
+      "label": "Billing State",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Billing_Zip",
+      "label": "Billing Zip",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Billing_Country",
+      "label": "Billing Country",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Billing_Phone",
+      "label": "Billing Phone",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipping_Address_Section",
+      "label": "Shipping Address Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Shipping_Street_1",
+      "label": "Shipping Street 1",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipping_Street_2",
+      "label": "Shipping Street 2",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipping_City",
+      "label": "Shipping City",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipping_State",
+      "label": "Shipping State",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipping_Zip",
+      "label": "Shipping Zip",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipping_Country",
+      "label": "Shipping Country",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipping_Phone",
+      "label": "Shipping Phone",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

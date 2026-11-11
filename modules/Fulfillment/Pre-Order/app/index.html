@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pre Order Report</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  View-only report: reads records from the "Pre_Order1_Report" report
+  (form: Pre_Order_FF), latest first.
+
+  1. Zoho Creator → Settings → Widgets → New Widget → "Upload HTML". Zip this file and upload.
+  2. CONFIG.APP_NAME below is already set to "supply-chain-app" to match the other
+     widget in this app. Change it if this ever moves to a different app.
+  3. Add the widget to a page.
+  4. Opening this file directly in a browser runs PREVIEW MODE with sample data.
+
+  Uses JS API v2 (ZOHO.CREATOR.DATA.getRecords) with field_config: "all" so subform/
+  grid fields come back as raw rows instead of a report-formula string — same
+  approach as the Sales Order Report widget.
+
+  Timeline History + Internal Conversation cards SHARE the same SOF_Timeline /
+  SOF_Internal_Messages forms UI/FF Widget/SO writes into (per user request,
+  2026-08-25) — safe since Creator record IDs are globally unique across the
+  app. Each row carries a From field (Single Line, add manually if missing) so
+  the shared report stays distinguishable — see internal-notes_component/
+  README.md's "Sharing one form across widgets" section.
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="notification_component/notification.css">
+<link rel="stylesheet" href="timeline_history_component/timeline-history.css">
+<link rel="stylesheet" href="internal-notes_component/internal-notes.css">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+        boxShadow: { card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)' }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { height: 100%; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  @keyframes toast-in { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
+  .toast-in { animation: toast-in .18s ease-out; }
+</style>
+<script>
+/* ════════════════════════════════
+   PR ON HOLD — PR On Hold plan, Phase 3 (ADDED 2026-10-01)
+   A PR can be put On Hold / Cancelled in the Purchase Request widget
+   (Purchase_Request1.Hold_Status). Every line in this widget carries its PR No,
+   so this looks up the held PRs and lets the widget badge and lock just that
+   line. Read-only here: Hold / Resume / Cancel / Restore live only in the
+   Purchase Request widget.
+════════════════════════════════ */
+var PRHold = (function(){
+  var map = {}, busy = false, waiters = [];
+  function v(x){
+    if(x===null||x===undefined) return '';
+    if(typeof x==='object') return x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'';
+    return String(x);
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function zh(){ try{ return typeof LANG!=='undefined' && LANG==='zh'; }catch(e){ return false; } }
+  function key(prNo){ return String(prNo===null||prNo===undefined ? '' : prNo).trim(); }
+  /* Re-fetches every call (cheap: only held PRs match), so a Resume/Restore shows up
+     on the next list load. A failed fetch keeps the last known map. */
+  function load(cb){
+    if(cb) waiters.push(cb);
+    if(busy) return;
+    busy = true;
+    function done(next){
+      if(next) map = next;
+      busy = false;
+      var w = waiters; waiters = [];
+      w.forEach(function(f){ try{ f(); }catch(e){ console.warn('[PRHold] callback error', e); } });
+    }
+    if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function'){ done(null); return; }
+    ZOHO.CREATOR.DATA.getRecords({ report_name:'All_Purchase_Request', criteria:'(Hold_Status == "On Hold" || Hold_Status == "Cancelled")', field_config:'all', max_records:200 })
+      .then(function(resp){
+        var next = {};
+        if(resp && resp.code===3000 && Array.isArray(resp.data)){
+          resp.data.forEach(function(r){
+            var pr = key(v(r.PR_No)), st = v(r.Hold_Status);
+            if(pr && (st==='On Hold' || st==='Cancelled')) next[pr] = { state:st, reason:v(r.Hold_Reason), date:v(r.Hold_Date) };
+          });
+        }
+        done(next);
+      })
+      .catch(function(err){
+        /* 9220 = no PR is held right now, which is a real (empty) answer. */
+        var empty = false;
+        try{
+          var txt = err && (err.responseText || (err.content && err.content.responseText));
+          var p = txt ? JSON.parse(txt) : err;
+          if(p && String(p.code)==='9220') empty = true;
+        }catch(e){}
+        if(!empty) console.warn('[PRHold] could not load held PRs:', err);
+        done(empty ? {} : null);
+      });
+  }
+  function state(prNo){ var m = map[key(prNo)]; return m ? m.state : ''; }
+  function locked(prNo){ return !!state(prNo); }
+  function label(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消' : 'CANCELLED';
+    return zh() ? '暂停' : 'ON HOLD';
+  }
+  function text(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消 — 客户已取消此产品，请勿继续。' : 'CANCELLED — the client cancelled this item. Do not proceed.';
+    return zh() ? '暂停 — 客户已暂停此产品，请勿继续。' : 'ON HOLD — the client paused this item. Do not proceed.';
+  }
+  function badge(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    var m = map[key(prNo)];
+    var c = s==='Cancelled' ? 'background:#FEE2E2;color:#DC2626;border:1px solid #FCA5A5' : 'background:#FEF3C7;color:#92400E;border:1px solid #FCD34D';
+    var tip = text(prNo) + (m.date ? ' (' + m.date + ')' : '');
+    return ' <span class="pr-hold-badge" title="'+esc(tip)+'" style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;'+c+'">'+label(prNo)+'</span>';
+  }
+  /* Which of these PR numbers are held (for PO / shipment level summaries). */
+  function heldOf(prNos){ return (prNos||[]).filter(function(p){ return locked(p); }); }
+  return { load:load, state:state, locked:locked, label:label, text:text, badge:badge, heldOf:heldOf };
+})();
+</script>
+</head>
+<body class="min-h-full bg-slate-100 text-slate-800 antialiased">
+
+  <!-- Preview-mode banner -->
+  <div id="previewBanner" class="hidden bg-amber-400/90 text-amber-950 text-xs sm:text-sm font-medium px-4 py-2 flex items-center justify-center gap-2 text-center">
+    <span>🔧 Preview mode — showing sample data. Open this widget inside Zoho Creator to load live records.</span>
+  </div>
+
+  <!-- CHANGED 2026-08-20, per user report ("ito hindi pa ayos") — this widget turned
+       out to be a DIFFERENT, newer build than the one fixed earlier the same day
+       (this one has notification_component + the 2026-08-03 List/Groupings tabs;
+       the version fixed earlier had neither) — the earlier fix simply never landed
+       in the file actually being tested/uploaded. Re-applying the identical fix
+       here: same missing-border/unframed-page pattern as every other widget fixed
+       today. #reportCard already had a real border, wasn't stretching to fill the
+       remaining page height. -->
+  <div id="listView" class="w-full px-4 sm:px-6 py-5 min-h-screen flex flex-col">
+
+    <!-- Top header -->
+    <header id="topHeader" class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5 shrink-0">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Pre Order Report</h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Latest Added First ·
+          <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+          </span>
+        </p>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+          <span id="pendingCount">0</span> Pending
+        </span>
+        <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+          <span id="receivedCount">0</span> Received
+        </span>
+      </div>
+    </header>
+
+    <!-- Stat cards -->
+    <div id="statCards" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 shrink-0" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"></div>
+
+    <!-- Create Package sticky bar — shown only while >=1 Ready row is checked -->
+    <div id="createPackageBar" class="hidden sticky top-2 z-10 mb-4 bg-slate-900 text-white rounded-xl px-4 py-3 shadow-lg flex items-center justify-between shrink-0">
+      <span class="text-sm font-medium"><span id="selectedCount">0</span> item(s) selected</span>
+      <button id="createPackageBtn" class="bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold rounded-lg px-4 py-2 transition">Create Package</button>
+    </div>
+
+    <!-- Tabs (List / Groupings) + shared search/sort — sits above BOTH views so
+         switching tabs doesn't lose the current search text or sort direction.
+         ADDED 2026-08-03, per user request (same feature as UI/FF Widget/SO). -->
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 shrink-0">
+      <div id="viewTabs" class="flex items-center gap-2">
+        <button id="tabListBtn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 text-white transition">List</button>
+        <button id="tabGroupingsBtn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition">Groupings</button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="soSortBtn" class="text-xs font-semibold px-3 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition whitespace-nowrap">
+          Sort: <span id="soSortLabel">Latest Activity</span>
+        </button>
+        <div class="relative">
+          <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+          </svg>
+          <input id="searchInput" type="text" placeholder="Search SO#, PR#, customer, SKU…"
+            class="w-56 sm:w-64 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Report card -->
+    <div id="reportCard" class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex-1 min-h-0 flex flex-col">
+
+      <div id="tableToolbar" class="flex items-center px-5 py-4 border-b border-slate-100 shrink-0">
+        <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase">Pre-Order List</h2>
+      </div>
+
+      <div class="overflow-auto flex-1 min-h-0">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
+              <th class="px-3 py-2.5 font-bold w-8"></th>
+              <th class="px-5 py-2.5 font-bold">Pre-Order Status</th>
+              <th class="px-3 py-2.5 font-bold">Payment Status</th>
+              <th class="px-3 py-2.5 font-bold">SO #</th>
+              <th class="px-3 py-2.5 font-bold">PR #</th>
+              <th class="px-3 py-2.5 font-bold">Package #</th>
+              <th class="px-3 py-2.5 font-bold">Item Name</th>
+              <th class="px-3 py-2.5 font-bold">SKU</th>
+              <th class="px-3 py-2.5 font-bold text-right">Qty</th>
+              <th class="px-3 py-2.5 font-bold">Order Type</th>
+              <th class="px-3 py-2.5 font-bold">Target Delivery</th>
+              <th class="px-3 py-2.5 font-bold">Forecast</th>
+              <th class="px-5 py-2.5 font-bold">Added Time</th>
+              <th class="px-5 py-2.5 font-bold text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-50"></tbody>
+        </table>
+      </div>
+
+      <div id="paginationBar" class="flex items-center px-5 py-3 border-t border-slate-100 text-xs text-slate-500 shrink-0">
+        <span>Total Count: <strong id="totalCount" class="text-slate-700">0</strong></span>
+      </div>
+    </div>
+
+    <!-- Groupings view — one card per SO #, ADDED 2026-08-03 per user request
+         (same feature as UI/FF Widget/SO). Hidden by default. -->
+    <div id="groupingsView" class="hidden shrink-0">
+      <div class="flex items-center justify-between px-1 pb-3">
+        <span class="text-xs font-semibold text-slate-500"><span id="groupingsCount">0</span> Sales Order(s)</span>
+      </div>
+      <div id="groupingsBody" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- Pre Order Detail view -->
+  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+      <div class="flex items-center gap-2 font-semibold text-slate-600">
+        <span>HC Systems</span><span class="text-slate-300">/</span><span>Pre Order Detail</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">
+        ← Back to Pre Order Dashboard
+      </button>
+      <span class="text-slate-300">|</span>
+      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="detailSoNo" class="text-xl font-bold text-slate-900"></h2>
+              <p id="detailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+              <p id="detailSubline" class="text-xs text-slate-400 mt-1"></p>
+            </div>
+            <div id="detailPackageAction" class="flex flex-col items-end gap-2 shrink-0"></div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📈 Pre-Order Status</h3>
+          <div id="detailStepper" class="flex items-start overflow-x-auto pb-1"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase">🔁 Replacement Requests</h3>
+            <span id="rrCount" class="text-[11px] text-slate-400">0 requests</span>
+          </div>
+          <div id="detailReplacementRequest" class="space-y-3"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="detailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div id="detailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div id="detailItemFields" class="grid grid-cols-1 sm:grid-cols-4 gap-x-6 gap-y-4"></div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1 space-y-4">
+        <!-- Timeline History + Internal Conversation — merged 2026-08-25, same
+             recipe as UI/FF Widget/SO, replacing the never-wired "Internal
+             Conversation" stub (COMMENTS_CONFIG was always TODO_-prefixed).
+             Threaded by this record's own Creator ID (Pre_Order_FF row) — same
+             fix already proven on SO (a business-field key like PAC# can be
+             blank pre-packaging; record ID never is). Plain mounts, no wrapping
+             card — both components render their own card chrome. -->
+        <div id="tlhcMount"></div>
+        <div id="incMount"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+  <!-- Confirm modal -->
+  <div id="confirmOverlay" class="hidden fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5">
+      <h3 class="text-sm font-bold text-slate-900 mb-1">Create Package?</h3>
+      <p id="confirmMessage" class="text-sm text-slate-600 mb-3"></p>
+      <div class="mb-4">
+        <label for="confirmDeliveryType" class="block text-xs font-semibold text-slate-600 mb-1">Delivery Type <span class="text-rose-500">*</span></label>
+        <select id="confirmDeliveryType" class="w-full text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 px-3 py-2 transition">
+          <option value="">— Select —</option>
+          <option value="Rush Order">Rush Order</option>
+          <option value="Delivery - Metro Manila">Delivery - Metro Manila</option>
+          <option value="Delivery - Provincial Crate">Delivery - Provincial Crate</option>
+          <option value="Delivery - Provincial Non-Crate">Delivery - Provincial Non-Crate</option>
+          <option value="Delivery & Installation - Metro Manila">Delivery & Installation - Metro Manila</option>
+          <option value="Delivery & Installation - Provincial">Delivery & Installation - Provincial</option>
+          <option value="Demo">Demo</option>
+          <option value="Demo - Design Partner">Demo - Design Partner</option>
+          <option value="Pick Up">Pick Up</option>
+          <option value="Repair">Repair</option>
+          <option value="Replacement">Replacement</option>
+          <option value="Service">Service</option>
+        </select>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button id="confirmCancelBtn" class="text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5 transition">Cancel</button>
+        <button id="confirmYesBtn" class="text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-400 rounded-lg px-3 py-1.5 transition">Create Package</button>
+      </div>
+    </div>
+  </div>
+
+<div id="notifMount"></div>
+<script src="notification_component/notification.js"></script>
+<script src="timeline_history_component/timeline-history.js"></script>
+<script src="internal-notes_component/internal-notes.js"></script>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // CONFIG
+  // ---------------------------------------------------------------------
+  const CONFIG = {
+    APP_NAME: "supply-chain-app",
+    REPORT_NAME: "Pre_Order1_Report",
+    FORM_NAME: "Pre_Order_FF",
+    MAX_RECORDS: 1000,   // JS API v2 single-call ceiling; add cursor pagination if this app ever exceeds it
+    // Custom API for "Create Package" — see DelugeScripts/preorder_create_package.txt.
+    // Fill in the real key once the Custom API is created live in Creator (Draft-state
+    // gotcha: confirm it shows Enabled, not Draft, before testing).
+    CUSTOM_API_NAME_CREATE_PACKAGE: "create_package_ff",
+    CUSTOM_API_KEY_CREATE_PACKAGE: "Pjfmdx8ZaDWkrXEYpdBuwbCmg",
+  };
+
+  // Notification bell — same pattern as UI/FF Widget/SO, deliberately its OWN
+  // isolated report (PreOrder_Notifications_Report), NOT the shared App_Notifications
+  // the EndUser widget family (PRs/INQs/Shipments) uses, and NOT SO's own
+  // SO_Notifications either — per user (2026-08-03), every FF module gets an
+  // independent notification stream scoped to just that module.
+  let CURRENT_USER_EMAIL = "";
+  let ZC_ENV = "development";
+
+  // Standard-response Custom APIs wrap the function's returned Map under "result",
+  // not "data" — confirmed gotcha in this app (see CLAUDE.md Deluge Gotchas). Check
+  // data first in case some other response shape uses it, then result, then raw.
+  function invokeCustomApi(apiName, publicKey, params) {
+    return ZOHO.CREATOR.DATA.invokeCustomApi({
+      app_name: CONFIG.APP_NAME,
+      api_name: apiName,
+      public_key: publicKey,
+      http_method: "POST",
+      payload: params || {},
+    }).then((resp) => (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp);
+  }
+
+  // Timeline History + Internal Conversation — merged 2026-08-25, same recipe as
+  // UI/FF Widget/SO. Threaded by this record's own Creator ID rather than any
+  // business field — a business field like SO's own PAC# can be blank
+  // pre-packaging, and internal-notes.js's _send() silently no-ops on a blank
+  // parent (real bug found + fixed live on SO). Record ID is always present.
+  // REPOINTED 2026-08-25, per user request ("reuse SOF forms") — shares the SAME
+  // SOF_Timeline/SOF_Internal_Messages forms SO already uses instead of its own
+  // dedicated PreOrder_Timeline/PreOrder_Internal_Messages (never created). Safe:
+  // Creator record IDs are globally unique across the whole app (confirmed via
+  // observed ID patterns), so a Sales_Order_Fulfillment row ID and a Pre_Order_FF
+  // row ID can never collide even sharing one report. parentField stays "Package"
+  // (SOF's own real field link name) even though the value written here is a
+  // plain record ID, not a literal PAC# — sourceLabel below tags every row with
+  // which widget wrote it, since a human browsing the shared report natively in
+  // Zoho Creator otherwise can't tell SO rows from PreOrderReport rows apart.
+  var poTimeline = TimelineHistory.init({
+    mountId: "tlhcMount",
+    appName: () => CONFIG.APP_NAME,
+    formName: "SOF_Timeline",
+    reportName: "SOF_Timeline_Report",
+    parentField: "Package",
+    actor: "FF Officer",
+    title: "Timeline History",
+    sourceLabel: "Pre Order FF",
+  });
+  var internalNotes = InternalNotes.init({
+    mountId: "incMount",
+    appName: () => CONFIG.APP_NAME,
+    formName: "SOF_Internal_Messages",
+    reportName: "SOF_Internal_Messages_Report",
+    parentField: "Package",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    roleMap: {
+      "hcinvanalyst@gmail.com": "HC Systems",
+      "homecartelff@gmail.com": "HC Pack & Fulfill",
+      "homecartelsales@gmail.com": "HC Sales",
+    },
+    mentionableMap: {
+      "homecartelpacker@gmail.com": "HC Purchasing",
+      "hcdamageofficer@gmail.com": "HC Damage Officer",
+    },
+    title: "Internal Conversation",
+    sourceLabel: "Pre Order FF",
+  });
+
+  const PALETTE = {
+    amber:   { border: "border-amber-400",   text: "text-amber-600",   badgeBg: "bg-amber-50",   badgeText: "text-amber-700",   badgeBorder: "border-amber-200",   dot: "bg-amber-500" },
+    emerald: { border: "border-emerald-400", text: "text-emerald-600", badgeBg: "bg-emerald-50", badgeText: "text-emerald-700", badgeBorder: "border-emerald-200", dot: "bg-emerald-500" },
+    blue:    { border: "border-blue-400",    text: "text-blue-600",    badgeBg: "bg-blue-50",    badgeText: "text-blue-700",    badgeBorder: "border-blue-200",    dot: "bg-blue-500" },
+    rose:    { border: "border-rose-400",    text: "text-rose-600",    badgeBg: "bg-rose-50",    badgeText: "text-rose-700",    badgeBorder: "border-rose-200",    dot: "bg-rose-500" },
+    slate:   { border: "border-slate-300",   text: "text-slate-500",   badgeBg: "bg-slate-50",   badgeText: "text-slate-500",   badgeBorder: "border-slate-200",   dot: "bg-slate-400" },
+  };
+
+  const PRE_ORDER_STATUS_COLOR = { "Pending": "amber", "Received": "emerald" };
+  /* FIXED 2026-08-05, real bug found live: this const had "Partially" as a key, but
+     the real aggregated value written by Books' payment_status_to_kanban workflow is
+     "Partial" (no "ly") — the key never matched, so a genuinely Partial-status record
+     always fell back to the generic "slate" color. Renamed to match ReadinessGate
+     widget's own already-correct PAYMENT_STATUS_COLOR/LABEL convention exactly, reused
+     here so both widgets show the same Paid/Pending/Partial labels for the same
+     underlying Yes/No/Partial values. */
+  const PAYMENT_STATUS_COLOR = { "Yes": "emerald", "Partial": "amber", "No": "rose" };
+  const PAYMENT_STATUS_LABEL = { "Yes": "Paid", "No": "Pending", "Partial": "Partial" };
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  let allRecords = [];
+  let orderedRows = [];
+  let previewMode = false;
+  let currentDetailRecord = null;
+  // ADDED 2026-09-03 — clickable stat cards (see renderStats()/matchesStat()
+  // below): which card, if any, the List/Groupings tabs are currently
+  // filtered to. null = no filter.
+  let statFilter = null;
+  // ADDED 2026-08-03, per user request (same feature as UI/FF Widget/SO) —
+  // 3-state cycle: 'recent' preserves this widget's original default (latest
+  // Added_Time first, flat/ungrouped), 'asc'/'desc' are the new SO#-based
+  // modes. List tab stays flat either way (this widget never grouped by SO
+  // visually); the new Groupings tab is the one that actually groups.
+  let soSortDir = "recent"; // 'recent' | 'asc' | 'desc'
+  let currentTab = "list"; // 'list' | 'groupings'
+
+  const tableBody = document.getElementById("tableBody");
+  const statCards = document.getElementById("statCards");
+  const searchInput = document.getElementById("searchInput");
+
+  // ---------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------
+  function displayVal(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    if (typeof v === "object") return v.zc_display_value || v.display_value || v.ID || "—";
+    return String(v);
+  }
+
+  function isTrue(v) {
+    return v === true || v === "true";
+  }
+
+  // ---------------------------------------------------------------------
+  // Readiness — structural/cheap check only (no Books API call from here,
+  // avoids burning this app's own tight invokeurl daily quota on every list
+  // render). The REAL/authoritative check (does the SO actually exist in
+  // Books, is the SKU really on it, is there enough qty left to pack) runs
+  // server-side inside createPackageFF at click time — this badge is just a
+  // pre-flight signal so the user doesn't select rows that can't possibly work.
+  // ---------------------------------------------------------------------
+  // PR On Hold (plan Phase 4, ADDED 2026-10-01) — the item's PR can be On Hold or
+  // Cancelled in the Purchase Request widget. Looked up live by this row's own PR #
+  // (PRHold, see <head>), so no extra field on Pre_Order_FF and nothing to sync.
+  // Pre_Order_Status itself is never overwritten: a held item that has arrived
+  // shows "Received – On Hold" and returns to plain "Received" on Resume.
+  function prHoldStateOf(r) {
+    const pr = displayVal(r.PR);
+    return pr === "—" ? "" : PRHold.state(pr);
+  }
+  function preOrderStatusBadge(r, emptyHtml) {
+    const hs = prHoldStateOf(r);
+    if (hs === "Cancelled") return badgePill("Cancelled (PR)", "rose");
+    if (hs === "On Hold") return badgePill(r.Pre_Order_Status === "Received" ? "Received – On Hold" : "On Hold", "slate");
+    return r.Pre_Order_Status ? badgePill(r.Pre_Order_Status, PRE_ORDER_STATUS_COLOR[r.Pre_Order_Status] || "slate") : emptyHtml;
+  }
+
+  function readinessOf(r) {
+    if (displayVal(r.Package_Number) !== "—") return { state: "packaged", label: "Packaged" };
+    // Held/cancelled items are never Ready: this one gate keeps them out of the
+    // checkbox, both Create Package buttons, and the same-SO auto-include.
+    const holdState = prHoldStateOf(r);
+    if (holdState) return { state: "on_hold", label: holdState === "Cancelled" ? "Cancelled in Purchase Request" : "Item is On Hold in Purchase Request" };
+    // ADDED 2026-07-28, per user ("Pre-Order Status = Pending - Create Package button
+    // should be disabled") — a row was previously marked "Ready" (checkbox + both
+    // Create Package buttons enabled) purely off SO/SKU/Qty, with no check at all on
+    // whether the pre-order stock has actually arrived (Pre_Order_Status). Real gap —
+    // Received is required before a real Books package can meaningfully be created.
+    if (r.Pre_Order_Status !== "Received") return { state: "not_received", label: "Not Received Yet" };
+    const soOk = displayVal(r.SO) !== "—";
+    const skuOk = displayVal(r.SKU) !== "—";
+    const qtyOk = parseFloat(r.Qty) > 0;
+    if (soOk && skuOk && qtyOk) return { state: "ready", label: "Ready" };
+    const missing = [];
+    if (!soOk) missing.push("SO");
+    if (!skuOk) missing.push("SKU");
+    if (!qtyOk) missing.push("Qty");
+    return { state: "incomplete", label: "Missing " + missing.join("/") };
+  }
+
+  function readinessBadge(r) {
+    const info = readinessOf(r);
+    const color = info.state === "ready" ? "emerald" : info.state === "packaged" ? "blue" : info.state === "not_received" ? "amber" : info.state === "on_hold" ? "slate" : "rose";
+    return badgePill(info.label, color);
+  }
+
+  function toggleSelectToPackage(recordId, checked) {
+    const config = {
+      report_name: CONFIG.REPORT_NAME,
+      id: String(recordId),
+      payload: { data: { Select_To_Package: checked } },
+    };
+    return ZOHO.CREATOR.DATA.updateRecordById(config).then((resp) => {
+      console.log("[PreOrder] updateRecordById resp:", JSON.stringify(resp));
+      if (resp && resp.code === 3000) {
+        const rec = allRecords.find((rr) => String(rr.ID) === String(recordId));
+        if (rec) rec.Select_To_Package = checked;
+        updateSelectedBar();
+      } else {
+        toast("Couldn't update selection.", "error");
+      }
+      return resp;
+    }).catch((err) => {
+      console.error(err);
+      toast("Couldn't update selection.", "error");
+    });
+  }
+
+  function updateSelectedBar() {
+    const selected = orderedRows.filter((r) => isTrue(r.Select_To_Package) && readinessOf(r).state === "ready");
+    const bar = document.getElementById("createPackageBar");
+    const countEl = document.getElementById("selectedCount");
+    if (!bar) return;
+    if (selected.length > 0) {
+      bar.classList.remove("hidden");
+      countEl.textContent = selected.length;
+    } else {
+      bar.classList.add("hidden");
+    }
+  }
+
+  // FIXED 2026-07-29, real bug found live ("i selected both items... it is
+  // still creating 1 package per item") — `toggleSelectToPackage()` persists
+  // Select_To_Package via an ASYNC updateRecordById call and only updates the
+  // in-memory `orderedRows`/`allRecords` record inside that promise's own
+  // `.then()`. Checking 2 boxes in quick succession then immediately clicking
+  // "Create Package" could race ahead of the 2nd checkbox's own persist —
+  // `runCreatePackage()`'s filter over `orderedRows` would then only see ONE
+  // of the two as selected, silently package just that one, and the 2nd
+  // click (for the still-checked other box) would create a SEPARATE package
+  // — 2 packages for 1 SO instead of the intended 1 combined package. Fixed
+  // by syncing the CURRENT on-screen checkbox state into `orderedRows`
+  // synchronously at click time, ahead of the async persist catching up —
+  // what's visually checked is always what gets sent, no race.
+  function syncSelectionFromDOM() {
+    document.querySelectorAll(".select-package-cb").forEach((cb) => {
+      const rec = orderedRows.find((x) => String(x.ID) === String(cb.dataset.id));
+      if (rec) rec.Select_To_Package = cb.checked;
+    });
+  }
+
+  // ADDED 2026-07-29, per user ("it should create package for both selected
+  // items that is not unpacked yet in that SO") — belt-and-suspenders on top
+  // of the syncSelectionFromDOM() race fix above: whatever set of rows is
+  // actually selected, auto-pull in every OTHER not-yet-packaged+ready row
+  // sharing the SAME SO, even if its own checkbox wasn't ticked. Guarantees
+  // "package everything still outstanding on this SO" in one shot regardless
+  // of exactly which boxes were checked at click time — removes the whole
+  // class of "only some of what I meant to include actually got sent" bug.
+  function expandSelectionToSameSO(selected) {
+    const soSet = new Set(selected.map((r) => displayVal(r.SO)));
+    return orderedRows.filter((r) => soSet.has(displayVal(r.SO)) && readinessOf(r).state === "ready");
+  }
+
+  function runCreatePackage() {
+    syncSelectionFromDOM();
+    let selected = orderedRows.filter((r) => isTrue(r.Select_To_Package) && readinessOf(r).state === "ready");
+    if (!selected.length) {
+      toast("Check at least one Ready item first.", "error");
+      return;
+    }
+    selected = expandSelectionToSameSO(selected);
+    if (CONFIG.CUSTOM_API_KEY_CREATE_PACKAGE.startsWith("REPLACE_WITH")) {
+      toast("Custom API key not configured yet.", "error");
+      return;
+    }
+    const soList = [...new Set(selected.map((r) => displayVal(r.SO)))];
+    const msg = `This creates ${soList.length > 1 ? soList.length + " real Books packages (1 per SO)" : "a real Books package"} for ${selected.length} item(s) across SO ${soList.join(", ")} — every not-yet-packaged item on the same SO is included automatically. Cannot be undone from here. Continue?`;
+    showConfirm(msg, (deliveryType) => doCreatePackage(deliveryType));
+  }
+
+  function doCreatePackage(deliveryType) {
+    syncSelectionFromDOM();
+    let selected = orderedRows.filter((r) => isTrue(r.Select_To_Package) && readinessOf(r).state === "ready");
+    if (!selected.length) return;
+    selected = expandSelectionToSameSO(selected);
+    const btn = document.getElementById("createPackageBtn");
+    btn.disabled = true;
+    btn.textContent = "Creating…";
+
+    const recordIdsCsv = selected.map((r) => r.ID).join(",");
+    invokeCustomApi(CONFIG.CUSTOM_API_NAME_CREATE_PACKAGE, CONFIG.CUSTOM_API_KEY_CREATE_PACKAGE, { recordIdsCsv, deliveryType })
+      .then((data) => {
+        const results = (data && data.results) || [];
+        const successCount = results.filter((x) => x.status === "success").length;
+        const errorRows = results.filter((x) => x.status === "error");
+        if (successCount) toast(`${successCount} item(s) packaged.`, "success");
+        if (errorRows.length) {
+          console.warn("Create Package errors:", errorRows);
+          toast(`${errorRows.length} item(s) failed — see console for details.`, "error");
+        }
+        btn.disabled = false;
+        btn.textContent = "Create Package";
+        loadLive();
+      })
+      .catch((err) => {
+        console.error(err);
+        toast("Create Package failed — see console.", "error");
+        btn.disabled = false;
+        btn.textContent = "Create Package";
+      });
+  }
+
+  function parseZohoDateTime(str) {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const mon = months[m[2]];
+      if (mon !== undefined) {
+        return new Date(+m[3], mon, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+      }
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  }
+
+  function formatDate(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function formatDateTime(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${datePart} ${timePart}`;
+  }
+
+  function isOverdue(r) {
+    const d = parseZohoDateTime(r.Target_Delivery);
+    if (!d) return false;
+    const today = new Date(); today.setHours(0,0,0,0);
+    return d < today && r.Pre_Order_Status !== "Received";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  /* ───────── FORECAST (added 2026-11-04) ─────────
+     Read-only. Written by the Forecast_Stamp_Daily schedule onto this form's
+     Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+     displays them.
+
+     The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+     title attribute rather than the cell, so the column stays one line wide. The
+     date shown is the midpoint of that window, never a promise.
+
+     Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+     #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+     separation. Status also carries its own word, so it is never colour-alone.
+
+     fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+     esc there), so this picks whichever exists and carries its own as a last
+     resort - it must never be the reason a row fails to render. */
+  var fcEsc = (function () {
+    if (typeof escapeHtml === "function") return escapeHtml;
+    if (typeof esc === "function") return esc;
+    return function (s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    };
+  })();
+
+  var FORECAST_TONE = {
+    "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+    "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+    "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+    "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+    "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+    "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  };
+
+  /* Creator hands dates back in whichever format the app is set to; this accepts the
+     four shapes seen across this app and returns "" rather than "Invalid Date". */
+  function forecastDateText(v) {
+    if (!v) return "";
+    var s = String(v).trim();
+    var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+    if (m) return m[2] + " " + m[1] + ", " + m[3];
+    var d = new Date(s.replace(/-/g, "/"));
+    if (isNaN(d.getTime())) return s.split(" ")[0];
+    return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+  }
+
+  function forecastCell(r) {
+    r = r || {};
+    var raw = r.Forecast_Delivery;
+    var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+    var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+    if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+    var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+    var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+    var tip = fcEsc(win || status || "");
+
+    return (
+      '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+      "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+      "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+      '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+      ';flex:none"></span>' + date +
+      (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+      "</span>"
+    );
+  }
+
+  function badgePill(text, colorKey) {
+    const p = PALETTE[colorKey] || PALETTE.slate;
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${p.badgeBg} ${p.badgeText} ${p.badgeBorder}">
+      <span class="h-1.5 w-1.5 rounded-full ${p.dot}"></span>${escapeHtml(text)}
+    </span>`;
+  }
+
+  // showConfirm's `onYes` handler is always called with the chosen Delivery
+  // Type as its arg — ADDED 2026-07-30, per user request ("before creating a
+  // package. let's add a dropdown modal to choose delivery type"). This
+  // modal is only ever used for Create Package in this widget, so the
+  // dropdown lives right in it rather than as a separate 2nd modal.
+  let _confirmYesHandler = null;
+  function showConfirm(message, onYes) {
+    document.getElementById("confirmMessage").textContent = message;
+    const dtSel = document.getElementById("confirmDeliveryType");
+    dtSel.value = "";
+    dtSel.classList.remove("ring-2", "ring-rose-400");
+    document.getElementById("confirmOverlay").classList.remove("hidden");
+    _confirmYesHandler = onYes;
+  }
+  function closeConfirm() {
+    document.getElementById("confirmOverlay").classList.add("hidden");
+    _confirmYesHandler = null;
+  }
+  document.getElementById("confirmCancelBtn").addEventListener("click", closeConfirm);
+  document.getElementById("confirmYesBtn").addEventListener("click", () => {
+    const dtSel = document.getElementById("confirmDeliveryType");
+    const dtVal = dtSel.value;
+    if (!dtVal) {
+      dtSel.classList.add("ring-2", "ring-rose-400");
+      toast("Pick a Delivery Type first.", "error");
+      return;
+    }
+    const handler = _confirmYesHandler;
+    closeConfirm();
+    if (handler) handler(dtVal);
+  });
+
+  function toast(message, type) {
+    const container = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    const styles = { success: "bg-slate-900 text-white", error: "bg-rose-600 text-white" };
+    el.className = `toast-in px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${styles[type] || styles.success}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  // ---------------------------------------------------------------------
+  // Ordering — List tab stays flat/ungrouped (one row per record), sorted
+  // either by latest Added_Time (original default) or by SO # (new, see
+  // soSortDir). Groupings tab (added 2026-08-03) reuses buildGroups/
+  // sortGroups below to actually group by SO.
+  // ---------------------------------------------------------------------
+  function soNumericKey(soNo) {
+    const m = String(soNo || "").match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
+  function computeOrderedRows(records) {
+    if (soSortDir === "asc" || soSortDir === "desc") {
+      const dir = soSortDir === "asc" ? 1 : -1;
+      return records.slice().sort((a, b) => {
+        const na = soNumericKey(a.SO);
+        const nb = soNumericKey(b.SO);
+        if (na !== null && nb !== null && na !== nb) return (na - nb) * dir;
+        if (na !== null && nb === null) return -1;
+        if (na === null && nb !== null) return 1;
+        return String(a.SO || "").localeCompare(String(b.SO || "")) * dir;
+      });
+    }
+    const withTime = records.map((r) => ({ r, t: (parseZohoDateTime(r.Added_Time) || new Date(0)).getTime() }));
+    withTime.sort((a, b) => b.t - a.t);
+    return withTime.map(({ r }) => r);
+  }
+
+  function buildGroups(records) {
+    const groups = new Map();
+    records.forEach((r) => {
+      const key = r.SO || `__no_so_${r.ID}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    });
+    return Array.from(groups.values()).map((recs) => {
+      recs.sort((a, b) => (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+      const latest = recs.reduce((max, r) => Math.max(max, (parseZohoDateTime(r.Added_Time) || new Date(0)).getTime()), 0);
+      const soNo = displayVal(recs[0].SO) === "—" ? "" : String(recs[0].SO || "");
+      return { soNo, recs, latest };
+    });
+  }
+
+  function sortGroups(groupList) {
+    const sorted = groupList.slice();
+    if (soSortDir === "asc" || soSortDir === "desc") {
+      const dir = soSortDir === "asc" ? 1 : -1;
+      sorted.sort((a, b) => {
+        const na = soNumericKey(a.soNo);
+        const nb = soNumericKey(b.soNo);
+        if (na !== null && nb !== null && na !== nb) return (na - nb) * dir;
+        if (na !== null && nb === null) return -1;
+        if (na === null && nb !== null) return 1;
+        return a.soNo.localeCompare(b.soNo) * dir;
+      });
+    } else {
+      sorted.sort((a, b) => b.latest - a.latest);
+    }
+    return sorted;
+  }
+
+  // ---------------------------------------------------------------------
+  // Stats
+  // ---------------------------------------------------------------------
+  // Shared by computeStats() (totals, always across ALL rows) and
+  // getFilteredRows()/getFilteredGroups() (applies whichever one is
+  // currently selected, if any) — one predicate per stat card, keyed the
+  // same as statFilter/data-stat.
+  function matchesStat(r, key) {
+    switch (key) {
+      case "pending": return r.Pre_Order_Status === "Pending" && !prHoldStateOf(r);
+      case "received": return r.Pre_Order_Status === "Received" && !prHoldStateOf(r);
+      case "onHold": return !!prHoldStateOf(r);
+      case "forCrate": return isTrue(r.For_Crate);
+      case "exceptions": return r.Status === "Partially";
+      default: return true;
+    }
+  }
+
+  function computeStats() {
+    let pending = 0, received = 0, forCrate = 0, exceptions = 0, onHold = 0;
+    orderedRows.forEach((r) => {
+      // Held/cancelled items are counted on their own, not as Pending/Received.
+      const held = !!prHoldStateOf(r);
+      if (held) onHold++;
+      if (r.Pre_Order_Status === "Pending" && !held) pending++;
+      if (r.Pre_Order_Status === "Received" && !held) received++;
+      if (isTrue(r.For_Crate)) forCrate++;
+      if (r.Status === "Partially") exceptions++;
+    });
+    return { pending, received, forCrate, exceptions, onHold, total: orderedRows.length };
+  }
+
+  // Stat cards are clickable — ADDED 2026-09-03, per user request: clicking a
+  // card filters the List/Groupings tabs below to just that card's rows
+  // (e.g. click "Exceptions" -> only Status=Partially rows). Click the same
+  // card again to clear. Wired via delegation on #statCards since the cards
+  // are rebuilt on every renderStats() call.
+  function renderStats() {
+    const stats = computeStats();
+    const cardHtml = (label, caption, value, color, statKey) => {
+      const p = PALETTE[color];
+      const active = statFilter === statKey;
+      return `
+        <div class="stat-card cursor-pointer select-none bg-white rounded-xl border-t-4 ${p.border} border-x border-b border-slate-200 shadow-card px-4 py-3 transition hover:shadow-md ${active ? "ring-2 ring-offset-1 ring-slate-400" : ""}" data-stat="${statKey}">
+          <p class="text-[10px] font-bold tracking-wide text-slate-400 uppercase">${escapeHtml(label)}</p>
+          <p class="text-3xl font-bold ${p.text} mt-1">${value}</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(caption)}</p>
+        </div>`;
+    };
+
+    statCards.innerHTML = [
+      cardHtml("Pending", "not yet received", stats.pending, "amber", "pending"),
+      cardHtml("Received", "pre-order received", stats.received, "emerald", "received"),
+      cardHtml("For Crate", "flagged for crating", stats.forCrate, "blue", "forCrate"),
+      cardHtml("Exceptions", "partially fulfilled", stats.exceptions, "rose", "exceptions"),
+      cardHtml("On Hold", "held or cancelled in PR", stats.onHold, "slate", "onHold"),
+    ].join("");
+
+    document.getElementById("pendingCount").textContent = stats.pending;
+    document.getElementById("receivedCount").textContent = stats.received;
+  }
+
+  statCards.addEventListener("click", (ev) => {
+    const card = ev.target.closest(".stat-card");
+    if (!card) return;
+    const key = card.dataset.stat;
+    statFilter = (statFilter === key) ? null : key;
+    renderAll();
+  });
+
+  // ---------------------------------------------------------------------
+  // Table rendering
+  // ---------------------------------------------------------------------
+  function getFilteredRows() {
+    let rows = statFilter ? orderedRows.filter((r) => matchesStat(r, statFilter)) : orderedRows;
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => {
+      const hay = [r.SO, r.PR, r.Package_Number, r.Customer_Name, r.Item_Name, r.SKU]
+        .map(displayVal).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  function dataRow(r) {
+    const overdue = isOverdue(r);
+    const preOrderStatusCell = preOrderStatusBadge(r, `<span class="text-slate-300">—</span>`);
+    const paymentStatusCell = r.Status ? badgePill(PAYMENT_STATUS_LABEL[r.Status] || r.Status, PAYMENT_STATUS_COLOR[r.Status] || "slate") : `<span class="text-slate-300">—</span>`;
+    const info = readinessOf(r);
+    const checked = isTrue(r.Select_To_Package) ? "checked" : "";
+    const disabled = info.state !== "ready" ? "disabled" : "";
+
+    return `
+      <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}">
+        <td class="px-3 py-2.5" onclick="event.stopPropagation()">
+          <input type="checkbox" class="select-package-cb h-4 w-4 rounded border-slate-300" data-id="${r.ID}" ${checked} ${disabled} />
+        </td>
+        <td class="px-5 py-2.5">${preOrderStatusCell}</td>
+        <td class="px-3 py-2.5">${paymentStatusCell}</td>
+        <td class="px-3 py-2.5 text-slate-700 font-medium">${escapeHtml(displayVal(r.SO))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.PR))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Package_Number))}</td>
+        <td class="px-3 py-2.5 text-slate-800 font-medium max-w-[220px] truncate">${escapeHtml(displayVal(r.Item_Name))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.SKU))}</td>
+        <td class="px-3 py-2.5 text-slate-700 text-right">${escapeHtml(displayVal(r.Qty))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Order_Type))}</td>
+        <td class="px-3 py-2.5 font-medium ${overdue ? "text-rose-600" : "text-slate-500"}">${escapeHtml(formatDate(r.Target_Delivery))}</td>
+        <td class="px-3 py-2.5">${forecastCell(r)}</td>
+        <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
+        <td class="px-5 py-2.5 text-right" onclick="event.stopPropagation()">
+          <button class="row-create-package-btn text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition ${info.state === "ready" ? "bg-emerald-500 hover:bg-emerald-400" : "bg-slate-300 cursor-not-allowed"}" ${info.state !== "ready" ? `disabled title="${info.label}"` : ""}>Create Package</button>
+        </td>
+      </tr>`;
+  }
+
+  function renderTable() {
+    const filtered = getFilteredRows();
+    const totalCount = filtered.length;
+
+    tableBody.innerHTML = filtered.length
+      ? filtered.map(dataRow).join("")
+      : `<tr><td colspan="14" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+
+    tableBody.querySelectorAll(".record-row").forEach((row) => {
+      row.addEventListener("click", () => switchToDetail(row.dataset.id));
+    });
+    tableBody.querySelectorAll(".select-package-cb").forEach((cb) => {
+      cb.addEventListener("change", (e) => {
+        e.stopPropagation();
+        toggleSelectToPackage(cb.dataset.id, cb.checked);
+      });
+    });
+    tableBody.querySelectorAll(".row-create-package-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        runCreatePackage();
+      });
+    });
+    updateSelectedBar();
+
+    document.getElementById("totalCount").textContent = totalCount;
+  }
+
+  // ---------------------------------------------------------------------
+  // Groupings tab — one card per SO #, ADDED 2026-08-03 per user request
+  // (same feature as UI/FF Widget/SO). Read-only display only — no
+  // checkbox/Create Package controls here, click a row to open detail view
+  // for that (matches this widget's own existing row-click behavior).
+  // ---------------------------------------------------------------------
+  function getFilteredGroups() {
+    const q = searchInput.value.trim().toLowerCase();
+    const baseRecords = statFilter ? allRecords.filter((r) => matchesStat(r, statFilter)) : allRecords;
+    const groupList = sortGroups(buildGroups(baseRecords));
+    if (!q) return groupList;
+    return groupList.filter(({ recs }) => recs.some((r) => {
+      const hay = [r.SO, r.PR, r.Package_Number, r.Customer_Name, r.Item_Name, r.SKU]
+        .map(displayVal).join(" ").toLowerCase();
+      return hay.includes(q);
+    }));
+  }
+
+  function groupCardHtml(group) {
+    const firstRec = group.recs[0];
+    const rowsHtml = group.recs.map((r) => {
+      const preOrderStatusCell = preOrderStatusBadge(r, `<span class="text-slate-300">—</span>`);
+      return `
+        <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}">
+          <td class="px-3 py-2">${preOrderStatusCell}</td>
+          <td class="px-3 py-2 text-slate-500">${escapeHtml(displayVal(r.PR))}</td>
+          <td class="px-3 py-2 text-slate-500">${escapeHtml(displayVal(r.Package_Number))}</td>
+          <td class="px-3 py-2 text-slate-800 font-medium max-w-[200px] truncate">${escapeHtml(displayVal(r.Item_Name))}</td>
+          <td class="px-3 py-2 text-slate-500">${escapeHtml(displayVal(r.SKU))}</td>
+          <td class="px-3 py-2 text-slate-700 text-right">${escapeHtml(displayVal(r.Qty))}</td>
+        </tr>`;
+    }).join("");
+
+    return `
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+          <div>
+            <p class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(group.soNo))}</p>
+            <p class="text-xs text-slate-500">${escapeHtml(displayVal(firstRec.Customer_Name))}</p>
+          </div>
+          <span class="text-[11px] font-medium text-slate-500 shrink-0">${group.recs.length} item${group.recs.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="overflow-x-auto">
+          <!-- CHANGED 2026-08-20, same per-group-card table misalignment fix as SO
+               widget's own Groupings tab — table-fixed + a shared colgroup forces
+               every card to the same column widths. -->
+          <table class="w-full text-xs table-fixed">
+            <colgroup>
+              <col style="width:14%"><col style="width:10%"><col style="width:14%">
+              <col style="width:34%"><col style="width:20%"><col style="width:8%">
+            </colgroup>
+            <thead>
+              <tr class="text-left text-[10px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
+                <th class="px-3 py-2 font-bold">Pre-Order Status</th>
+                <th class="px-3 py-2 font-bold">PR #</th>
+                <th class="px-3 py-2 font-bold">Package #</th>
+                <th class="px-3 py-2 font-bold">Item</th>
+                <th class="px-3 py-2 font-bold">SKU</th>
+                <th class="px-3 py-2 font-bold text-right">Qty</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">${rowsHtml}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  function renderGroupings() {
+    const groups = getFilteredGroups();
+    const container = document.getElementById("groupingsBody");
+    container.innerHTML = groups.length
+      ? groups.map(groupCardHtml).join("")
+      : `<p class="text-sm text-slate-400 text-center py-10">No records found</p>`;
+    container.querySelectorAll(".record-row").forEach((row) => {
+      row.addEventListener("click", () => switchToDetail(row.dataset.id));
+    });
+    document.getElementById("groupingsCount").textContent = groups.length;
+  }
+
+  const TAB_ACTIVE_CLASS = "text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 text-white transition";
+  const TAB_INACTIVE_CLASS = "text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition";
+
+  function switchTab(tab) {
+    currentTab = tab;
+    const reportCard = document.getElementById("reportCard");
+    const groupingsView = document.getElementById("groupingsView");
+    const listBtn = document.getElementById("tabListBtn");
+    const groupBtn = document.getElementById("tabGroupingsBtn");
+    if (tab === "list") {
+      reportCard.classList.remove("hidden");
+      groupingsView.classList.add("hidden");
+      listBtn.className = TAB_ACTIVE_CLASS;
+      groupBtn.className = TAB_INACTIVE_CLASS;
+      renderTable();
+    } else {
+      reportCard.classList.add("hidden");
+      groupingsView.classList.remove("hidden");
+      groupBtn.className = TAB_ACTIVE_CLASS;
+      listBtn.className = TAB_INACTIVE_CLASS;
+      renderGroupings();
+    }
+  }
+  document.getElementById("tabListBtn").addEventListener("click", () => switchTab("list"));
+  document.getElementById("tabGroupingsBtn").addEventListener("click", () => switchTab("groupings"));
+
+  const SORT_LABELS = { recent: "Latest Activity", asc: "SO # ↑", desc: "SO # ↓" };
+  function cycleSoSort() {
+    soSortDir = soSortDir === "recent" ? "asc" : soSortDir === "asc" ? "desc" : "recent";
+    document.getElementById("soSortLabel").textContent = SORT_LABELS[soSortDir];
+    orderedRows = computeOrderedRows(allRecords);
+    renderAll();
+  }
+  document.getElementById("soSortBtn").addEventListener("click", cycleSoSort);
+
+  function renderAll() {
+    renderStats();
+    if (currentTab === "list") renderTable(); else renderGroupings();
+  }
+
+  // ---------------------------------------------------------------------
+  // Pre Order Detail view
+  // ---------------------------------------------------------------------
+  // Pre-Order lifecycle stepper. The form only has Pre_Order_Status (Pending/
+  // Received) and Status (Yes/No/Partially) to infer stages from — mapped as:
+  //   1. Added to System — always done once the record exists (Added_Time)
+  //   2. PR Received      — done when Pre_Order_Status === "Received" (PR_Date_Received)
+  //   3. Ready to Fulfill — done when Status === "Yes" (fully available)
+  // Adjust this mapping if the actual workflow means something different.
+  const PRE_ORDER_STAGES = ["Added to System", "PR Received", "Ready to Fulfill"];
+
+  function preOrderStageIndex(r) {
+    if (r.Status === "Yes") return 3;
+    if (r.Pre_Order_Status === "Received") return 2;
+    return 1;
+  }
+
+  function stepperHtml(r) {
+    const currentIndex = preOrderStageIndex(r) - 1;
+    const stageDates = [
+      formatDate(r.Added_Time || r.SO_Creation_Date),
+      r.Pre_Order_Status === "Received" ? formatDateTime(r.PR_Date_Received) : null,
+      null,
+    ];
+
+    return PRE_ORDER_STAGES.map((label, i) => {
+      const state = i < currentIndex ? "done" : i === currentIndex ? "current" : "pending";
+      const circleClasses = state === "done" ? "bg-emerald-500 text-white"
+        : state === "current" ? "bg-slate-900 text-white"
+        : "bg-slate-100 text-slate-400 border border-slate-200";
+      const connector = i < PRE_ORDER_STAGES.length - 1
+        ? `<div class="flex-1 h-0.5 mt-4 mx-1 ${i < currentIndex ? "bg-emerald-400" : "bg-slate-200"}"></div>`
+        : "";
+      const dateForStage = stageDates[i];
+
+      return `
+        <div class="flex flex-col items-center text-center w-28 shrink-0">
+          <div class="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold ${circleClasses}">
+            ${state === "done" ? "✓" : (i + 1)}
+          </div>
+          <p class="text-[10px] font-bold mt-1.5 uppercase tracking-wide ${state === "pending" ? "text-slate-300" : "text-slate-600"}">${escapeHtml(label)}</p>
+          <p class="text-[10px] text-slate-400">${dateForStage && dateForStage !== "—" ? escapeHtml(dateForStage) : ""}</p>
+        </div>
+        ${connector}`;
+    }).join("");
+  }
+
+  function replacementRequestHtml(r) {
+    const entries = Array.isArray(r.Replacement_Request) ? r.Replacement_Request : [];
+    if (!entries.length) return `<p class="text-xs text-slate-400 text-center py-2">No replacement requests on this line.</p>`;
+    return entries.map((e) => `
+      <div class="flex items-start justify-between gap-2 text-sm bg-slate-50 rounded-lg px-3 py-2">
+        <div>
+          <p class="text-slate-700 font-medium">${escapeHtml(displayVal(e.RR))}</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(formatDateTime(e.Date_Received))}</p>
+        </div>
+        <span class="text-[11px] text-slate-400 shrink-0">#${escapeHtml(displayVal(e.Single_Line1))}</span>
+      </div>`).join("");
+  }
+
+  function switchToDetail(recordId) {
+    const r = allRecords.find(rec => String(rec.ID) === String(recordId));
+    if (!r) return;
+    currentDetailRecord = r;
+
+    document.getElementById("detailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
+    document.getElementById("detailSoNo").textContent = displayVal(r.SO) !== "—" ? `SO ${displayVal(r.SO)}` : "Pre Order Record";
+    document.getElementById("detailCustomer").textContent = displayVal(r.Customer_Name);
+    document.getElementById("detailSubline").textContent = `${displayVal(r.Order_Type)} · ${displayVal(r.Delivery_Type)}`;
+
+    document.getElementById("detailStepper").innerHTML = stepperHtml(r);
+    renderDetailPackageAction(r);
+
+    const rrEntries = Array.isArray(r.Replacement_Request) ? r.Replacement_Request : [];
+    document.getElementById("rrCount").textContent = `${rrEntries.length} request${rrEntries.length === 1 ? "" : "s"}`;
+    document.getElementById("detailReplacementRequest").innerHTML = replacementRequestHtml(r);
+
+    const overdue = isOverdue(r);
+    const fieldsHtml = [
+      ["SO #", displayVal(r.SO)],
+      ["PR #", displayVal(r.PR)],
+      ["Package Number #", displayVal(r.Package_Number)],
+      ["Order Type", displayVal(r.Order_Type)],
+      ["Delivery Type", displayVal(r.Delivery_Type)],
+      ["Target Delivery", `<span class="${overdue ? "text-rose-600" : "text-slate-800"} font-semibold">${escapeHtml(formatDate(r.Target_Delivery))}${overdue ? " ⚠ Overdue" : ""}</span>`, true],
+      ["Forecast", forecastCell(r), true],
+      ["SO Creation Date", escapeHtml(formatDate(r.SO_Creation_Date))],
+      ["PR Date Received", escapeHtml(formatDateTime(r.PR_Date_Received))],
+      ["Pre-Order Status", preOrderStatusBadge(r, "—"), true],
+      ["Payment Status", r.Status ? badgePill(PAYMENT_STATUS_LABEL[r.Status] || r.Status, PAYMENT_STATUS_COLOR[r.Status] || "slate") : "—", true],
+      ["For Crate", isTrue(r.For_Crate) ? badgePill("Yes", "blue") : "—", true],
+      ["Readiness", readinessBadge(r), true],
+    ];
+
+    document.getElementById("detailFields").innerHTML = fieldsHtml.map(([label, val, isHtml]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${isHtml ? val : escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const customerFieldsHtml = [
+      ["Customer Name", displayVal(r.Customer_Name)],
+      ["Customer Type", displayVal(r.Customer_Type)],
+      ["Customer Address", displayVal(r.Customer_Address)],
+      ["City", displayVal(r.City)],
+      ["Contact #", displayVal(r.Contact)],
+      ["Email", displayVal(r.Email)],
+    ];
+    document.getElementById("detailCustomerFields").innerHTML = customerFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const itemFieldsHtml = [
+      ["Item Name", displayVal(r.Item_Name)],
+      ["SKU", displayVal(r.SKU)],
+      ["Qty", displayVal(r.Qty)],
+      ["Bin Location", displayVal(r.Bin_Location)],
+    ];
+    document.getElementById("detailItemFields").innerHTML = itemFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 font-medium mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    poTimeline.open(String(r.ID));
+    internalNotes.open(String(r.ID));
+
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("detailView").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }
+
+  function renderDetailPackageAction(r) {
+    const el = document.getElementById("detailPackageAction");
+    const info = readinessOf(r);
+    if (info.state === "packaged") {
+      el.innerHTML = readinessBadge(r);
+      return;
+    }
+    const checked = isTrue(r.Select_To_Package) ? "checked" : "";
+    const disabled = info.state !== "ready" ? "disabled" : "";
+    el.innerHTML = `
+      ${readinessBadge(r)}
+      <label class="flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer">
+        <input type="checkbox" id="detailSelectCb" class="h-4 w-4 rounded border-slate-300" ${checked} ${disabled} />
+        Select to package
+      </label>
+      <button id="detailCreatePackageBtn" class="bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed" ${isTrue(r.Select_To_Package) ? "" : "disabled"}>
+        Create Package
+      </button>`;
+
+    const cb = document.getElementById("detailSelectCb");
+    const btn = document.getElementById("detailCreatePackageBtn");
+    if (cb) {
+      cb.addEventListener("change", () => {
+        toggleSelectToPackage(r.ID, cb.checked).then(() => {
+          btn.disabled = !cb.checked;
+        });
+      });
+    }
+    if (btn) {
+      btn.addEventListener("click", () => {
+        if (CONFIG.CUSTOM_API_KEY_CREATE_PACKAGE.startsWith("REPLACE_WITH")) {
+          toast("Custom API key not configured yet.", "error");
+          return;
+        }
+        showConfirm(`This creates a real Books package for ${displayVal(r.SKU)} (qty ${displayVal(r.Qty)}) on SO ${displayVal(r.SO)}. Cannot be undone from here. Continue?`, (deliveryType) => doDetailCreatePackage(r, btn, deliveryType));
+      });
+    }
+  }
+
+  function doDetailCreatePackage(r, btn, deliveryType) {
+    btn.disabled = true;
+    btn.textContent = "Creating…";
+    // FIXED 2026-07-29, real bug found live ("i need to create them one by one
+    // even tho 2 selected. it should be 1 package all selected") — this button
+    // only ever sent ITS OWN record ID, ignoring every other row the officer
+    // had already checked elsewhere in the list. The bulk "Create Package" bar
+    // (runCreatePackage/doCreatePackage) already combines correctly by
+    // grouping all selected+ready rows per SO server-side; this button now
+    // does the same — includes every other currently-selected+ready row (not
+    // just this one) so opening one record's detail view and clicking Create
+    // Package here honors whatever's checked across the whole list, same as
+    // the bulk path. Falls back to just this record if nothing else is
+    // selected — no behavior change for the single-item case. ALSO now
+    // auto-expands to every other not-yet-packaged+ready row on the SAME SO
+    // as `r` (expandSelectionToSameSO), same as the bulk path — guarantees
+    // this button always packages the whole outstanding SO together, not
+    // just whatever happened to be checked.
+    syncSelectionFromDOM();
+    const expanded = expandSelectionToSameSO([r]);
+    const idsToSend = [...new Set([r.ID, ...expanded.map((x) => x.ID)])];
+    const recordIdsCsv = idsToSend.join(",");
+    invokeCustomApi(CONFIG.CUSTOM_API_NAME_CREATE_PACKAGE, CONFIG.CUSTOM_API_KEY_CREATE_PACKAGE, { recordIdsCsv, deliveryType })
+      .then((data) => {
+        const results = (data && data.results) || [];
+        const own = results.find((x) => String(x.recordId) === String(r.ID));
+        const successCount = results.filter((x) => x.status === "success").length;
+        const errorRows = results.filter((x) => x.status === "error");
+        if (errorRows.length) console.warn("Create Package errors:", errorRows);
+        if (own && own.status === "success") {
+          toast(successCount > 1 ? `${successCount} item(s) packaged (${own.message}).` : own.message, "success");
+          loadLive();
+          switchToList();
+        } else {
+          toast((own && own.message) || "Create Package failed.", "error");
+          btn.disabled = false;
+          btn.textContent = "Create Package";
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        toast("Create Package failed — see console.", "error");
+        btn.disabled = false;
+        btn.textContent = "Create Package";
+      });
+  }
+
+  function switchToList() {
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("listView").classList.remove("hidden");
+    currentDetailRecord = null;
+    poTimeline.close();
+    internalNotes.close();
+  }
+  document.getElementById("backToListBtn").addEventListener("click", switchToList);
+
+  // ---------------------------------------------------------------------
+  // Data loading (read-only — Pre_Order1_Report)
+  // ---------------------------------------------------------------------
+  function fetchAllRecords() {
+    // field_config: "all" returns raw form field data instead of whatever the
+    // report's display columns would otherwise collapse subform fields to.
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+
+  // Deep link from a notification click — same pattern as UI/FF Widget/SO's own
+  // checkDeepLinkOpenSO(). This widget has no separate edit mode, so it opens
+  // straight into switchToDetail() (its only "record view" concept). Real page
+  // link name confirmed by user 2026-08-03: Pre_Order2.
+  //   Target_URL = "https://creatorapp.zoho.com/homecartel/environment/" +
+  //     "<development|production>/supply-chain-app/#Page:Pre_Order2" +
+  //     "?preOrderRecordId=" + input.ID
+  // Query string AFTER the hash, not before — confirmed gotcha elsewhere in this
+  // app. Still needs a Page Variable named `preOrderRecordId` registered on the
+  // Pre_Order2 page (Page Builder -> Variables tab -> Add Variable) — not yet
+  // confirmed done.
+  let deepLinkChecked = false;
+  function checkDeepLinkOpenPreOrder() {
+    if (deepLinkChecked) return;
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams !== "function") return;
+    deepLinkChecked = true;
+    ZOHO.CREATOR.UTIL.getQueryParams().then((params) => {
+      const id = params && params.preOrderRecordId;
+      if (id) switchToDetail(id);
+    }).catch(() => {});
+  }
+
+  function loadLive(isSettled, markSettled) {
+    // PR On Hold: refresh the held-PR map on every load, then repaint.
+    PRHold.load(() => { if (allRecords && allRecords.length) renderAll(); });
+    fetchAllRecords().then((records) => {
+      if (isSettled && isSettled()) return;
+      if (markSettled) markSettled();
+      allRecords = records;
+      orderedRows = computeOrderedRows(allRecords);
+      renderAll();
+      checkDeepLinkOpenPreOrder();
+    }).catch((err) => {
+      if (isSettled && isSettled()) return;
+      if (markSettled) markSettled();
+      console.error(err);
+      allRecords = [];
+      orderedRows = [];
+      renderAll();
+      toast("Failed to load records from Zoho Creator.", "error");
+    });
+  }
+
+  function loadMockData() {
+    previewMode = true;
+    document.getElementById("previewBanner").classList.remove("hidden");
+    allRecords = buildMockRecords();
+    orderedRows = computeOrderedRows(allRecords);
+    renderAll();
+  }
+
+  function buildMockRecords() {
+    const preOrderStatuses = ["Pending", "Received"];
+    const statuses = ["Yes", "No", "Partially"];
+    const orderTypes = ["Normal", "Replacement", "Pre Order", "(Partly) Pre Order", "Furniture Republic Stores", "Change Item"];
+    const deliveryTypes = ["Door to Door", "Branch Pick-up"];
+    const customers = ["Juan Dela Cruz", "Maria Santos", "Furniture Republic - Cebu", "Pedro Reyes", "Ana Villanueva", "Rico Torres"];
+    const itemNames = ["Layla | Smoked Glass Pendant Light", "Sicily | Pendant Light – Large", "Denazin | Table Lamp", "Freddie | Three Blade Ceiling Fan", "Maithe | Modern Wall Light – D25cm"];
+    const pad = (n) => String(n).padStart(2, "0");
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const today = new Date();
+
+    const fmt = (d, h, mnt) => `${pad(d.getDate())}-${months[d.getMonth()]}-${d.getFullYear()}${h !== undefined ? ` ${pad(h)}:${pad(mnt)}:00` : ""}`;
+
+    return Array.from({ length: 14 }).map((_, i) => {
+      const created = new Date(today); created.setDate(today.getDate() - (14 - i));
+      const due = new Date(today); due.setDate(today.getDate() - (7 - (i % 10)));
+      const added = new Date(created); added.setHours(8 + (i % 10), (i * 7) % 60);
+      const prReceived = new Date(created); prReceived.setDate(created.getDate() + 1);
+
+      return {
+        ID: String(2000 + i),
+        Pre_Order_Status: preOrderStatuses[i % preOrderStatuses.length],
+        SO: `SO-${15500 + i}`,
+        Package_Number: `PAC-${15400 + i}`,
+        Target_Delivery: fmt(due),
+        Status: statuses[i % statuses.length],
+        SO_Creation_Date: fmt(created),
+        Order_Type: orderTypes[i % orderTypes.length],
+        For_Crate: i % 3 === 0,
+        PR: `PR-${100 + i}`,
+        Delivery_Type: deliveryTypes[i % deliveryTypes.length],
+        PR_Date_Received: fmt(prReceived, prReceived.getHours(), prReceived.getMinutes()),
+        Replacement_Request: i % 4 === 0 ? [
+          { Single_Line1: "1", RR: `RR-${300 + i}`, Date_Received: fmt(created, 9, 15) },
+        ] : [],
+        Customer_Name: customers[i % customers.length],
+        Customer_Address: "123 Sample St, Quezon City",
+        Customer_Type: ["Retail", "Wholesale", "Corporate"][i % 3],
+        Item_Name: itemNames[i % itemNames.length],
+        SKU: `SKU-${1000 + i}`,
+        Qty: String(1 + (i % 3)),
+        Bin_Location: "A1-02",
+        Added_Time: fmt(added, added.getHours(), added.getMinutes()),
+      };
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  document.getElementById("createPackageBtn").addEventListener("click", runCreatePackage);
+  searchInput.addEventListener("input", () => { if (currentTab === "list") renderTable(); else renderGroupings(); });
+
+  // JS API v2 needs no ZOHO.CREATOR.init() call — but the SDK script still
+  // defines window.ZOHO even when this file is opened outside a Zoho Creator
+  // page, where a live data call would just hang (no parent Creator frame to
+  // talk to). Race it against a short timeout so local/standalone previews
+  // still fall back to sample data instead of hanging on an empty report.
+  const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+  if (sdkReady) {
+    loadLive();
+  } else {
+    loadMockData();
+  }
+
+  // ---------------------------------------------------------------------
+  // Notification bell — see notification_component/README.md. Same 2 accounts
+  // as UI/FF Widget/SO for now, per user (2026-08-03): "for now that two only.
+  // we will update this some other time if have some changes."
+  // ---------------------------------------------------------------------
+  const notifications = window.NotificationSystem ? NotificationSystem.init({
+    mountId:          "notifMount",
+    appName:          CONFIG.APP_NAME,
+    reportName:       "PreOrder_Notifications_Report",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    environment:      () => ZC_ENV,
+    roleMap:          { "homecartelff@gmail.com": "HC Pack & Fulfill", "hcinvanalyst@gmail.com": "HC Systems" },
+    fullAccessRoles:  ["HC Systems"],
+    title:            "Notifications",
+  }) : { open(){}, close(){}, refresh(){} };
+
+  // Resolve the real logged-in email + dev/prod environment — same 2-path
+  // getInitParams()/ZOHO.CREATOR.init() fallback chain proven in SO/PRsv2/
+  // INQsv2/Shipmentsv2. This widget had no such resolution before (JS API v2
+  // data calls don't need it), only the notification bell does.
+  if (sdkReady && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams === "function") {
+    ZOHO.CREATOR.UTIL.getInitParams().then((params) => {
+      if (params && (params.environment || params.env)) ZC_ENV = params.environment || params.env;
+      const email = params && (params.loginUser || params.login_user || params.userEmail || params.user_email || params.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); internalNotes.refresh(); }
+    }).catch(() => {});
+  }
+  if (sdkReady && typeof ZOHO.CREATOR.init === "function") {
+    ZOHO.CREATOR.init().then((initData) => {
+      if (initData && (initData.environment || initData.env)) ZC_ENV = initData.environment || initData.env;
+      const email = initData && (initData.loginUser || initData.login_user || initData.userEmail || initData.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr && !CURRENT_USER_EMAIL) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); internalNotes.refresh(); }
+    }).catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

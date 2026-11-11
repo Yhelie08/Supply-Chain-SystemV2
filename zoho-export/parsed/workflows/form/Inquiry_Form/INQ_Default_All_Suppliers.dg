@@ -1,0 +1,7 @@
+// form: INQ_Default_All_Suppliers  form=Inquiry_Form event=on add on load  [.ds line 35356]
+    allSupplierIDs = List();
+for each  supRec in Suppliers[ID != 0]
+{
+    allSupplierIDs.add(supRec.ID);
+}
+input.Suppliers = allSupplierIDs;

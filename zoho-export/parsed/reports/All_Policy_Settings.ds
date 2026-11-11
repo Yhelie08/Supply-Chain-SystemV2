@@ -1,0 +1,12 @@
+
+			displayName = "Policy_Settings Report"
+			show all rows from Policy_Settings    
+			(
+				Policy_Key as "Policy Key"
+				Description
+				Value
+				Type_field as "Type"
+				Last_Updated_By as "Last Updated By"
+				Last_Updated_Date as "Last Updated Date"
+			)
+		

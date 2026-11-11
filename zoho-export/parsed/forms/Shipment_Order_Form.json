@@ -1,0 +1,175 @@
+{
+  "name": "Shipment_Order_Form",
+  "label": "Shipment Order Form",
+  "successMessage": "Data Added Successfully!",
+  "line": 15976,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Service_Request_Number",
+      "label": "Service Request Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipped_Date",
+      "label": "Shipped Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Shipping_Charges_if_any",
+      "label": "Shipping Charges (if any)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Delivery_Date",
+      "label": "Delivery Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Site_Wiring_Ready",
+      "label": "Site Wiring Ready?",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Yes",
+        "No",
+        "Existing light installed",
+        "N/A (no installation required)"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Type_of_Delivery",
+      "label": "Type of Delivery",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Delivery Only",
+        "With Installation",
+        "Full-Day Install",
+        "Multi-Day Install",
+        "Replacement",
+        "Site Visit",
+        "Pullout"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Prepared_by",
+      "label": "Prepared by:",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "CJ",
+        "Hendel",
+        "Jayvon",
+        "Jazz",
+        "Jonard",
+        "Jonrey",
+        "Joy",
+        "Kurt",
+        "Manny",
+        "Marco",
+        "Petz",
+        "Rash",
+        "Rio",
+        "Roger"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Sales_Order",
+      "label": "Sales Order#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipment_Number",
+      "label": "Shipment Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Carrier",
+      "label": "Carrier",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Manual",
+        "Pick Up",
+        "Delivery and Installation",
+        "Delivery",
+        "Delivery and Installation via Mare EDSA Shangri-la",
+        "Pick"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Tracking_URL",
+      "label": "Tracking URL",
+      "type": "url",
+      "required": false
+    },
+    {
+      "name": "Ceiling_Material",
+      "label": "Ceiling Material",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Gypsum",
+        "Concrete",
+        "Wood",
+        "N/A (no installation required)"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Delivery_Team",
+      "label": "Delivery Team",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "3rd Party",
+        "Pick Up",
+        "Field Team"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Ceiling_Height",
+      "label": "Ceiling Height",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Standard: 2.4 M - 2.7 M",
+        "Mid: 2.8 M - 3.0 M",
+        "High: Above 3.0 M (please specify)",
+        "N/A (no installation required)"
+      ],
+      "maxchar": "100"
+    }
+  ]
+}

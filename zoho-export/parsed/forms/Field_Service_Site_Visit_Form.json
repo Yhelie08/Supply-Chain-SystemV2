@@ -1,0 +1,332 @@
+{
+  "name": "Field_Service_Site_Visit_Form",
+  "label": "Field Service Site Visit Form",
+  "successMessage": "Data Added Successfully!",
+  "line": 5036,
+  "fields": [
+    {
+      "name": "Site_Visit_Header",
+      "label": "Site Visit Header",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Technician_Name",
+      "label": "Technician Name",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Norman",
+        "Edmon",
+        "Russel",
+        "CJ",
+        "Jonrey",
+        "JD",
+        "Nherwin",
+        "Others"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Driver_Name",
+      "label": "Driver Name",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Zaldy",
+        "Rash",
+        "Marlon"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Date_of_Site_Visit",
+      "label": "Date of Site Visit",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Purpose_of_Visit",
+      "label": "Purpose of Visit",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Installation Assessment",
+        "Repair Assessment",
+        "Other"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "SO",
+      "label": "SO#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Site_Visit_Checklist",
+      "label": "Site Visit Checklist",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Plan_the_Layout",
+      "label": "1) Plan the Layout",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Find where the power connects.",
+        "Installation location confirmed (exact spot identified)",
+        "Mark the spots where you will drill.",
+        "Measure the space (height and room to move)."
+      ]
+    },
+    {
+      "name": "Ceiling_Height",
+      "label": "Ceiling Height",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Mount_Height_from_Floor",
+      "label": "Mount Height from Floor",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Power_Source_Type",
+      "label": "Power Source Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Junction Box",
+        "Outlet"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Remarks",
+      "label": "Remarks",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Layout_Photo",
+      "label": "Layout Photo",
+      "type": "image",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Prepare_the_Mounting_Surface",
+      "label": "2) Prepare the Mounting Surface",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Make sure the wall or ceiling is strong enough.",
+        "Make sure the spot is clean and dry.",
+        "Does it need extra support?"
+      ]
+    },
+    {
+      "name": "Surface_Type",
+      "label": "Surface Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Concrete",
+        "Gypsum",
+        "Wood",
+        "Metal",
+        "Other"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Surface_Condition_Photo",
+      "label": "Surface Condition Photo",
+      "type": "image",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Remarks1",
+      "label": "Remarks",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Electrical_Check",
+      "label": "3) Electrical Check",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Correct voltage available",
+        "Power line is working",
+        "Circuit can handle the lights",
+        "Ground wire available",
+        "Switch location identified"
+      ]
+    },
+    {
+      "name": "Voltage",
+      "label": "Voltage",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Breaker_Size_if_known",
+      "label": "Breaker Size (if known)",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Remarks2",
+      "label": "Remarks",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Ceiling_Structure_Check",
+      "label": "4) Ceiling & Structure Check",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Ceiling type confirmed",
+        "Enough space above ceiling",
+        "No pipes or ducts blocking",
+        "Ceiling access available"
+      ]
+    },
+    {
+      "name": "Ceiling_Photo_if_possible",
+      "label": "Ceiling Photo (if possible)",
+      "type": "image",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Remarks3",
+      "label": "Remarks",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Safety_Access_Check",
+      "label": "5 Safety & Access Check",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Work area is safe",
+        "Ladder or scaffold needed",
+        "High ceiling work",
+        "Safety gear needed",
+        "Permit required",
+        "Allowed working hours confirmed"
+      ]
+    },
+    {
+      "name": "Remarks4",
+      "label": "Remarks",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Site_Delivery_Check",
+      "label": "6) Site & Delivery Check",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Easy access for delivery",
+        "Elevator or stairs available",
+        "Storage space available",
+        "No conflict with other work"
+      ]
+    },
+    {
+      "name": "Remarks5",
+      "label": "Remarks",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Client_Confirmation",
+      "label": "7) Client Confirmation",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Client approved final layout",
+        "Quantity of lights confirmed",
+        "Installation date agreed"
+      ]
+    },
+    {
+      "name": "Notes_Remarks",
+      "label": "Notes / Remarks:",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Final_Check_Sign_off",
+      "label": "8) Final Check & Sign-off",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Site is ready for installation",
+        "Issues noted (if any)"
+      ]
+    },
+    {
+      "name": "Name",
+      "label": "Name",
+      "type": "name",
+      "required": false,
+      "personalData": "true",
+      "fields": [
+        {
+          "name": "prefix",
+          "label": "Prefix",
+          "type": "prefix",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "first_name",
+          "label": "First Name",
+          "type": "first_name",
+          "required": false
+        },
+        {
+          "name": "last_name",
+          "label": "Last Name",
+          "type": "last_name",
+          "required": false
+        },
+        {
+          "name": "suffix",
+          "label": "Suffix",
+          "type": "suffix",
+          "required": false,
+          "visibility": "false"
+        }
+      ]
+    },
+    {
+      "name": "Client_Representative_Signature",
+      "label": "Client/Representative Signature",
+      "type": "signature",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": false,
+      "personalData": "true"
+    }
+  ]
+}

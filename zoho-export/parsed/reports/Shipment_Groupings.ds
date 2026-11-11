@@ -1,0 +1,33 @@
+
+			displayName = "Shipment Groupings"
+			show all rows from Shipments    
+			(
+				Shipment_No as "Shipment No."
+				Customer
+				Target_Date as "Target Date"
+				ETD
+				Risk_Status as "Delay Status"
+				Shipment_Days as "Shipment Days"
+				Sales_Owner as "Sales Owner"
+				PO_No as "PO No."
+				Supplier
+				Production_Date as "Production Date"
+				Required_Days_Lead as "Required Days (Lead)"
+				ETA
+				Ship_Out_Date as "Ship Out Date"
+				Receiving_Record_Created as "Receiving Record Created"
+				Need_Attention as "Received Flag"
+				Need_Attention1 as "Need Attention"
+				Sales_Order as "SO No."
+				Previous_Status as "Previous Status"
+				Shipment_Status as "Shipment Status"
+				Remaining_Days as "Remaining Days"
+				Arrival_Date as "Arrival Date"
+				Notes
+				Supplier_Target_Date as "Supplier Target Date"
+				Supplier_Shipment_Details as "Supplier Shipment Details"
+				(
+					field = Supplier_Shipment_Details.Shipment_ID + " " + Supplier_Shipment_Details.Date_Shipped + " " + Supplier_Shipment_Details.Item_Name + " " + Supplier_Shipment_Details.PR_No + " " + Supplier_Shipment_Details.RR_No + " " + Supplier_Shipment_Details.SKU + " " + Supplier_Shipment_Details.SO_No + " " + Supplier_Shipment_Details.Shipment_Mode + " " + Supplier_Shipment_Details.Status
+				)
+			)
+		

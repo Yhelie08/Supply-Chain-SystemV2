@@ -1,0 +1,166 @@
+{
+  "name": "Forecast_Settings",
+  "label": "Forecast Settings",
+  "successMessage": "Setting Forecast Successfully",
+  "line": 6001,
+  "fields": [
+    {
+      "name": "Air_Freight",
+      "label": "Air Freight",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Air_Transit_Min",
+      "label": " Air Transit Min (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Air_Transit_Max",
+      "label": " Air Transit Max (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Air_Customs_to_WH_Min",
+      "label": "Air Customs to WH Min (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Air_Customs_to_WH_Max",
+      "label": " Air Customs to WH Max (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "LCL",
+      "label": "LCL",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "LCL_Transit_Min",
+      "label": "LCL Transit Min (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "LCL_Transit_Max",
+      "label": "LCL Transit Max (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "LCL_Customs_to_WH_Min",
+      "label": "LCL Customs to WH Min (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "LCL_Customs_to_WH_Max",
+      "label": "LCL Customs to WH Max (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "FCL_Transit_Min",
+      "label": " FCL Transit Min (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "FCL_Transit_Max",
+      "label": "FCL Transit Max (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "FCL_Customs_to_WH_Min",
+      "label": "FCL Customs to WH Min (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "FCL_Customs_to_WH_Max",
+      "label": "FCL Customs to WH Max (Days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Warehouse",
+      "label": "Warehouse",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Prep_Days_Thru_QC",
+      "label": "Prep Days Thru QC",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Delivery_Days",
+      "label": "Delivery Days",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Transit",
+      "label": "Local Sourcing (HC System) Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Local_Transit_Days",
+      "label": "Local Transit Days",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Local_Customs_Days",
+      "label": "Local Customs Days",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Other_Options",
+      "label": "Other Options",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Re_anchor_on_Latest_Real_Event",
+      "label": "Re-anchor on Latest Real Event",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Include_Supplier_Lead_Time",
+      "label": "Include Supplier Lead Time",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Horizon_Weeks",
+      "label": "Horizon (Weeks)",
+      "type": "number",
+      "required": false
+    }
+  ]
+}

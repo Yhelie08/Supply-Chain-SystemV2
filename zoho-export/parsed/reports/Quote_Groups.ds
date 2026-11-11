@@ -1,0 +1,56 @@
+
+			displayName = "Quote Groups"
+			show all rows from Inquiry_Form    
+			(
+				INQ_No as "INQ No."
+				Items
+				Customer
+				description as "Description"
+				created_date as "Created Date"
+				sku as "SKU"
+				quantity as "Quantity"
+				Sales_Owner as "Sales Owner"
+				Open_to_similar_design as "Open to similar design"
+				target_date as "Target Date"
+				unit as "Unit"
+				quote_group as "Quote Group"
+				Waiting_On as "Waiting On"
+				Addtional_Description
+				Attachments
+				Product_Sample as "Product Sample"
+				Technical_Drawing as "Technical Drawing"
+				D_Image as "3D Image"
+				Specification
+				Supplier_Selected as "Supplier Selected"
+				Availability as "Availability Confirmed"
+				Final_Price_Exists as "Final Price Exists"
+				Collateral_Comple_NA as "Collateral Comple/NA"
+				SRP_Approved as "SRP Approved"
+				Select_Final_Cost as "Select Final Cost"
+				SRP_Approved1 as "SRP (Approved)"
+				SRP_Status as "SRP Status"
+				Projects
+				Customer_Type as "Customer Type"
+				Order_Type as "Order Type"
+				Group_Discount_Pct as "Group Discount Percentage"
+				Project_Name as "Project Name"
+				custom action "Create Estimates"
+				(
+	  			workflow = Create_Estimates_Grp
+				show action in edit record menu = true
+				column header = "Create Estimates"
+				condition = (Ready_for_Estimates == true)
+				confirmation before execution
+				(
+					message for individual record = "Execute the Create Estimates action for this record?"
+					confirm button text = "Yes"		
+					cancel button text = "No"
+				)
+				)
+			)
+			group by
+			(
+				Projects ascending
+				Group_Discount_Pct ascending
+			)
+		

@@ -1,0 +1,593 @@
+// map approvePOFenteng(String soNo)   [.ds lines 23478-24071]
+response = Map();
+processedCount = 0;
+processedSupPOsF = List();
+siblingPRsF = Purchase_Request1[Sales_Order == soNo && PR_Approved == true && Link_PO_No != null];
+for each  prLoopF in siblingPRsF
+{
+    if(prLoopF.Link_PO_No == "")
+    {
+        continue;
+    }
+    supplierMatchesF = false;
+    if(prLoopF.Selected_Supplier == "Fenteng")
+    {
+        supplierMatchesF = true;
+    }
+    if(prLoopF.Selected_Supplier.contains("Fenteng"))
+    {
+        supplierMatchesF = true;
+    }
+    if(supplierMatchesF == false)
+    {
+        continue;
+    }
+    itemRecF = prLoopF.Items;
+    itemNameF = itemRecF.item_name;
+    existingSupPOsF = Fenteng_Lighting_Purchase_Order[PO_No_Supplier1 == prLoopF.Link_PO_No];
+    supPOFoundF = false;
+    for each  spoF in existingSupPOsF
+    {
+        targetSupPOF = spoF;
+        supPOFoundF = true;
+    }
+    if(supPOFoundF == false)
+    {
+        newSupPOIDF = insert into Fenteng_Lighting_Purchase_Order
+        [
+            PO_No_Supplier1=prLoopF.Link_PO_No
+            PO_Date_Supplier1=zoho.currentdate
+            PO_Status_Supplier1="Draft"
+            Added_User=zoho.loginuser
+        ];
+        targetSupPOF = Fenteng_Lighting_Purchase_Order[ID == newSupPOIDF];
+    }
+    alreadyHasLineF = false;
+    for each  existingLnF in targetSupPOF.PO_Line_Items_Supplier1
+    {
+        if(existingLnF.PR_No_Supplier1 == prLoopF.PR_No)
+        {
+            alreadyHasLineF = true;
+        }
+    }
+    if(alreadyHasLineF == true)
+    {
+        alreadyTrackedF = false;
+        for each  doneNoF in processedSupPOsF
+        {
+            if(doneNoF == targetSupPOF.PO_No_Supplier1)
+            {
+                alreadyTrackedF = true;
+            }
+        }
+        if(alreadyTrackedF == false)
+        {
+            processedSupPOsF.add(targetSupPOF.PO_No_Supplier1);
+        }
+        continue;
+    }
+    /* REMOVED 2026-07-15: SRP_Rate_PR fallback dropped, mirrors pr_to_po_grouping.txt
+       Action 2 (see that block's comment for full reasoning). */
+    rateToUseF = prLoopF.Selcted_Final_Cost;
+    if(rateToUseF == null)
+    {
+        rateToUseF = 0;
+    }
+    /* Item_Price_Supplier1 (Single Line/TEXT) — catalog reference rate, kept
+       separate from Final_Price_Supplier1. See pr_to_po_grouping.txt Action 2 NOTES
+       for the full reasoning, including the 2026-07-15 SRP_Approved_PR priority
+       addition mirrored here. */
+    itemPriceValF = 0;
+    if(prLoopF.SRP_Approved_PR != null && prLoopF.SRP_Approved_PR != 0)
+    {
+        itemPriceValF = prLoopF.SRP_Approved_PR;
+    }
+    else if(prLoopF.SRP_Rate_PR != null && prLoopF.SRP_Rate_PR != 0)
+    {
+        /* ADDED 2026-08-05, real bug found live in Production: a PR routed from an already-Approved Inquiry (inquiry_reference set) already carries that Inquirys own approved SRP into SRP_Rate_PR automatically at PR-creation time (SO_To_PR) -- but SRP_Approved_PR itself (a separate MANUAL-approval field) stays blank until an officer explicitly re-approves the same number in the PRs widget. Confirmed live: a real PR had SRP_Rate_PR=200 (matching its source Inquirys real approved SRP) but SRP_Approved_PR blank, so this whole block fell to the generic catalog Items.Rate fallback, and Books ended up receiving the suppliers raw quote instead of the real approved SRP. FIX: SRP_Rate_PR checked as a middle tier before the generic catalog fallback. */
+        itemPriceValF = prLoopF.SRP_Rate_PR;
+    }
+    else
+    {
+        itemRateStrF = itemRecF.Rate + "";
+        if(itemRateStrF != "null" && itemRateStrF != "" && itemRateStrF != "0" && itemRateStrF.toDecimal() != 0)
+        {
+            itemPriceValF = itemRateStrF.toDecimal();
+        }
+    }
+    newSupLineF = Fenteng_Lighting_Purchase_Order.PO_Line_Items_Supplier1();
+    newSupLineF.PR_No_Supplier1=prLoopF.PR_No;
+    newSupLineF.Supplier_Supplier1=prLoopF.Selected_Supplier;
+    newSupLineF.Item_Supplier1=itemNameF;
+    newSupLineF.SKU_Supplier1=prLoopF.sku;
+    newSupLineF.QTY_Supplier1=prLoopF.quantity.round(0).toLong();
+    newSupLineF.Unit_Supplier1=prLoopF.unit;
+    newSupLineF.Final_Price_Supplier1=rateToUseF;
+    newSupLineF.Item_Price_Supplier1=itemPriceValF + "";
+    newSupLineF.Line_Total_Supplier1=prLoopF.quantity.round(0).toLong() * rateToUseF.round(0).toLong();
+    newSupLineF.Shipping_Mode_Supplier1=prLoopF.Shipment_Mode;
+    newSupLineF.Target_Delivery_Supplier1=prLoopF.Target_Delivery;
+    newSupLineF.supplier_target_date_Supplier1=prLoopF.supplier_target_date;
+    newSupLineF.Delay_Status_Supplier1=prLoopF.Delay_Status;
+    newSupLineF.Followed_Recommendation_Supplier1=prLoopF.Followed_Recommendation;
+    newSupLineF.Override_Reason_Supplier1=prLoopF.Override_Reason;
+    targetSupPOF.PO_Line_Items_Supplier1.insert(newSupLineF);
+    totalValF = 0;
+    totalLnsF = 0;
+    for each  poLnF in targetSupPOF.PO_Line_Items_Supplier1
+    {
+        totalLnsF = totalLnsF + 1;
+        if(poLnF.Line_Total_Supplier1 != null)
+        {
+            totalValF = totalValF + poLnF.Line_Total_Supplier1;
+        }
+    }
+    targetSupPOF.Total_PO_Value_Supplier1=totalValF;
+    targetSupPOF.Total_Lines_Supplier1=totalLnsF;
+    targetSupPOF.Sent_On_Supplier1=zoho.currenttime;
+    targetSupPOF.Is_Locked_Supplier1=true;
+    processedCount = processedCount + 1;
+    alreadyTrackedF2 = false;
+    for each  doneNoF2 in processedSupPOsF
+    {
+        if(doneNoF2 == targetSupPOF.PO_No_Supplier1)
+        {
+            alreadyTrackedF2 = true;
+        }
+    }
+    if(alreadyTrackedF2 == false)
+    {
+        processedSupPOsF.add(targetSupPOF.PO_No_Supplier1);
+    }
+}
+/* MOVED HERE 2026-07-16, mirrored from pr_to_po_grouping.txt Action 2 — see that
+   file's inline comment for the full writeup. Same "once per distinct supplier PO
+   touched this run" granularity via processedSupPOsF. RR_Reference_No guard dropped
+   — replacement POs never reach this function (created directly, bypass PR1). */
+for each  poNoTouchedF in processedSupPOsF
+{
+    supPOsSyncF = Fenteng_Lighting_Purchase_Order[PO_No_Supplier1 == poNoTouchedF];
+    for each  spoF2 in supPOsSyncF
+    {
+        targetSupPOF2 = spoF2;
+    }
+    aggPOsSyncF = Purchase_Order[PO_No == poNoTouchedF];
+    for each  apoF2 in aggPOsSyncF
+    {
+        apoF = apoF2;
+    }
+    soNoTextF = apoF.SO_No.Sales_Order_Number;
+    matchingShipNoF = "";
+    candidateShipmentsF = Shipments[PO_No == apoF.ID && Shipment_Status == "Pending"];
+    for each  shF in candidateShipmentsF
+    {
+        matchingShipNoF = shF.Shipment_No;
+    }
+    isNewShipmentF = false;
+    if(matchingShipNoF != "")
+    {
+        targetShipsF = Shipments[Shipment_No == matchingShipNoF];
+        for each  tshF in targetShipsF
+        {
+            targetShipF = tshF;
+        }
+    }
+    else
+    {
+        maxShipNumF = 0;
+        existingShipmentsF = Shipments[ID != 0];
+        for each  shF in existingShipmentsF
+        {
+            shipNoStrF = shF.Shipment_No;
+            if(shipNoStrF != null && shipNoStrF != "")
+            {
+                shipNumPartF = shipNoStrF.removeFirstOccurence("SHP-");
+                shipNumF = shipNumPartF.toLong();
+                if(shipNumF > maxShipNumF)
+                {
+                    maxShipNumF = shipNumF;
+                }
+            }
+        }
+        newShipNumF = maxShipNumF + 1;
+        if(newShipNumF < 10)
+        {
+            newShipNoF = "SHP-0000" + newShipNumF;
+        }
+        else if(newShipNumF < 100)
+        {
+            newShipNoF = "SHP-000" + newShipNumF;
+        }
+        else if(newShipNumF < 1000)
+        {
+            newShipNoF = "SHP-00" + newShipNumF;
+        }
+        else if(newShipNumF < 10000)
+        {
+            newShipNoF = "SHP-0" + newShipNumF;
+        }
+        else
+        {
+            newShipNoF = "SHP-" + newShipNumF;
+        }
+        newShipIDF = insert into Shipments
+        [
+            Shipment_No=newShipNoF
+            PO_No=apoF.ID
+            Sales_Order=soNoTextF
+            Customer=apoF.Customer
+            Supplier="Fenteng"
+            Shipment_Status="Pending"
+            Added_User=zoho.loginuser
+        ];
+        targetShipF = Shipments[ID == newShipIDF];
+        isNewShipmentF = true;
+    }
+    for each  poLnAggF in apoF.PO_Line_Items
+    {
+        targetShipF.Required_Days_Lead=poLnAggF.Required_Days_Lead;
+        targetShipF.Remaining_Days=poLnAggF.Remaining_Days;
+        targetShipF.Target_Date=poLnAggF.Target_Delivery;
+        targetShipF.Supplier_Target_Date=poLnAggF.supplier_target_date;
+        targetShipF.Production_Date=poLnAggF.Production_Date;
+        if(poLnAggF.PR_No != null && poLnAggF.PR_No != "")
+        {
+            prLineF = Purchase_Request1[PR_No == poLnAggF.PR_No];
+            targetShipF.Shipment_Days=prLineF.Shipment_Days;
+            targetShipF.Sales_Owner=prLineF.Sales_Owner;
+        }
+        else
+        {
+            targetShipF.Sales_Owner=apoF.Sales_Owner;
+        }
+        shipLineExistsF = false;
+        for each  existingShipLnF in targetShipF.PO_Shipments
+        {
+            if(existingShipLnF.PR_No == poLnAggF.PR_No)
+            {
+                shipLineExistsF = true;
+            }
+        }
+        if(shipLineExistsF == false)
+        {
+            newShipLineF = Shipments.PO_Shipments();
+            newShipLineF.PR_No=poLnAggF.PR_No;
+            newShipLineF.SKU=poLnAggF.SKU;
+            newShipLineF.Item_Name=poLnAggF.Item;
+            newShipLineF.Ordered_QTY=poLnAggF.QTY;
+            newShipLineF.Shipment_QTY=poLnAggF.QTY;
+            newShipLineF.Remaining_QTY=poLnAggF.QTY;
+            newShipLineF.Shipping_Mode=poLnAggF.Shipping_Mode;
+            targetShipF.PO_Shipments.insert(newShipLineF);
+        }
+    }
+    /* ADDED 2026-07-21 — mirrors pr_to_po_grouping.txt Action 2's same-day block
+       (Shipments-Created-trigger workflow dropped, folded in here instead). */
+    if(isNewShipmentF == true)
+    {
+        newSuppRecIDF = insert into Fenteng_Shipment
+        [
+            Shipment_No=targetShipF.Shipment_No
+            Parent_Shipment_ID=targetShipF.ID + ""
+            Added_User1=zoho.loginuser
+            Added_User=zoho.loginuser
+        ];
+        newSuppRecF = Fenteng_Shipment[ID == newSuppRecIDF];
+        for each  shLnF in targetShipF.PO_Shipments
+        {
+            newSuppRowF = Fenteng_Shipment.Supplier1_Shipment_Details();
+            newSuppRowF.SKU=shLnF.SKU;
+            newSuppRowF.Item_Name=shLnF.Item_Name;
+            newSuppRowF.PR_No=shLnF.PR_No;
+            newSuppRowF.RR_No="";
+            newSuppRecF.Supplier1_Shipment_Details.insert(newSuppRowF);
+        }
+    }
+    recvFoundF = false;
+    matchingRecvIDF = 0;
+    existingRecvF = Receiving[Shipments == targetShipF.ID];
+    for each  rcF in existingRecvF
+    {
+        matchingRecvIDF = rcF.ID;
+        recvFoundF = true;
+    }
+    if(recvFoundF == true)
+    {
+        targetRecvsF = Receiving[ID == matchingRecvIDF];
+        for each  trcF in targetRecvsF
+        {
+            targetRecvF = trcF;
+        }
+    }
+    else
+    {
+        maxRecvNumF = 0;
+        existingRecvsF = Receiving[ID != 0];
+        for each  rcF in existingRecvsF
+        {
+            recvNoStrF = rcF.Receive_No1;
+            if(recvNoStrF != null && recvNoStrF != "")
+            {
+                recvNumPartF = recvNoStrF.removeFirstOccurence("RCV-");
+                recvNumF = recvNumPartF.toLong();
+                if(recvNumF > maxRecvNumF)
+                {
+                    maxRecvNumF = recvNumF;
+                }
+            }
+        }
+        newRecvNumF = maxRecvNumF + 1;
+        if(newRecvNumF < 10)
+        {
+            newRecvNoF = "RCV-0000" + newRecvNumF;
+        }
+        else if(newRecvNumF < 100)
+        {
+            newRecvNoF = "RCV-000" + newRecvNumF;
+        }
+        else if(newRecvNumF < 1000)
+        {
+            newRecvNoF = "RCV-00" + newRecvNumF;
+        }
+        else if(newRecvNumF < 10000)
+        {
+            newRecvNoF = "RCV-0" + newRecvNumF;
+        }
+        else
+        {
+            newRecvNoF = "RCV-" + newRecvNumF;
+        }
+        newRecvIDF = insert into Receiving
+        [
+            Receive_No1=newRecvNoF
+            Shipments=targetShipF.ID
+            SO_No=soNoTextF
+            PO_No=apoF.PO_No
+            Customer_Name=apoF.Customer
+            Supplier="Fenteng"
+            Added_User=zoho.loginuser
+        ];
+        targetRecvF = Receiving[ID == newRecvIDF];
+    }
+    for each  poLnAggF in apoF.PO_Line_Items
+    {
+        if(poLnAggF.PR_No != null && poLnAggF.PR_No != "")
+        {
+            prLineRecvF = Purchase_Request1[PR_No == poLnAggF.PR_No];
+            targetRecvF.Sales_Owner=prLineRecvF.Sales_Owner;
+        }
+        else
+        {
+            targetRecvF.Sales_Owner=apoF.Sales_Owner;
+        }
+        recvLineExistsF = false;
+        for each  existingRecvLnF in targetRecvF.Receiving_Line_Items
+        {
+            if(existingRecvLnF.PR_No == poLnAggF.PR_No)
+            {
+                recvLineExistsF = true;
+            }
+        }
+        if(recvLineExistsF == false)
+        {
+            newRecvLineF = Receiving.Receiving_Line_Items();
+            newRecvLineF.PR_No=poLnAggF.PR_No;
+            newRecvLineF.SKU=poLnAggF.SKU;
+            newRecvLineF.Item_Name=poLnAggF.Item;
+            newRecvLineF.Expected_Qty=poLnAggF.QTY;
+            targetRecvF.Receiving_Line_Items.insert(newRecvLineF);
+        }
+    }
+    /* ADDED 2026-07-16, mirrored from pr_to_po_grouping.txt Action 2 — see that
+       file's own comment for the full writeup (Receiving's own Validations
+       workflows never fire on this cross-form insert). */
+    totalExpectedF = 0;
+    totalAcceptedF = 0;
+    totalDamageF = 0;
+    totalMissingF = 0;
+    totalLinesRF = 0;
+    incompleteLinesF = 0;
+    readyForFulfillF = 0;
+    for each  rln in targetRecvF.Receiving_Line_Items
+    {
+        totalLinesRF = totalLinesRF + 1;
+        expRF = ifnull(rln.Expected_Qty,0);
+        accRF = ifnull(rln.Accepted_Qty,0);
+        dmgRF = ifnull(rln.Damage_Qty,0);
+        misRF = ifnull(rln.Missing_Qty,0);
+        totalExpectedF = totalExpectedF + expRF;
+        totalAcceptedF = totalAcceptedF + accRF;
+        totalDamageF = totalDamageF + dmgRF;
+        totalMissingF = totalMissingF + misRF;
+        totalRecRF = accRF + dmgRF + misRF;
+        if(totalRecRF == expRF && accRF == expRF)
+        {
+            rln.Line_Result="Complete";
+            rln.Ready_for_Fulfillment=true;
+            readyForFulfillF = readyForFulfillF + 1;
+        }
+        else
+        {
+            rln.Line_Result="Incomplete";
+            rln.Ready_for_Fulfillment=false;
+            incompleteLinesF = incompleteLinesF + 1;
+        }
+    }
+    targetRecvF.Total_Expected_Qty=totalExpectedF;
+    targetRecvF.Total_Accepted_Qty=totalAcceptedF;
+    targetRecvF.Total_Damage_Qty=totalDamageF;
+    targetRecvF.Total_Missing_Qty=totalMissingF;
+    targetRecvF.Total_Lines=totalLinesRF;
+    targetRecvF.Incomplete_Lines=incompleteLinesF;
+    targetRecvF.Ready_for_Fulfillment1=readyForFulfillF;
+    if(totalLinesRF == 0 || (totalAcceptedF == 0 && totalDamageF == 0 && totalMissingF == 0))
+    {
+        targetRecvF.Receive_Status="Pending";
+    }
+    else if(incompleteLinesF == 0)
+    {
+        targetRecvF.Receive_Status="Received";
+    }
+    else
+    {
+        targetRecvF.Receive_Status="Partial Received";
+    }
+    shipModeBooksF = "Air Freight";
+    for each  poLnBooksF in apoF.PO_Line_Items
+    {
+        shipLineValF = poLnBooksF.Shipping_Mode + "";
+        if(shipLineValF == "LCL")
+        {
+            shipModeBooksF = "LCL";
+        }
+        else if(shipLineValF == "FCL")
+        {
+            shipModeBooksF = "FCL";
+        }
+        else if(shipLineValF != "" && shipLineValF != "null")
+        {
+            shipModeBooksF = "Air Freight";
+        }
+    }
+    booksLineItemsF = List();
+    prRefListF = List();
+    for each  poLnBooksF2 in targetSupPOF2.PO_Line_Items_Supplier1
+    {
+        prRefListF.add(poLnBooksF2.PR_No_Supplier1);
+        bookItemRecsF = Items[SKU == poLnBooksF2.SKU_Supplier1];
+        bookItemIdF = "";
+        for each  biF in bookItemRecsF
+        {
+            bookItemIdF = biF.ID1 + "";
+        }
+        if(bookItemIdF == "null")
+        {
+            bookItemIdF = "";
+        }
+        if(bookItemIdF != "")
+        {
+            effectiveRateF = poLnBooksF2.Final_Price_Supplier1.toDecimal();
+            itemPriceStrF = poLnBooksF2.Item_Price_Supplier1 + "";
+            if(itemPriceStrF != "null" && itemPriceStrF != "" && itemPriceStrF != "0" && itemPriceStrF.toDecimal() != 0)
+            {
+                effectiveRateF = itemPriceStrF.toDecimal();
+            }
+            lineBF = Map();
+            lineBF.put("item_id",bookItemIdF);
+            lineBF.put("quantity",poLnBooksF2.QTY_Supplier1.toLong());
+            lineBF.put("rate",effectiveRateF);
+            lineBF.put("warehouse_id","2680178000042173149");
+            booksLineItemsF.add(lineBF);
+        }
+    }
+    prRefsStrF = "[";
+    prRefCountF = 0;
+    for each  prRefItemF in prRefListF
+    {
+        if(prRefCountF > 0)
+        {
+            prRefsStrF = prRefsStrF + ",";
+        }
+        prRefsStrF = prRefsStrF + "\"" + prRefItemF + "\"";
+        prRefCountF = prRefCountF + 1;
+    }
+    prRefsStrF = prRefsStrF + "]";
+    cfListBooksF = List();
+    cfBF1 = Map();
+    cfBF1.put("label","Mode of Shipment");
+    cfBF1.put("value",shipModeBooksF);
+    cfListBooksF.add(cfBF1);
+    cfBF2 = Map();
+    cfBF2.put("label","Type of Order");
+    cfBF2.put("value","Pre Order");
+    cfListBooksF.add(cfBF2);
+    cfBF3 = Map();
+    cfBF3.put("label","Created by");
+    cfBF3.put("value","Procurement");
+    cfListBooksF.add(cfBF3);
+    cfBF4 = Map();
+    cfBF4.put("label","Supplier");
+    cfBF4.put("value","Fenteng Lighting");
+    cfListBooksF.add(cfBF4);
+    cfBF5 = Map();
+    cfBF5.put("label","PR References");
+    cfBF5.put("value",prRefsStrF);
+    cfListBooksF.add(cfBF5);
+    existingBooksPOIDF = apoF.Books_PO_ID + "";
+    if(existingBooksPOIDF == "null")
+    {
+        existingBooksPOIDF = "";
+    }
+    booksPOValidF = false;
+    if(existingBooksPOIDF != "")
+    {
+        checkPORespF = invokeurl
+        [
+            url :"https://www.zohoapis.com/books/v3/purchaseorders/" + existingBooksPOIDF + "?organization_id=751117756"
+            type :GET
+            connection:"zhbooks3"
+        ];
+        if(checkPORespF.get("code") == 0 && checkPORespF.get("purchaseorder") != null)
+        {
+            booksPOValidF = true;
+        }
+    }
+    if(booksPOValidF == true)
+    {
+        updatePOBodyF = Map();
+        updatePOBodyF.put("line_items",booksLineItemsF);
+        updatePOBodyF.put("custom_fields",cfListBooksF);
+        updatePOBodyStrF = updatePOBodyF.toString();
+        updatePORespF = invokeurl
+        [
+            url :"https://www.zohoapis.com/books/v3/purchaseorders/" + existingBooksPOIDF + "?organization_id=751117756"
+            type :PUT
+            parameters:updatePOBodyStrF
+            headers:{"Content-Type":"application/json"}
+            connection:"zhbooks3"
+        ];
+        info "Books PO update resp (Fenteng)=" + updatePORespF.toString();
+    }
+    else
+    {
+        createPOBodyF = Map();
+        createPOBodyF.put("vendor_id","2680178000049168001");
+        createPOBodyF.put("line_items",booksLineItemsF);
+        createPOBodyF.put("custom_fields",cfListBooksF);
+        createPOBodyF.put("date",zoho.currentdate.toString("yyyy-MM-dd"));
+        createPOBodyStrF = createPOBodyF.toString();
+        createPORespF = invokeurl
+        [
+            url :"https://www.zohoapis.com/books/v3/purchaseorders?organization_id=751117756"
+            type :POST
+            parameters:createPOBodyStrF
+            headers:{"Content-Type":"application/json"}
+            connection:"zhbooks3"
+        ];
+        info "Books PO create resp (Fenteng)=" + createPORespF.toString();
+        if(createPORespF.get("code") == 0 && createPORespF.get("purchaseorder") != null)
+        {
+            newBooksPOIDF = createPORespF.get("purchaseorder").get("purchaseorder_id") + "";
+            apoF.Books_PO_ID=newBooksPOIDF;
+            apoF.Books_PO_No=createPORespF.get("purchaseorder").get("purchaseorder_number") + "";
+            approvePORespF = invokeurl
+            [
+                url :"https://www.zohoapis.com/books/v3/purchaseorders/" + newBooksPOIDF + "/approve?organization_id=751117756"
+                type :POST
+                connection:"zhbooks3"
+            ];
+            info "Books PO approve resp (Fenteng)=" + approvePORespF.toString();
+            openPORespF = invokeurl
+            [
+                url :"https://www.zohoapis.com/books/v3/purchaseorders/" + newBooksPOIDF + "/status/open?organization_id=751117756"
+                type :POST
+                connection:"zhbooks3"
+            ];
+            info "Books PO status/open resp (Fenteng)=" + openPORespF.toString();
+        }
+    }
+}
+response.put("status","success");
+response.put("processed",processedCount);
+response.put("message",processedCount + " Fenteng line(s) synced");
+return response;

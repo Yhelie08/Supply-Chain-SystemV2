@@ -1,0 +1,57 @@
+// form: FW_Reschedule_To_Exception_And_Requeue  form=Field_Work event=on add or edit on success  [.ds line 45052]
+    if(input.Status == "Reschedule Requested" && input.Reschedule_Processed != true)
+{
+    processedReschedule = false;
+    for each  sa in Service_Appointment_Form[Sales_Order == input.Sales_Order]
+    {
+        if(processedReschedule == true)
+        {
+            break;
+        }
+        // FIXED live 2026-08-01 — "Error at line number: 14 zc_display_value doesn't
+        // exist in Customer_Name field": .zc_display_value is a REST-API JSON key
+        // (what a Name-type field serializes to over getRecords), NOT a valid Deluge
+        // server-side accessor on the in-memory Name object — Deluge only exposes
+        // .prefix/.first_name/.last_name/.suffix on a Name field. Built the display
+        // text manually instead.
+        custDisplay = "";
+        if(sa.Customer_Name != null)
+        {
+            fnPart = sa.Customer_Name.first_name;
+            lnPart = sa.Customer_Name.last_name;
+            if(fnPart == null)
+            {
+                fnPart = "";
+            }
+            if(lnPart == null)
+            {
+                lnPart = "";
+            }
+            custDisplay = (fnPart + " " + lnPart).trim();
+        }
+        // ----- Raise the Exception (Dispatch stage — closes the previously-flagged
+        // "no trigger source yet" gap for this stage). REVISED 2026-08-07: this is
+        // now the ONLY thing this workflow does — no clone, no closing the original
+        // SA. The actual reschedule happens later, when an officer resolves this
+        // Exception (see dms_exception_queue.txt's EXC_Resolve_Sync). The original
+        // Service_Appointment stays exactly as it was until then — it is NOT closed
+        // as Failed here anymore, since the whole point of gating on resolution is
+        // that nothing about the delivery's real state changes until an officer has
+        // actually reviewed/acted on the reschedule request. -----
+        insert into DMS_Exception_Queue
+        [
+            Sales_Order_Reference=sa.ID
+            Customer_Name=custDisplay
+            Exception_Stage="Dispatch"
+            Exception_Reason=input.Reschedule_Reason
+            Severity="Medium"
+            Raised_By="Officer"
+            Date_Raised=zoho.currenttime
+            Assigned_To="Delivery Officer"
+            Status="Open"
+            Added_User=zoho.loginuser
+        ]
+        processedReschedule = true;
+    }
+    input.Reschedule_Processed = true;
+}

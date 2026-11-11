@@ -1,0 +1,222 @@
+{
+  "name": "Crate_Checklist",
+  "label": "Crate Checklist",
+  "successMessage": "Crate Added Successfully",
+  "line": 111,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Assign_Crater",
+      "label": "Assign Crater",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Lito"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Assigned_Checker",
+      "label": "Assigned Checker",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order_Details",
+      "label": "Sales Order Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "SO",
+      "label": "SO #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Order",
+      "label": "PACK #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Target_Delivery_Date",
+      "label": "Target Delivery Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "PR_if_any",
+      "label": "PR # (if any)",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Dem_if_any",
+      "label": "Dem # (if any)",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Order_Type",
+      "label": "Order Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_if_any",
+      "label": "RR # (if any)",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Delivery_Type",
+      "label": "Delivery Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Details",
+      "label": "Customer Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Address",
+      "label": "Customer Address",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Type",
+      "label": "Customer Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Item_Details",
+      "label": "Item Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Item_Name",
+      "label": "Item Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SKU",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Quantity",
+      "label": "Quantity",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Crating_Checklist1",
+      "label": "Crating Checklist",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Crating_Checklist",
+      "label": "Crating Checklist",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Maayos at matibay ang pagkaka-crate",
+        "Walang sira o bitak sa kahon o crate",
+        "Lahat ng bahagi ng item ay ligtas at nakapaloob (walang gumagalaw sa loob)",
+        "May foam o proteksyon sa mga gilid at sulok",
+        "May tamang label ng item sa crate",
+        "Naselyuhan o nailagay ng maayos ang takip ng crate",
+        "May larawan bago i-seal ang crate (for record)",
+        "Na-check ng checker bago ipadala"
+      ]
+    },
+    {
+      "name": "Documentation",
+      "label": "Documentation",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Photo_Documentation",
+      "label": "Photo Documentation",
+      "type": "image",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Video_Documentation",
+      "label": "Video Documentation",
+      "type": "video",
+      "required": false
+    },
+    {
+      "name": "Crating_Status",
+      "label": "Crating Status",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Crating_Status1",
+      "label": "Crating Status",
+      "type": "radiobuttons",
+      "required": false,
+      "options": [
+        "Pending",
+        "Done"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

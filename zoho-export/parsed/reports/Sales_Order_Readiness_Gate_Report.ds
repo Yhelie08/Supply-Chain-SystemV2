@@ -1,0 +1,42 @@
+
+			displayName = "Sales Order Readiness Gate Report"
+			show all rows from Sales_Order_Readiness_Gate    
+			(
+				sales_order_number as "Sales Order Number"
+				customer_name as "Customer Name"
+				customer_type as "Customer Type"
+				customer_address as "Customer Address"
+				payment_status as "Payment Status"
+				priority as "Priority"
+				pr_number as "PR Number"
+				rr_number as "RR Number"
+				Order_Type as "Order Type"
+				Delivery_Type as "Delivery Type"
+				Package_Order as "Package Order Number"
+				Item_Name as "Item Name"
+				SKU
+				Quantity
+				Bin_Location as "Bin Location"
+				Release_Log as "Release Log"
+				Release
+				For_Crate as "For Crate"
+				Demo as "Demo #"
+				Added_Time as "Added Time"
+				Target_Delivery_Date as "Target Delivery Date"
+				Added_User as "Added User"
+				Assign_Picker as "Assign Picker"
+				Override_Approved
+				Override_Approved_For_Status
+				Override_By
+				Override_Reason
+				Override_Timestamp
+				Has_Credit_Terms
+				Forecast_Delivery as "Forecast Delivery"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+			)
+			group by
+			(
+				sales_order_number descending
+			)
+		

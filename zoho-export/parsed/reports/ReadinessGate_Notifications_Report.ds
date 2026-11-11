@@ -1,0 +1,14 @@
+
+			displayName = "ReadinessGate Notifications Report"
+			show all rows from ReadinessGate_Notifications    
+			(
+				Recipient_Email
+				Notification_Type
+				Message
+				Created_On
+				Read
+				Target_URL
+				Source_Record_ID
+				Source_Record_No
+			)
+		

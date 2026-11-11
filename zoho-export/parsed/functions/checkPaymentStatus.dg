@@ -1,0 +1,104 @@
+// map checkPaymentStatus(String recordId)   [.ds lines 25468-25572]
+response = Map();
+organizationID = "751117756";
+// ===== LOAD THE READINESS GATE RECORD =====
+soVal = "";
+gateFound = false;
+for each  rec in Sales_Order_Readiness_Gate[ID == recordId.toLong()]
+{
+    soVal = rec.sales_order_number + "";
+    gateFound = true;
+}
+if(!gateFound)
+{
+    response.put("status","error");
+    response.put("message","Readiness Gate record not found.");
+    return response;
+}
+if(soVal == "" || soVal == "null")
+{
+    response.put("status","error");
+    response.put("message","This record has no Sales Order Number to check.");
+    return response;
+}
+// ===== PULL EVERY INVOICE LINKED TO THIS SALES ORDER =====
+// Filters by reference_number, NOT salesorder_id — confirmed live 2026-07-31
+// that `invoices?salesorder_id=X` does not actually filter at all (silently
+// returns ~200 unrelated invoices across other SOs). reference_number is a
+// plain exact-match text filter, confirmed correct via a live test (returned
+// exactly the 1 real invoice for SO-16335, nothing else). Also means no
+// separate "resolve the SO first" call is needed anymore — one API call total.
+invUrl = "https://www.zohoapis.com/books/v3/invoices?organization_id=" + organizationID + "&reference_number=" + soVal + "&per_page=200";
+invResp = invokeurl
+[
+    url :invUrl
+    type :GET
+    connection:"zhbooks3"
+];
+invList = invResp.get("invoices");
+// ===== READ EACH INVOICE'S OWN "Paid" CUSTOM FIELD (cf_paid) — the field
+// actually printed on the invoice PDF, per user's explicit choice over the
+// balance/total math (see the REVISED note above for why). =====
+totalInvoices = 0;
+yesCount = 0;
+partialCount = 0;
+if(invList != null)
+{
+    totalInvoices = invList.size();
+    for each  inv in invList
+    {
+        cfPaidVal = inv.get("cf_paid") + "";
+        if(cfPaidVal == "Yes")
+        {
+            yesCount = yesCount + 1;
+        }
+        else if(cfPaidVal == "Partial")
+        {
+            partialCount = partialCount + 1;
+        }
+    }
+}
+// ===== DETERMINE Yes/No/Partial (matches the widget's own real picklist
+// values — confirmed live 2026-07-29, NOT "Paid"/"Partially Paid"/"Pending").
+// Multi-invoice SOs: Paid only when EVERY invoice's own cf_paid says Yes,
+// Partial if some Yes/some not or any invoice itself says Partial, No if
+// none are Paid or no invoice exists yet — same aggregation spirit as the
+// original balance-based version, just applied to this field instead. =====
+paymentStatusVal = "No";
+summaryMsg = "";
+if(totalInvoices == 0)
+{
+    paymentStatusVal = "No";
+    summaryMsg = "No invoice found for SO " + soVal + " in Books yet.";
+}
+else if(yesCount == totalInvoices)
+{
+    paymentStatusVal = "Yes";
+    summaryMsg = totalInvoices + " invoice(s) found on SO " + soVal + ", all marked Paid.";
+}
+else if(yesCount > 0 || partialCount > 0)
+{
+    paymentStatusVal = "Partial";
+    summaryMsg = yesCount + " of " + totalInvoices + " invoice(s) marked Paid on SO " + soVal + " (" + partialCount + " marked Partial).";
+}
+else
+{
+    paymentStatusVal = "No";
+    summaryMsg = totalInvoices + " invoice(s) found on SO " + soVal + ", none marked Paid yet.";
+}
+// ===== WRITE BACK ONTO THIS SAME READINESS-GATE RECORD =====
+// Same explicit `update` task shape already proven working for this exact form
+// in DelugeScripts/preorder_to_readiness_gate.txt — not a direct field
+// assignment inside the loop, which is only confirmed safe elsewhere for a
+// DIFFERENT app/form (avoid inventing a new untested shape here).
+for each  rec2 in Sales_Order_Readiness_Gate[ID == recordId.toLong()]
+{
+    update rec2
+    [
+        payment_status=paymentStatusVal
+    ];
+}
+response.put("status","success");
+response.put("paymentStatus",paymentStatusVal);
+response.put("message",summaryMsg);
+return response;

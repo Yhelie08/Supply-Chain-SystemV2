@@ -1,0 +1,2 @@
+// form: OA_Instant_Forecast  form=Order_Aggregation1 event=on add or edit on success  [.ds line 47031]
+info thisapp.fcStampBySoNo(input.SO + "");

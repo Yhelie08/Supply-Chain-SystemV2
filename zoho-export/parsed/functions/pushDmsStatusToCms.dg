@@ -1,0 +1,12 @@
+// map pushDmsStatusToCms(String cmsRecordId, String newStatus)   [.ds lines 34549-34561]
+paramsMap = Map();
+paramsMap.put("cmsRecordId",cmsRecordId);
+paramsMap.put("newStatus",newStatus);
+proxyResp = invokeurl
+[
+    url :"https://www.zohoapis.com/creator/custom/homecartel/receive_dms_schedule_request_status?publickey=Y0XaAQRwdaPYePT5mgpWmqGaG"
+    type :POST
+    body:paramsMap.toString()
+    headers:{"Content-Type":"application/json"}
+];
+return proxyResp.get("result");

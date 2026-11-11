@@ -1,0 +1,54 @@
+// form: Mandatory_PR_Fields_Supplier1  form=Fenteng_Lighting_Purchase_Request event=on edit on validate  [.ds line 38277]
+    if(input.edit_counter == 0)
+{
+    alert "Editing is locked. Wait for Purchase Request update.";
+    cancel submit;
+}
+hasEmpty = false;
+msg = "";
+for each  subRow in input.Supplier_Selected_Supplier1
+{
+    if(subRow.Availability_Supplier1 == null || subRow.Availability_Supplier1 == "")
+    {
+        hasEmpty = true;
+        msg = msg + "Availability, ";
+    }
+    hasSRPRate1 = input.SRP_Rate_PR_Supplier1 != null && input.SRP_Rate_PR_Supplier1 != 0;
+    /* FIXED 2026-08-25, real bug caught live (PR-00007, Fenteng): choosing Availability
+       ="Unavailable" in the supplier PR widget still popped this native validation's own
+       "Required fields missing: Initial Price, Final Price, Lead Time" alert and blocked
+       submit — this rule only ever exempted "Cannot Produce", never "Unavailable", even
+       though the widget's own client-side JS (Fenteng-PR/Tony-PR app/index.html's
+       onAvailChange/submitResponse) has always treated the two as equivalent
+       (cannotOrUnavailable). Added the same "Unavailable" exemption here so the native
+       server-side rule actually matches what the widget already promises. */
+    if(subRow.Availability_Supplier1 != "Cannot Produce" && subRow.Availability_Supplier1 != "Unavailable" && subRow.Availability_Supplier1 != "Confirmed" && hasSRPRate1 == false)
+    {
+        if(subRow.Initial_Price_Supplier1 == null || subRow.Initial_Price_Supplier1 == 0)
+        {
+            hasEmpty = true;
+            msg = msg + "Initial Price, ";
+        }
+        if(subRow.Final_Price_Supplier1 == null || subRow.Final_Price_Supplier1 == 0)
+        {
+            hasEmpty = true;
+            msg = msg + "Final Price, ";
+        }
+    }
+    if(subRow.Availability_Supplier1 != "Cannot Produce" && subRow.Availability_Supplier1 != "Unavailable")
+    {
+        if(subRow.Availability_Supplier1 != "Confirmed")
+        {
+            if(subRow.Lead_Time_Supplier1 == null || subRow.Lead_Time_Supplier1 == 0)
+            {
+                hasEmpty = true;
+                msg = msg + "Lead Time, ";
+            }
+        }
+    }
+}
+if(hasEmpty == true)
+{
+    alert "Required fields missing: " + msg.removeLastOccurence(", ");
+    cancel submit;
+}

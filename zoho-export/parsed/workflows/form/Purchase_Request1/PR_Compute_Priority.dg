@@ -1,0 +1,55 @@
+// form: PR_Compute_Priority  form=Purchase_Request1 event=on add or edit on validate  [.ds line 39480]
+    // === PR_Compute_Priority ===
+// Form: Purchase_Request1 | Event: Created or Edited | Validations on form submission
+score = 0;
+today = zoho.currentdate;
+// === Factor 1: Delivery Urgency — based sa Target_Delivery ===
+if(input.Target_Delivery != null)
+{
+    urgencyDiff = (input.Target_Delivery - today);
+    daysToDelivery = (urgencyDiff / 86400000).round(0);
+    if(daysToDelivery <= 3)
+    {
+        score = score + 50;
+    }
+    else if(daysToDelivery <= 7)
+    {
+        score = score + 30;
+    }
+    else if(daysToDelivery <= 14)
+    {
+        score = score + 15;
+    }
+}
+// === Factor 2: Order Value — from SO (carried per PR) ===
+orderValue = ifnull(input.Order_Value,0);
+if(orderValue >= 500000)
+{
+    score = score + 20;
+}
+// === Factor 3: Has Exception — 0 muna (deferred, Phase 6) ===
+// === Factor 4: Aging — based sa Last_Update DateTime field ===
+if(input.Last_Update != null)
+{
+    agingDiff = (today - input.Last_Update.toDate());
+    daysIdle = (agingDiff / 86400000).round(0);
+    if(daysIdle > 5)
+    {
+        score = score + 20;
+    }
+}
+// === Determine Priority Level ===
+if(score >= 70)
+{
+    input.Priority = "High";
+}
+else if(score >= 40)
+{
+    input.Priority = "Medium";
+}
+else
+{
+    input.Priority = "Low";
+}
+// === Store score for reference ===
+input.Priority_Score = score;

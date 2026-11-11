@@ -1,0 +1,45 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   TONY NOTIFICATION COMPONENT — styles
+   Orange accent (var(--orange,#EA580C)/--orange-light/--orange-mid), matching Tony's
+   own brand palette already used throughout Tony-PR/Tony-Inquiries/etc (page title,
+   .btn-orange, .supplier-avatar) — same accent Fenteng's own copy of this component
+   uses (both supplier families share this app's orange scheme), deliberately
+   different from the internal notification_component's blue, so a supplier's own
+   bell reads as visually distinct from the internal HC Purchasing/Systems one if
+   ever seen side by side.
+   bottom:90px / panel bottom:150px — same clearance-above-toast fix the internal
+   component needed after a live overlap test; applied here from the start since
+   Tony-PR/Tony-Inquiries both have the same .toast{bottom:24px;right:24px}.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.tnn-bell{position:fixed;bottom:90px;right:20px;width:50px;height:50px;border-radius:50%;background:rgba(234,88,12,.55);border:none;color:var(--white,#fff);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);cursor:pointer;transition:background 150ms ease,transform 150ms ease;z-index:5000}
+.tnn-bell:hover{background:var(--orange,#EA580C);transform:translateY(-1px)}
+.tnn-bell svg{width:22px;height:22px}
+.tnn-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--red,#DC2626);color:var(--white,#fff);font-size:10.5px;font-weight:700;display:none;align-items:center;justify-content:center;border:2px solid var(--white,#fff);line-height:1}
+.tnn-badge.show{display:flex}
+
+.tnn-panel{position:fixed;bottom:150px;right:20px;width:336px;max-height:440px;background:var(--white,#fff);border-radius:12px;box-shadow:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);border:1px solid var(--gray-200,#E2E8F0);display:none;flex-direction:column;overflow:hidden;z-index:5000;font-family:'Inter',system-ui,sans-serif}
+.tnn-panel.open{display:flex}
+.tnn-hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:1px solid var(--gray-100,#F1F5F9)}
+.tnn-title{font-size:14px;font-weight:700;color:var(--gray-800,#1E293B)}
+.tnn-hdr-actions{display:flex;align-items:center;gap:10px}
+.tnn-refresh-btn{background:none;border:none;color:var(--gray-400,#94A3B8);cursor:pointer;padding:2px;display:flex;align-items:center;justify-content:center;transition:color 150ms ease}
+.tnn-refresh-btn:hover{color:var(--orange,#EA580C)}
+.tnn-refresh-btn svg{width:14px;height:14px}
+.tnn-refresh-btn.spinning svg{animation:tnn-spin .6s linear infinite}
+@keyframes tnn-spin{to{transform:rotate(360deg)}}
+.tnn-mark-all{background:none;border:none;color:var(--orange,#EA580C);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:2px}
+.tnn-mark-all:hover{color:#C2410C;text-decoration:underline}
+.tnn-mark-all:disabled{color:var(--gray-300,#CBD5E1);cursor:default;text-decoration:none}
+.tnn-list{overflow-y:auto;flex:1;max-height:395px}
+.tnn-item{display:flex;gap:9px;padding:11px 14px;border-bottom:1px solid var(--gray-100,#F1F5F9);cursor:pointer;transition:background 150ms ease}
+.tnn-item:hover{background:var(--orange-light,#FFF7ED)}
+.tnn-item:last-child{border-bottom:none}
+.tnn-dot{flex-shrink:0;width:8px;height:8px;border-radius:50%;background:var(--orange,#EA580C);margin-top:5px}
+.tnn-item.read .tnn-dot{background:transparent}
+.tnn-body{min-width:0;flex:1}
+.tnn-type{font-size:12.5px;font-weight:600;color:var(--gray-800,#1E293B)}
+.tnn-item.read .tnn-type{color:var(--gray-500,#64748B);font-weight:500}
+.tnn-msg{font-size:12px;color:var(--gray-600,#475569);margin-top:2px;line-height:1.4}
+.tnn-time{font-size:10.5px;color:var(--gray-400,#94A3B8);margin-top:4px}
+.tnn-empty{padding:36px 20px;text-align:center;color:var(--gray-400,#94A3B8);font-size:12.5px}

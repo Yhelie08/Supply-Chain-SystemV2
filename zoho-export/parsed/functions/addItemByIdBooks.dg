@@ -1,0 +1,335 @@
+// map addItemByIdBooks(String itemBooksId)   [.ds lines 23141-23476]
+response = Map();
+orgId = "751117756";
+itemBooksId = itemBooksId.trim();
+if(itemBooksId == "")
+{
+    response.put("status","error");
+    response.put("message","Item ID is required.");
+    return response;
+}
+itemResp = invokeurl
+[
+    url :"https://www.zohoapis.com/books/v3/items/" + itemBooksId + "?organization_id=" + orgId
+    type :GET
+    connection:"zhbooks3"
+];
+detail = itemResp.get("item");
+if(detail == null)
+{
+    response.put("status","error");
+    response.put("message","Item not found in Books for ID " + itemBooksId + " — check the ID and try again.");
+    return response;
+}
+itemName = ifnull(detail.get("name"),"");
+skuVal = ifnull(detail.get("sku"),"");
+itemRefVal = ifnull(detail.get("cf_oldsku"),"");
+descriptionVal = ifnull(detail.get("cf_description"),"");
+unitVal = ifnull(detail.get("unit"),"");
+rateVal = ifnull(detail.get("rate"),0);
+categoryVal = ifnull(detail.get("category_name"),"");
+warehouses = detail.get("warehouses");
+// Warehouse presence string — PHYSICAL stock only (actual_available_stock),
+// matches sync-single-item.js's own 2026-07-29 fix, not accounting stock_on_hand.
+warehouseStr = "";
+if(warehouses != null)
+{
+    for each  wh in warehouses
+    {
+        avail = wh.get("warehouse_actual_available_stock");
+        if(avail != null && avail != 0)
+        {
+            whName = wh.get("warehouse_name") + "";
+            if(warehouseStr == "")
+            {
+                warehouseStr = whName;
+            }
+            else
+            {
+                warehouseStr = warehouseStr + ", " + whName;
+            }
+        }
+    }
+}
+// Bin locations — the same 3 real storage warehouses sync-single-item.js checks.
+// Unrolled (no Map.keys() iteration — unproven in this codebase) into 3 identical
+// blocks, one per warehouse, same as this app's own established "hand-roll a
+// small fixed set instead of reaching for an unconfirmed loop construct" convention.
+binStr = "";
+whMatch1 = null;
+if(warehouses != null)
+{
+    for each  wh in warehouses
+    {
+        if(wh.get("warehouse_id") + "" == "2680178000042173149")
+        {
+            whMatch1 = wh;
+        }
+    }
+}
+if(whMatch1 != null && whMatch1.get("is_storage_location_enabled") == true)
+{
+    binResp1 = invokeurl
+    [
+        url :"https://www.zohoapis.com/books/v3/settings/warehouses/2680178000042173149/storagelocations?item_id=" + itemBooksId + "&organization_id=" + orgId
+        type :GET
+        connection:"zhbooks3"
+    ];
+    locs1 = binResp1.get("storage_locations");
+    realBins1 = "";
+    if(locs1 != null)
+    {
+        for each  loc in locs1
+        {
+            locName = loc.get("name") + "";
+            locQty1 = loc.get("balance_quantity");
+            if(locQty1 != null && locQty1 > 0)
+            {
+                if(realBins1 == "")
+                {
+                    realBins1 = locName;
+                }
+                else
+                {
+                    realBins1 = realBins1 + ", " + locName;
+                }
+            }
+        }
+    }
+    seg1 = "";
+    if(realBins1 != "")
+    {
+        seg1 = "HC WH3 BAESA: " + realBins1;
+    }
+    else
+    {
+        seg1 = "HC WH3 BAESA: Map Bins";
+    }
+    binStr = seg1;
+}
+whMatch2 = null;
+if(warehouses != null)
+{
+    for each  wh in warehouses
+    {
+        if(wh.get("warehouse_id") + "" == "2680178000055220196")
+        {
+            whMatch2 = wh;
+        }
+    }
+}
+if(whMatch2 != null && whMatch2.get("is_storage_location_enabled") == true)
+{
+    binResp2 = invokeurl
+    [
+        url :"https://www.zohoapis.com/books/v3/settings/warehouses/2680178000055220196/storagelocations?item_id=" + itemBooksId + "&organization_id=" + orgId
+        type :GET
+        connection:"zhbooks3"
+    ];
+    locs2 = binResp2.get("storage_locations");
+    realBins2 = "";
+    if(locs2 != null)
+    {
+        for each  loc in locs2
+        {
+            locName = loc.get("name") + "";
+            locQty2 = loc.get("balance_quantity");
+            if(locQty2 != null && locQty2 > 0)
+            {
+                if(realBins2 == "")
+                {
+                    realBins2 = locName;
+                }
+                else
+                {
+                    realBins2 = realBins2 + ", " + locName;
+                }
+            }
+        }
+    }
+    seg2 = "";
+    if(realBins2 != "")
+    {
+        seg2 = "HC WH1 BANAWE: " + realBins2;
+    }
+    else
+    {
+        seg2 = "HC WH1 BANAWE: Map Bins";
+    }
+    if(binStr == "")
+    {
+        binStr = seg2;
+    }
+    else
+    {
+        binStr = binStr + " | " + seg2;
+    }
+}
+whMatch3 = null;
+if(warehouses != null)
+{
+    for each  wh in warehouses
+    {
+        if(wh.get("warehouse_id") + "" == "2680178000047672049")
+        {
+            whMatch3 = wh;
+        }
+    }
+}
+if(whMatch3 != null && whMatch3.get("is_storage_location_enabled") == true)
+{
+    binResp3 = invokeurl
+    [
+        url :"https://www.zohoapis.com/books/v3/settings/warehouses/2680178000047672049/storagelocations?item_id=" + itemBooksId + "&organization_id=" + orgId
+        type :GET
+        connection:"zhbooks3"
+    ];
+    locs3 = binResp3.get("storage_locations");
+    realBins3 = "";
+    if(locs3 != null)
+    {
+        for each  loc in locs3
+        {
+            locName = loc.get("name") + "";
+            locQty3 = loc.get("balance_quantity");
+            if(locQty3 != null && locQty3 > 0)
+            {
+                if(realBins3 == "")
+                {
+                    realBins3 = locName;
+                }
+                else
+                {
+                    realBins3 = realBins3 + ", " + locName;
+                }
+            }
+        }
+    }
+    seg3 = "";
+    if(realBins3 != "")
+    {
+        seg3 = "INVENTORY: " + realBins3;
+    }
+    else
+    {
+        seg3 = "INVENTORY: Map Bins";
+    }
+    if(binStr == "")
+    {
+        binStr = seg3;
+    }
+    else
+    {
+        binStr = binStr + " | " + seg3;
+    }
+}
+// Upsert into Creator's Items form, matched by ID1 (the Books item id — same
+// dedup key sync-single-item.js's own findCreatorRecord() uses).
+existingId = "";
+existingImageVal = "";
+for each  rec in Items[ID1 == itemBooksId]
+{
+    existingId = rec.ID + "";
+    existingImageVal = rec.Image + "";
+}
+wasUpdate = false;
+newRecordId = "";
+if(existingId != "")
+{
+    wasUpdate = true;
+    newRecordId = existingId;
+    update Items[ID == existingId.toLong()]
+    [
+        item_name=itemName
+        SKU=skuVal
+        Item_ref=itemRefVal
+        Description=descriptionVal
+        Unit=unitVal
+        Rate=rateVal
+        category=categoryVal
+        Warehouse=warehouseStr
+        Bin_location=binStr
+    ];
+}
+else
+{
+    insertedId = insert into Items
+    [
+        ID1=itemBooksId
+        item_name=itemName
+        SKU=skuVal
+        Item_ref=itemRefVal
+        Description=descriptionVal
+        Unit=unitVal
+        Rate=rateVal
+        category=categoryVal
+        Warehouse=warehouseStr
+        Bin_location=binStr
+        Added_User=zoho.loginuser
+    ];
+    newRecordId = insertedId + "";
+}
+// Image sync — best-effort, wrapped so a Books/network hiccup here never
+// undoes the item record that's already been created/updated above. Only
+// attempts a fetch when Books actually has an image AND (this is a brand-new
+// record OR the existing record has no image yet) — same skip-if-already-set
+// rule as sync-single-item.js's own hasImage/existingHasImage check, avoids
+// re-downloading on every "add item" re-click for an item already synced.
+// Per official Zoho Deluge docs, a FILE-typed invokeurl response "can be
+// assigned...to another Zoho Creator file field" directly — first use of this
+// exact mechanism in this codebase, genuinely UNCONFIRMED until live-tested.
+imageNameVal = ifnull(detail.get("image_name"),"");
+shouldFetchImage = false;
+if(imageNameVal != "" && existingImageVal == "")
+{
+    shouldFetchImage = true;
+}
+imageSynced = false;
+if(shouldFetchImage)
+{
+    try 
+    {
+        imageFile = invokeurl
+        [
+            url :"https://www.zohoapis.com/books/v3/items/" + itemBooksId + "/image?organization_id=" + orgId
+            type :GET
+            connection:"zhbooks3"
+        ];
+        update Items[ID == newRecordId.toLong()]
+        [
+            Image=imageFile
+        ];
+        imageSynced = true;
+    }        catch (e)
+    {
+        imageSynced = false;
+    }
+}
+response.put("status","success");
+response.put("imageSynced",imageSynced);
+response.put("wasUpdate",wasUpdate);
+response.put("recordId",newRecordId);
+response.put("ID1",itemBooksId);
+response.put("item_name",itemName);
+response.put("SKU",skuVal);
+response.put("Rate",rateVal);
+response.put("Unit",unitVal);
+response.put("Description",descriptionVal);
+response.put("category",categoryVal);
+response.put("Warehouse",warehouseStr);
+response.put("Bin_location",binStr);
+messageText = "";
+if(wasUpdate)
+{
+    messageText = "Updated existing item: " + itemName;
+}
+else
+{
+    messageText = "Added new item: " + itemName;
+}
+if(shouldFetchImage && !imageSynced)
+{
+    messageText = messageText + " (image sync failed — item saved without photo)";
+}
+response.put("message",messageText);
+return response;

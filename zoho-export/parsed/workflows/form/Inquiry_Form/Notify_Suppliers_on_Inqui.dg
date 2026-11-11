@@ -1,0 +1,27 @@
+// form: Notify Suppliers on Inquiry Added  form=Inquiry_Form event=on add on success  [.ds line 45159]
+    targetUrl = "https://creator.zoho.com/homecartel/supply-chain-app/#Page:Fenteng_Lighting_Inquiries?fentenginquiriesid=" + input.INQ_No;
+tonyTargetUrl = "https://creator.zoho.com/homecartel/supply-chain-app/#Page:Tony_Fan_Inquiries?tonyinquiriesid=" + input.INQ_No;
+insert into Fenteng_Notifications
+[
+    Recipient_Email="admin@fentenglighthing.com"
+    Notification_Type="New Inquiry added"
+    Message="New inquiry " + input.INQ_No + " has been added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=targetUrl
+    Source_Record_No=input.INQ_No
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]
+insert into Tony_Notifications
+[
+    Recipient_Email="184319330@qq.com"
+    Notification_Type="New Inquiry added"
+    Message="New inquiry " + input.INQ_No + " has been added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=tonyTargetUrl
+    Source_Record_No=input.INQ_No
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]

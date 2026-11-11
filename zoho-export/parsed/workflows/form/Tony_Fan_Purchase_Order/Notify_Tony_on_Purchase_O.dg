@@ -1,0 +1,28 @@
+// form: Notify Tony on Purchase Order added  form=Tony_Fan_Purchase_Order event=on add on success  [.ds line 45772]
+    page_base_url = "https://creator.zoho.com/homecartel/supply-chain-app";
+ts = zoho.currenttime.toString().replaceAll(" ","").replaceAll(":","").replaceAll("-","");
+deep_link_token = "PO-" + input.ID + "-" + ts;
+insert into Tony_Notifications
+[
+    Recipient_Email="184319330@qq.com"
+    Notification_Type="Purchase Order added"
+    Message="A new purchase order " + input.PO_No_Supplier2 + " was added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=page_base_url + "/#Page:Tony_Fan_PO?tonypoid=" + deep_link_token
+    Source_Record_No=input.PO_No_Supplier2
+    Source_Record_ID=input.ID
+    Deep_Link_Token=deep_link_token
+    Added_User=zoho.loginuser
+]
+sendmail
+[
+    from :zoho.adminuserid
+    to :"184319330@qq.com"
+    cc:""
+    bcc :""
+    reply to :zoho.adminuserid
+    subject :"Purchase Order added"
+    message :"A new purchase order has been added in your portal."
+    content type :Plain Text
+]

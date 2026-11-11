@@ -1,0 +1,11 @@
+
+			displayName = "Exception_Internal_Messages Report"
+			show all rows from Exception_Internal_Messages    
+			(
+				Exception_No as "Exception No"
+				Sender_Email as "Sender Email"
+				Sender_Role as "Sender Role"
+				Message
+				Sent_On as "Sent On"
+			)
+		

@@ -1,0 +1,277 @@
+{
+  "name": "Sales_Order_Readiness_Gate",
+  "label": "Sales Order Readiness Gate",
+  "successMessage": "Data Added Successfully!",
+  "line": 13689,
+  "fields": [
+    {
+      "name": "Sales_Order_Details",
+      "label": "Sales Order Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "sales_order_number",
+      "label": "Sales Order Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Demo",
+      "label": "Demo #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "rr_number",
+      "label": "RR Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "pr_number",
+      "label": "PR Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Order_Type",
+      "label": "Order Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Order",
+      "label": "Package Order Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Delivery_Type",
+      "label": "Delivery Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "For_Crate",
+      "label": "For Crate",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "payment_status",
+      "label": "Payment Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Yes",
+        "No",
+        "Partial"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Target_Delivery_Date",
+      "label": "Target Delivery Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Customer_Details",
+      "label": "Customer Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "customer_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "customer_type",
+      "label": "Customer Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Corporate",
+        "End User",
+        "VIP",
+        "Dealer",
+        "Design Partner"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "customer_address",
+      "label": "Customer Address",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "priority",
+      "label": "Priority",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Air",
+        "Complaint",
+        "Normal"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Item_Details",
+      "label": "Item Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Item_Name",
+      "label": "Item Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SKU",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Quantity",
+      "label": "Quantity",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Bin_Location",
+      "label": "Bin Location",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section1",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Assign_Picker",
+      "label": "Assign Picker",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Hendel",
+        "Jayvon",
+        "Jazz",
+        "Edwin"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Release",
+      "label": "Release",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Release_Log",
+      "label": "Release Log",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section2",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Override_Approved",
+      "label": "Override Approved",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Override_Approved_For_Status",
+      "label": "Override Approved For Status",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Override_By",
+      "label": "Override By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Override_Reason",
+      "label": "Override Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Override_Timestamp",
+      "label": "Override Timestamp",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Section3",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Has_Credit_Terms",
+      "label": "Has Credit Terms",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

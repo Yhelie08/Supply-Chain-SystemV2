@@ -1,0 +1,173 @@
+{
+  "name": "Pick1",
+  "label": "Pick",
+  "successMessage": "Data Added Successfully!",
+  "line": 8227,
+  "fields": [
+    {
+      "name": "Sales_Order_Details",
+      "label": "Sales Order Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Picker",
+      "label": "Picker",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SO",
+      "label": "SO #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Order",
+      "label": "PAC #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "For_Crate",
+      "label": "For Crate",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "PR_if_any",
+      "label": "PR #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR",
+      "label": "RR #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Demo",
+      "label": "Demo #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Delivery_Type",
+      "label": "Delivery Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Order_Type",
+      "label": "Order Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Target_Delivery_Date",
+      "label": "Target Delivery Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Item_Details",
+      "label": "Item Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Item_Name",
+      "label": "Item Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Bin_Location",
+      "label": "Bin Location",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SKU",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Quantity_to_Pick",
+      "label": "Quantity to Pick",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Details",
+      "label": "Customer Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Address",
+      "label": "Customer Address",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Type",
+      "label": "Customer Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Marked",
+      "label": "Mark Picked",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

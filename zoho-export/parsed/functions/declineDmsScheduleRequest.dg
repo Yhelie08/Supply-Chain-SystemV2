@@ -1,0 +1,31 @@
+// map declineDmsScheduleRequest(String dmsRecordId)   [.ds lines 32010-32041]
+response = Map();
+recId = dmsRecordId.trim();
+if(recId == "")
+{
+    response.put("status","error");
+    response.put("message","dmsRecordId is required.");
+    return response;
+}
+found = false;
+cmsIdVal = "";
+for each  rec in DMS_Schedule_Request[ID == recId.toLong()]
+{
+    found = true;
+    cmsIdVal = rec.CMS_Schedule_Request_ID;
+}
+if(!found)
+{
+    response.put("status","error");
+    response.put("message","DMS Schedule Request not found.");
+    return response;
+}
+update DMS_Schedule_Request[ID == recId.toLong()]
+[
+    Status="Declined"
+];
+pushResp = thisapp.pushDmsStatusToCms(cmsIdVal,"Declined");
+response.put("status","success");
+response.put("message","Declined.");
+response.put("cmsPushStatus",pushResp.get("status"));
+return response;

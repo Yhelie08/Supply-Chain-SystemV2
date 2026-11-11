@@ -1,0 +1,78 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   INTERNAL CONVERSATION COMPONENT — styles
+   Drop-in per-record private chat between exactly 2 hardcoded roles (a stand-in
+   for a real roles/permissions system — see README.md). Self-contained: own
+   `.inc-*` prefixed classes, var() fallbacks to this app family's shared design
+   tokens (--blue, --gray-200, --radius, etc.) same two-level fallback pattern as
+   timeline_history_component's own `--tlhc-*` tokens. Card/header/toggle-button
+   proportions deliberately mirror timeline_history_component's `.tlhc-*` classes
+   almost exactly (per user request — same collapsed look, chat instead of an
+   activity log underneath).
+   ══════════════════════════════════════════════════════════════════════════ */
+.inc-wrap{
+  --inc-blue: var(--blue, #2563EB);
+  --inc-blue-dark: var(--blue-dark, #1D4ED8);
+  --inc-blue-light: var(--blue-light, #EFF6FF);
+  --inc-blue-mid: var(--blue-mid, #BFDBFE);
+  --inc-gray-50: var(--gray-50, #F8FAFC);
+  --inc-gray-100: var(--gray-100, #F1F5F9);
+  --inc-gray-200: var(--gray-200, #E2E8F0);
+  --inc-gray-400: var(--gray-400, #94A3B8);
+  --inc-gray-500: var(--gray-500, #64748B);
+  --inc-gray-700: var(--gray-700, #334155);
+  --inc-gray-800: var(--gray-800, #1E293B);
+  --inc-white: var(--white, #fff);
+  --inc-radius: var(--radius, 8px);
+  --inc-radius-lg: var(--radius-lg, 12px);
+  --inc-shadow: var(--shadow, 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04));
+  --inc-t: var(--t, 150ms ease);
+  font-family: inherit;
+}
+.inc-card{background:var(--inc-white);border:1px solid var(--inc-gray-200);border-radius:var(--inc-radius-lg);box-shadow:var(--inc-shadow);overflow:hidden}
+/* CHANGED — "with <names>" used to sit on the title's own row (flex-shrink:0),
+   which forced the title to wrap/squeeze once the name list grew (3+ members,
+   e.g. "with HC Purchasing, HC Damage Officer"). Split into 2 rows instead: title
+   + toggle always get their own row (never competing for space with the name
+   list), and the sub-label gets a full-width row below that truncates with an
+   ellipsis instead of wrapping or cramming against the title. */
+.inc-header{display:flex;flex-direction:column;gap:2px;padding:10px 16px;border-bottom:1px solid var(--inc-gray-100);border-left:4px solid var(--inc-blue);background:var(--inc-blue-light)}
+.inc-header-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.inc-title{font-size:12px;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:.06em;min-width:0}
+.inc-sub{display:block;font-size:10px;font-weight:600;color:var(--inc-gray-500);text-transform:none;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.inc-toggle-btn{flex-shrink:0;display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;border:1.5px solid var(--inc-gray-200);background:var(--inc-white);color:var(--inc-gray-600);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all var(--inc-t);white-space:nowrap}
+.inc-toggle-btn:hover{border-color:var(--inc-blue);color:var(--inc-blue)}
+
+.inc-body{display:flex;flex-direction:column;height:380px}
+.inc-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--inc-gray-50)}
+.inc-empty{color:var(--inc-gray-400);font-size:12.5px;text-align:center;margin-top:20px}
+
+.inc-bubble{max-width:82%;padding:7px 11px;border-radius:12px;font-size:12.5px;line-height:1.4;position:relative}
+.inc-bubble.theirs{align-self:flex-start;background:var(--inc-white);border:1px solid var(--inc-gray-200);color:var(--inc-gray-800);border-bottom-left-radius:3px}
+.inc-bubble.mine{align-self:flex-end;background:var(--inc-blue);color:#fff;border-bottom-right-radius:3px}
+.inc-meta{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.65;margin-bottom:2px}
+.inc-time{font-size:9.5px;opacity:.6;margin-top:3px;text-align:right}
+
+.inc-inputbar{position:relative;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--inc-gray-100);background:var(--inc-white)}
+.inc-inputbar textarea{
+  flex:1;resize:none;font-family:inherit;font-size:13px;color:var(--inc-gray-800);
+  border:1.5px solid var(--inc-gray-200);border-radius:var(--inc-radius);padding:7px 10px;
+  outline:none;line-height:1.4;max-height:70px;
+}
+.inc-inputbar textarea:focus{border-color:var(--inc-blue)}
+.inc-send-btn{
+  height:34px;padding:0 14px;border-radius:var(--inc-radius);border:none;
+  background:var(--inc-blue);color:#fff;font-family:inherit;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all var(--inc-t);align-self:flex-end;
+}
+.inc-send-btn:hover{background:var(--inc-blue-dark)}
+.inc-send-btn:disabled{background:var(--inc-gray-200);color:var(--inc-gray-500);cursor:default}
+
+/* @-mention popup — anchored above the input bar (left edge lines up with the
+   textarea's own padding), positioned via .inc-inputbar's position:relative. */
+.inc-mention-popup{
+  position:absolute;bottom:100%;left:12px;margin-bottom:6px;min-width:170px;max-width:80%;
+  background:var(--inc-white);border:1px solid var(--inc-gray-200);border-radius:var(--inc-radius);
+  box-shadow:var(--inc-shadow);max-height:160px;overflow-y:auto;z-index:20;
+}
+.inc-mention-item{padding:7px 12px;font-size:12.5px;color:var(--inc-gray-700);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inc-mention-item.active,.inc-mention-item:hover{background:var(--inc-blue-light);color:var(--inc-blue-dark)}

@@ -1,0 +1,101 @@
+{
+  "name": "Service_Entries",
+  "label": "Service Entries",
+  "successMessage": "Service Entry Added Successfully",
+  "line": 15373,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Vehicle",
+      "label": "Vehicle",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Innova",
+        "NBX-1446 - Hino",
+        "NIB-3823 - Travis",
+        "NKI-4696 - Travis",
+        "Rav4"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Service",
+      "label": "Service",
+      "type": "checkboxes",
+      "required": false,
+      "options": [
+        "Car Lights Repair",
+        "Change Oil",
+        "Charging Port",
+        "Fixing Break",
+        "Fixing Engine",
+        "Inflating Tire",
+        "Oil Filter",
+        "Repaint",
+        "Transmission Repair"
+      ]
+    },
+    {
+      "name": "Remarks",
+      "label": "Remarks",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Invoice_Details",
+      "label": "Invoice Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Labor",
+      "label": "Labor",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Parts",
+      "label": "Parts",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Tax",
+      "label": "Tax",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Total",
+      "label": "Total",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "Invoice_Number",
+      "label": "Invoice Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Invoice_Receipt",
+      "label": "Invoice Receipt",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Submitted_by",
+      "label": "Submitted by",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

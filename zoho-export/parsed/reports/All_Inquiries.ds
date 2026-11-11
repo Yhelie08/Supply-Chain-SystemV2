@@ -1,0 +1,87 @@
+
+			displayName = "All Inquiries"
+			show all rows from Inquiry_Form    
+			(
+				INQ_No as "INQ No."
+				created_date as "Created Date"
+				quote_group as "Quote Group"
+				sku as "SKU"
+				description as "Description"
+				quantity as "Quantity"
+				unit as "Unit"
+				target_date as "Target Date"
+				Waiting_On as "Waiting On"
+				Addtional_Description
+				Attachments
+				Open_to_similar_design as "Open to similar design"
+				Product_Sample as "Product Sample"
+				D_Image as "3D Image"
+				Technical_Drawing as "Technical Drawing"
+				Specification
+				Supplier_Selected as "Supplier Selected"
+				Availability as "Availability Confirmed"
+				Final_Price_Exists as "Final Price Exists"
+				Collateral_Comple_NA as "Collateral Comple/NA"
+				SRP_Approved as "SRP Approved"
+				Select_Final_Cost as "Select Final Cost"
+				SRP_Approved1 as "SRP (Approved)"
+				SRP_Status as "SRP Status"
+				Sales_Owner as "Sales Owner"
+				Customer
+				Items
+				Suppliers
+				Similar_Design_Photo as "Similar Design Photo"
+				Customer_Type as "Customer Type"
+				Specification_Details as "Specification Details"
+				Margin as "Margin%"
+				Ready_for_Estimates as "Ready for Estimates"
+				Books_Estimate_No as "Books Estimate No."
+				Books_Estimate_ID as "Books Estimate ID"
+				Estimate_Created as "Estimate Created"
+				Design_Company as "Design Company"
+				Design_Partner as "Design Partner"
+				Project_Type as "Project Type"
+				Project_Name as "Project Name"
+				Designer_Architect as "Designer/Architect"
+				Order_Type as "Order Type"
+				Commission
+				Addtl_Disc_Needed1 as "Additional Discount Needed"
+				For_Bidding as "For Bidding"
+				Projects
+				Projects.Project_Code as "Project Code"
+				Supplier_Quotes as "Supplier Quotes"
+				(
+					field = Supplier_Quotes.Supplier_ID + " " + Supplier_Quotes.Suppliers + " " + Supplier_Quotes.Availability + " " + Supplier_Quotes.Initial_Price + " " + Supplier_Quotes.Final_Price + " " + Supplier_Quotes.Lead_Time + " " + Supplier_Quotes.Negotiated + " " + Supplier_Quotes.Stage + " " + Supplier_Quotes.Prev_Stage + " " + Supplier_Quotes.Selected
+				)
+				Group_Discount_Pct as "Group Discount Percentage"
+				Supplier_Quotes_Last_Edited.Availability_Last_Edited as "Supplier Quotes History"
+				custom action "Create Estimates"
+				(
+	  			workflow = Create_Estimates_Inq
+				show action in view header = true
+				show action in edit record menu = true
+				column header = "Create Estimates"
+				condition = (Ready_for_Estimates == true)
+				confirmation before execution
+				(
+					message for individual record = "Execute the Create Estimates action for this record?"
+					confirm button text = "Yes"		
+					cancel button text = "No"
+				)
+				)
+				ID
+				Product_Image as "Product Image"
+				INQ_Seq
+				Deep_Link_Token
+				Dimension
+				Color_Body as "Color Body"
+				Voltage
+				Lumens
+				Color_Temperature as "Color Temperature"
+				Type_of_Bulb as "Type of Bulb"
+			)
+			sort by
+			(
+				INQ_No descending
+			)
+		

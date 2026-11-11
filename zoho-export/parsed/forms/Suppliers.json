@@ -1,0 +1,112 @@
+{
+  "name": "Suppliers",
+  "label": "Suppliers",
+  "successMessage": "Supplier Added Successfully",
+  "line": 17139,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Supplier_ID",
+      "label": "Supplier ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Supplier_Name",
+      "label": "Supplier Name",
+      "type": "name",
+      "required": false,
+      "personalData": "true",
+      "fields": [
+        {
+          "name": "prefix",
+          "label": "Prefix",
+          "type": "prefix",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "first_name",
+          "label": "First Name",
+          "type": "first_name",
+          "required": false
+        },
+        {
+          "name": "last_name",
+          "label": "Last Name",
+          "type": "last_name",
+          "required": false
+        },
+        {
+          "name": "suffix",
+          "label": "Suffix",
+          "type": "suffix",
+          "required": false,
+          "visibility": "false"
+        }
+      ]
+    },
+    {
+      "name": "Supported_Categories",
+      "label": "Supported Categories",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Chandeliers",
+        "Cluster Chandelier",
+        "Pendant Light",
+        "Wall Light",
+        "Floor Lamp",
+        "Ceiling Light",
+        "Table Lamps",
+        "Painting & Bathroom Lights",
+        "Rechargeable Table Lamps",
+        "Semi Flush Mounted Lights",
+        "Mirrors",
+        "Furniture"
+      ]
+    },
+    {
+      "name": "Handles_All",
+      "label": "Handles All",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Max_Capacity",
+      "label": "Max Capacity",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Active_PO_Count",
+      "label": "Active PO Count",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Utilization",
+      "label": "Utilization Percentage",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Status",
+      "label": "Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Normal",
+        "Near Capacity",
+        "Overkoaded"
+      ],
+      "maxchar": "100"
+    }
+  ]
+}

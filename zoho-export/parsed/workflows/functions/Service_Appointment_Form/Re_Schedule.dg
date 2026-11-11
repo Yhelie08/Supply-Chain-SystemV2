@@ -1,0 +1,2 @@
+// functions: Re_Schedule  form=Service_Appointment_Form event= on start > on click  [.ds line 54615]
+rsOut = thisapp.dmsScheduleSlot(input.ID.toString(),true);

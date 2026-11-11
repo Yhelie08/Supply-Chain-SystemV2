@@ -1,0 +1,12 @@
+
+			displayName = "PR_Timeline Report"
+			show all rows from PR_Timeline    
+			(
+				PR_No as "PR No"
+				Action_Title as "Action"
+				Changes
+				Action_Type2 as "Action_Type"
+				Actor
+				Logged_On
+			)
+		

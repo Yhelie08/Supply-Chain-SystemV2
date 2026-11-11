@@ -1,0 +1,893 @@
+{
+  "name": "Service_Appointment_Form",
+  "label": "Service Appointment Form",
+  "successMessage": "Service Appointment Added Successfully",
+  "line": 14361,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Delivery_ID",
+      "label": "Delivery ID",
+      "type": "autonumber",
+      "required": false
+    },
+    {
+      "name": "Scheduled_Date_and_Time",
+      "label": "Scheduled Date and Time",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Initial_Schedule_ID",
+      "label": "Initial Schedule ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Service_Request_ID",
+      "label": "Service Request ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Installer",
+      "label": "Installer",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "CJ",
+        "Edmon",
+        "John Dave",
+        "Nherwin",
+        "Norman"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Assistant_Installers",
+      "label": "Assistant Installers",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "CJ",
+        "Edmon",
+        "Janchyl",
+        "Jayvon",
+        "John Dave",
+        "Jonrey",
+        "Nherwin",
+        "Norman",
+        "Russel Mark"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Assigned_to_Driver",
+      "label": "Assigned to (Driver)",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Judy",
+        "Norman",
+        "Patrick",
+        "Petz",
+        "Zaldy",
+        "Other"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Assigned_to_Dispatcher",
+      "label": "Assigned to (Dispatcher)",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Andrea",
+        "Flor",
+        "Jhi"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Logistic_Notes",
+      "label": "Logistic Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Shipment_Order",
+      "label": "Shipment Order",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "Shipment_Order_File",
+      "label": "Shipment Order File",
+      "type": "upload file",
+      "required": false
+    },
+    {
+      "name": "Appointment_Status",
+      "label": "Delivery Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Rescheduled",
+        "Reschedule Requested",
+        "Scheduled",
+        "Dispatched",
+        "Started",
+        "Archived",
+        "Queued",
+        "In Transit",
+        "Delivered",
+        "Completed",
+        "Failed"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Calendar_Event_Summary",
+      "label": "Calendar Event Summary",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Logistic_Notes1",
+      "label": "Logistic Notes",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Attachment_of_Photo",
+          "label": "Attachment of Photo",
+          "type": "image",
+          "required": false
+        },
+        {
+          "name": "Notes",
+          "label": "Notes",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "SO_Details",
+      "label": "SO Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "RMA",
+      "label": "RMA#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Original_SO",
+      "label": "Original SO#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Reason",
+      "label": "Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Sub_Reason",
+      "label": "Sub Reason",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Change of Mind",
+        "Damaged Item",
+        "Demo",
+        "Replacement"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Service_Request",
+      "label": "Service Request#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order",
+      "label": "Sales Order#",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Sales_Order_Display",
+      "label": "Sales Order Display",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Type_of_Delivery",
+      "label": "Type of Delivery",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Delivery Only",
+        "With Installation",
+        "Full-Day Install",
+        "Multi-Day Install",
+        "Replacement",
+        "Site Visit",
+        "Pullout",
+        "Pick Up"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Customer_Details",
+      "label": "Customer Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "name",
+      "required": false,
+      "personalData": "true",
+      "fields": [
+        {
+          "name": "prefix",
+          "label": "Prefix",
+          "type": "prefix",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "first_name",
+          "label": "First Name",
+          "type": "first_name",
+          "required": false
+        },
+        {
+          "name": "last_name",
+          "label": "Last Name",
+          "type": "last_name",
+          "required": false
+        },
+        {
+          "name": "suffix",
+          "label": "Suffix",
+          "type": "suffix",
+          "required": false,
+          "visibility": "false"
+        }
+      ]
+    },
+    {
+      "name": "Customer_Address",
+      "label": "Customer Address",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "City",
+      "label": "City",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Email",
+      "label": "Email",
+      "type": "email",
+      "required": false,
+      "maxchar": "80",
+      "personalData": "true"
+    },
+    {
+      "name": "Contact",
+      "label": "Contact",
+      "type": "phonenumber",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Address",
+      "label": "Address",
+      "type": "address",
+      "required": false,
+      "personalData": "true",
+      "fields": [
+        {
+          "name": "address_line_1",
+          "label": "Address Line 1",
+          "type": "address_line_1",
+          "required": false
+        },
+        {
+          "name": "address_line_2",
+          "label": "Address Line 2",
+          "type": "address_line_2",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "district_city",
+          "label": "City / District",
+          "type": "district_city",
+          "required": false
+        },
+        {
+          "name": "state_province",
+          "label": "State / Province",
+          "type": "state_province",
+          "required": false
+        },
+        {
+          "name": "postal_Code",
+          "label": "Postal Code",
+          "type": "postal_Code",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "country",
+          "label": "Country",
+          "type": "country",
+          "required": false
+        },
+        {
+          "name": "latitude",
+          "label": "latitude",
+          "type": "latitude",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "longitude",
+          "label": "longitude",
+          "type": "longitude",
+          "required": false,
+          "visibility": "false"
+        }
+      ]
+    },
+    {
+      "name": "For_Field_Portal",
+      "label": "For Field Portal",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Start_of_Work",
+      "label": "Start of Work",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "End_of_Work",
+      "label": "End of Work",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Assigned_Status",
+      "label": "Assigned Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Assigned",
+        "Not Assigned"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "If_Pull_Out",
+      "label": "If Pull Out",
+      "type": "radiobuttons",
+      "required": false,
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Priority_Level",
+      "label": "Priority Level",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "High Priority",
+        "Medium Priority",
+        "Low Priority"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Item_Details",
+      "label": "Item Details",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Quantity",
+          "label": "Quantity",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "PAC",
+          "label": "PAC",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Section1",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Scheduled_by",
+      "label": "Scheduled by:",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Jhi",
+        "Flor"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Section2",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Complaint_Record_ID",
+      "label": "Complaint Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Appointment_Record_ID",
+      "label": "Appointment Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Delivery_Details_Section",
+      "label": "Delivery Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Order_Date",
+      "label": "Order Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Fulfillment_Completed_Date",
+      "label": "Fulfillment Completed Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Fleet_Assignment",
+      "label": "Fleet Assignment",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Own Fleet",
+        "3rd Party"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Installation_Required",
+      "label": "Installation Required",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Estimated_Duration",
+      "label": "Estimated Duration (hrs)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Location_Route",
+      "label": "Location Route",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Dispatch_Date",
+      "label": "Dispatch Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Actual_Delivery_Date",
+      "label": "Actual Delivery Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Geocode_Status",
+      "label": "Geocode Status",
+      "type": "text",
+      "required": false,
+      "maxchar": "50"
+    },
+    {
+      "name": "Delivery_Latitude",
+      "label": "Delivery Latitude",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Delivery_Longitude",
+      "label": "Delivery Longitude",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Site_Confirmation_Section",
+      "label": "Site Confirmation",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Site_Confirmation_Status",
+      "label": "Site Confirmation Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Pending",
+        "Confirmed",
+        "Not Ready",
+        "Unreachable"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Date_Confirmed",
+      "label": "Date Confirmed",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Confirmation_Method",
+      "label": "Confirmation Method",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Call",
+        "SMS",
+        "Email",
+        "In-Person"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Site_Confirmation_Notes",
+      "label": "Site Confirmation Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Outreach_Sent_Date",
+      "label": "Outreach Sent Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Followup_Count",
+      "label": "Followup Count",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Scheduling_Section",
+      "label": "Scheduling",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Suggested_Schedule_Date",
+      "label": "Suggested Schedule Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Suggested_Time_Slot",
+      "label": "Suggested Time Slot",
+      "type": "time",
+      "required": false
+    },
+    {
+      "name": "Confirmed_Schedule_Date",
+      "label": "Confirmed Schedule Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Confirmed_Time_Slot",
+      "label": "Confirmed Time Slot",
+      "type": "time",
+      "required": false
+    },
+    {
+      "name": "Third_Party_Provider",
+      "label": "3rd Party Provider",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Lalamove",
+        "Other"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Calendar_Entry_Created",
+      "label": "Calendar Entry Created",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Exception_Override_Section",
+      "label": "Exception and Override",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Exception_Status",
+      "label": "Exception Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "None",
+        "Flagged",
+        "Resolved"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Exception_Reason",
+      "label": "Exception Reason",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Override_Applied",
+      "label": "Override Applied",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Override_By",
+      "label": "Override By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Override_Reason",
+      "label": "Override Reason",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Override_Timestamp",
+      "label": "Override Timestamp",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Original_System_Suggestion",
+      "label": "Original System Suggestion",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Section3",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Shipment_Order_No",
+      "label": "Shipment Order No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Needs_Site_Visit",
+      "label": "Needs Site Visit",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Section4",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Rescheduled_From_SA",
+      "label": "Rescheduled From SA",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section5",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Priority",
+      "label": "Priority",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Rescheduled_Via_Exception",
+      "label": "Rescheduled via Exception",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section6",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Requested_Delivery_Date",
+      "label": "Requested Delivery Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Requested_Delivery_Time",
+      "label": "Requested Delivery Time",
+      "type": "time",
+      "required": false
+    },
+    {
+      "name": "Section7",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Fleet_Decision",
+      "label": "Fleet Decision",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Own Fleet",
+        "3rd Party"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Override_Fleet_3rd_Party",
+      "label": "Override Fleet (3rd-Party)",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Lalamove",
+        "Transportify",
+        "Angkas Padala"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Section8",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Complaint",
+      "label": "Complaint #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Complaint_ID",
+      "label": "Complaint ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

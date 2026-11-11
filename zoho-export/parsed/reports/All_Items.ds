@@ -1,0 +1,17 @@
+
+			displayName = "All Items"
+			show all rows from Items    
+			(
+				item_name as "Item Name"
+				SKU
+				category as "Category"
+				Rate
+				Warehouse
+				Description
+				Unit
+				Bin_location as "Bin location"
+				Item_ref as "Itemref"
+				Image
+				ID1 as "ID"
+			)
+		

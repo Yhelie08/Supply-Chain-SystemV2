@@ -1,0 +1,348 @@
+{
+  "name": "Exception_Control1",
+  "label": "Exception Control",
+  "successMessage": "Data Added Successfully!",
+  "line": 2041,
+  "fields": [
+    {
+      "name": "o",
+      "label": "Sales Order Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Exception_Number",
+      "label": "Exception Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order",
+      "label": "SO #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_No",
+      "label": "RR #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Source_Module",
+      "label": "Source Module",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "PR",
+      "label": "PR #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Demo1",
+      "label": "Demo #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Order_Type",
+      "label": "Order Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "PAC",
+      "label": "PAC #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Rework_Status",
+      "label": "REWORK STATUS",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Pending Assessment",
+        "In Rework",
+        "Completed",
+        "Unrepairable"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "DELIVERY_TYPE",
+      "label": "DELIVERY TYPE",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "QC_Rejection",
+      "label": "QC Rejection",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Checker",
+      "label": "Checked By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Remarks",
+      "label": "Remarks",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer",
+      "label": "Customer Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Customer_Name",
+      "label": "CUSTOMER NAME",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Type",
+      "label": "CUSTOMER TYPE",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Address",
+      "label": "ADDRESS",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Item_to_Replace2",
+      "label": "Item to Replace",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Item_to_Replace3",
+      "label": "Item to Replace",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Whole Fixture",
+        "Spare Parts"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Quantity",
+      "label": "Quantity of Damage Items",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Item_to_Replace",
+      "label": "Spare part type",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Item_to_Replace1",
+      "label": "Item to Replace",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Shade",
+        "Base",
+        "Glass",
+        "",
+        "Base, Shade",
+        "Shade, Base",
+        "Shade, Base, Glass",
+        "Shade, Glass"
+      ]
+    },
+    {
+      "name": "Quantity_of_damage_spare_s",
+      "label": "Quantity of damage spare/s",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Item_Details_Section",
+      "label": "Item Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Supplier",
+      "label": "Supplier",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Rework",
+      "label": "Rework",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Select",
+        "OK",
+        "Repair",
+        "Rewire",
+        "Repaint"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Status",
+      "label": "Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Pending",
+        "OK",
+        "In Rework",
+        "Completed",
+        "Unrepairable"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Item_Name",
+      "label": "Item Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SKU",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Qty",
+      "label": "Qty",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Affected_Qty",
+      "label": "Affected Qty",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Documentation",
+      "label": "Documentation",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Image_max_10_JPG_JPEG_PNG",
+      "label": "Image",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Video_Upload_max_3_min_30_sec",
+      "label": "Video",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Rework_Status1",
+      "label": "Rework Status",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Rework_Type",
+      "label": "REWORK TYPE",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Repair",
+        "Repaint",
+        "Rewire"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Modified_By",
+      "label": "Modified By",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Choice 1",
+        "Choice 2",
+        "Choice 3"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Modified_Time2",
+      "label": "MODIFIED TIME",
+      "type": "time",
+      "required": false
+    },
+    {
+      "name": "Added_Time2",
+      "label": "ADDED TIME",
+      "type": "time",
+      "required": false
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Override_Approved",
+      "label": "Override Approved",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Override_By",
+      "label": "Override By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Override_Reason",
+      "label": "Override Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Override_Timestamp",
+      "label": "Override Timestamp",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

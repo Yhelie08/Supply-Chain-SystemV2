@@ -1,0 +1,2 @@
+// form: QC_Instant_Forecast  form=Checker_Checklist event=on add or edit on success  [.ds line 46993]
+info thisapp.fcStampBySoNo(input.SO + "");

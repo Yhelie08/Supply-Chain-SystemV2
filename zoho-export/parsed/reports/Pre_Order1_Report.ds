@@ -1,0 +1,80 @@
+
+			displayName = "Pre Order Report"
+			show all rows from Pre_Order_FF  [Packaged_Out == false]  
+			(
+				SO_Creation_Date as "SO Creation Date"
+				PR as "PR #"
+				(
+					width = 101px
+				)
+				Package_Number as "Package Number #"
+				(
+					width = 165px
+				)
+				Order_Type as "Order Type"
+				Delivery_Type as "Delivery Type"
+				(
+					width = 133px
+				)
+				Target_Delivery as "Target Delivery Date"
+				(
+					width = 133px
+				)
+				Pre_Order_Status as "Pre-Order Status"
+				(
+					width = 145px
+				)
+				PR_Date_Received as "PR Date Received"
+				Customer_Name as "Customer Name"
+				Customer_Address as "Customer Address"
+				Customer_Type as "Customer Type"
+				Item_Name as "Item Name"
+				(
+					width = 390px
+				)
+				SKU
+				(
+					width = 323px
+				)
+				Qty
+				(
+					width = 80px
+				)
+				Added_Time as "Added Time"
+				(
+					width = 175px
+				)
+				Status
+				SO as "SO #"
+				Bin_Location as "Bin Location"
+				For_Crate as "For Crate"
+				custom action "Create Package"
+				(
+	  			workflow = Create_Package_FF
+				show action in edit record menu = true
+				column header = "Create Package"
+				confirmation before execution
+				(
+					message for individual record = "Execute the Create Package action for this record?"
+					confirm button text = "Yes"		
+					cancel button text = "No"
+				)
+				)
+				Select_To_Package as "Select to Package"
+				City
+				Email
+				Contact
+				ID
+				Books_Package_ID
+				Replacement_Request as "Replacement Request"
+				(
+					field = Replacement_Request.Single_Line1 + " " + Replacement_Request.RR + " " + Replacement_Request.Date_Received
+				)
+				RR as "RR #"
+				SO_SKU_Key
+				Packaged_Out
+				Forecast_Delivery as "Forecast Delivery"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+			)
+		

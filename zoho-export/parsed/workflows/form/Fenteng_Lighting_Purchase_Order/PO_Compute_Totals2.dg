@@ -1,0 +1,15 @@
+// form: PO_Compute_Totals  form=Fenteng_Lighting_Purchase_Order event=on add or edit on validate  [.ds line 39003]
+    // === PO_Compute_Totals ===
+// Form: Purchase_Order | Event: Created or Edited | Validations on form submission
+totalValue = 0;
+totalLines = 0;
+for each  ln in input.PO_Line_Items_Supplier1
+{
+    totalLines = totalLines + 1;
+    if(ln.Line_Total_Supplier1 != null)
+    {
+        totalValue = totalValue + ln.Line_Total_Supplier1;
+    }
+}
+input.Total_PO_Value_Supplier1 = totalValue;
+input.Total_Lines_Supplier1 = totalLines;

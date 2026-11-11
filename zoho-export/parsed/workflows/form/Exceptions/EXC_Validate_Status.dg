@@ -1,0 +1,22 @@
+// form: EXC_Validate_Status  form=Exceptions event=on add or edit on validate  [.ds line 39745]
+    // === EXC_Validate_Status ===
+// Form: Exceptions | Event: Created or Edited | Validations on form submission
+// Block "Resolved" if no Resolution_Action
+if(input.Exception_Status == "Resolved")
+{
+    if(input.Resolution_Action == null || input.Resolution_Action == "")
+    {
+        alert "Cannot set status to Resolved — Resolution Action is required before resolving an exception. Please fill in the Resolution Action field.";
+        cancel submit;
+    }
+}
+// Block "Closed" if not yet Resolved first
+if(input.Exception_Status == "Closed")
+{
+    oldRec = Exceptions[ID == input.ID];
+    if(oldRec.Exception_Status != "Resolved")
+    {
+        alert "Cannot set status to Closed — the exception must be Resolved first before it can be Closed.";
+        cancel submit;
+    }
+}

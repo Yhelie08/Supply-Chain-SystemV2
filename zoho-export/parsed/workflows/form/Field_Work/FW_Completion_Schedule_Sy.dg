@@ -1,0 +1,190 @@
+// form: FW_Completion_Schedule_Sync  form=Field_Work event=on add or edit on success  [.ds line 46297]
+    if(input.Installation_Status == "Complete" && input.Schedule_End_Date_and_Time != null && input.Service_Appointment_ID != null && input.Service_Appointment_ID != "")
+{
+    saId = input.Service_Appointment_ID.toLong();
+    saRec = Service_Appointment_Form[ID == saId];
+    idMismatch = saRec != null && input.Sales_Order != null && saRec.Sales_Order != input.Sales_Order;
+    if(idMismatch)
+    {
+        mismatchRec = Service_Appointment_Form[ID == saId];
+        mismatchRec.Exception_Status="Flagged";
+        mismatchRec.Exception_Reason="Field Work ID Mismatch — resolved Service_Appointment's SO doesn't match the Field Work's own SO, completion not applied";
+        custNameMismatch = "";
+        if(mismatchRec.Customer_Name != null)
+        {
+            fNameMismatch = mismatchRec.Customer_Name.first_name;
+            lNameMismatch = mismatchRec.Customer_Name.last_name;
+            if(fNameMismatch == null)
+            {
+                fNameMismatch = "";
+            }
+            if(lNameMismatch == null)
+            {
+                lNameMismatch = "";
+            }
+            custNameMismatch = (fNameMismatch + " " + lNameMismatch).trim();
+        }
+        insert into DMS_Exception_Queue
+        [
+            Sales_Order_Reference=mismatchRec.ID
+            Customer_Name=custNameMismatch
+            Exception_Stage="Dispatch"
+            Exception_Reason="Field Work ID Mismatch — resolved Service_Appointment's SO doesn't match the Field Work's own SO, completion not applied"
+            Severity="High"
+            Raised_By="System"
+            Date_Raised=zoho.currenttime
+            Status="Open"
+            Added_User=zoho.loginuser
+        ]
+    }
+    if(saRec != null && !idMismatch && saRec.Appointment_Status != "Completed" && saRec.Appointment_Status != "Failed")
+    {
+        saRec.Appointment_Status="Completed";
+        // NEW 2026-09-08 — appends the real actual Schedule_Start/End times onto
+        // Calendar_Event_Summary so they're visible on the Delivery Queue detail
+        // view without an extra click into "View Field Report." FLAGGED
+        // 2026-09-10 — this whole block was found MISSING from the live-pasted
+        // workflow (silently dropped somewhere between sessions, see [[feedback_
+        // files_can_silently_revert]]) — restored here, make sure it's included
+        // this time.
+        actualStartDT = input.Schedule_Start_Date_and_Time;
+        actualEndDTForNote = input.Schedule_End_Date_and_Time;
+        actualTimeNote = " | Actual: ";
+        if(actualStartDT != null)
+        {
+            actualTimeNote = actualTimeNote + actualStartDT.toString("MMM dd, yyyy hh:mm a");
+        }
+        else
+        {
+            actualTimeNote = actualTimeNote + "?";
+        }
+        actualTimeNote = actualTimeNote + " - ";
+        if(actualEndDTForNote != null)
+        {
+            actualTimeNote = actualTimeNote + actualEndDTForNote.toString("hh:mm a");
+        }
+        else
+        {
+            actualTimeNote = actualTimeNote + "?";
+        }
+        baseSummaryFW = saRec.Calendar_Event_Summary;
+        if(baseSummaryFW == null)
+        {
+            baseSummaryFW = "";
+        }
+        saRec.Calendar_Event_Summary=baseSummaryFW + actualTimeNote;
+        teamInstaller = saRec.Installer;
+        teamDate = saRec.Confirmed_Schedule_Date;
+        if(teamInstaller != null && teamDate != null)
+        {
+            actualEndDT = input.Schedule_End_Date_and_Time;
+            actualEndTimeStr24 = actualEndDT.toString("HH:mm");
+            aeParts = actualEndTimeStr24.toList(":");
+            actualEndMin = 0;
+            if(aeParts.size() == 2)
+            {
+                actualEndMin = aeParts.get(0).toLong() * 60 + aeParts.get(1).toLong();
+            }
+            aeHr24 = actualEndMin / 60;
+            aeMinRem = actualEndMin - aeHr24 * 60;
+            aeDispHr = aeHr24;
+            if(aeHr24 == 0)
+            {
+                aeDispHr = 12;
+            }
+            if(aeHr24 > 12)
+            {
+                aeDispHr = aeHr24 - 12;
+            }
+            aeDispAmPm = "AM";
+            if(aeHr24 >= 12)
+            {
+                aeDispAmPm = "PM";
+            }
+            aeMinStr = aeMinRem + "";
+            if(aeMinRem < 10)
+            {
+                aeMinStr = "0" + aeMinRem;
+            }
+            actualEndTimeStr = aeDispHr + ":" + aeMinStr + " " + aeDispAmPm;
+            pendingSameDay = Service_Appointment_Form[Installer == teamInstaller && Suggested_Schedule_Date == teamDate && Confirmed_Schedule_Date == null && Appointment_Status != "Failed" && ID != saRec.ID];
+            if(pendingSameDay != null)
+            {
+                for each  psd in pendingSameDay
+                {
+                    pendRec = Service_Appointment_Form[ID == psd.ID];
+                    pendRec.Suggested_Time_Slot=actualEndTimeStr;
+                }
+            }
+            confirmedSameDay = Service_Appointment_Form[Installer == teamInstaller && Confirmed_Schedule_Date == teamDate && Appointment_Status != "Completed" && Appointment_Status != "Failed" && ID != saRec.ID];
+            if(confirmedSameDay != null)
+            {
+                for each  csd in confirmedSameDay
+                {
+                    csdTimeStr = "";
+                    if(csd.Confirmed_Time_Slot != null)
+                    {
+                        csdTimeStr = csd.Confirmed_Time_Slot.toString();
+                    }
+                    if(csdTimeStr != null && csdTimeStr != "")
+                    {
+                        csdParts = csdTimeStr.toList(" ");
+                        csdMin = -1;
+                        if(csdParts.size() == 2)
+                        {
+                            csdHM = csdParts.get(0).toList(":");
+                            if(csdHM.size() >= 2)
+                            {
+                                csdHr = csdHM.get(0).toLong();
+                                csdMinPart = csdHM.get(1).toLong();
+                                csdAmPm = csdParts.get(1).toUpperCase();
+                                if(csdAmPm == "PM" && csdHr != 12)
+                                {
+                                    csdHr = csdHr + 12;
+                                }
+                                if(csdAmPm == "AM" && csdHr == 12)
+                                {
+                                    csdHr = 0;
+                                }
+                                csdMin = csdHr * 60 + csdMinPart;
+                            }
+                        }
+                        if(csdMin >= 0 && actualEndMin > csdMin)
+                        {
+                            flagRec = Service_Appointment_Form[ID == csd.ID];
+                            flagRec.Exception_Status="Flagged";
+                            flagRec.Exception_Reason="Schedule Drift — Prior job finished later than planned";
+                            custNameDrift = "";
+                            if(flagRec.Customer_Name != null)
+                            {
+                                fNameDrift = flagRec.Customer_Name.first_name;
+                                lNameDrift = flagRec.Customer_Name.last_name;
+                                if(fNameDrift == null)
+                                {
+                                    fNameDrift = "";
+                                }
+                                if(lNameDrift == null)
+                                {
+                                    lNameDrift = "";
+                                }
+                                custNameDrift = (fNameDrift + " " + lNameDrift).trim();
+                            }
+                            insert into DMS_Exception_Queue
+                            [
+                                Sales_Order_Reference=flagRec.ID
+                                Customer_Name=custNameDrift
+                                Exception_Stage="Scheduling"
+                                Exception_Reason="Schedule Drift — Prior job finished later than planned"
+                                Severity="Medium"
+                                Raised_By="System"
+                                Date_Raised=zoho.currenttime
+                                Status="Open"
+                                Added_User=zoho.loginuser
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

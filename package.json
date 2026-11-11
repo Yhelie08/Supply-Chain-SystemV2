@@ -10,7 +10,9 @@
     "vault": "node tools/build-vault.mjs",
     "test": "node --test \"tests/*.test.js\"",
     "test:ui": "vitest run",
-    "test:all": "npm test && npm run test:ui"
+    "test:all": "npm test && npm run test:ui",
+    "server": "node server/index.mjs",
+    "parse-ds": "node tools/parse-ds.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -1,0 +1,46 @@
+
+			displayName = "Fenteng Lighting Replacement  Request Report"
+			show all rows from Fenteng_Lighting_Replacement_Request    
+			(
+				RR_No as "RR No."
+				Source_Type as "Source Type"
+				RR_Status as "RR Status"
+				RR_Date as "RR Date"
+				Source_Exception_No as "Source Exception No."
+				RR_Reason
+				Supplier_Acknowledgement1 as "Supplier Acknowledgement"
+				Supplier_Acknowledge_Date as "Supplier Acknowledge Date"
+				Expected_Ship_Date as "Expected Ship Date"
+				Actual_Ship as "Actual Ship"
+				ETA
+				Last_Updated as "Last Updated"
+				Closed_At as "Closed At"
+				Closure_Notes as "Closure Notes"
+				custom action "Approve RR"
+				(
+	  			workflow = Approve_RR_Supplier1
+				show action in edit record menu = true
+				column header = "Approve RR"
+				confirmation before execution
+				(
+					message for individual record = "Execute the Approve RR action for this record?"
+					confirm button text = "Yes"		
+					cancel button text = "No"
+				)
+				)
+				Replacement_Summary as "Replacement Summary"
+				(
+					field = Replacement_Summary.Supplier + " " + Replacement_Summary.Delay_Status + " " + Replacement_Summary.Item + " " + Replacement_Summary.Original_PO_No + " " + Replacement_Summary.PR_No + " " + Replacement_Summary.Priority + " " + Replacement_Summary.RR_Qty + " " + Replacement_Summary.RR_Reason + " " + Replacement_Summary.SKU + " " + Replacement_Summary.SO_No
+				)
+				Shipment_Mode
+				Source_Module as "Source Module"
+				RR_SKU as "RR SKU"
+				RR_Qty_Value
+				RR_SO
+				RR_PAC
+				RR_Item_to_Replace
+				RR_Damage_Qty
+				RR_Spare_Parts
+				RR_Remarks
+			)
+		

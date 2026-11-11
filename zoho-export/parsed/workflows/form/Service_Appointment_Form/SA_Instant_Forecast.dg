@@ -1,0 +1,3 @@
+// form: SA_Instant_Forecast  form=Service_Appointment_Form event=on add or edit on success  [.ds line 47093]
+    /* `Sales_Order` ang baybay dito — hindi `SO`. */
+info thisapp.fcStampDelivery(input.Sales_Order + "");

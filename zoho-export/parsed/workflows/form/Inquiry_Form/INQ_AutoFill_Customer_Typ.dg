@@ -1,0 +1,2 @@
+// form: INQ_AutoFill_Customer_Type  form=Inquiry_Form event=on add or edit on user input of Customer  [.ds line 35380]
+input.Customer_Type = input.Customer.Customer_Type;

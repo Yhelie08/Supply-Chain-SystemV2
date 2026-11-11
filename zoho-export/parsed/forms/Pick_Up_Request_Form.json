@@ -1,0 +1,176 @@
+{
+  "name": "Pick_Up_Request_Form",
+  "label": "Pick-Up Request Form",
+  "successMessage": "Data Added Successfully!",
+  "line": 8567,
+  "fields": [
+    {
+      "name": "Pickup_Team_Fields",
+      "label": "Pickup Team Fields",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Pickup_Status",
+      "label": "Pickup Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Pending",
+        "Scheduled",
+        "Emailed",
+        "Archived"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Pickup_Date_Time",
+      "label": "Pickup Date & Time",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Official_Receipt",
+      "label": "Official Receipt",
+      "type": "upload file",
+      "required": false
+    },
+    {
+      "name": "Receiver_s_Name",
+      "label": "Receiver's Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Receiver_s_Signature",
+      "label": "Receiver's Signature",
+      "type": "signature",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Dispatcher_s_Name",
+      "label": "Dispatcher's Name",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Choice 1",
+        "Choice 2",
+        "Choice 3"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Dispatcher_s_Signature",
+      "label": "Dispatcher's Signature",
+      "type": "signature",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Proof_of_Receiving_the_Item",
+      "label": "Proof of Receiving the Item",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "SO_Details",
+      "label": "SO Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Service_Request",
+      "label": "Service Request#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order",
+      "label": "Sales Order#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Delivery_Type",
+      "label": "Delivery Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Details",
+      "label": "Customer Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Email",
+      "label": "Email",
+      "type": "email",
+      "required": false,
+      "maxchar": "80",
+      "personalData": "true"
+    },
+    {
+      "name": "Customer_Address",
+      "label": "Customer Address",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "City",
+      "label": "City",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Contact_Number",
+      "label": "Contact Number",
+      "type": "phonenumber",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "For_Automation_Not_to_Edit",
+      "label": "For Automation (Not to Edit)",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Quantity",
+          "label": "Quantity",
+          "type": "number",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

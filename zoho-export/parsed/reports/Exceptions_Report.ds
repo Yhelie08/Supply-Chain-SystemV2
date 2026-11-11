@@ -1,0 +1,45 @@
+
+			displayName = "Exceptions Report"
+			show all rows from Exceptions    
+			(
+				Sales_Order as "SO No."
+				PO_No as "PO No."
+				Shipment_No as "Shipment#"
+				Receive_No as "Receive No."
+				Receiving_Line_ID as "Receiving Line ID"
+				Exception_Description as "Exception Description"
+				Impact_Type as "Impact Type"
+				Exception_No as "Exception No."
+				Priority
+				Source_Module as "Source Module"
+				Due_Date as "Due Date"
+				Delay_Impact as "Delay Impact"
+				Fulfillment_Impact as "Fulfillment Impact"
+				Assigned_Department as "Assigned Department"
+				Assigned_To as "Assigned To"
+				Opened_On as "Opened On"
+				Waiting_On as "Waiting On"
+				Exception_Status as "Exception Status"
+				Resolution_Action
+				custom action "Create RR"
+				(
+	  			workflow = Create_RR
+				show action in edit record menu = true
+				column header = "Create RR"
+				confirmation before execution
+				(
+					message for individual record = "Execute the Create RR action for this record?"
+					confirm button text = "Yes"		
+					cancel button text = "No"
+				)
+				)
+				Exception_Title as "Exception Title"
+				Product_Context1 as "Product Context"
+				(
+					field = Product_Context1.Item + " " + Product_Context1.SKU + " " + Product_Context1.Category + " " + Product_Context1.Qty + " " + Product_Context1.Supplier + " " + Product_Context1.Action_Required + " " + Product_Context1.Damage_Missing_Category + " " + Product_Context1.Affected_Missing_Part + " " + Product_Context1.Description + " " + Product_Context1.PR_No + " " + Product_Context1.Root_Cause_Category + " " + Product_Context1.Type_field + " " + Product_Context1.Repairable + " " + Product_Context1.Repair_Outcome + " " + Product_Context1.Quantity_of_damage_spare_s + " " + Product_Context1.Spare_Part_Type + " " + Product_Context1.Spare_Part_Type_Other
+				)
+				RR_Supplier_Override as "RR Supplier Override"
+				RR_Supplier_Change_Reason as "RR Supplier Change Reason"
+				Exception_Line_Key as "Exception Line Key"
+			)
+		

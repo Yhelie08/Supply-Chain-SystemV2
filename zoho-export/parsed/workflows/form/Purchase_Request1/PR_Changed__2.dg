@@ -1,0 +1,127 @@
+// form: PR_Changed  form=Purchase_Request1 event=on edit on success  [.ds line 38000]
+    tonyRecs = Tony_Fan_Purchase_Request[PR_No_Supplier2 == input.PR_No];
+for each  r in tonyRecs
+{
+    hasChanges = false;
+    if(r.sku_Supplier2 != input.sku || r.quantity_Supplier2 != input.quantity || r.Target_Delivery_Supplier2 != input.Target_Delivery || r.Description1_Supplier2 != input.Description1)
+    {
+        hasChanges = true;
+    }
+    thisSelectedTC = false;
+    anySelected = false;
+    for each  row in input.Supplier_Selected
+    {
+        if(row.Selected == true)
+        {
+            anySelected = true;
+            rowSupplierValTC = row.Suppliers + "";
+            if(rowSupplierValTC.toLowerCase().contains("tony"))
+            {
+                thisSelectedTC = true;
+            }
+        }
+    }
+    inqSelectedTC = false;
+    inqAvailTC = "";
+    inqInitTC = 0;
+    inqNegoTC = 0;
+    inqFinalTC = 0;
+    inqLeadTC = "";
+    if(input.inquiry_reference != null && input.inquiry_reference != "")
+    {
+        inqRecsPR = Inquiry_Form[INQ_No == input.inquiry_reference];
+        for each  inqRecPR in inqRecsPR
+        {
+            for each  q in inqRecPR.Supplier_Quotes
+            {
+                if(q.Selected == true)
+                {
+                    sidPR = q.Supplier_ID + "";
+                    sidRawTC = sidPR.removeFirstOccurence("[").removeLastOccurence("]").trim();
+                    quoteBooksIdTC = "";
+                    if(sidRawTC != "")
+                    {
+                        for each  supRecTC in Suppliers
+                        {
+                            if(supRecTC.ID + "" == sidRawTC)
+                            {
+                                quoteBooksIdTC = supRecTC.Supplier_ID + "";
+                            }
+                        }
+                    }
+                    if(quoteBooksIdTC == "2680178000002735078")
+                    {
+                        inqSelectedTC = true;
+                        inqAvailTC = q.Availability;
+                        inqInitTC = q.Initial_Price;
+                        inqNegoTC = q.Negotiated;
+                        inqFinalTC = q.Final_Price;
+                        inqLeadTC = q.Lead_Time;
+                    }
+                }
+            }
+            break;
+        }
+    }
+    newStatusTC = r.Response_Status;
+    newCounterTC = r.edit_counter;
+    if(newCounterTC == null)
+    {
+        newCounterTC = 0;
+    }
+    if(hasChanges == true)
+    {
+        newStatusTC = "Submit Response";
+        newCounterTC = 1;
+    }
+    if(anySelected == true)
+    {
+        newStatusTC = "Not Selected";
+        newCounterTC = 0;
+    }
+    if(thisSelectedTC == true || inqSelectedTC == true)
+    {
+        newStatusTC = "Selected";
+        newCounterTC = 1;
+    }
+    update r
+    [
+        Response_Status=newStatusTC
+        edit_counter=newCounterTC
+    ];
+    if(inqSelectedTC == true)
+    {
+        for each  sRow2 in r.Supplier_Selected_Supplier2
+        {
+            sRow2.Availability_Supplier2=inqAvailTC;
+            sRow2.Initial_Price_Supplier2=inqInitTC;
+            sRow2.Negotiated_Supplier2=inqNegoTC;
+            sRow2.Final_Price_Supplier2=inqFinalTC;
+            sRow2.Lead_Time_Supplier2=inqLeadTC;
+            sRow2.Selected_Supplier2=true;
+        }
+    }
+    update r
+    [
+        PR_Date_Supplier2=input.PR_Date
+        sku_Supplier2=input.sku
+        quantity_Supplier2=input.quantity
+        Description1_Supplier2=input.Description1
+        description_Supplier2=input.description
+        Target_Delivery_Supplier2=input.Target_Delivery
+        SRP_Rate_PR_Supplier2=input.SRP_Rate_PR
+        inquiry_reference_Supplier2=input.inquiry_reference
+    ];
+    itemRecTC = null;
+    if(input.Items != null)
+    {
+        itemRecTC = Items[ID == input.Items];
+    }
+    if(itemRecTC != null)
+    {
+        if(itemRecTC.Image != null)
+        {
+            r.Product_Image_Supplier2_PR=itemRecTC.Image;
+        }
+    }
+}

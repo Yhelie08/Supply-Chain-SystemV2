@@ -1,0 +1,4 @@
+// form: FW_Instant_Forecast  form=Field_Work event=on add or edit on success  [.ds line 47113]
+    /* `Sales_Order` din dito, pero `text` ito at hindi `textarea` — isang SO lang.
+   Pareho pa rin ang linya. */
+info thisapp.fcStampDelivery(input.Sales_Order + "");

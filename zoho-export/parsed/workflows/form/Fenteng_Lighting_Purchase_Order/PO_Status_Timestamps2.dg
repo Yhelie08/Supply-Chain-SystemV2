@@ -1,0 +1,28 @@
+// form: PO_Status_Timestamps  form=Fenteng_Lighting_Purchase_Order event=on add or edit on validate  [.ds line 39069]
+    // === PO_Status_Timestamps ===
+// Form: Purchase_Order | Event: Created or Edited | Validations on form submission
+oldRec = Purchase_Order[ID == input.ID];
+// Sent On — kapag bagong naging "Sent" ang status
+if(input.PO_Status_Supplier1 == "Sent")
+{
+    if(oldRec.PO_Status != "Sent")
+    {
+        input.Sent_On_Supplier1 = zoho.currentdate;
+    }
+}
+// Acknowledged On — kapag bagong naging "Acknowledged" ang status
+if(input.PO_Status_Supplier1 == "Acknowledged")
+{
+    if(oldRec.PO_Status != "Acknowledged")
+    {
+        Acknowledged_On = zoho.currentdate;
+    }
+}
+// Completed On — kapag bagong naging "Completed" ang status
+if(input.PO_Status_Supplier1 == "Completed")
+{
+    if(oldRec.PO_Status != "Completed")
+    {
+        input.Completed_On_Supplier1 = zoho.currentdate;
+    }
+}

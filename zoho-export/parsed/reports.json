@@ -1,0 +1,8721 @@
+[
+  {
+    "name": "All_Qc_Reports1",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Qc Reports",
+    "form": "Checker_Checklist",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PR",
+        "label": "PR#"
+      },
+      {
+        "field": "PAC",
+        "label": "PAC#"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Delivery_Type",
+        "label": "Delivery Type"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "Date_Checked",
+        "label": "Date Checked"
+      },
+      {
+        "field": "Location",
+        "label": "Location"
+      },
+      {
+        "field": "Fixture_Body_Checklist",
+        "label": "Fixture Body Checklist "
+      },
+      {
+        "field": "LED_Checklist",
+        "label": "LED Checklist"
+      },
+      {
+        "field": "Type_of_Bulb",
+        "label": "Type of Bulb"
+      },
+      {
+        "field": "Kelvin",
+        "label": "Kelvin"
+      },
+      {
+        "field": "Color_Temperature",
+        "label": "Color Temperature"
+      },
+      {
+        "field": "Item_to_Replace",
+        "label": "Item to Replace"
+      },
+      {
+        "field": "Quantity_of_Damage_Items",
+        "label": "Quantity of Damage Items"
+      },
+      {
+        "field": "Uniformity",
+        "label": "Uniformity"
+      },
+      {
+        "field": "Remarks",
+        "label": "Remarks"
+      },
+      {
+        "field": "Signature",
+        "label": "Signature"
+      },
+      {
+        "field": "QC_Status",
+        "label": "QC Status"
+      },
+      {
+        "field": "RR",
+        "label": "RR#"
+      },
+      {
+        "field": "Item_Name",
+        "label": "Item Name"
+      },
+      {
+        "field": "SKU",
+        "label": "SKU"
+      },
+      {
+        "field": "Quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "Demo",
+        "label": "Demo #"
+      },
+      {
+        "field": "Bin_Location",
+        "label": "Bin Location"
+      },
+      {
+        "field": "Quality_Checker",
+        "label": "Quality Checker"
+      },
+      {
+        "field": "SO",
+        "label": "SO #"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Target_Delivery_Date",
+        "label": "Target Delivery Date"
+      },
+      {
+        "field": "For_Crate",
+        "label": "For Crate"
+      },
+      {
+        "field": "Exception_Number",
+        "label": "Exception Number"
+      },
+      {
+        "field": "Image_Upload_max_10_JPG_JPEG_PNG",
+        "label": "Image Upload (max 10 · JPG, JPEG, PNG)"
+      },
+      {
+        "field": "Video_Upload_max_3_min_30_sec1",
+        "label": "Video Upload (max 3 min 30 sec)"
+      },
+      {
+        "field": "Split_Rejected_Qty",
+        "label": "Split Rejected Qty"
+      },
+      {
+        "field": "Split_Original_Qty",
+        "label": "Split Original Qty"
+      },
+      {
+        "field": "City",
+        "label": "City"
+      },
+      {
+        "field": "Contact",
+        "label": "Contact"
+      },
+      {
+        "field": "Email",
+        "label": "Email"
+      },
+      {
+        "field": "ID",
+        "label": "ID"
+      },
+      {
+        "field": "Original_Package_Edit_Status",
+        "label": "Original Package Edit Status"
+      },
+      {
+        "field": "Spare_part_type",
+        "label": "Spare part type"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Spare_part_type.Spare_Part_Type + \" \" + Spare_part_type.Quantity_of_damage_spare_s + \" \" + Spare_part_type.Spare_Part_Type_Other"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      }
+    ],
+    "blocks": [],
+    "line": 19431
+  },
+  {
+    "name": "All_Inquiries",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Inquiries",
+    "form": "Inquiry_Form",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "INQ_No",
+        "label": "INQ No."
+      },
+      {
+        "field": "created_date",
+        "label": "Created Date"
+      },
+      {
+        "field": "quote_group",
+        "label": "Quote Group"
+      },
+      {
+        "field": "sku",
+        "label": "SKU"
+      },
+      {
+        "field": "description",
+        "label": "Description"
+      },
+      {
+        "field": "quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "unit",
+        "label": "Unit"
+      },
+      {
+        "field": "target_date",
+        "label": "Target Date"
+      },
+      {
+        "field": "Waiting_On",
+        "label": "Waiting On"
+      },
+      {
+        "field": "Addtional_Description",
+        "label": "Addtional Description"
+      },
+      {
+        "field": "Attachments",
+        "label": "Attachments"
+      },
+      {
+        "field": "Open_to_similar_design",
+        "label": "Open to similar design"
+      },
+      {
+        "field": "Product_Sample",
+        "label": "Product Sample"
+      },
+      {
+        "field": "D_Image",
+        "label": "3D Image"
+      },
+      {
+        "field": "Technical_Drawing",
+        "label": "Technical Drawing"
+      },
+      {
+        "field": "Specification",
+        "label": "Specification"
+      },
+      {
+        "field": "Supplier_Selected",
+        "label": "Supplier Selected"
+      },
+      {
+        "field": "Availability",
+        "label": "Availability Confirmed"
+      },
+      {
+        "field": "Final_Price_Exists",
+        "label": "Final Price Exists"
+      },
+      {
+        "field": "Collateral_Comple_NA",
+        "label": "Collateral Comple/NA"
+      },
+      {
+        "field": "SRP_Approved",
+        "label": "SRP Approved"
+      },
+      {
+        "field": "Select_Final_Cost",
+        "label": "Select Final Cost"
+      },
+      {
+        "field": "SRP_Approved1",
+        "label": "SRP (Approved)"
+      },
+      {
+        "field": "SRP_Status",
+        "label": "SRP Status"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "Items",
+        "label": "Items"
+      },
+      {
+        "field": "Suppliers",
+        "label": "Suppliers"
+      },
+      {
+        "field": "Similar_Design_Photo",
+        "label": "Similar Design Photo"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Specification_Details",
+        "label": "Specification Details"
+      },
+      {
+        "field": "Margin",
+        "label": "Margin%"
+      },
+      {
+        "field": "Ready_for_Estimates",
+        "label": "Ready for Estimates"
+      },
+      {
+        "field": "Books_Estimate_No",
+        "label": "Books Estimate No."
+      },
+      {
+        "field": "Books_Estimate_ID",
+        "label": "Books Estimate ID"
+      },
+      {
+        "field": "Estimate_Created",
+        "label": "Estimate Created"
+      },
+      {
+        "field": "Design_Company",
+        "label": "Design Company"
+      },
+      {
+        "field": "Design_Partner",
+        "label": "Design Partner"
+      },
+      {
+        "field": "Project_Type",
+        "label": "Project Type"
+      },
+      {
+        "field": "Project_Name",
+        "label": "Project Name"
+      },
+      {
+        "field": "Designer_Architect",
+        "label": "Designer/Architect"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Commission",
+        "label": "Commission"
+      },
+      {
+        "field": "Addtl_Disc_Needed1",
+        "label": "Additional Discount Needed"
+      },
+      {
+        "field": "For_Bidding",
+        "label": "For Bidding"
+      },
+      {
+        "field": "Projects",
+        "label": "Projects"
+      },
+      {
+        "field": "Projects.Project_Code",
+        "label": "Project Code"
+      },
+      {
+        "field": "Supplier_Quotes",
+        "label": "Supplier Quotes"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier_Quotes.Supplier_ID + \" \" + Supplier_Quotes.Suppliers + \" \" + Supplier_Quotes.Availability + \" \" + Supplier_Quotes.Initial_Price + \" \" + Supplier_Quotes.Final_Price + \" \" + Supplier_Quotes.Lead_Time + \" \" + Supplier_Quotes.Negotiated + \" \" + Supplier_Quotes.Stage + \" \" + Supplier_Quotes.Prev_Stage + \" \" + Supplier_Quotes.Selected"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Group_Discount_Pct",
+        "label": "Group Discount Percentage"
+      },
+      {
+        "field": "Supplier_Quotes_Last_Edited.Availability_Last_Edited",
+        "label": "Supplier Quotes History"
+      },
+      {
+        "raw": "custom action \"Create Estimates\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Create_Estimates_Inq"
+      },
+      {
+        "raw": "show action in view header = true"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Create Estimates\""
+      },
+      {
+        "raw": "condition = (Ready_for_Estimates == true)"
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Execute the Create Estimates action for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "ID",
+        "label": "ID"
+      },
+      {
+        "field": "Product_Image",
+        "label": "Product Image"
+      },
+      {
+        "field": "INQ_Seq",
+        "label": "INQ Seq"
+      },
+      {
+        "field": "Deep_Link_Token",
+        "label": "Deep Link Token"
+      },
+      {
+        "field": "Dimension",
+        "label": "Dimension"
+      },
+      {
+        "field": "Color_Body",
+        "label": "Color Body"
+      },
+      {
+        "field": "Voltage",
+        "label": "Voltage"
+      },
+      {
+        "field": "Lumens",
+        "label": "Lumens"
+      },
+      {
+        "field": "Color_Temperature",
+        "label": "Color Temperature"
+      },
+      {
+        "field": "Type_of_Bulb",
+        "label": "Type of Bulb"
+      }
+    ],
+    "blocks": [],
+    "line": 19486
+  },
+  {
+    "name": "All_Crates",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Crates",
+    "form": "Crate_Checklist",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Assign_Crater",
+        "label": "Assign Crater"
+      },
+      {
+        "field": "Package_Order",
+        "label": "PACK #"
+      },
+      {
+        "field": "PR_if_any",
+        "label": "PR # (if any)"
+      },
+      {
+        "field": "RR_if_any",
+        "label": "RR # (if any)"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Delivery_Type",
+        "label": "Delivery Type"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "Item_Name",
+        "label": "Item Name"
+      },
+      {
+        "field": "SKU",
+        "label": "SKU"
+      },
+      {
+        "field": "Quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "Crating_Checklist",
+        "label": "Crating Checklist"
+      },
+      {
+        "field": "Photo_Documentation",
+        "label": "Photo Documentation"
+      },
+      {
+        "field": "Video_Documentation",
+        "label": "Video Documentation"
+      },
+      {
+        "field": "Crating_Status1",
+        "label": "Crating Status"
+      },
+      {
+        "field": "Assigned_Checker",
+        "label": "Assigned Checker"
+      },
+      {
+        "field": "SO",
+        "label": "SO #"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Target_Delivery_Date",
+        "label": "Target Delivery Date"
+      },
+      {
+        "field": "Dem_if_any",
+        "label": "Dem # (if any)"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      }
+    ],
+    "blocks": [],
+    "line": 19574
+  },
+  {
+    "name": "All_Purchase_Request",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Purchase Request",
+    "form": "Purchase_Request1",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "sku",
+        "label": "SKU"
+      },
+      {
+        "field": "quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "unit",
+        "label": "Unit"
+      },
+      {
+        "field": "description",
+        "label": "Description"
+      },
+      {
+        "field": "supplier_target_date",
+        "label": "Supplier  Target Date"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Items",
+        "label": "Items"
+      },
+      {
+        "field": "Selcted_Final_Cost",
+        "label": "Selected Final Cost"
+      },
+      {
+        "field": "Followed_Recommendation",
+        "label": "Followed Recommendation"
+      },
+      {
+        "field": "Similar_Item",
+        "label": "Similar Item"
+      },
+      {
+        "field": "Attachments",
+        "label": "Attachments"
+      },
+      {
+        "field": "Target_Delivery",
+        "label": "Target  Delivery"
+      },
+      {
+        "field": "Remaining_Days",
+        "label": "Remaining Days"
+      },
+      {
+        "field": "Required_Days_Lead",
+        "label": "Lead Time (days)"
+      },
+      {
+        "field": "Delay_Status",
+        "label": "Delay Status"
+      },
+      {
+        "field": "PR_No",
+        "label": "PR No"
+      },
+      {
+        "field": "PR_Date",
+        "label": "PR Date"
+      },
+      {
+        "field": "Selected_Supplier",
+        "label": "Selected Supplier"
+      },
+      {
+        "field": "Priority",
+        "label": "Priority"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Description1",
+        "label": "Description"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "category",
+        "label": "Category"
+      },
+      {
+        "field": "Additional_Details",
+        "label": "Additional Details"
+      },
+      {
+        "field": "Shipment_Mode",
+        "label": "Shipment Mode"
+      },
+      {
+        "field": "Selected_Supplier1",
+        "label": "Selected Supplier"
+      },
+      {
+        "field": "Final_price_confirmed",
+        "label": "Final price confirmed"
+      },
+      {
+        "field": "Shipping_mode_selected",
+        "label": "Shipping mode selected"
+      },
+      {
+        "field": "Target_date_exists",
+        "label": "Target date exists"
+      },
+      {
+        "field": "PR_READY_FOR_PO",
+        "label": "PR READY FOR PO"
+      },
+      {
+        "field": "PR_Approved",
+        "label": "PR Approved"
+      },
+      {
+        "field": "PR_Status",
+        "label": "PR Status"
+      },
+      {
+        "field": "Link_PO_No",
+        "label": "Link PO No"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "Sales Order"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Source",
+        "label": "Source"
+      },
+      {
+        "field": "Production_Date",
+        "label": "Production Date"
+      },
+      {
+        "field": "inquiry_reference",
+        "label": "Inquiry Reference"
+      },
+      {
+        "field": "Override_Reason",
+        "label": "Override Reason"
+      },
+      {
+        "field": "Shipment_Days",
+        "label": "Shipment Days"
+      },
+      {
+        "field": "Last_Update",
+        "label": "Last Update"
+      },
+      {
+        "field": "Order_Value",
+        "label": "Order Value"
+      },
+      {
+        "field": "Aging",
+        "label": "Aging"
+      },
+      {
+        "field": "Priority_Score",
+        "label": "Priority Score"
+      },
+      {
+        "field": "SRP_Rate_PR",
+        "label": "SRP (Rate)"
+      },
+      {
+        "field": "Product_Image_PR",
+        "label": "Product Image"
+      },
+      {
+        "field": "Supplier_Selected",
+        "label": "Supplier Selected"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier_Selected.Supplier_ID + \" \" + Supplier_Selected.Final_Price + \" \" + Supplier_Selected.Initial_Price + \" \" + Supplier_Selected.Suppliers + \" \" + Supplier_Selected.Availability + \" \" + Supplier_Selected.Lead_Time + \" \" + Supplier_Selected.Negotiated + \" \" + Supplier_Selected.Selected + \" \" + Supplier_Selected.Status"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "SRP_Approved_PR",
+        "label": "SRP Approved PR"
+      },
+      {
+        "field": "Supplier_Load_Balancing",
+        "label": "Supplier Load Balancing"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier_Load_Balancing.Suppliers + \" \" + Supplier_Load_Balancing.Active_POs + \" \" + Supplier_Load_Balancing.Eligible_Supplier + \" \" + Supplier_Load_Balancing.Load_Status + \" \" + Supplier_Load_Balancing.Match_Category + \" \" + Supplier_Load_Balancing.Percent"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Customer.Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Dedup_Key",
+        "label": "Dedup Key"
+      },
+      {
+        "field": "Sourcing_Type",
+        "label": "Sourcing Type"
+      },
+      {
+        "field": "Hold_Status",
+        "label": "Hold Status"
+      },
+      {
+        "field": "Hold_Reason",
+        "label": "Hold Reason"
+      },
+      {
+        "field": "Hold_Notes",
+        "label": "Hold Notes"
+      },
+      {
+        "field": "Hold_Date",
+        "label": "Hold Date"
+      },
+      {
+        "field": "Held_By",
+        "label": "Held By"
+      },
+      {
+        "field": "Hold_Follow_Up_Date",
+        "label": "Hold Follow Up Date"
+      },
+      {
+        "field": "Dimension",
+        "label": "Dimension"
+      },
+      {
+        "field": "Color_Body",
+        "label": "Color Body"
+      },
+      {
+        "field": "Color_Temperature",
+        "label": "Color Temperature"
+      },
+      {
+        "field": "Type_of_Bulb",
+        "label": "Type of Bulb"
+      },
+      {
+        "field": "Lumens",
+        "label": "Lumens"
+      },
+      {
+        "field": "Voltage",
+        "label": "Voltage"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      }
+    ],
+    "blocks": [],
+    "line": 19605
+  },
+  {
+    "name": "All_Customers",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Customers",
+    "form": "Customer",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "customer_name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "ID",
+        "label": "ID"
+      },
+      {
+        "field": "Email",
+        "label": "Email"
+      },
+      {
+        "field": "Phone_Number",
+        "label": "Phone"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "displayformat = plainnumber"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Mobile",
+        "label": "Mobile"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "displayformat = plainnumber"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Billing_Address",
+        "label": "Billing Address"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "enable = Link_to_Map,Show_As_Text"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Shipping_Address",
+        "label": "Shipping Address"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "enable = Link_to_Map,Show_As_Text"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "ID1",
+        "label": "ID"
+      },
+      {
+        "field": "Dropdown",
+        "label": "Drop Down"
+      }
+    ],
+    "blocks": [],
+    "line": 19689
+  },
+  {
+    "name": "All_Suppliers",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Suppliers",
+    "form": "Suppliers",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Supplier_Name",
+        "label": "Supplier Name"
+      },
+      {
+        "field": "ID",
+        "label": "ID"
+      },
+      {
+        "field": "Supported_Categories",
+        "label": "Supported Categories"
+      },
+      {
+        "field": "Handles_All",
+        "label": "Handles All"
+      },
+      {
+        "field": "Max_Capacity",
+        "label": "Max Capacity"
+      },
+      {
+        "field": "Active_PO_Count",
+        "label": "Active PO Count"
+      },
+      {
+        "field": "Utilization",
+        "label": "Utilization Percentage"
+      },
+      {
+        "field": "Status",
+        "label": "Status"
+      },
+      {
+        "field": "Supplier_ID",
+        "label": "Supplier ID"
+      }
+    ],
+    "blocks": [],
+    "line": 19718
+  },
+  {
+    "name": "All_Items",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Items",
+    "form": "Items",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "item_name",
+        "label": "Item Name"
+      },
+      {
+        "field": "SKU",
+        "label": "SKU"
+      },
+      {
+        "field": "category",
+        "label": "Category"
+      },
+      {
+        "field": "Rate",
+        "label": "Rate"
+      },
+      {
+        "field": "Warehouse",
+        "label": "Warehouse"
+      },
+      {
+        "field": "Description",
+        "label": "Description"
+      },
+      {
+        "field": "Unit",
+        "label": "Unit"
+      },
+      {
+        "field": "Bin_location",
+        "label": "Bin location"
+      },
+      {
+        "field": "Item_ref",
+        "label": "Itemref"
+      },
+      {
+        "field": "Image",
+        "label": "Image"
+      },
+      {
+        "field": "ID1",
+        "label": "ID"
+      }
+    ],
+    "blocks": [],
+    "line": 19734
+  },
+  {
+    "name": "All_Purchase_Orders",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Purchase Orders",
+    "form": "Purchase_Order",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PO_No",
+        "label": "PO No."
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      },
+      {
+        "field": "Acknowledge_On",
+        "label": "Acknowledge On"
+      },
+      {
+        "field": "Completed_On",
+        "label": "Completed On"
+      },
+      {
+        "field": "PO_Date",
+        "label": "PO Date"
+      },
+      {
+        "field": "PO_Status",
+        "label": "PO Status"
+      },
+      {
+        "field": "Total_PO_Value",
+        "label": "Total PO Value"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "Total_Lines",
+        "label": "Total Lines"
+      },
+      {
+        "field": "Supplier_Load_At_PO",
+        "label": "Supplier Load At PO"
+      },
+      {
+        "field": "Notes",
+        "label": "Notes"
+      },
+      {
+        "field": "Mixed_Shipping",
+        "label": "Mixed Shipping"
+      },
+      {
+        "field": "Is_Locked",
+        "label": "Is Locked"
+      },
+      {
+        "field": "ID",
+        "label": "ID"
+      },
+      {
+        "field": "SO_No",
+        "label": "SO No."
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Books_PO_ID",
+        "label": "Books PO ID"
+      },
+      {
+        "field": "Books_PO_No",
+        "label": "Books PO No"
+      },
+      {
+        "field": "SRP_Rate",
+        "label": "SRP (Rate)"
+      },
+      {
+        "field": "RR_Reference_No",
+        "label": "RR Reference No"
+      },
+      {
+        "field": "Missing_SKUs",
+        "label": "Missing SKUs"
+      },
+      {
+        "field": "Damage_SKUs",
+        "label": "Damage SKUs"
+      },
+      {
+        "field": "SO_No.Sales_Order_Number",
+        "label": "Sales Order Number"
+      },
+      {
+        "field": "SO_No.Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "SO_No.Shipment_Status",
+        "label": "Shipment Status"
+      },
+      {
+        "field": "SO_No.Sales_Person",
+        "label": "Sales Person"
+      },
+      {
+        "field": "SO_No.Sales_Agent",
+        "label": "Sales Agent"
+      },
+      {
+        "field": "PO_Line_Items",
+        "label": "PO Line Items"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = PO_Line_Items.PR_No + \"-> \" + PO_Line_Items.supplier_target_date + \"-> \" + PO_Line_Items.Item + \"-> \" + PO_Line_Items.SKU + \"-> \" + PO_Line_Items.QTY + \"-> \" + PO_Line_Items.Unit + \"-> \" + PO_Line_Items.Final_Price + \"-> \" + PO_Line_Items.Line_Total + \"-> \" + PO_Line_Items.Shipping_Mode + \"-> \" + PO_Line_Items.Supplier"
+      },
+      {
+        "raw": ")"
+      }
+    ],
+    "blocks": [],
+    "line": 19752
+  },
+  {
+    "name": "All_Shipments",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Shipments",
+    "form": "Shipments",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Shipment_No",
+        "label": "Shipment No."
+      },
+      {
+        "field": "Sales_Order",
+        "label": "SO No."
+      },
+      {
+        "field": "Supplier",
+        "label": "Supplier"
+      },
+      {
+        "field": "Shipment_Status",
+        "label": "Shipment Status"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "Risk_Status",
+        "label": "Delay Status"
+      },
+      {
+        "field": "Target_Date",
+        "label": "Target Date"
+      },
+      {
+        "field": "ETA",
+        "label": "ETA"
+      },
+      {
+        "field": "Arrival_Date",
+        "label": "Arrival Date"
+      },
+      {
+        "field": "ETD",
+        "label": "ETD"
+      },
+      {
+        "field": "Production_Date",
+        "label": "Production Date"
+      },
+      {
+        "field": "Need_Attention1",
+        "label": "Need Attention"
+      },
+      {
+        "field": "Shipment_Days",
+        "label": "Shipment Days"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Supplier_Target_Date",
+        "label": "Supplier Target Date"
+      },
+      {
+        "field": "PO_Shipments",
+        "label": "Shipment Line Items"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = PO_Shipments.PR_No + \" \" + PO_Shipments.Item_Name + \" \" + PO_Shipments.SKU + \" \" + PO_Shipments.Ordered_QTY + \" \" + PO_Shipments.Shipment_QTY + \" \" + PO_Shipments.Remaining_QTY + \" \" + PO_Shipments.Shipping_Mode + \" \" + PO_Shipments.Line_Status + \" \" + PO_Shipments.Fully_Shipped + \" \" + PO_Shipments.Shipment_Mode_When_Received"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Notes",
+        "label": "Notes"
+      },
+      {
+        "field": "PO_No",
+        "label": "PO No."
+      },
+      {
+        "field": "Required_Days_Lead",
+        "label": "Required Days (Lead)"
+      },
+      {
+        "field": "Ship_Out_Date",
+        "label": "Ship Out Date"
+      },
+      {
+        "field": "Receiving_Record_Created",
+        "label": "Receiving Record Created"
+      },
+      {
+        "field": "Need_Attention",
+        "label": "Received Flag"
+      },
+      {
+        "field": "Previous_Status",
+        "label": "Previous Status"
+      },
+      {
+        "field": "Remaining_Days",
+        "label": "Remaining Days"
+      },
+      {
+        "field": "Supplier_Shipment_Details.Shipment_ID",
+        "label": "Supplier Shipment Details"
+      },
+      {
+        "field": "Estimated_Warehouse_Arrival",
+        "label": "Estimated Warehouse Arrival"
+      },
+      {
+        "field": "Source_Module",
+        "label": "Source Module"
+      },
+      {
+        "field": "Exception_Number",
+        "label": "Exception Number"
+      },
+      {
+        "field": "Notified_10d",
+        "label": "Notified 10d"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      }
+    ],
+    "blocks": [],
+    "line": 19791
+  },
+  {
+    "name": "Receiving_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Receiving Report",
+    "form": "Receiving",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Receive_No1",
+        "label": "Receive No."
+      },
+      {
+        "field": "PO_No",
+        "label": "PO No."
+      },
+      {
+        "field": "Received_Date",
+        "label": "Received Date"
+      },
+      {
+        "field": "SO_No",
+        "label": "SO No."
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "General_Photos",
+        "label": "General Photos"
+      },
+      {
+        "field": "Shipments",
+        "label": "Shipments"
+      },
+      {
+        "field": "Supplier",
+        "label": "Supplier"
+      },
+      {
+        "field": "Receive_Status",
+        "label": "Receive Status"
+      },
+      {
+        "field": "Warehouse",
+        "label": "Warehouse"
+      },
+      {
+        "field": "Total_Expected_Qty",
+        "label": "Total Expected Qty"
+      },
+      {
+        "field": "Total_Accepted_Qty",
+        "label": "Total Accepted Qty"
+      },
+      {
+        "field": "Total_Damage_Qty",
+        "label": "Total Damage Qty"
+      },
+      {
+        "field": "Total_Missing_Qty",
+        "label": "Total Missing Qty"
+      },
+      {
+        "field": "Total_Lines",
+        "label": "Total Lines"
+      },
+      {
+        "field": "Incomplete_Lines",
+        "label": "Incomplete Lines"
+      },
+      {
+        "field": "Exception_Count",
+        "label": "Exception Count"
+      },
+      {
+        "field": "Ready_for_Fulfillment1",
+        "label": "Ready for Fulfillment"
+      },
+      {
+        "field": "Receiving_Notes",
+        "label": "Receiving Notes"
+      },
+      {
+        "field": "Shipments.Shipment_No",
+        "label": "Shipment No."
+      },
+      {
+        "field": "ID",
+        "label": "ID"
+      },
+      {
+        "raw": "custom action \"Create Receive\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Create_Bin_Receiving"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Create Receive\""
+      },
+      {
+        "raw": "condition = (Total_Accepted_Qty > 0)"
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Create Bin?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Books_Receive_No",
+        "label": "Books Receive No"
+      },
+      {
+        "field": "Books_Receive_ID",
+        "label": "Books Receive ID"
+      },
+      {
+        "field": "Receiving_Line_Items",
+        "label": "Item and Quantity"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Receiving_Line_Items.PR_No + \" \" + Receiving_Line_Items.RR_No + \" \" + Receiving_Line_Items.Item_Name + \" \" + Receiving_Line_Items.SKU + \" \" + Receiving_Line_Items.Line_Result + \" \" + Receiving_Line_Items.Expected_Qty + \" \" + Receiving_Line_Items.Accepted_Qty + \" \" + Receiving_Line_Items.Missing_Qty + \" \" + Receiving_Line_Items.Damage_Qty + \" \" + Receiving_Line_Items.Has_Exceptions + \" \" + Receiving_Line_Items.Label_Ready + \" \" + Receiving_Line_Items.Label_Printed + \" \" + Receiving_Line_Items.Ready_for_Fulfillment + \" \" + Receiving_Line_Items.Shipment_Mode_When_Received + \" \" + Receiving_Line_Items.Bin_location"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Partial_Receive_Timeline.RR_No",
+        "label": "Partial Receive Timeline"
+      },
+      {
+        "field": "Exception_Number",
+        "label": "Exception Number"
+      },
+      {
+        "field": "Source_Module",
+        "label": "Source Module"
+      },
+      {
+        "field": "SKU_Receive_History",
+        "label": "SKU Receive History"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = SKU_Receive_History.Item + \" \" + SKU_Receive_History.Books_Receive_No + \" \" + SKU_Receive_History.Books_Receive_ID + \" \" + SKU_Receive_History.Item_QTY + \" \" + SKU_Receive_History.Receive_Count + \" \" + SKU_Receive_History.SKU + \" \" + SKU_Receive_History.Added_Time + \" \" + SKU_Receive_History.Added_User"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Damage_Missing_Details",
+        "label": "Damage & Missing Details"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Damage_Missing_Details.PR_No + \" \" + Damage_Missing_Details.Action_Required + \" \" + Damage_Missing_Details.Affected_Missing_Part + \" \" + Damage_Missing_Details.Damage_Missing_Category + \" \" + Damage_Missing_Details.Description + \" \" + Damage_Missing_Details.Qty + \" \" + Damage_Missing_Details.Root_Cause_Category + \" \" + Damage_Missing_Details.Type_field + \" \" + Damage_Missing_Details.SKU + \" \" + Damage_Missing_Details.Repairable + \" \" + Damage_Missing_Details.Quantity_of_damage_spare_s + \" \" + Damage_Missing_Details.Spare_Part_Type + \" \" + Damage_Missing_Details.Spare_Part_Type_Other"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Create_Exception_Requested",
+        "label": "Create Exception Requested"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      }
+    ],
+    "blocks": [],
+    "line": 19833
+  },
+  {
+    "name": "Sales_Order_form1_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Sales Order form Report",
+    "form": "Sales_Order",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Sales_Order_Record_Id",
+        "label": "Sales Order Record Id"
+      },
+      {
+        "field": "Sales_Order_Number",
+        "label": "Sales Order Number"
+      },
+      {
+        "field": "Branch",
+        "label": "Branch"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Order_Status",
+        "label": "Order Status"
+      },
+      {
+        "field": "Invoice_Status",
+        "label": "Invoice Status"
+      },
+      {
+        "field": "Payment_Status",
+        "label": "Payment Status"
+      },
+      {
+        "field": "Shipment_Status",
+        "label": "Shipment Status"
+      },
+      {
+        "field": "Sales_Person",
+        "label": "Sales Person"
+      },
+      {
+        "field": "Sales_Agent",
+        "label": "Sales Agent"
+      },
+      {
+        "field": "Project_Name",
+        "label": "Project Name"
+      },
+      {
+        "field": "Design_Company",
+        "label": "Design Company"
+      },
+      {
+        "field": "Design_Architect",
+        "label": "Design/ Architect"
+      },
+      {
+        "field": "Design_Partner",
+        "label": "Design Partner"
+      },
+      {
+        "field": "Commission",
+        "label": "Commission"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Reason_For_Replacement",
+        "label": "Reason For Replacement"
+      },
+      {
+        "field": "Original_Sales_Order",
+        "label": "Original Sales Order"
+      },
+      {
+        "field": "Project_Type",
+        "label": "Project Type"
+      },
+      {
+        "field": "Target_Delivery_Date",
+        "label": "Target Delivery Date"
+      },
+      {
+        "field": "For_Crate",
+        "label": "For Crate"
+      },
+      {
+        "field": "If_Rush_Order",
+        "label": "If Rush Order"
+      },
+      {
+        "field": "Business_Partner",
+        "label": "Business Partner"
+      },
+      {
+        "field": "Package_Number",
+        "label": "Package Number"
+      },
+      {
+        "field": "Billing_Address_Section1",
+        "label": "Billing Street 1"
+      },
+      {
+        "field": "Billing_Street_2",
+        "label": "Billing Street 2"
+      },
+      {
+        "field": "Billing_City",
+        "label": "Billing City"
+      },
+      {
+        "field": "Billing_State",
+        "label": "Billing State"
+      },
+      {
+        "field": "Billing_Zip",
+        "label": "Billing Zip"
+      },
+      {
+        "field": "Billing_Country",
+        "label": "Billing Country"
+      },
+      {
+        "field": "Billing_Phone",
+        "label": "Billing Phone"
+      },
+      {
+        "field": "Shipping_Street_1",
+        "label": "Shipping Street 1"
+      },
+      {
+        "field": "Shipping_Street_2",
+        "label": "Shipping Street 2"
+      },
+      {
+        "field": "Shipping_City",
+        "label": "Shipping City"
+      },
+      {
+        "field": "Shipping_State",
+        "label": "Shipping State"
+      },
+      {
+        "field": "Shipping_Zip",
+        "label": "Shipping Zip"
+      },
+      {
+        "field": "Shipping_Country",
+        "label": "Shipping Country"
+      },
+      {
+        "field": "Shipping_Phone",
+        "label": "Shipping Phone"
+      }
+    ],
+    "blocks": [],
+    "line": 19896
+  },
+  {
+    "name": "Exceptions_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Exceptions Report",
+    "form": "Exceptions",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Sales_Order",
+        "label": "SO No."
+      },
+      {
+        "field": "PO_No",
+        "label": "PO No."
+      },
+      {
+        "field": "Shipment_No",
+        "label": "Shipment#"
+      },
+      {
+        "field": "Receive_No",
+        "label": "Receive No."
+      },
+      {
+        "field": "Receiving_Line_ID",
+        "label": "Receiving Line ID"
+      },
+      {
+        "field": "Exception_Description",
+        "label": "Exception Description"
+      },
+      {
+        "field": "Impact_Type",
+        "label": "Impact Type"
+      },
+      {
+        "field": "Exception_No",
+        "label": "Exception No."
+      },
+      {
+        "field": "Priority",
+        "label": "Priority"
+      },
+      {
+        "field": "Source_Module",
+        "label": "Source Module"
+      },
+      {
+        "field": "Due_Date",
+        "label": "Due Date"
+      },
+      {
+        "field": "Delay_Impact",
+        "label": "Delay Impact"
+      },
+      {
+        "field": "Fulfillment_Impact",
+        "label": "Fulfillment Impact"
+      },
+      {
+        "field": "Assigned_Department",
+        "label": "Assigned Department"
+      },
+      {
+        "field": "Assigned_To",
+        "label": "Assigned To"
+      },
+      {
+        "field": "Opened_On",
+        "label": "Opened On"
+      },
+      {
+        "field": "Waiting_On",
+        "label": "Waiting On"
+      },
+      {
+        "field": "Exception_Status",
+        "label": "Exception Status"
+      },
+      {
+        "field": "Resolution_Action",
+        "label": "Resolution Action"
+      },
+      {
+        "raw": "custom action \"Create RR\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Create_RR"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Create RR\""
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Execute the Create RR action for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Exception_Title",
+        "label": "Exception Title"
+      },
+      {
+        "field": "Product_Context1",
+        "label": "Product Context"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Product_Context1.Item + \" \" + Product_Context1.SKU + \" \" + Product_Context1.Category + \" \" + Product_Context1.Qty + \" \" + Product_Context1.Supplier + \" \" + Product_Context1.Action_Required + \" \" + Product_Context1.Damage_Missing_Category + \" \" + Product_Context1.Affected_Missing_Part + \" \" + Product_Context1.Description + \" \" + Product_Context1.PR_No + \" \" + Product_Context1.Root_Cause_Category + \" \" + Product_Context1.Type_field + \" \" + Product_Context1.Repairable + \" \" + Product_Context1.Repair_Outcome + \" \" + Product_Context1.Quantity_of_damage_spare_s + \" \" + Product_Context1.Spare_Part_Type + \" \" + Product_Context1.Spare_Part_Type_Other"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "RR_Supplier_Override",
+        "label": "RR Supplier Override"
+      },
+      {
+        "field": "RR_Supplier_Change_Reason",
+        "label": "RR Supplier Change Reason"
+      },
+      {
+        "field": "Exception_Line_Key",
+        "label": "Exception Line Key"
+      }
+    ],
+    "blocks": [],
+    "line": 19942
+  },
+  {
+    "name": "Pre_Order1_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Pre Order Report",
+    "form": "Pre_Order_FF",
+    "criteria": "Packaged_Out == false",
+    "columns": [
+      {
+        "field": "SO_Creation_Date",
+        "label": "SO Creation Date"
+      },
+      {
+        "field": "PR",
+        "label": "PR #"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "width = 101px"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Package_Number",
+        "label": "Package Number #"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "width = 165px"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Delivery_Type",
+        "label": "Delivery Type"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "width = 133px"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Target_Delivery",
+        "label": "Target Delivery Date"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "width = 133px"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Pre_Order_Status",
+        "label": "Pre-Order Status"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "width = 145px"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "PR_Date_Received",
+        "label": "PR Date Received"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Item_Name",
+        "label": "Item Name"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "width = 390px"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "SKU",
+        "label": "SKU"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "width = 323px"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Qty",
+        "label": "Qty"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "width = 80px"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "width = 175px"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Status",
+        "label": "Status"
+      },
+      {
+        "field": "SO",
+        "label": "SO #"
+      },
+      {
+        "field": "Bin_Location",
+        "label": "Bin Location"
+      },
+      {
+        "field": "For_Crate",
+        "label": "For Crate"
+      },
+      {
+        "raw": "custom action \"Create Package\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Create_Package_FF"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Create Package\""
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Execute the Create Package action for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Select_To_Package",
+        "label": "Select to Package"
+      },
+      {
+        "field": "City",
+        "label": "City"
+      },
+      {
+        "field": "Email",
+        "label": "Email"
+      },
+      {
+        "field": "Contact",
+        "label": "Contact"
+      },
+      {
+        "field": "ID",
+        "label": "ID"
+      },
+      {
+        "field": "Books_Package_ID",
+        "label": "Books Package ID"
+      },
+      {
+        "field": "Replacement_Request",
+        "label": "Replacement Request"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Replacement_Request.Single_Line1 + \" \" + Replacement_Request.RR + \" \" + Replacement_Request.Date_Received"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "RR",
+        "label": "RR #"
+      },
+      {
+        "field": "SO_SKU_Key",
+        "label": "SO SKU Key"
+      },
+      {
+        "field": "Packaged_Out",
+        "label": "Packaged Out"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      }
+    ],
+    "blocks": [],
+    "line": 19988
+  },
+  {
+    "name": "Pick1_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Pick Report",
+    "form": "Pick1",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Package_Order",
+        "label": "PAC #"
+      },
+      {
+        "field": "PR_if_any",
+        "label": "PR #"
+      },
+      {
+        "field": "RR",
+        "label": "RR #"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Delivery_Type",
+        "label": "Delivery Type"
+      },
+      {
+        "field": "SKU",
+        "label": "SKU"
+      },
+      {
+        "field": "Bin_Location",
+        "label": "Bin Location"
+      },
+      {
+        "field": "Quantity_to_Pick",
+        "label": "Quantity to Pick"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Demo",
+        "label": "Demo #"
+      },
+      {
+        "field": "Picker",
+        "label": "Picker"
+      },
+      {
+        "field": "SO",
+        "label": "SO #"
+      },
+      {
+        "field": "Marked",
+        "label": "Mark Picked"
+      },
+      {
+        "field": "Item_Name",
+        "label": "Item Name"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Target_Delivery_Date",
+        "label": "Target Delivery Date"
+      },
+      {
+        "field": "For_Crate",
+        "label": "For Crate"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      }
+    ],
+    "blocks": [],
+    "line": 20069
+  },
+  {
+    "name": "Field_Work_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Field Work Report",
+    "form": "Field_Work",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Status",
+        "label": "Status"
+      },
+      {
+        "field": "Logistic_Notes",
+        "label": "Logistic Notes"
+      },
+      {
+        "field": "Package_Order",
+        "label": "Package Order"
+      },
+      {
+        "field": "Shipment_Order",
+        "label": "Shipment Order"
+      },
+      {
+        "field": "Service_Request",
+        "label": "Service Request#"
+      },
+      {
+        "field": "RMA",
+        "label": "RMA#"
+      },
+      {
+        "field": "Original_SO",
+        "label": "Original SO#"
+      },
+      {
+        "field": "Reason",
+        "label": "Reason"
+      },
+      {
+        "field": "Subreason",
+        "label": "Sub Reason"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "Sales Order#"
+      },
+      {
+        "field": "Package_Number",
+        "label": "Package Number"
+      },
+      {
+        "field": "Type_of_Delivery",
+        "label": "Type of Delivery"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "City",
+        "label": "City"
+      },
+      {
+        "field": "Email",
+        "label": "Email"
+      },
+      {
+        "field": "Contact",
+        "label": "Contact"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "displayformat = plainnumber"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "If_Pull_Out",
+        "label": "If Pull Out"
+      },
+      {
+        "field": "Scheduled_Date_and_Time",
+        "label": "Scheduled Date and Time"
+      },
+      {
+        "field": "Assigned_to_Installer",
+        "label": "Assigned to (Installer)"
+      },
+      {
+        "field": "Assigned_to_Dispatcher",
+        "label": "Assigned to (Dispatcher)"
+      },
+      {
+        "field": "Schedule_Start_Date_and_Time",
+        "label": "Schedule Start Date and Time"
+      },
+      {
+        "field": "Schedule_End_Date_and_Time",
+        "label": "Schedule End Date and Time"
+      },
+      {
+        "field": "Upload_PDf_of_Initial_Report",
+        "label": "Upload PDf of Initial Report"
+      },
+      {
+        "field": "Customer_Rating",
+        "label": "Customer Rating"
+      },
+      {
+        "field": "Receiver_s_Signature_Upload",
+        "label": "Receiver's Signature Upload"
+      },
+      {
+        "field": "Receiver_s_Name",
+        "label": "Receiver's Name"
+      },
+      {
+        "field": "Receiver_s_Signature",
+        "label": "Receiver's Signature"
+      },
+      {
+        "field": "Assignee_Signature",
+        "label": "Assignee Signature"
+      },
+      {
+        "field": "Final_Checking_Bago_Umalis_sa_Site",
+        "label": "Final Checking Bago Umalis sa Site"
+      },
+      {
+        "field": "Installation_Status",
+        "label": "Installation Status"
+      },
+      {
+        "field": "Sales_Return_Status",
+        "label": "Sales Return Status"
+      },
+      {
+        "field": "Image",
+        "label": "Image"
+      },
+      {
+        "field": "Complaint_Record_ID",
+        "label": "Complaint Record ID"
+      },
+      {
+        "field": "Appointment_Record_ID",
+        "label": "Appointment Record ID"
+      },
+      {
+        "field": "Video_and_Status_of_Installed_Item",
+        "label": "Video and Status of Installed Item"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Video_and_Status_of_Installed_Item.Image_Upload + \" \" + Video_and_Status_of_Installed_Item.Notes_Remarks + \" \" + Video_and_Status_of_Installed_Item.Video_If_necessary + \" \" + Video_and_Status_of_Installed_Item.Added_Time + \" \" + Video_and_Status_of_Installed_Item.Added_User"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Item_Details",
+        "label": "Item Details"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Item_Details.Item_Name + \" \" + Item_Details.Quantity + \" \" + Item_Details.SKU"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "SubForm",
+        "label": "SubForm"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = SubForm.Attachment_of_Photo + \" \" + SubForm.Notes"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Reschedule_Reason",
+        "label": "Reschedule Reason"
+      },
+      {
+        "field": "Reschedule_Processed",
+        "label": "Reschedule Processed"
+      },
+      {
+        "field": "Service_Appointment_ID",
+        "label": "Service Appointment ID"
+      },
+      {
+        "field": "Video",
+        "label": " Video"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      }
+    ],
+    "blocks": [],
+    "line": 20098
+  },
+  {
+    "name": "Sales_Returns_Form_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Sales Returns Form Report",
+    "form": "Sales_Returns_Form",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "RMA",
+        "label": "RMA#"
+      },
+      {
+        "field": "Service_Request",
+        "label": "Service Request#"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "Sales Order#"
+      },
+      {
+        "field": "Package_Number",
+        "label": "Package Number"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "City",
+        "label": "City"
+      },
+      {
+        "field": "Email",
+        "label": "Email"
+      },
+      {
+        "field": "Contact",
+        "label": "Contact"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "displayformat = plainnumber"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Date_field",
+        "label": "Date"
+      },
+      {
+        "field": "Warehouse_Name",
+        "label": "Warehouse Name"
+      },
+      {
+        "field": "Reason",
+        "label": "Reason"
+      },
+      {
+        "field": "Sub_Reason",
+        "label": "Sub Reason"
+      },
+      {
+        "field": "Returned_by",
+        "label": "Returned by"
+      },
+      {
+        "field": "SR_CREATION_STATUS",
+        "label": "SR CREATION STATUS"
+      },
+      {
+        "field": "Image",
+        "label": "Image"
+      },
+      {
+        "field": "Video",
+        "label": "Video"
+      },
+      {
+        "field": "Signature",
+        "label": "Signature"
+      },
+      {
+        "field": "Complaint_Record_ID",
+        "label": "Complaint Record ID"
+      },
+      {
+        "field": "app",
+        "label": "Appointment Record ID"
+      },
+      {
+        "field": "Books_SalesReturn_No",
+        "label": "Books SalesReturn No"
+      },
+      {
+        "field": "Books_SalesReturn_ID",
+        "label": "Books SalesReturn ID"
+      },
+      {
+        "field": "Items",
+        "label": "Items"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Items.SKU + \" \" + Items.Item_Name + \" \" + Items.Qty_Shipped_Fulfilled + \" \" + Items.Return_Quantity"
+      },
+      {
+        "raw": ")"
+      }
+    ],
+    "blocks": [],
+    "line": 20162
+  },
+  {
+    "name": "Field_Service_Site_Visit_Form_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Field Service Site Visit Form Report",
+    "form": "Field_Service_Site_Visit_Form",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Technician_Name",
+        "label": "Technician Name"
+      },
+      {
+        "field": "Driver_Name",
+        "label": "Driver Name"
+      },
+      {
+        "field": "Date_of_Site_Visit",
+        "label": "Date of Site Visit"
+      },
+      {
+        "field": "Purpose_of_Visit",
+        "label": "Purpose of Visit"
+      },
+      {
+        "field": "SO",
+        "label": "SO#"
+      },
+      {
+        "field": "Plan_the_Layout",
+        "label": "1) Plan the Layout"
+      },
+      {
+        "field": "Ceiling_Height",
+        "label": "Ceiling Height"
+      },
+      {
+        "field": "Mount_Height_from_Floor",
+        "label": "Mount Height from Floor"
+      },
+      {
+        "field": "Power_Source_Type",
+        "label": "Power Source Type"
+      },
+      {
+        "field": "Remarks",
+        "label": "Remarks"
+      },
+      {
+        "field": "Prepare_the_Mounting_Surface",
+        "label": "2) Prepare the Mounting Surface"
+      },
+      {
+        "field": "Surface_Type",
+        "label": "Surface Type"
+      },
+      {
+        "field": "Remarks1",
+        "label": "Remarks"
+      },
+      {
+        "field": "Electrical_Check",
+        "label": "3) Electrical Check"
+      },
+      {
+        "field": "Voltage",
+        "label": "Voltage"
+      },
+      {
+        "field": "Breaker_Size_if_known",
+        "label": "Breaker Size (if known)"
+      },
+      {
+        "field": "Remarks2",
+        "label": "Remarks"
+      },
+      {
+        "field": "Ceiling_Structure_Check",
+        "label": "4) Ceiling & Structure Check"
+      },
+      {
+        "field": "Remarks3",
+        "label": "Remarks"
+      },
+      {
+        "field": "Safety_Access_Check",
+        "label": "5 Safety & Access Check"
+      },
+      {
+        "field": "Remarks4",
+        "label": "Remarks"
+      },
+      {
+        "field": "Site_Delivery_Check",
+        "label": "6) Site & Delivery Check"
+      },
+      {
+        "field": "Remarks5",
+        "label": "Remarks"
+      },
+      {
+        "field": "Client_Confirmation",
+        "label": "7) Client Confirmation"
+      },
+      {
+        "field": "Notes_Remarks",
+        "label": "Notes / Remarks:"
+      },
+      {
+        "field": "Final_Check_Sign_off",
+        "label": "8) Final Check & Sign-off"
+      },
+      {
+        "field": "Name",
+        "label": "Name"
+      },
+      {
+        "field": "Client_Representative_Signature",
+        "label": "Client/Representative Signature"
+      },
+      {
+        "field": "Signature",
+        "label": "Signature"
+      },
+      {
+        "field": "Layout_Photo",
+        "label": "Layout Photo"
+      },
+      {
+        "field": "Surface_Condition_Photo",
+        "label": "Surface Condition Photo"
+      },
+      {
+        "field": "Ceiling_Photo_if_possible",
+        "label": "Ceiling Photo (if possible)"
+      }
+    ],
+    "blocks": [],
+    "line": 20198
+  },
+  {
+    "name": "Quote_Groups",
+    "type": "list",
+    "isDefault": false,
+    "label": "Quote Groups",
+    "form": "Inquiry_Form",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "INQ_No",
+        "label": "INQ No."
+      },
+      {
+        "field": "Items",
+        "label": "Items"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "description",
+        "label": "Description"
+      },
+      {
+        "field": "created_date",
+        "label": "Created Date"
+      },
+      {
+        "field": "sku",
+        "label": "SKU"
+      },
+      {
+        "field": "quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Open_to_similar_design",
+        "label": "Open to similar design"
+      },
+      {
+        "field": "target_date",
+        "label": "Target Date"
+      },
+      {
+        "field": "unit",
+        "label": "Unit"
+      },
+      {
+        "field": "quote_group",
+        "label": "Quote Group"
+      },
+      {
+        "field": "Waiting_On",
+        "label": "Waiting On"
+      },
+      {
+        "field": "Addtional_Description",
+        "label": "Addtional Description"
+      },
+      {
+        "field": "Attachments",
+        "label": "Attachments"
+      },
+      {
+        "field": "Product_Sample",
+        "label": "Product Sample"
+      },
+      {
+        "field": "Technical_Drawing",
+        "label": "Technical Drawing"
+      },
+      {
+        "field": "D_Image",
+        "label": "3D Image"
+      },
+      {
+        "field": "Specification",
+        "label": "Specification"
+      },
+      {
+        "field": "Supplier_Selected",
+        "label": "Supplier Selected"
+      },
+      {
+        "field": "Availability",
+        "label": "Availability Confirmed"
+      },
+      {
+        "field": "Final_Price_Exists",
+        "label": "Final Price Exists"
+      },
+      {
+        "field": "Collateral_Comple_NA",
+        "label": "Collateral Comple/NA"
+      },
+      {
+        "field": "SRP_Approved",
+        "label": "SRP Approved"
+      },
+      {
+        "field": "Select_Final_Cost",
+        "label": "Select Final Cost"
+      },
+      {
+        "field": "SRP_Approved1",
+        "label": "SRP (Approved)"
+      },
+      {
+        "field": "SRP_Status",
+        "label": "SRP Status"
+      },
+      {
+        "field": "Projects",
+        "label": "Projects"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Group_Discount_Pct",
+        "label": "Group Discount Percentage"
+      },
+      {
+        "field": "Project_Name",
+        "label": "Project Name"
+      },
+      {
+        "raw": "custom action \"Create Estimates\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Create_Estimates_Grp"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Create Estimates\""
+      },
+      {
+        "raw": "condition = (Ready_for_Estimates == true)"
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Execute the Create Estimates action for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      }
+    ],
+    "blocks": [],
+    "line": 20237
+  },
+  {
+    "name": "Service_Request",
+    "type": "list",
+    "isDefault": false,
+    "label": "Service Request",
+    "form": "Service_Request1",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Service_Request1",
+        "label": "Service Request #"
+      },
+      {
+        "field": "RMA1",
+        "label": "RMA#"
+      },
+      {
+        "field": "Original_SO",
+        "label": "Original SO#"
+      },
+      {
+        "field": "Reason",
+        "label": "Reason"
+      },
+      {
+        "field": "Sub",
+        "label": "Sub Reason"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "Sales Order#"
+      },
+      {
+        "field": "Package_Number",
+        "label": "Package Number"
+      },
+      {
+        "field": "Delivery_Date",
+        "label": "Delivery Date"
+      },
+      {
+        "field": "If_Pull_Out",
+        "label": "If Pull Out"
+      },
+      {
+        "field": "Delivery_Type",
+        "label": "Delivery Type"
+      },
+      {
+        "field": "Item_Name",
+        "label": "Item Name"
+      },
+      {
+        "field": "SKU",
+        "label": "SKU"
+      },
+      {
+        "field": "Quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "Priority_Level",
+        "label": "Priority Level"
+      },
+      {
+        "field": "Scheduled_by",
+        "label": "Scheduled by:"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "City",
+        "label": "City"
+      },
+      {
+        "field": "Email",
+        "label": "Email"
+      },
+      {
+        "field": "Phone_Number",
+        "label": "Phone"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "displayformat = plainnumber"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Address",
+        "label": "Address"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "enable = Link_to_Map,Show_As_Text"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Complaint_Record_ID",
+        "label": "Complaint Record ID"
+      },
+      {
+        "field": "Appointment_Record_ID",
+        "label": "Appointment Record ID"
+      },
+      {
+        "field": "Item_Details.Item_Name",
+        "label": "Item Details"
+      },
+      {
+        "field": "Order_Aggregation_ID",
+        "label": "Order Aggregation ID"
+      },
+      {
+        "field": "Initial_Schedule_ID",
+        "label": "Initial Schedule ID"
+      },
+      {
+        "field": "Service_Appointment_ID",
+        "label": "Service Appointment ID"
+      },
+      {
+        "field": "Initial_Schedule_Time",
+        "label": "Initial Schedule Time"
+      },
+      {
+        "field": "SR_No",
+        "label": "SR No"
+      },
+      {
+        "field": "SR_Status",
+        "label": "SR Status"
+      }
+    ],
+    "blocks": [],
+    "line": 20294
+  },
+  {
+    "name": "Service_Appointment",
+    "type": "list",
+    "isDefault": false,
+    "label": "Service Appointment",
+    "form": "Service_Appointment_Form",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Scheduled_Date_and_Time",
+        "label": "Scheduled Date and Time"
+      },
+      {
+        "field": "Installer",
+        "label": "Installer"
+      },
+      {
+        "field": "Assistant_Installers",
+        "label": "Assistant Installers"
+      },
+      {
+        "field": "Assigned_to_Driver",
+        "label": "Assigned to (Driver)"
+      },
+      {
+        "field": "Assigned_to_Dispatcher",
+        "label": "Assigned to (Dispatcher)"
+      },
+      {
+        "field": "Logistic_Notes",
+        "label": "Logistic Notes"
+      },
+      {
+        "field": "Shipment_Order",
+        "label": "Shipment Order"
+      },
+      {
+        "field": "Shipment_Order_File",
+        "label": "Shipment Order File"
+      },
+      {
+        "field": "Appointment_Status",
+        "label": "Appointment Status"
+      },
+      {
+        "field": "RMA",
+        "label": "RMA#"
+      },
+      {
+        "field": "Original_SO",
+        "label": "Original SO#"
+      },
+      {
+        "field": "Reason",
+        "label": "Reason"
+      },
+      {
+        "field": "Sub_Reason",
+        "label": "Sub Reason"
+      },
+      {
+        "field": "Service_Request",
+        "label": "Service Request#"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "Sales Order#"
+      },
+      {
+        "field": "Package_Number",
+        "label": "Package Number"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "City",
+        "label": "City"
+      },
+      {
+        "field": "Email",
+        "label": "Email"
+      },
+      {
+        "field": "Contact",
+        "label": "Contact"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "displayformat = plainnumber"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Address",
+        "label": "Address"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "enable = Link_to_Map,Show_As_Text"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Start_of_Work",
+        "label": "Start of Work"
+      },
+      {
+        "field": "End_of_Work",
+        "label": "End of Work"
+      },
+      {
+        "field": "Assigned_Status",
+        "label": "Assigned Status"
+      },
+      {
+        "field": "If_Pull_Out",
+        "label": "If Pull Out"
+      },
+      {
+        "field": "Priority_Level",
+        "label": "Priority Level"
+      },
+      {
+        "field": "Scheduled_by",
+        "label": "Scheduled by:"
+      },
+      {
+        "field": "Complaint_Record_ID",
+        "label": "Complaint Record ID"
+      },
+      {
+        "field": "Appointment_Record_ID",
+        "label": "Appointment Record ID"
+      },
+      {
+        "raw": "custom action \"Re-Schedule\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Re_Schedule"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Re-Schedule\""
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Execute the Re Schedule action for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Suggested_Schedule_Date",
+        "label": "Suggested Schedule Date"
+      },
+      {
+        "field": "Fleet_Assignment",
+        "label": "Fleet Assignment"
+      },
+      {
+        "field": "Original_System_Suggestion",
+        "label": "Original System Suggestion"
+      },
+      {
+        "field": "Site_Confirmation_Status",
+        "label": "Site Confirmation Status"
+      },
+      {
+        "field": "Suggested_Time_Slot",
+        "label": "Suggested Time Slot"
+      },
+      {
+        "field": "Calendar_Event_Summary",
+        "label": "Calendar Event Summary"
+      },
+      {
+        "field": "Exception_Status",
+        "label": "Exception Status"
+      },
+      {
+        "field": "Sales_Order_Display",
+        "label": "Sales Order Display"
+      },
+      {
+        "field": "Confirmation_Method",
+        "label": "Confirmation Method"
+      },
+      {
+        "field": "Site_Confirmation_Notes",
+        "label": "Site Confirmation Notes"
+      },
+      {
+        "field": "Calendar_Entry_Created",
+        "label": "Calendar Entry Created"
+      },
+      {
+        "field": "Confirmed_Schedule_Date",
+        "label": "Confirmed Schedule Date"
+      },
+      {
+        "field": "Confirmed_Time_Slot",
+        "label": "Confirmed Time Slot"
+      },
+      {
+        "field": "Estimated_Duration",
+        "label": "Estimated Duration (hrs)"
+      },
+      {
+        "field": "Exception_Reason",
+        "label": "Exception Reason"
+      },
+      {
+        "field": "Followup_Count",
+        "label": "Followup Count"
+      },
+      {
+        "field": "Fulfillment_Completed_Date",
+        "label": "Fulfillment Completed Date"
+      },
+      {
+        "field": "Installation_Required",
+        "label": "Installation Required"
+      },
+      {
+        "field": "Order_Date",
+        "label": "Order Date"
+      },
+      {
+        "field": "Outreach_Sent_Date",
+        "label": "Outreach Sent Date"
+      },
+      {
+        "field": "Override_Applied",
+        "label": "Override Applied"
+      },
+      {
+        "field": "Override_By",
+        "label": "Override By"
+      },
+      {
+        "field": "Override_Reason",
+        "label": "Override Reason"
+      },
+      {
+        "field": "Override_Timestamp",
+        "label": "Override Timestamp"
+      },
+      {
+        "field": "Type_of_Delivery",
+        "label": "Type of Delivery"
+      },
+      {
+        "field": "Delivery_Latitude",
+        "label": "Delivery Latitude"
+      },
+      {
+        "field": "Delivery_Longitude",
+        "label": "Delivery Longitude"
+      },
+      {
+        "field": "Geocode_Status",
+        "label": "Geocode Status"
+      },
+      {
+        "field": "Dispatch_Date",
+        "label": "Dispatch Date"
+      },
+      {
+        "field": "Actual_Delivery_Date",
+        "label": "Actual Delivery Date"
+      },
+      {
+        "field": "Logistic_Notes1.Attachment_of_Photo",
+        "label": "Logistic Notes"
+      },
+      {
+        "field": "Location_Route",
+        "label": "Location Route"
+      },
+      {
+        "field": "Date_Confirmed",
+        "label": "Date Confirmed"
+      },
+      {
+        "field": "Third_Party_Provider",
+        "label": "3rd Party Provider"
+      },
+      {
+        "field": "Shipment_Order_No",
+        "label": "Shipment Order No"
+      },
+      {
+        "field": "Needs_Site_Visit",
+        "label": "Needs Site Visit"
+      },
+      {
+        "field": "Rescheduled_From_SA",
+        "label": "Rescheduled From SA"
+      },
+      {
+        "field": "Item_Details",
+        "label": "Item Details"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Item_Details.Item_Name + \" \" + Item_Details.SKU + \" \" + Item_Details.Quantity + \" \" + Item_Details.PAC"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Priority",
+        "label": "Priority"
+      },
+      {
+        "field": "Rescheduled_Via_Exception",
+        "label": "Rescheduled via Exception"
+      },
+      {
+        "field": "Requested_Delivery_Date",
+        "label": "Requested Delivery Date"
+      },
+      {
+        "field": "Requested_Delivery_Time",
+        "label": "Requested Delivery Time"
+      },
+      {
+        "field": "Delivery_ID",
+        "label": "Delivery ID"
+      },
+      {
+        "field": "Initial_Schedule_ID",
+        "label": "Initial Schedule ID"
+      },
+      {
+        "field": "Service_Request_ID",
+        "label": "Service Request ID"
+      },
+      {
+        "field": "Fleet_Decision",
+        "label": "Fleet Decision"
+      },
+      {
+        "field": "Override_Fleet_3rd_Party",
+        "label": "Override Fleet (3rd-Party)"
+      },
+      {
+        "field": "Complaint",
+        "label": "Complaint #"
+      },
+      {
+        "field": "Complaint_ID",
+        "label": "Complaint ID"
+      }
+    ],
+    "blocks": [],
+    "line": 20337
+  },
+  {
+    "name": "Sales_Order_Readiness_Gate_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Sales Order Readiness Gate Report",
+    "form": "Sales_Order_Readiness_Gate",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "sales_order_number",
+        "label": "Sales Order Number"
+      },
+      {
+        "field": "customer_name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "customer_type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "customer_address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "payment_status",
+        "label": "Payment Status"
+      },
+      {
+        "field": "priority",
+        "label": "Priority"
+      },
+      {
+        "field": "pr_number",
+        "label": "PR Number"
+      },
+      {
+        "field": "rr_number",
+        "label": "RR Number"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Delivery_Type",
+        "label": "Delivery Type"
+      },
+      {
+        "field": "Package_Order",
+        "label": "Package Order Number"
+      },
+      {
+        "field": "Item_Name",
+        "label": "Item Name"
+      },
+      {
+        "field": "SKU",
+        "label": "SKU"
+      },
+      {
+        "field": "Quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "Bin_Location",
+        "label": "Bin Location"
+      },
+      {
+        "field": "Release_Log",
+        "label": "Release Log"
+      },
+      {
+        "field": "Release",
+        "label": "Release"
+      },
+      {
+        "field": "For_Crate",
+        "label": "For Crate"
+      },
+      {
+        "field": "Demo",
+        "label": "Demo #"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Target_Delivery_Date",
+        "label": "Target Delivery Date"
+      },
+      {
+        "field": "Added_User",
+        "label": "Added User"
+      },
+      {
+        "field": "Assign_Picker",
+        "label": "Assign Picker"
+      },
+      {
+        "field": "Override_Approved",
+        "label": "Override Approved"
+      },
+      {
+        "field": "Override_Approved_For_Status",
+        "label": "Override Approved For Status"
+      },
+      {
+        "field": "Override_By",
+        "label": "Override By"
+      },
+      {
+        "field": "Override_Reason",
+        "label": "Override Reason"
+      },
+      {
+        "field": "Override_Timestamp",
+        "label": "Override Timestamp"
+      },
+      {
+        "field": "Has_Credit_Terms",
+        "label": "Has Credit Terms"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      }
+    ],
+    "blocks": [],
+    "line": 20444
+  },
+  {
+    "name": "Supp_1_Portal",
+    "type": "list",
+    "isDefault": false,
+    "label": "Supp 1 Portal",
+    "form": "Inquiry_Form",
+    "criteria": "Suppliers.ID == 4662244000012469015",
+    "columns": [
+      {
+        "field": "INQ_No",
+        "label": "INQ No."
+      },
+      {
+        "field": "created_date",
+        "label": "Created Date"
+      },
+      {
+        "field": "quote_group",
+        "label": "Quote Group"
+      },
+      {
+        "field": "sku",
+        "label": "SKU"
+      },
+      {
+        "field": "description",
+        "label": "Description"
+      },
+      {
+        "field": "quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "unit",
+        "label": "Unit"
+      },
+      {
+        "field": "target_date",
+        "label": "Target Date"
+      },
+      {
+        "field": "Waiting_On",
+        "label": "Waiting On"
+      },
+      {
+        "field": "Addtional_Description",
+        "label": "Addtional Description"
+      },
+      {
+        "field": "Attachments",
+        "label": "Attachments"
+      },
+      {
+        "field": "Open_to_similar_design",
+        "label": "Open to similar design"
+      },
+      {
+        "field": "Product_Sample",
+        "label": "Product Sample"
+      },
+      {
+        "field": "D_Image",
+        "label": "3D Image"
+      },
+      {
+        "field": "Technical_Drawing",
+        "label": "Technical Drawing"
+      },
+      {
+        "field": "Specification",
+        "label": "Specification"
+      },
+      {
+        "field": "Supplier_Selected",
+        "label": "Supplier Selected"
+      },
+      {
+        "field": "Availability",
+        "label": "Availability Confirmed"
+      },
+      {
+        "field": "Final_Price_Exists",
+        "label": "Final Price Exists"
+      },
+      {
+        "field": "Collateral_Comple_NA",
+        "label": "Collateral Comple/NA"
+      },
+      {
+        "field": "SRP_Approved",
+        "label": "SRP Approved"
+      },
+      {
+        "field": "Select_Final_Cost",
+        "label": "Select Final Cost"
+      },
+      {
+        "field": "SRP_Approved1",
+        "label": "SRP (Approved)"
+      },
+      {
+        "field": "SRP_Status",
+        "label": "SRP Status"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "Items",
+        "label": "Items"
+      },
+      {
+        "field": "Suppliers",
+        "label": "Suppliers"
+      },
+      {
+        "field": "Suppliers.ID",
+        "label": "Suppliers.ID"
+      }
+    ],
+    "blocks": [],
+    "line": 20487
+  },
+  {
+    "name": "Supplier_2_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Tony Fan Inquiries",
+    "form": "Supplier_2",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "INQ_No_Supplier",
+        "label": "INQ No."
+      },
+      {
+        "field": "SKU_Supplier",
+        "label": "SKU"
+      },
+      {
+        "field": "Target_Date_Supplier",
+        "label": "Target Date"
+      },
+      {
+        "field": "Items_Supplier",
+        "label": "Items"
+      },
+      {
+        "field": "Quantity_Supplier",
+        "label": "Quantity"
+      },
+      {
+        "field": "Unit_Supplier",
+        "label": "Unit"
+      },
+      {
+        "field": "Description_Supplier",
+        "label": "Description"
+      },
+      {
+        "field": "Dropdown1",
+        "label": "Drop Down"
+      },
+      {
+        "field": "Dropdown2",
+        "label": "Drop Down"
+      },
+      {
+        "field": "Date_Created_Supplier",
+        "label": "Date Created"
+      },
+      {
+        "field": "Open_to_similar_design_Supplier",
+        "label": "Open to similar design"
+      },
+      {
+        "field": "Additional_Description_Supplier",
+        "label": "Additional Description"
+      },
+      {
+        "field": "Product_Sample_Supplier",
+        "label": "Product Sample"
+      },
+      {
+        "field": "D_Image_Supplier",
+        "label": "3D Image"
+      },
+      {
+        "field": "Specification_Supplier",
+        "label": "Specification"
+      },
+      {
+        "field": "Technical_Drawing_Supplier",
+        "label": "Technical Drawing"
+      },
+      {
+        "field": "Similar_Design_Photo_Supplier",
+        "label": "Similar Design Photo"
+      },
+      {
+        "field": "Specification_Details_Supplier",
+        "label": "Specification Details"
+      },
+      {
+        "raw": "custom action \"Submit Response\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Action_Button_Supplier"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Submit Response\""
+      },
+      {
+        "raw": "condition = (Response_Status != \"Not Selected\" && Response_Status != \"Completed\" && edit_counter == 1)"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Response_Status",
+        "label": "Response Status"
+      },
+      {
+        "field": "edit_counter",
+        "label": "Edit Counter"
+      },
+      {
+        "field": "Product_Image_Supplier2_INQ",
+        "label": "Product Image"
+      },
+      {
+        "field": "Supplier_quotes",
+        "label": "Supplier quotes"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier_quotes.SupplierName + \" \" + Supplier_quotes.Availability_Supplier + \" \" + Supplier_quotes.Final_Price_Supplier + \" \" + Supplier_quotes.Initial_Price_Supplier + \" \" + Supplier_quotes.Lead_Time_Supplier + \" \" + Supplier_quotes.Negotiated_Supplier + \" \" + Supplier_quotes.Selected_Supplier + \" \" + Supplier_quotes.Stage_Supplier"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Image_from_Inq",
+        "label": "Image from Inq"
+      },
+      {
+        "field": "Dimension_Supplier",
+        "label": "Dimension"
+      },
+      {
+        "field": "Color_Body_Supplier",
+        "label": "Color_Body"
+      },
+      {
+        "field": "Voltage_Supplier",
+        "label": "Voltage"
+      },
+      {
+        "field": "Lumens_Supplier",
+        "label": "Lumens"
+      },
+      {
+        "field": "Color_Temperature_Supplier",
+        "label": "Color Temperature"
+      },
+      {
+        "field": "Type_of_Bulb_Supplier",
+        "label": "Type of Bulb"
+      }
+    ],
+    "blocks": [],
+    "line": 20523
+  },
+  {
+    "name": "Projects_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Projects Report",
+    "form": "Projects",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Project_Name",
+        "label": "Project Name"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "Status",
+        "label": "Status"
+      },
+      {
+        "field": "Project_Code",
+        "label": "Project Code"
+      },
+      {
+        "field": "Books_Estimate_ID",
+        "label": "Books Estimate ID"
+      },
+      {
+        "field": "Books_Estimate_No",
+        "label": "Books Estimate No"
+      },
+      {
+        "field": "Group_Discount_Pct",
+        "label": "Quote Discount Percentage"
+      },
+      {
+        "field": "All_SRP_Approved",
+        "label": "All SRP Approved"
+      }
+    ],
+    "blocks": [],
+    "line": 20569
+  },
+  {
+    "name": "Supplier_1_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Fenteng Lighting Inquiries",
+    "form": "Supplier_1",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "INQ_No_Supplier",
+        "label": "INQ No."
+      },
+      {
+        "field": "Items_Supplier",
+        "label": "Items"
+      },
+      {
+        "field": "Description_Supplier",
+        "label": "Description"
+      },
+      {
+        "field": "Date_Created_Supplier",
+        "label": "Date Created"
+      },
+      {
+        "field": "SKU_Supplier",
+        "label": "SKU"
+      },
+      {
+        "field": "Quantity_Supplier",
+        "label": "Quantity"
+      },
+      {
+        "field": "Dropdown1",
+        "label": "Drop Down"
+      },
+      {
+        "field": "Open_to_similar_design_Supplier",
+        "label": "Open to similar design"
+      },
+      {
+        "field": "Target_Date_Supplier",
+        "label": "Target Date"
+      },
+      {
+        "field": "Unit_Supplier",
+        "label": "Unit"
+      },
+      {
+        "field": "Dropdown2",
+        "label": "Drop Down"
+      },
+      {
+        "field": "Additional_Description_Supplier",
+        "label": "Additional Description"
+      },
+      {
+        "field": "Product_Sample_Supplier",
+        "label": "Product Sample"
+      },
+      {
+        "field": "Technical_Drawing_Supplier",
+        "label": "Technical Drawing"
+      },
+      {
+        "field": "D_Image_Supplier",
+        "label": "3D Image"
+      },
+      {
+        "field": "Similar_Design_Photo_Supplier",
+        "label": "Similar Design Photo"
+      },
+      {
+        "field": "Specification_Supplier",
+        "label": "Specification"
+      },
+      {
+        "field": "Specification_Details_Supplier",
+        "label": "Specification Details"
+      },
+      {
+        "raw": "custom action \"Submit Response\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Action_Button_Supplier1"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Submit Response\""
+      },
+      {
+        "raw": "condition = (Response_Status != \"Not Selected\" && Response_Status != \"Completed\" && edit_counter == 1)"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Response_Status",
+        "label": "Response Status"
+      },
+      {
+        "field": "edit_counter",
+        "label": "Edit Counter"
+      },
+      {
+        "field": "Product_Image_Supplier1_INQ",
+        "label": "Product Image"
+      },
+      {
+        "field": "Supplier_quotes",
+        "label": "Supplier quotes"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier_quotes.SupplierName + \" \" + Supplier_quotes.Availability_Supplier + \" \" + Supplier_quotes.Final_Price_Supplier + \" \" + Supplier_quotes.Initial_Price_Supplier + \" \" + Supplier_quotes.Lead_Time_Supplier + \" \" + Supplier_quotes.Negotiated_Supplier + \" \" + Supplier_quotes.Selected_Supplier + \" \" + Supplier_quotes.Stage_Supplier"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Image_from_Inq",
+        "label": "Image from Inq"
+      },
+      {
+        "field": "Dimension_Supplier",
+        "label": "Dimension"
+      },
+      {
+        "field": "Color_Body_Supplier",
+        "label": "Color Body"
+      },
+      {
+        "field": "Color_Temperature_Supplier",
+        "label": "Color Temperature"
+      },
+      {
+        "field": "Type_of_Bulb_Supplier",
+        "label": "Type of Bulb"
+      },
+      {
+        "field": "Voltage_Supplier",
+        "label": "Voltage"
+      },
+      {
+        "field": "Lumens_Supplier",
+        "label": "Lumens"
+      }
+    ],
+    "blocks": [],
+    "line": 20584
+  },
+  {
+    "name": "PO_Grouping",
+    "type": "list",
+    "isDefault": false,
+    "label": "PR to PO Grouping",
+    "form": "Purchase_Request1",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "sku",
+        "label": "SKU"
+      },
+      {
+        "field": "quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "unit",
+        "label": "Unit"
+      },
+      {
+        "field": "description",
+        "label": "Description"
+      },
+      {
+        "field": "supplier_target_date",
+        "label": "Supplier  Target Date"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Items",
+        "label": "Items"
+      },
+      {
+        "field": "Selcted_Final_Cost",
+        "label": "Selected Final Cost"
+      },
+      {
+        "field": "Followed_Recommendation",
+        "label": "Followed Recommendation"
+      },
+      {
+        "field": "Similar_Item",
+        "label": "Similar Item"
+      },
+      {
+        "field": "Attachments",
+        "label": "Attachments"
+      },
+      {
+        "field": "Target_Delivery",
+        "label": "Target  Delivery"
+      },
+      {
+        "field": "Remaining_Days",
+        "label": "Remaining Days"
+      },
+      {
+        "field": "Required_Days_Lead",
+        "label": "Lead Time (days)"
+      },
+      {
+        "field": "Delay_Status",
+        "label": "Delay Status"
+      },
+      {
+        "field": "PR_No",
+        "label": "PR No"
+      },
+      {
+        "field": "PR_Date",
+        "label": "PR Date"
+      },
+      {
+        "field": "Selected_Supplier",
+        "label": "Selected Supplier"
+      },
+      {
+        "field": "Priority",
+        "label": "Priority"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Description1",
+        "label": "Description"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "category",
+        "label": "Category"
+      },
+      {
+        "field": "Additional_Details",
+        "label": "Additional Details"
+      },
+      {
+        "field": "Shipment_Mode",
+        "label": "Shipment Mode"
+      },
+      {
+        "field": "Selected_Supplier1",
+        "label": "Selected Supplier"
+      },
+      {
+        "field": "Final_price_confirmed",
+        "label": "Final price confirmed"
+      },
+      {
+        "field": "Shipping_mode_selected",
+        "label": "Shipping mode selected"
+      },
+      {
+        "field": "Target_date_exists",
+        "label": "Target date exists"
+      },
+      {
+        "field": "PR_READY_FOR_PO",
+        "label": "PR READY FOR PO"
+      },
+      {
+        "field": "PR_Approved",
+        "label": "PR Approved"
+      },
+      {
+        "raw": "custom action \"Approve PR to PO\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = PR_Approved"
+      },
+      {
+        "raw": "show action in view header = true"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Approve PR to PO\""
+      },
+      {
+        "raw": "condition = (PR_READY_FOR_PO == true && PR_Approved == false)"
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Approve PR for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "Sales Order"
+      },
+      {
+        "field": "Supplier_Selected.Suppliers",
+        "label": "Supplier Selected"
+      },
+      {
+        "field": "Order_Value",
+        "label": "Order Value"
+      },
+      {
+        "field": "inquiry_reference",
+        "label": "Inquiry Reference"
+      },
+      {
+        "field": "PR_Status",
+        "label": "PR Status"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Link_PO_No",
+        "label": "Link PO No"
+      },
+      {
+        "field": "Priority_Score",
+        "label": "Priority Score"
+      },
+      {
+        "field": "Aging",
+        "label": "Aging"
+      },
+      {
+        "field": "Supplier_Load_Balancing.Suppliers",
+        "label": "Supplier Load Balancing"
+      },
+      {
+        "field": "Override_Reason",
+        "label": "Override Reason"
+      },
+      {
+        "field": "Shipment_Days",
+        "label": "Shipment Days"
+      },
+      {
+        "field": "Production_Date",
+        "label": "Production Date"
+      },
+      {
+        "field": "Last_Update",
+        "label": "Last Update"
+      },
+      {
+        "field": "Source",
+        "label": "Source"
+      },
+      {
+        "field": "Product_Image_PR",
+        "label": "Product Image"
+      },
+      {
+        "field": "SRP_Rate_PR",
+        "label": "SRP (Rate)"
+      }
+    ],
+    "blocks": [],
+    "line": 20630
+  },
+  {
+    "name": "Tony_Fan_Purchase_Request_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Tony Fan Purchase Request Report",
+    "form": "Tony_Fan_Purchase_Request",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PR_No_Supplier2",
+        "label": "PR No"
+      },
+      {
+        "field": "Items_Supplier2",
+        "label": "Items"
+      },
+      {
+        "field": "Description1_Supplier2",
+        "label": "Description"
+      },
+      {
+        "field": "PR_Date_Supplier2",
+        "label": "PR Date"
+      },
+      {
+        "field": "sku_Supplier2",
+        "label": "SKU"
+      },
+      {
+        "field": "unit_Supplier2",
+        "label": "Unit"
+      },
+      {
+        "field": "Target_Delivery_Supplier2",
+        "label": "Target  Delivery"
+      },
+      {
+        "field": "quantity_Supplier2",
+        "label": "Quantity"
+      },
+      {
+        "field": "category_Supplier2",
+        "label": "Category"
+      },
+      {
+        "field": "description_Supplier2",
+        "label": "Description"
+      },
+      {
+        "field": "Priority_PR_Supplier2",
+        "label": "Priority"
+      },
+      {
+        "field": "Additional_Details_Supplier2",
+        "label": "Additional Details"
+      },
+      {
+        "field": "Similar_Item_Supplier2",
+        "label": "Similar Item"
+      },
+      {
+        "field": "Attachments_Supplier2",
+        "label": "Attachments"
+      },
+      {
+        "field": "Selected_Supplier_Supplier2",
+        "label": "Selected Supplier"
+      },
+      {
+        "field": "Selcted_Final_Cost_Supplier2",
+        "label": "Selected Final Cost"
+      },
+      {
+        "field": "Followed_Recommendation_Supplier2",
+        "label": "Followed Recommendation"
+      },
+      {
+        "field": "Shipment_Mode_Supplier2",
+        "label": "Shipment Mode"
+      },
+      {
+        "field": "Required_Days_Lead_Supplier2",
+        "label": "Required Days (Lead)"
+      },
+      {
+        "field": "Production_Date_Supplier2",
+        "label": "Production Date"
+      },
+      {
+        "field": "supplier_target_date_Supplier2",
+        "label": "Supplier  Target Date"
+      },
+      {
+        "field": "Remaining_Days_Supplier2",
+        "label": "Remaining Days"
+      },
+      {
+        "field": "Delay_Status_Supplier2",
+        "label": "Delay Status"
+      },
+      {
+        "field": "Selected_Supplier1_Supplier2",
+        "label": "Selected Supplier"
+      },
+      {
+        "field": "Final_price_confirmed_Supplier2",
+        "label": "Final price confirmed"
+      },
+      {
+        "field": "Shipping_mode_selected_Supplier2",
+        "label": "Shipping mode selected"
+      },
+      {
+        "field": "Target_date_exists_Supplier2",
+        "label": "Target date exists"
+      },
+      {
+        "field": "PR_READY_FOR_PO_Supplier2",
+        "label": "PR READY FOR PO"
+      },
+      {
+        "field": "PR_Approved_Supplier2",
+        "label": "PR Approved"
+      },
+      {
+        "field": "edit_counter",
+        "label": "edit counter"
+      },
+      {
+        "field": "Response_Status",
+        "label": "Response Status"
+      },
+      {
+        "raw": "custom action \"Submit Response\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Submit_Response_PRbtn"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Submit Response\""
+      },
+      {
+        "raw": "condition = (Response_Status != \"Not Selected\" && Response_Status != \"Selected\" && edit_counter == 1)"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Product_Image_Supplier2_PR",
+        "label": "Product Image"
+      },
+      {
+        "field": "SRP_Rate_PR_Supplier2",
+        "label": "SRP (Hidden)"
+      },
+      {
+        "field": "Supplier_Selected_Supplier2",
+        "label": "Supplier Selected"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier_Selected_Supplier2.Suppliers_Supplier2 + \" \" + Supplier_Selected_Supplier2.Availability_Supplier2 + \" \" + Supplier_Selected_Supplier2.Initial_Price_Supplier2 + \" \" + Supplier_Selected_Supplier2.Final_Price_Supplier2 + \" \" + Supplier_Selected_Supplier2.Lead_Time_Supplier2 + \" \" + Supplier_Selected_Supplier2.Negotiated_Supplier2 + \" \" + Supplier_Selected_Supplier2.Selected_Supplier2 + \" \" + Supplier_Selected_Supplier2.Status_Supplier2"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "inquiry_reference_Supplier2",
+        "label": "INQ Reference"
+      },
+      {
+        "field": "Dimension_Supplier",
+        "label": "Dimension"
+      },
+      {
+        "field": "Color_Body_Supplier",
+        "label": "Color Body"
+      },
+      {
+        "field": "Color_Temperature_Supplier",
+        "label": "Color Temperature"
+      },
+      {
+        "field": "Type_of_Bulb_Supplier",
+        "label": "Type of Bulb"
+      },
+      {
+        "field": "Voltage_Supplier",
+        "label": "Voltage"
+      },
+      {
+        "field": "Lumens_Supplier",
+        "label": "Lumens"
+      }
+    ],
+    "blocks": [],
+    "line": 20705
+  },
+  {
+    "name": "Fenteng_Lighting_Purchase_Request_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Fenteng Lighting Purchase Request Report",
+    "form": "Fenteng_Lighting_Purchase_Request",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PR_No_Supplier1",
+        "label": "PR No"
+      },
+      {
+        "field": "Items_Supplier1",
+        "label": "Items"
+      },
+      {
+        "field": "Description1_Supplier1",
+        "label": "Description"
+      },
+      {
+        "field": "PR_Date_Supplier1",
+        "label": "PR Date"
+      },
+      {
+        "field": "sku_Supplier1",
+        "label": "SKU"
+      },
+      {
+        "field": "unit_Supplier1",
+        "label": "Unit"
+      },
+      {
+        "field": "Target_Delivery_Supplier1",
+        "label": "Target  Delivery"
+      },
+      {
+        "field": "quantity_Supplier1",
+        "label": "Quantity"
+      },
+      {
+        "field": "category_Supplier1",
+        "label": "Category"
+      },
+      {
+        "field": "description_Supplier1",
+        "label": "Description"
+      },
+      {
+        "field": "Priority_PR_Supplier1",
+        "label": "Priority"
+      },
+      {
+        "field": "Additional_Details",
+        "label": "Additional Details"
+      },
+      {
+        "field": "Similar_Item",
+        "label": "Similar Item"
+      },
+      {
+        "field": "Attachments",
+        "label": "Attachments"
+      },
+      {
+        "field": "Selected_Supplier",
+        "label": "Selected Supplier"
+      },
+      {
+        "field": "Selcted_Final_Cost",
+        "label": "Selected Final Cost"
+      },
+      {
+        "field": "Followed_Recommendation",
+        "label": "Followed Recommendation"
+      },
+      {
+        "field": "Shipment_Mode",
+        "label": "Shipment Mode"
+      },
+      {
+        "field": "Required_Days_Lead",
+        "label": "Required Days (Lead)"
+      },
+      {
+        "field": "Production_Date",
+        "label": "Production Date"
+      },
+      {
+        "field": "supplier_target_date",
+        "label": "Supplier  Target Date"
+      },
+      {
+        "field": "Remaining_Days",
+        "label": "Remaining Days"
+      },
+      {
+        "field": "Delay_Status",
+        "label": "Delay Status"
+      },
+      {
+        "field": "Selected_Supplier1",
+        "label": "Selected Supplier"
+      },
+      {
+        "field": "Final_price_confirmed",
+        "label": "Final price confirmed"
+      },
+      {
+        "field": "Shipping_mode_selected",
+        "label": "Shipping mode selected"
+      },
+      {
+        "field": "Target_date_exists",
+        "label": "Target date exists"
+      },
+      {
+        "field": "PR_READY_FOR_PO",
+        "label": "PR READY FOR PO"
+      },
+      {
+        "field": "PR_Approved",
+        "label": "PR Approved"
+      },
+      {
+        "field": "edit_counter",
+        "label": "edit counter"
+      },
+      {
+        "field": "Response_Status",
+        "label": "Response Status"
+      },
+      {
+        "raw": "custom action \"Submit Response\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Submit_Response_PRbtn2"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Submit Response\""
+      },
+      {
+        "raw": "condition = (Response_Status != \"Not Selected\" && Response_Status != \"Selected\" && edit_counter == 1)"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Product_Image_Supplier1_PR",
+        "label": "Product Image"
+      },
+      {
+        "field": "SRP_Rate_PR_Supplier1",
+        "label": "SRP (Hidden)"
+      },
+      {
+        "field": "Supplier_Selected_Supplier1",
+        "label": "Supplier Selected"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier_Selected_Supplier1.Suppliers_Supplier1 + \" \" + Supplier_Selected_Supplier1.Availability_Supplier1 + \" \" + Supplier_Selected_Supplier1.Final_Price_Supplier1 + \" \" + Supplier_Selected_Supplier1.Initial_Price_Supplier1 + \" \" + Supplier_Selected_Supplier1.Negotiated_Supplier1 + \" \" + Supplier_Selected_Supplier1.Lead_Time_Supplier1 + \" \" + Supplier_Selected_Supplier1.Selected_Supplier1 + \" \" + Supplier_Selected_Supplier1.Status_Supplier1"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "inquiry_reference_Supplier1",
+        "label": "INQ Reference"
+      },
+      {
+        "field": "Dimension_Supplier",
+        "label": "Dimension"
+      },
+      {
+        "field": "Color_Body_Supplier",
+        "label": "Color Body"
+      },
+      {
+        "field": "Color_Temperature_Supplier",
+        "label": "Color Temperature"
+      },
+      {
+        "field": "Type_of_Bulb_Supplier",
+        "label": "Type of Bulb"
+      },
+      {
+        "field": "Voltage_Supplier",
+        "label": "Voltage"
+      },
+      {
+        "field": "Lumens_Supplier",
+        "label": "Lumens"
+      }
+    ],
+    "blocks": [],
+    "line": 20763
+  },
+  {
+    "name": "All_Policy_Settings",
+    "type": "list",
+    "isDefault": true,
+    "label": "Policy_Settings Report",
+    "form": "Policy_Settings",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Policy_Key",
+        "label": "Policy Key"
+      },
+      {
+        "field": "Description",
+        "label": "Description"
+      },
+      {
+        "field": "Value",
+        "label": "Value"
+      },
+      {
+        "field": "Type_field",
+        "label": "Type"
+      },
+      {
+        "field": "Last_Updated_By",
+        "label": "Last Updated By"
+      },
+      {
+        "field": "Last_Updated_Date",
+        "label": "Last Updated Date"
+      }
+    ],
+    "blocks": [],
+    "line": 20821
+  },
+  {
+    "name": "Tony_Fan_Purchase_Order_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Tony Fan Purchase Order Report",
+    "form": "Tony_Fan_Purchase_Order",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PO_No_Supplier2",
+        "label": "PO No."
+      },
+      {
+        "field": "Total_PO_Value_Supplier2",
+        "label": "Total PO Value"
+      },
+      {
+        "field": "Total_Lines_Supplier2",
+        "label": "Total Lines"
+      },
+      {
+        "field": "Mixed_Shipping_Supplier2",
+        "label": "Mixed Shipping"
+      },
+      {
+        "field": "Followed_Recommendation_Supplier2",
+        "label": "Followed Recommendation"
+      },
+      {
+        "field": "Supplier_Load_At_PO_Supplier2",
+        "label": "Supplier Load At PO"
+      },
+      {
+        "field": "PO_Date_Supplier2",
+        "label": "PO Date"
+      },
+      {
+        "field": "Is_Locked_Supplier2",
+        "label": "Is Locked"
+      },
+      {
+        "field": "Notes_Supplier2",
+        "label": "Notes"
+      },
+      {
+        "field": "Override_Reason_Supplier2",
+        "label": "Override Reason"
+      },
+      {
+        "field": "PO_Status_Supplier2",
+        "label": "PO Status"
+      },
+      {
+        "field": "Sent_On_Supplier2",
+        "label": "Sent On"
+      },
+      {
+        "field": "Acknowledge_On_Supplier2",
+        "label": "Acknowledge On"
+      },
+      {
+        "field": "Completed_On_Supplier2",
+        "label": "Completed On"
+      },
+      {
+        "raw": "custom action \"Acknowledged\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Acknowledged_PO_Supplier2"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Acknowledged\""
+      },
+      {
+        "raw": "condition = (PO_Status_Supplier2 != \"Confirmed\")"
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Execute the Acknowledged action for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "RR_Reference_No_Supplier2",
+        "label": "RR Reference No"
+      },
+      {
+        "field": "Missing_SKUs_Supplier2",
+        "label": "Missing SKUs"
+      },
+      {
+        "field": "PO_Line_Items_Supplier2",
+        "label": "PO Line Items"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = PO_Line_Items_Supplier2.Item_Status_Supplier2 + \" \" + PO_Line_Items_Supplier2.Delay_Status_Supplier2 + \" \" + PO_Line_Items_Supplier2.Final_Price_Supplier2 + \" \" + PO_Line_Items_Supplier2.Followed_Recommendation_Supplier2 + \" \" + PO_Line_Items_Supplier2.Item_Supplier2 + \" \" + PO_Line_Items_Supplier2.Line_Total_Supplier2 + \" \" + PO_Line_Items_Supplier2.Override_Reason_Supplier2 + \" \" + PO_Line_Items_Supplier2.PR_No_Supplier2 + \" \" + PO_Line_Items_Supplier2.QTY_Supplier2 + \" \" + PO_Line_Items_Supplier2.SKU_Supplier2 + \" \" + PO_Line_Items_Supplier2.Shipping_Mode_Supplier2 + \" \" + PO_Line_Items_Supplier2.Single_Line_Supplier2 + \" \" + PO_Line_Items_Supplier2.Supplier_Supplier2 + \" \" + PO_Line_Items_Supplier2.supplier_target_date_Supplier2 + \" \" + PO_Line_Items_Supplier2.Target_Delivery_Supplier2 + \" \" + PO_Line_Items_Supplier2.Unit_Supplier2 + \" \" + PO_Line_Items_Supplier2.Added_Time + \" \" + PO_Line_Items_Supplier2.Added_User + \" \" + PO_Line_Items_Supplier2.ID + \" \" + PO_Line_Items_Supplier2.Modified_Time"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Damage_SKUs_Supplier2",
+        "label": "Damage SKUs Supplier2"
+      }
+    ],
+    "blocks": [],
+    "line": 20834
+  },
+  {
+    "name": "Fenteng_Lighting_Purchase_Order_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Fenteng Lighting Purchase Order Report",
+    "form": "Fenteng_Lighting_Purchase_Order",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PO_No_Supplier1",
+        "label": "PO No."
+      },
+      {
+        "field": "Total_PO_Value_Supplier1",
+        "label": "Total PO Value"
+      },
+      {
+        "field": "Total_Lines_Supplier1",
+        "label": "Total Lines"
+      },
+      {
+        "field": "Mixed_Shipping_Supplier1",
+        "label": "Mixed Shipping"
+      },
+      {
+        "field": "Followed_Recommendation_Supplier1",
+        "label": "Followed Recommendation"
+      },
+      {
+        "field": "Supplier_Load_At_PO_Supplier1",
+        "label": "Supplier Load At PO"
+      },
+      {
+        "field": "PO_Date_Supplier1",
+        "label": "PO Date"
+      },
+      {
+        "field": "Is_Locked_Supplier1",
+        "label": "Is Locked"
+      },
+      {
+        "field": "Notes_Supplier1",
+        "label": "Notes"
+      },
+      {
+        "field": "Override_Reason_Supplier1",
+        "label": "Override Reason"
+      },
+      {
+        "field": "PO_Status_Supplier1",
+        "label": "PO Status"
+      },
+      {
+        "field": "Sent_On_Supplier1",
+        "label": "Sent On"
+      },
+      {
+        "field": "Acknowledge_On_Supplier1",
+        "label": "Acknowledge On"
+      },
+      {
+        "field": "Completed_On_Supplier1",
+        "label": "Completed On"
+      },
+      {
+        "raw": "custom action \"Acknowledged\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Acknowledged_PO_Supplier1"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Acknowledged\""
+      },
+      {
+        "raw": "condition = (PO_Status_Supplier1 != \"Confirmed\")"
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Execute the Acknowledged action for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "RR_Reference_No_Supplier1",
+        "label": "RR Reference No"
+      },
+      {
+        "field": "Missing_SKUs_Supplier1",
+        "label": "Missing SKUs"
+      },
+      {
+        "field": "PO_Line_Items_Supplier1",
+        "label": "PO Line Items"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = PO_Line_Items_Supplier1.Item_Status_Supplier1 + \" \" + PO_Line_Items_Supplier1.Delay_Status_Supplier1 + \" \" + PO_Line_Items_Supplier1.Final_Price_Supplier1 + \" \" + PO_Line_Items_Supplier1.Followed_Recommendation_Supplier1 + \" \" + PO_Line_Items_Supplier1.Item_Supplier1 + \" \" + PO_Line_Items_Supplier1.Line_Total_Supplier1 + \" \" + PO_Line_Items_Supplier1.Override_Reason_Supplier1 + \" \" + PO_Line_Items_Supplier1.PR_No_Supplier1 + \" \" + PO_Line_Items_Supplier1.QTY_Supplier1 + \" \" + PO_Line_Items_Supplier1.SKU_Supplier1 + \" \" + PO_Line_Items_Supplier1.Shipping_Mode_Supplier1 + \" \" + PO_Line_Items_Supplier1.Single_Line_Supplier1 + \" \" + PO_Line_Items_Supplier1.Supplier_Supplier1 + \" \" + PO_Line_Items_Supplier1.supplier_target_date_Supplier1 + \" \" + PO_Line_Items_Supplier1.Target_Delivery_Supplier1 + \" \" + PO_Line_Items_Supplier1.Unit_Supplier1 + \" \" + PO_Line_Items_Supplier1.Added_Time + \" \" + PO_Line_Items_Supplier1.Added_User + \" \" + PO_Line_Items_Supplier1.ID + \" \" + PO_Line_Items_Supplier1.Modified_Time"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Damage_SKUs_Supplier1",
+        "label": "Damage SKUs Supplier1"
+      }
+    ],
+    "blocks": [],
+    "line": 20875
+  },
+  {
+    "name": "Replacement_Request_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Replacement  Request Report",
+    "form": "Replacement_Request",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "RR_No",
+        "label": "RR No."
+      },
+      {
+        "field": "RR_Date",
+        "label": "RR Date"
+      },
+      {
+        "field": "Source_Type",
+        "label": "Source Type"
+      },
+      {
+        "field": "Source_Exception_No",
+        "label": "Source Exception No."
+      },
+      {
+        "field": "RR_Status",
+        "label": "RR Status"
+      },
+      {
+        "field": "Supplier_Acknowledgement1",
+        "label": "Supplier Acknowledgement"
+      },
+      {
+        "field": "Supplier_Acknowledge_Date",
+        "label": "Supplier Acknowledge Date"
+      },
+      {
+        "field": "Expected_Ship_Date",
+        "label": "Expected Ship Date"
+      },
+      {
+        "field": "Actual_Ship",
+        "label": "Actual Ship"
+      },
+      {
+        "field": "ETA",
+        "label": "ETA"
+      },
+      {
+        "field": "Last_Updated",
+        "label": "Last Updated"
+      },
+      {
+        "field": "Closed_At",
+        "label": "Closed At"
+      },
+      {
+        "field": "Closure_Notes",
+        "label": "Closure Notes"
+      },
+      {
+        "field": "RR_Reason",
+        "label": "RR Reason"
+      },
+      {
+        "field": "Replacement_Summary",
+        "label": "Replacement Summary"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Replacement_Summary.Supplier + \" \" + Replacement_Summary.Delay_Status + \" \" + Replacement_Summary.Item + \" \" + Replacement_Summary.Original_PO_No + \" \" + Replacement_Summary.PR_No + \" \" + Replacement_Summary.Priority + \" \" + Replacement_Summary.RR_Qty + \" \" + Replacement_Summary.RR_Reason + \" \" + Replacement_Summary.SKU + \" \" + Replacement_Summary.SO_No"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "RR_Supplier",
+        "label": "RR Supplier"
+      },
+      {
+        "field": "RR_SKU",
+        "label": "RR SKU"
+      },
+      {
+        "field": "RR_Item_Name",
+        "label": "RR Item Name"
+      },
+      {
+        "field": "RR_Qty_Value",
+        "label": "RR Qty Value"
+      },
+      {
+        "field": "Cloned_Shipment_No",
+        "label": "Cloned Shipment No"
+      },
+      {
+        "field": "RR_PR_No",
+        "label": "RR PR No"
+      },
+      {
+        "field": "Source_Module",
+        "label": "Source Module"
+      },
+      {
+        "field": "RR_SO",
+        "label": "RR SO"
+      },
+      {
+        "field": "RR_PAC",
+        "label": "RR PAC"
+      },
+      {
+        "field": "RR_Item_to_Replace",
+        "label": "RR Item to Replace"
+      },
+      {
+        "field": "RR_Damage_Qty",
+        "label": "RR Damage Qty"
+      },
+      {
+        "field": "RR_Spare_Parts",
+        "label": "RR Spare Parts"
+      },
+      {
+        "field": "RR_Remarks",
+        "label": "RR Remarks"
+      }
+    ],
+    "blocks": [],
+    "line": 20916
+  },
+  {
+    "name": "Sales_Order_Fulfillment_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Sales Order Fulfillment Report",
+    "form": "Sales_Order_Fulfillment",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PR_No",
+        "label": "PR No."
+      },
+      {
+        "field": "RR_No",
+        "label": "RR No."
+      },
+      {
+        "field": "Package",
+        "label": "Package#"
+      },
+      {
+        "field": "order_type",
+        "label": "Order Type"
+      },
+      {
+        "field": "target_delivery_date",
+        "label": "Target Delivery Date"
+      },
+      {
+        "field": "SO_No",
+        "label": "SO No."
+      },
+      {
+        "field": "Billing_Address",
+        "label": "Billing Address"
+      },
+      {
+        "field": "SO_Created_Date",
+        "label": "SO Created Date"
+      },
+      {
+        "field": "For_Crate",
+        "label": "For Crate"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Shipping_Address",
+        "label": "Shipping Address"
+      },
+      {
+        "field": "Package_Date",
+        "label": "Package Date"
+      },
+      {
+        "field": "Contact_No",
+        "label": "Contact No"
+      },
+      {
+        "field": "Shipment_Mode",
+        "label": "Shipment Mode"
+      },
+      {
+        "field": "Delivery_Type",
+        "label": "Delivery Type"
+      },
+      {
+        "field": "Status",
+        "label": "Status"
+      },
+      {
+        "field": "SO_Status",
+        "label": "SO Status"
+      },
+      {
+        "field": "Fulfillment_Stage",
+        "label": "Fulfillment Stage"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Item_Details1",
+        "label": "Item Details"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Item_Details1.Item + \" \" + Item_Details1.SKU + \" \" + Item_Details1.Bin_Location + \" \" + Item_Details1.Quantity"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "SO_SKU_Key",
+        "label": "SO SKU Key"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      }
+    ],
+    "blocks": [],
+    "line": 20954
+  },
+  {
+    "name": "Tony_Fan1_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Tony Fan Report",
+    "form": "Tony_Fan1",
+    "criteria": null,
+    "columns": [],
+    "blocks": [],
+    "line": 20989
+  },
+  {
+    "name": "Fenteng_Lighting_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Fenteng Lighting Report",
+    "form": "Fenteng_Lighting",
+    "criteria": null,
+    "columns": [],
+    "blocks": [],
+    "line": 20994
+  },
+  {
+    "name": "Fenteng_Lighting_Replacement_Request_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Fenteng Lighting Replacement  Request Report",
+    "form": "Fenteng_Lighting_Replacement_Request",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "RR_No",
+        "label": "RR No."
+      },
+      {
+        "field": "Source_Type",
+        "label": "Source Type"
+      },
+      {
+        "field": "RR_Status",
+        "label": "RR Status"
+      },
+      {
+        "field": "RR_Date",
+        "label": "RR Date"
+      },
+      {
+        "field": "Source_Exception_No",
+        "label": "Source Exception No."
+      },
+      {
+        "field": "RR_Reason",
+        "label": "RR Reason"
+      },
+      {
+        "field": "Supplier_Acknowledgement1",
+        "label": "Supplier Acknowledgement"
+      },
+      {
+        "field": "Supplier_Acknowledge_Date",
+        "label": "Supplier Acknowledge Date"
+      },
+      {
+        "field": "Expected_Ship_Date",
+        "label": "Expected Ship Date"
+      },
+      {
+        "field": "Actual_Ship",
+        "label": "Actual Ship"
+      },
+      {
+        "field": "ETA",
+        "label": "ETA"
+      },
+      {
+        "field": "Last_Updated",
+        "label": "Last Updated"
+      },
+      {
+        "field": "Closed_At",
+        "label": "Closed At"
+      },
+      {
+        "field": "Closure_Notes",
+        "label": "Closure Notes"
+      },
+      {
+        "raw": "custom action \"Approve RR\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Approve_RR_Supplier1"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Approve RR\""
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Execute the Approve RR action for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Replacement_Summary",
+        "label": "Replacement Summary"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Replacement_Summary.Supplier + \" \" + Replacement_Summary.Delay_Status + \" \" + Replacement_Summary.Item + \" \" + Replacement_Summary.Original_PO_No + \" \" + Replacement_Summary.PR_No + \" \" + Replacement_Summary.Priority + \" \" + Replacement_Summary.RR_Qty + \" \" + Replacement_Summary.RR_Reason + \" \" + Replacement_Summary.SKU + \" \" + Replacement_Summary.SO_No"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Shipment_Mode",
+        "label": "Shipment Mode"
+      },
+      {
+        "field": "Source_Module",
+        "label": "Source Module"
+      },
+      {
+        "field": "RR_SKU",
+        "label": "RR SKU"
+      },
+      {
+        "field": "RR_Qty_Value",
+        "label": "RR Qty Value"
+      },
+      {
+        "field": "RR_SO",
+        "label": "RR SO"
+      },
+      {
+        "field": "RR_PAC",
+        "label": "RR PAC"
+      },
+      {
+        "field": "RR_Item_to_Replace",
+        "label": "RR Item to Replace"
+      },
+      {
+        "field": "RR_Damage_Qty",
+        "label": "RR Damage Qty"
+      },
+      {
+        "field": "RR_Spare_Parts",
+        "label": "RR Spare Parts"
+      },
+      {
+        "field": "RR_Remarks",
+        "label": "RR Remarks"
+      }
+    ],
+    "blocks": [],
+    "line": 20999
+  },
+  {
+    "name": "Tony_Fan_Replacement_Request_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Tony Fan Replacement  Request Report",
+    "form": "Tony_Fan_Replacement_Request",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "RR_No",
+        "label": "RR No."
+      },
+      {
+        "field": "Source_Type",
+        "label": "Source Type"
+      },
+      {
+        "field": "RR_Status",
+        "label": "RR Status"
+      },
+      {
+        "field": "RR_Date",
+        "label": "RR Date"
+      },
+      {
+        "field": "Source_Exception_No",
+        "label": "Source Exception No."
+      },
+      {
+        "field": "RR_Reason",
+        "label": "RR Reason"
+      },
+      {
+        "field": "Supplier_Acknowledgement1",
+        "label": "Supplier Acknowledgement"
+      },
+      {
+        "field": "Supplier_Acknowledge_Date",
+        "label": "Supplier Acknowledge Date"
+      },
+      {
+        "field": "Expected_Ship_Date",
+        "label": "Expected Ship Date"
+      },
+      {
+        "field": "Actual_Ship",
+        "label": "Actual Ship"
+      },
+      {
+        "field": "ETA",
+        "label": "ETA"
+      },
+      {
+        "field": "Last_Updated",
+        "label": "Last Updated"
+      },
+      {
+        "field": "Closed_At",
+        "label": "Closed At"
+      },
+      {
+        "field": "Closure_Notes",
+        "label": "Closure Notes"
+      },
+      {
+        "raw": "custom action \"Approve RR\""
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "workflow = Approve_RR_Supplier2"
+      },
+      {
+        "raw": "show action in edit record menu = true"
+      },
+      {
+        "raw": "column header = \"Approve RR\""
+      },
+      {
+        "raw": "confirmation before execution"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "message for individual record = \"Execute the Approve RR action for this record?\""
+      },
+      {
+        "raw": "confirm button text = \"Yes\""
+      },
+      {
+        "raw": "cancel button text = \"No\""
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Replacement_Summary",
+        "label": "Replacement Summary"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Replacement_Summary.Supplier + \" \" + Replacement_Summary.Delay_Status + \" \" + Replacement_Summary.Item + \" \" + Replacement_Summary.Original_PO_No + \" \" + Replacement_Summary.PR_No + \" \" + Replacement_Summary.Priority + \" \" + Replacement_Summary.RR_Qty + \" \" + Replacement_Summary.RR_Reason + \" \" + Replacement_Summary.SKU + \" \" + Replacement_Summary.SO_No"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Shipment_Mode",
+        "label": "Shipment Mode"
+      },
+      {
+        "field": "Source_Module",
+        "label": "Source Module"
+      },
+      {
+        "field": "RR_SKU",
+        "label": "RR SKU"
+      },
+      {
+        "field": "RR_Qty_Value",
+        "label": "RR Qty Value"
+      },
+      {
+        "field": "RR_SO",
+        "label": "RR SO"
+      },
+      {
+        "field": "RR_PAC",
+        "label": "RR PAC"
+      },
+      {
+        "field": "RR_Item_to_Replace",
+        "label": "RR Item to Replace"
+      },
+      {
+        "field": "RR_Damage_Qty",
+        "label": "RR Damage Qty"
+      },
+      {
+        "field": "RR_Spare_Parts",
+        "label": "RR Spare Parts"
+      },
+      {
+        "field": "RR_Remarks",
+        "label": "RR Remarks"
+      }
+    ],
+    "blocks": [],
+    "line": 21046
+  },
+  {
+    "name": "All_Inquiry_Messages",
+    "type": "list",
+    "isDefault": true,
+    "label": "Inquiry Messages Report",
+    "form": "Inquiry_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "INQ_No",
+        "label": "INQ No"
+      },
+      {
+        "field": "Supplier",
+        "label": "Supplier"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Sender_Name",
+        "label": "Sender Name"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21093
+  },
+  {
+    "name": "All_PR_Messages",
+    "type": "list",
+    "isDefault": true,
+    "label": "PR Messages Report",
+    "form": "PR_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PR_No",
+        "label": "PR No"
+      },
+      {
+        "field": "Supplier",
+        "label": "Supplier"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Sender_Name",
+        "label": "Sender Name"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21106
+  },
+  {
+    "name": "All_PO_Messages",
+    "type": "list",
+    "isDefault": true,
+    "label": "PO Messages Report",
+    "form": "PO_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PO_No",
+        "label": "PO No"
+      },
+      {
+        "field": "Supplier",
+        "label": "Supplier"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Sender_Name",
+        "label": "Sender Name"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21119
+  },
+  {
+    "name": "All_Evidence_Photos",
+    "type": "list",
+    "isDefault": true,
+    "label": "Evidence_Photos Report",
+    "form": "Evidence_Photos",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "File_Name",
+        "label": "File Name"
+      },
+      {
+        "field": "Source_Form",
+        "label": "Source Form"
+      },
+      {
+        "field": "Row_Key",
+        "label": "Row Key"
+      },
+      {
+        "field": "Record_ID",
+        "label": "Record ID"
+      },
+      {
+        "field": "Photo",
+        "label": "Photo"
+      },
+      {
+        "field": "Uploaded_On",
+        "label": "Uploaded On"
+      }
+    ],
+    "blocks": [],
+    "line": 21132
+  },
+  {
+    "name": "All_Daily_Team_Availability",
+    "type": "list",
+    "isDefault": true,
+    "label": "Daily Team Availability Report",
+    "form": "Daily_Team_Availability",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Availability_Date",
+        "label": "Availability Date"
+      },
+      {
+        "field": "Installer",
+        "label": "Installer"
+      },
+      {
+        "field": "Driver",
+        "label": "Driver"
+      },
+      {
+        "field": "Vehicle",
+        "label": "Vehicle"
+      },
+      {
+        "field": "Availability_Status",
+        "label": "Availability Status"
+      },
+      {
+        "field": "Max_Capacity_Hours",
+        "label": "Max Capacity Hours"
+      },
+      {
+        "field": "Notes",
+        "label": "Notes"
+      },
+      {
+        "field": "Added_By",
+        "label": "Added By"
+      },
+      {
+        "field": "Max_SO_Capacity",
+        "label": "Max SO Capacity"
+      },
+      {
+        "field": "Start_Time1",
+        "label": "Start Time"
+      }
+    ],
+    "blocks": [],
+    "line": 21145
+  },
+  {
+    "name": "All_DMS_Exception_Queue",
+    "type": "list",
+    "isDefault": true,
+    "label": "DMS Exception Queue Report",
+    "form": "DMS_Exception_Queue",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Exception_ID",
+        "label": "Exception ID"
+      },
+      {
+        "field": "Sales_Order_Reference",
+        "label": "Sales Order Reference"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Exception_Stage",
+        "label": "Exception Stage"
+      },
+      {
+        "field": "Exception_Reason",
+        "label": "Exception Reason"
+      },
+      {
+        "field": "Severity",
+        "label": "Severity"
+      },
+      {
+        "field": "Raised_By",
+        "label": "Raised By"
+      },
+      {
+        "field": "Date_Raised",
+        "label": "Date Raised"
+      },
+      {
+        "field": "Assigned_To",
+        "label": "Assigned To"
+      },
+      {
+        "field": "Status",
+        "label": "Status"
+      },
+      {
+        "field": "Resolution_Action",
+        "label": "Resolution Action"
+      },
+      {
+        "field": "Resolution_Date",
+        "label": "Resolution Date"
+      },
+      {
+        "field": "Revert_to_System",
+        "label": "Revert to System"
+      },
+      {
+        "field": "Requeue_Processed",
+        "label": "Requeue Processed"
+      }
+    ],
+    "blocks": [],
+    "line": 21162
+  },
+  {
+    "name": "Receiving_Group",
+    "type": "list",
+    "isDefault": false,
+    "label": "Receiving Group",
+    "form": "Receiving",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Receive_No1",
+        "label": "Receive No."
+      },
+      {
+        "field": "SO_No",
+        "label": "SO No."
+      },
+      {
+        "field": "PO_No",
+        "label": "PO No."
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Shipments",
+        "label": "Shipments"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Supplier",
+        "label": "Supplier"
+      },
+      {
+        "field": "Books_Receive_No",
+        "label": "Books Receive No"
+      },
+      {
+        "field": "Receive_Status",
+        "label": "Receive Status"
+      },
+      {
+        "field": "Received_Date",
+        "label": "Received Date"
+      },
+      {
+        "field": "Warehouse",
+        "label": "Warehouse"
+      },
+      {
+        "field": "Books_Receive_ID",
+        "label": "Books Receive ID"
+      },
+      {
+        "field": "Total_Expected_Qty",
+        "label": "Total Expected Qty"
+      },
+      {
+        "field": "Total_Missing_Qty",
+        "label": "Total Missing Qty"
+      },
+      {
+        "field": "Total_Lines",
+        "label": "Total Lines"
+      },
+      {
+        "field": "Total_Accepted_Qty",
+        "label": "Total Accepted Qty"
+      },
+      {
+        "field": "Total_Damage_Qty",
+        "label": "Total Damage Qty"
+      },
+      {
+        "field": "Incomplete_Lines",
+        "label": "Incomplete Lines"
+      },
+      {
+        "field": "Ready_for_Fulfillment1",
+        "label": "Ready for Fulfillment"
+      },
+      {
+        "field": "Exception_Count",
+        "label": "Exception Count"
+      },
+      {
+        "field": "Receiving_Notes",
+        "label": "Receiving Notes"
+      },
+      {
+        "field": "General_Photos",
+        "label": "General Photos"
+      },
+      {
+        "field": "Partial_Receive_Timeline",
+        "label": "Partial Receive Timeline"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Partial_Receive_Timeline.RR_No + \" \" + Partial_Receive_Timeline.Supplier + \" \" + Partial_Receive_Timeline.SKU + \" \" + Partial_Receive_Timeline.Item + \" \" + Partial_Receive_Timeline.Quantity + \" \" + Partial_Receive_Timeline.Shipment_Mode + \" \" + Partial_Receive_Timeline.Date_Time"
+      },
+      {
+        "raw": ")"
+      }
+    ],
+    "blocks": [],
+    "line": 21183
+  },
+  {
+    "name": "Exception_Control_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Exception Control Report",
+    "form": "Exception_Control1",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Rework_Status",
+        "label": "REWORK STATUS"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "ADDRESS"
+      },
+      {
+        "field": "Modified_Time2",
+        "label": "MODIFIED TIME"
+      },
+      {
+        "field": "Added_Time2",
+        "label": "ADDED TIME"
+      },
+      {
+        "field": "Rework_Type",
+        "label": "REWORK TYPE"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "CUSTOMER NAME"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "CUSTOMER TYPE"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "SO #"
+      },
+      {
+        "field": "PR",
+        "label": "PR #"
+      },
+      {
+        "field": "PAC",
+        "label": "PAC #"
+      },
+      {
+        "field": "Added_User",
+        "label": "Added User"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Modified_User",
+        "label": "Modified User"
+      },
+      {
+        "field": "Modified_Time",
+        "label": "Modified Time"
+      },
+      {
+        "field": "RR_No",
+        "label": "RR #"
+      },
+      {
+        "field": "Remarks",
+        "label": "Remarks"
+      },
+      {
+        "field": "Checker",
+        "label": "Checked By"
+      },
+      {
+        "field": "Modified_By",
+        "label": "Modified By"
+      },
+      {
+        "field": "Exception_Number",
+        "label": "Exception Number"
+      },
+      {
+        "field": "Source_Module",
+        "label": "Source Module"
+      },
+      {
+        "field": "Supplier",
+        "label": "Supplier"
+      },
+      {
+        "field": "Rework",
+        "label": "Rework"
+      },
+      {
+        "field": "Status",
+        "label": "Status"
+      },
+      {
+        "field": "Item_Name",
+        "label": "Item Name"
+      },
+      {
+        "field": "SKU",
+        "label": "SKU"
+      },
+      {
+        "field": "Qty",
+        "label": "Qty"
+      },
+      {
+        "field": "Affected_Qty",
+        "label": "Affected Qty"
+      },
+      {
+        "field": "Signature",
+        "label": "Signature"
+      },
+      {
+        "field": "Image_max_10_JPG_JPEG_PNG",
+        "label": "Image"
+      },
+      {
+        "field": "Video_Upload_max_3_min_30_sec",
+        "label": "Video"
+      },
+      {
+        "field": "Item_to_Replace1",
+        "label": "Item to Replace"
+      },
+      {
+        "field": "Quantity_of_damage_spare_s",
+        "label": "Quantity of damage spare/s"
+      },
+      {
+        "field": "Quantity",
+        "label": "Quantity of Damage Items"
+      },
+      {
+        "field": "Item_to_Replace3",
+        "label": "Item to Replace"
+      },
+      {
+        "field": "DELIVERY_TYPE",
+        "label": "DELIVERY TYPE"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Demo1",
+        "label": "Demo #"
+      },
+      {
+        "field": "Override_Approved",
+        "label": "Override Approved"
+      },
+      {
+        "field": "Override_By",
+        "label": "Override By"
+      },
+      {
+        "field": "Override_Reason",
+        "label": "Override Reason"
+      },
+      {
+        "field": "Override_Timestamp",
+        "label": "Override Timestamp"
+      }
+    ],
+    "blocks": [],
+    "line": 21216
+  },
+  {
+    "name": "Tony_Shipment_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Shipment Report",
+    "form": "Tony_Shipment",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Shipment_No",
+        "label": "Shipment No."
+      },
+      {
+        "field": "Added_User1",
+        "label": "Added_User"
+      },
+      {
+        "field": "Supplier2_Shipment_Details",
+        "label": "Supplier2 Shipment Details"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier2_Shipment_Details.Date_Shipped + \" \" + Supplier2_Shipment_Details.Item_Name + \" \" + Supplier2_Shipment_Details.SKU + \" \" + Supplier2_Shipment_Details.Shipment_Mode + \" \" + Supplier2_Shipment_Details.PR_No + \" \" + Supplier2_Shipment_Details.RR_No + \" \" + Supplier2_Shipment_Details.Added_User + \" \" + Supplier2_Shipment_Details.Select_To_Ship + \" \" + Supplier2_Shipment_Details.Synced + \" \" + Supplier2_Shipment_Details.Status"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Parent_Shipment_ID",
+        "label": "Parent Shipment ID"
+      }
+    ],
+    "blocks": [],
+    "line": 21264
+  },
+  {
+    "name": "Fenteng_Shipment_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Shipment Report",
+    "form": "Fenteng_Shipment",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Shipment_No",
+        "label": "Shipment No."
+      },
+      {
+        "field": "Added_User1",
+        "label": "Added_User"
+      },
+      {
+        "field": "Supplier1_Shipment_Details",
+        "label": "Supplier1 Shipment Details"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier1_Shipment_Details.Date_Shipped + \" \" + Supplier1_Shipment_Details.Item_Name + \" \" + Supplier1_Shipment_Details.SKU + \" \" + Supplier1_Shipment_Details.Shipment_Mode + \" \" + Supplier1_Shipment_Details.PR_No + \" \" + Supplier1_Shipment_Details.RR_No + \" \" + Supplier1_Shipment_Details.Added_User + \" \" + Supplier1_Shipment_Details.Select_To_Ship + \" \" + Supplier1_Shipment_Details.Status + \" \" + Supplier1_Shipment_Details.Synced"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Parent_Shipment_ID",
+        "label": "Parent Shipment ID"
+      }
+    ],
+    "blocks": [],
+    "line": 21278
+  },
+  {
+    "name": "Shipment_Groupings",
+    "type": "list",
+    "isDefault": false,
+    "label": "Shipment Groupings",
+    "form": "Shipments",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Shipment_No",
+        "label": "Shipment No."
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "Target_Date",
+        "label": "Target Date"
+      },
+      {
+        "field": "ETD",
+        "label": "ETD"
+      },
+      {
+        "field": "Risk_Status",
+        "label": "Delay Status"
+      },
+      {
+        "field": "Shipment_Days",
+        "label": "Shipment Days"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "PO_No",
+        "label": "PO No."
+      },
+      {
+        "field": "Supplier",
+        "label": "Supplier"
+      },
+      {
+        "field": "Production_Date",
+        "label": "Production Date"
+      },
+      {
+        "field": "Required_Days_Lead",
+        "label": "Required Days (Lead)"
+      },
+      {
+        "field": "ETA",
+        "label": "ETA"
+      },
+      {
+        "field": "Ship_Out_Date",
+        "label": "Ship Out Date"
+      },
+      {
+        "field": "Receiving_Record_Created",
+        "label": "Receiving Record Created"
+      },
+      {
+        "field": "Need_Attention",
+        "label": "Received Flag"
+      },
+      {
+        "field": "Need_Attention1",
+        "label": "Need Attention"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "SO No."
+      },
+      {
+        "field": "Previous_Status",
+        "label": "Previous Status"
+      },
+      {
+        "field": "Shipment_Status",
+        "label": "Shipment Status"
+      },
+      {
+        "field": "Remaining_Days",
+        "label": "Remaining Days"
+      },
+      {
+        "field": "Arrival_Date",
+        "label": "Arrival Date"
+      },
+      {
+        "field": "Notes",
+        "label": "Notes"
+      },
+      {
+        "field": "Supplier_Target_Date",
+        "label": "Supplier Target Date"
+      },
+      {
+        "field": "Supplier_Shipment_Details",
+        "label": "Supplier Shipment Details"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Supplier_Shipment_Details.Shipment_ID + \" \" + Supplier_Shipment_Details.Date_Shipped + \" \" + Supplier_Shipment_Details.Item_Name + \" \" + Supplier_Shipment_Details.PR_No + \" \" + Supplier_Shipment_Details.RR_No + \" \" + Supplier_Shipment_Details.SKU + \" \" + Supplier_Shipment_Details.SO_No + \" \" + Supplier_Shipment_Details.Shipment_Mode + \" \" + Supplier_Shipment_Details.Status"
+      },
+      {
+        "raw": ")"
+      }
+    ],
+    "blocks": [],
+    "line": 21292
+  },
+  {
+    "name": "Pack_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Pack Report",
+    "form": "Pack",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Assign_Packer",
+        "label": "Assign Packer"
+      },
+      {
+        "field": "SO",
+        "label": "SO #"
+      },
+      {
+        "field": "PR",
+        "label": "PR #"
+      },
+      {
+        "field": "RR",
+        "label": "RR #"
+      },
+      {
+        "field": "PAC",
+        "label": "PAC #"
+      },
+      {
+        "field": "Demo",
+        "label": "Demo #"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "For_Crate",
+        "label": "For Crate"
+      },
+      {
+        "field": "Delivery_Type",
+        "label": "Delivery Type"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "Item_Name",
+        "label": "Item Name"
+      },
+      {
+        "field": "SKU",
+        "label": "SKU"
+      },
+      {
+        "field": "Quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "Bin_Location",
+        "label": "Bin Location"
+      },
+      {
+        "field": "Send_to_QC",
+        "label": "Send to QC"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Target_Delivery_Date",
+        "label": "Target Delivery Date"
+      }
+    ],
+    "blocks": [],
+    "line": 21326
+  },
+  {
+    "name": "All_Site_Visit_Photos",
+    "type": "list",
+    "isDefault": true,
+    "label": "Site Visit Photos Report",
+    "form": "Site_Visit_Photos",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Record_ID",
+        "label": "Record ID"
+      },
+      {
+        "field": "Section1",
+        "label": "Section"
+      },
+      {
+        "field": "File_Name",
+        "label": "File Name"
+      },
+      {
+        "field": "Photo",
+        "label": "Photo"
+      },
+      {
+        "field": "Uploaded_On",
+        "label": "Uploaded On"
+      }
+    ],
+    "blocks": [],
+    "line": 21352
+  },
+  {
+    "name": "Order_Aggregation1_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Order Aggregation Report",
+    "form": "Order_Aggregation1",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "SO",
+        "label": "SO #"
+      },
+      {
+        "field": "PR",
+        "label": "PR #"
+      },
+      {
+        "field": "PAC",
+        "label": "PAC #"
+      },
+      {
+        "field": "DEMO",
+        "label": "DEMO #"
+      },
+      {
+        "field": "ORDER_TYPE",
+        "label": "ORDER TYPE"
+      },
+      {
+        "field": "DELIVERY_TYPE",
+        "label": "DELIVERY TYPE"
+      },
+      {
+        "field": "Target_Date",
+        "label": "Target Delivery Date"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "For_Crate",
+        "label": "For Crate"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Dispatch_Selected",
+        "label": "Dispatch Selected"
+      },
+      {
+        "field": "Archived",
+        "label": "Archived"
+      },
+      {
+        "field": "Item_Details",
+        "label": "Item Details"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Item_Details.Bin_Location + \" \" + Item_Details.Item_Name + \" \" + Item_Details.QTY + \" \" + Item_Details.SKU + \" \" + Item_Details.Added_Time + \" \" + Item_Details.Dispatched + \" \" + Item_Details.PAC"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "City",
+        "label": "City"
+      },
+      {
+        "field": "Contact",
+        "label": "Contact"
+      },
+      {
+        "field": "Email",
+        "label": "Email"
+      },
+      {
+        "field": "ID",
+        "label": "ID"
+      },
+      {
+        "field": "SO_Created_Date",
+        "label": "SO Created Date"
+      },
+      {
+        "field": "Forecast_Delivery",
+        "label": "Forecast Delivery"
+      },
+      {
+        "field": "Forecast_Window",
+        "label": "Forecast Window"
+      },
+      {
+        "field": "Forecast_Status",
+        "label": "Forecast Status"
+      }
+    ],
+    "blocks": [],
+    "line": 21364
+  },
+  {
+    "name": "Exception_Control_Media_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Exception Control Media Report",
+    "form": "Exception_Control_Media",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Exception_Number",
+        "label": "Exception Number"
+      },
+      {
+        "field": "File_Type",
+        "label": "File Type"
+      },
+      {
+        "field": "File_Name",
+        "label": "File Name"
+      },
+      {
+        "field": "Record_ID",
+        "label": "Record ID"
+      },
+      {
+        "field": "Media",
+        "label": "Media"
+      },
+      {
+        "field": "Uploaded_On",
+        "label": "Uploaded On"
+      }
+    ],
+    "blocks": [],
+    "line": 21397
+  },
+  {
+    "name": "Timeline_History",
+    "type": "timeline",
+    "isDefault": false,
+    "label": "Timeline History",
+    "form": "Inquiry_Form",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Select_Final_Cost",
+        "label": "Select Final Cost"
+      },
+      {
+        "field": "SRP_Approved1",
+        "label": "SRP (Approved)"
+      },
+      {
+        "field": "Collateral_Comple_NA",
+        "label": "Collateral Comple/NA"
+      },
+      {
+        "field": "SRP_Approved",
+        "label": "SRP Approved"
+      },
+      {
+        "field": "Commission",
+        "label": "Commission"
+      },
+      {
+        "field": "Product_Image",
+        "label": "Product Image"
+      },
+      {
+        "field": "Similar_Design_Photo",
+        "label": "Similar Design Photo"
+      },
+      {
+        "field": "Order_Type",
+        "label": "Order Type"
+      },
+      {
+        "field": "Technical_Drawing",
+        "label": "Technical Drawing"
+      },
+      {
+        "field": "Designer_Architect",
+        "label": "Designer/Architect"
+      },
+      {
+        "field": "Customer",
+        "label": "Customer"
+      },
+      {
+        "field": "Project_Name",
+        "label": "Project Name"
+      },
+      {
+        "field": "D_Image",
+        "label": "3D Image"
+      },
+      {
+        "field": "Sales_Owner",
+        "label": "Sales Owner"
+      },
+      {
+        "field": "Project_Type",
+        "label": "Project Type"
+      },
+      {
+        "field": "Attachments",
+        "label": "Attachments"
+      },
+      {
+        "field": "Ready_for_Estimates",
+        "label": "Ready for Estimates"
+      },
+      {
+        "field": "Margin",
+        "label": "Margin%"
+      },
+      {
+        "field": "Design_Partner",
+        "label": "Design Partner"
+      },
+      {
+        "field": "Availability",
+        "label": "Availability Confirmed"
+      },
+      {
+        "field": "Design_Company",
+        "label": "Design Company"
+      },
+      {
+        "field": "For_Bidding",
+        "label": "For Bidding"
+      },
+      {
+        "field": "Final_Price_Exists",
+        "label": "Final Price Exists"
+      },
+      {
+        "field": "Specification",
+        "label": "Specification"
+      },
+      {
+        "field": "Specification_Details",
+        "label": "Specification Details"
+      },
+      {
+        "field": "Addtl_Disc_Needed1",
+        "label": "Additional Discount Needed"
+      },
+      {
+        "field": "Supplier_Selected",
+        "label": "Supplier Selected"
+      },
+      {
+        "field": "Suppliers",
+        "label": "Suppliers"
+      },
+      {
+        "field": "Open_to_similar_design",
+        "label": "Open to similar design"
+      },
+      {
+        "field": "Addtional_Description",
+        "label": "Addtional Description"
+      },
+      {
+        "field": "Estimate_Created",
+        "label": "Estimate Created"
+      },
+      {
+        "field": "Books_Estimate_ID",
+        "label": "Books Estimate ID"
+      },
+      {
+        "field": "Books_Estimate_No",
+        "label": "Books Estimate No."
+      },
+      {
+        "field": "Product_Sample",
+        "label": "Product Sample"
+      },
+      {
+        "field": "Items",
+        "label": "Items"
+      },
+      {
+        "field": "description",
+        "label": "Description"
+      },
+      {
+        "field": "Waiting_On",
+        "label": "Waiting On"
+      },
+      {
+        "field": "sku",
+        "label": "SKU"
+      },
+      {
+        "field": "unit",
+        "label": "Unit"
+      },
+      {
+        "field": "quantity",
+        "label": "Quantity"
+      },
+      {
+        "field": "target_date",
+        "label": "Target Date"
+      },
+      {
+        "field": "INQ_No",
+        "label": "INQ No."
+      },
+      {
+        "field": "quote_group",
+        "label": "Quote Group"
+      },
+      {
+        "field": "SRP_Status",
+        "label": "SRP Status"
+      },
+      {
+        "field": "created_date",
+        "label": "Created Date"
+      },
+      {
+        "field": "Customer_Type",
+        "label": "Customer Type"
+      },
+      {
+        "field": "Group_Discount_Pct",
+        "label": "Group Discount Percentage"
+      },
+      {
+        "field": "Projects",
+        "label": "Projects"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      }
+    ],
+    "blocks": [],
+    "line": 21410
+  },
+  {
+    "name": "Inquiry_Timeline_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Inquiry_Timeline Report",
+    "form": "Inquiry_Timeline",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "INQ_No",
+        "label": "INQ No"
+      },
+      {
+        "field": "Action_Title",
+        "label": "Action"
+      },
+      {
+        "field": "Action_Type",
+        "label": "Action Type"
+      },
+      {
+        "field": "Changes",
+        "label": "Changes"
+      },
+      {
+        "field": "Actor",
+        "label": "Actor"
+      },
+      {
+        "field": "Logged_On",
+        "label": "Logged On"
+      }
+    ],
+    "blocks": [],
+    "line": 21472
+  },
+  {
+    "name": "PR_Timeline_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "PR_Timeline Report",
+    "form": "PR_Timeline",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PR_No",
+        "label": "PR No"
+      },
+      {
+        "field": "Action_Title",
+        "label": "Action"
+      },
+      {
+        "field": "Changes",
+        "label": "Changes"
+      },
+      {
+        "field": "Action_Type2",
+        "label": "Action_Type"
+      },
+      {
+        "field": "Actor",
+        "label": "Actor"
+      },
+      {
+        "field": "Logged_On",
+        "label": "Logged On"
+      }
+    ],
+    "blocks": [],
+    "line": 21485
+  },
+  {
+    "name": "Shipment_Timeline_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Shipment_Timeline Report",
+    "form": "Shipment_Timeline",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Shipment_No",
+        "label": "Shipment No"
+      },
+      {
+        "field": "Action_Title",
+        "label": "Action"
+      },
+      {
+        "field": "Action_Type",
+        "label": "Action Type"
+      },
+      {
+        "field": "Changes",
+        "label": "Changes"
+      },
+      {
+        "field": "Actor",
+        "label": "Actor"
+      },
+      {
+        "field": "Logged_On",
+        "label": "Logged On"
+      }
+    ],
+    "blocks": [],
+    "line": 21498
+  },
+  {
+    "name": "Receiving_Timeline_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Receiving_Timeline Report",
+    "form": "Receiving_Timeline",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Receive_No1",
+        "label": "Receive #"
+      },
+      {
+        "field": "Action_Title",
+        "label": "Action"
+      },
+      {
+        "field": "Action_Type",
+        "label": "Action Type"
+      },
+      {
+        "field": "Changes",
+        "label": "Changes"
+      },
+      {
+        "field": "Actor",
+        "label": "Actor"
+      },
+      {
+        "field": "Logged_On",
+        "label": "Logged On"
+      }
+    ],
+    "blocks": [],
+    "line": 21511
+  },
+  {
+    "name": "Exception_Timeline_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Exception_Timeline Report",
+    "form": "Exception_Timeline",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Exception_No",
+        "label": "Exception No"
+      },
+      {
+        "field": "Action_Title",
+        "label": "Action"
+      },
+      {
+        "field": "Action_Type",
+        "label": "Action Type"
+      },
+      {
+        "field": "Changes",
+        "label": "Changes"
+      },
+      {
+        "field": "Actor",
+        "label": "Actor"
+      },
+      {
+        "field": "Logged_On",
+        "label": "Logged On"
+      }
+    ],
+    "blocks": [],
+    "line": 21524
+  },
+  {
+    "name": "RR_Timeline_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Replacement_Request_Timeline Report",
+    "form": "RR_Timeline",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "RR_No",
+        "label": "RR No"
+      },
+      {
+        "field": "Action_Type",
+        "label": "Action Type"
+      },
+      {
+        "field": "Changes",
+        "label": "Changes"
+      },
+      {
+        "field": "Actor",
+        "label": "Actor"
+      },
+      {
+        "field": "Logged_On",
+        "label": "Logged On"
+      },
+      {
+        "field": "Action_Title",
+        "label": "Action"
+      }
+    ],
+    "blocks": [],
+    "line": 21537
+  },
+  {
+    "name": "PR_Internal_Messages_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "PR_Internal_Messages Report",
+    "form": "PR_Internal_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PR_No",
+        "label": "PR No"
+      },
+      {
+        "field": "Sender_Email",
+        "label": "Sender Email"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21550
+  },
+  {
+    "name": "Inquiry_Internal_Messages_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Inquiry_Internal_Messages Report",
+    "form": "Inquiry_Internal_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "INQ_No",
+        "label": "INQ No"
+      },
+      {
+        "field": "Sender_Email",
+        "label": "Sender Email"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21562
+  },
+  {
+    "name": "DelQ_Timeline_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "DelQ_Timeline Report",
+    "form": "DelQ_Timeline",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "DelQ_ID",
+        "label": "DelQ ID"
+      },
+      {
+        "field": "Action_Title",
+        "label": "Action"
+      },
+      {
+        "field": "Action_Type",
+        "label": "Action Type"
+      },
+      {
+        "field": "Changes",
+        "label": "Changes"
+      },
+      {
+        "field": "Actor",
+        "label": "Actor"
+      },
+      {
+        "field": "Logged_On",
+        "label": "Logged On"
+      }
+    ],
+    "blocks": [],
+    "line": 21574
+  },
+  {
+    "name": "DTA_Timeline_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "DTA_Timeline Report",
+    "form": "DTA_Timeline",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "DTA_ID",
+        "label": "DTA ID"
+      },
+      {
+        "field": "Action_Title",
+        "label": "Action"
+      },
+      {
+        "field": "Action_Type",
+        "label": "Action Type"
+      },
+      {
+        "field": "Changes",
+        "label": "Changes"
+      },
+      {
+        "field": "Actor",
+        "label": "Actor"
+      },
+      {
+        "field": "Logged_On",
+        "label": "Logged On"
+      }
+    ],
+    "blocks": [],
+    "line": 21587
+  },
+  {
+    "name": "Shipment_Internal_Messages_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Shipment_Internal_Messages Report",
+    "form": "Shipment_Internal_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Shipment_No",
+        "label": "Shipment No"
+      },
+      {
+        "field": "Sender_Email",
+        "label": "Sender Email"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21600
+  },
+  {
+    "name": "PO_Internal_Messages_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "PO_Internal_Messages Report",
+    "form": "PO_Internal_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "PO_No",
+        "label": "PO No"
+      },
+      {
+        "field": "Sender_Email",
+        "label": "Sender Email"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21612
+  },
+  {
+    "name": "Receiving_Internal_Messages_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Receiving_Internal_Messages Report",
+    "form": "Receiving_Internal_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Receive_No1",
+        "label": "Receive No"
+      },
+      {
+        "field": "Sender_Email",
+        "label": "Sender Email"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21624
+  },
+  {
+    "name": "Exception_Internal_Messages_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Exception_Internal_Messages Report",
+    "form": "Exception_Internal_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Exception_No",
+        "label": "Exception No"
+      },
+      {
+        "field": "Sender_Email",
+        "label": "Sender Email"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21636
+  },
+  {
+    "name": "RR_Internal_Messages_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "RR_Internal_Messages Report",
+    "form": "RR_Internal_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "RR_No",
+        "label": "RR No"
+      },
+      {
+        "field": "Sender_Email",
+        "label": "Sender Email"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      }
+    ],
+    "blocks": [],
+    "line": 21648
+  },
+  {
+    "name": "Transfer_Warehouse_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Transfer Warehouse Report",
+    "form": "Transfer_Warehouse",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Initiated_By",
+        "label": "Initiated By:"
+      },
+      {
+        "field": "From_Warehouse",
+        "label": "From Warehouse"
+      },
+      {
+        "field": "To_Warehouse",
+        "label": "To Warehouse"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Item_to_transfer",
+        "label": "Item to transfer"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Item_to_transfer.Items + \" \" + Item_to_transfer.SKU + \" \" + Item_to_transfer.Quantity + \" \" + Item_to_transfer.PAC_Optional"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Dispatch",
+        "label": "Dispatch"
+      },
+      {
+        "field": "Initiated_At1",
+        "label": "Initiated At:"
+      },
+      {
+        "field": "Received",
+        "label": "Received"
+      },
+      {
+        "field": "SO_Optional",
+        "label": "SO # (Optional)"
+      }
+    ],
+    "blocks": [],
+    "line": 21660
+  },
+  {
+    "name": "App_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "App_Notifications_Report",
+    "form": "App_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      }
+    ],
+    "blocks": [],
+    "line": 21679
+  },
+  {
+    "name": "SO_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "SO Notifications Report",
+    "form": "SO_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      }
+    ],
+    "blocks": [],
+    "line": 21694
+  },
+  {
+    "name": "PreOrder_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "PreOrder Notifications Report",
+    "form": "PreOrder_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      }
+    ],
+    "blocks": [],
+    "line": 21709
+  },
+  {
+    "name": "ReadinessGate_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "ReadinessGate Notifications Report",
+    "form": "ReadinessGate_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      }
+    ],
+    "blocks": [],
+    "line": 21724
+  },
+  {
+    "name": "QC_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "QC Notifications Report",
+    "form": "QC_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      }
+    ],
+    "blocks": [],
+    "line": 21739
+  },
+  {
+    "name": "OrderAgg_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "OrderAgg Notifications Report",
+    "form": "OrderAgg_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      }
+    ],
+    "blocks": [],
+    "line": 21754
+  },
+  {
+    "name": "Pick_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Pick Notifications Report",
+    "form": "Pick_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      }
+    ],
+    "blocks": [],
+    "line": 21769
+  },
+  {
+    "name": "Pack_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Pack Notifications Report",
+    "form": "Pack_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      }
+    ],
+    "blocks": [],
+    "line": 21784
+  },
+  {
+    "name": "Fenteng_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Fenteng_Notifications Report",
+    "form": "Fenteng_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      },
+      {
+        "field": "Deep_Link_Token",
+        "label": "Deep Link Token"
+      }
+    ],
+    "blocks": [],
+    "line": 21799
+  },
+  {
+    "name": "Tony_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Tony_Notifications Report",
+    "form": "Tony_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      },
+      {
+        "field": "Deep_Link_Token",
+        "label": "Deep Link Token"
+      }
+    ],
+    "blocks": [],
+    "line": 21815
+  },
+  {
+    "name": "Schedule_Test_Settings_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Schedule_Test_Settings Report",
+    "form": "Schedule_Test_Settings",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Test_Current_Date",
+        "label": "Test Current Date"
+      }
+    ],
+    "blocks": [],
+    "line": 21831
+  },
+  {
+    "name": "Shipment_ID_Counter_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Shipment ID Counter Report",
+    "form": "Shipment_ID_Counter",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "LCL_Counter",
+        "label": "LCL Counter"
+      },
+      {
+        "field": "Air_Counter",
+        "label": "Air Counter"
+      },
+      {
+        "field": "FCL_Counter",
+        "label": "FCL Counter"
+      }
+    ],
+    "blocks": [],
+    "line": 21839
+  },
+  {
+    "name": "ExceptionControl_Notifications_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "ExceptionControl Notifications Report",
+    "form": "ExceptionControl_Notifications",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Notification_Type",
+        "label": "Notification Type"
+      },
+      {
+        "field": "Recipient_Email",
+        "label": "Recipient Email"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Created_On",
+        "label": "Created On"
+      },
+      {
+        "field": "Read",
+        "label": "Read"
+      },
+      {
+        "field": "Source_Record_ID",
+        "label": "Source Record ID"
+      },
+      {
+        "field": "Source_Record_No",
+        "label": "Source Record No"
+      },
+      {
+        "field": "Target_URL",
+        "label": "Target URL"
+      }
+    ],
+    "blocks": [],
+    "line": 21849
+  },
+  {
+    "name": "Package_Shipments_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Package Shipments Report",
+    "form": "Package_Shipments",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Service_Appointment_ID",
+        "label": "Service Appointment ID"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "Sales Order"
+      },
+      {
+        "field": "Package_Number",
+        "label": "Package Number"
+      },
+      {
+        "field": "Shipment_Order_No",
+        "label": "Shipment Order No"
+      },
+      {
+        "field": "Shipment_Order_ID",
+        "label": "Shipment Order ID"
+      },
+      {
+        "field": "Created_Time",
+        "label": "Created Time"
+      },
+      {
+        "field": "Shipment_Created",
+        "label": "Shipment Created"
+      }
+    ],
+    "blocks": [],
+    "line": 21864
+  },
+  {
+    "name": "All_Warehouse_Requests",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Warehouse Requests",
+    "form": "Warehouse_Request",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Type_of_Request",
+        "label": "Type of Request"
+      },
+      {
+        "field": "Request",
+        "label": "Request Description"
+      },
+      {
+        "field": "Date_Requested",
+        "label": "Date Requested"
+      },
+      {
+        "field": "Request_By",
+        "label": "Request By:"
+      },
+      {
+        "field": "Upload_Image",
+        "label": "Upload Image"
+      },
+      {
+        "field": "Picker",
+        "label": "Picker"
+      },
+      {
+        "field": "Request_Status",
+        "label": "Request Status:"
+      },
+      {
+        "field": "Remarks",
+        "label": "Remarks"
+      },
+      {
+        "field": "Actual_Photo_Upload",
+        "label": "Actual Photo Upload"
+      },
+      {
+        "field": "Actual_Video_Upload",
+        "label": "Actual Video Upload"
+      },
+      {
+        "field": "Added_Time",
+        "label": "Added Time"
+      },
+      {
+        "field": "Item",
+        "label": "Items"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "field = Item.Items + \" \" + Item.Image + \" \" + Item.SKU"
+      },
+      {
+        "raw": ")"
+      }
+    ],
+    "blocks": [],
+    "line": 21878
+  },
+  {
+    "name": "SOF_Timeline_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "SOF Timeline Report",
+    "form": "SOF_Timeline",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Package",
+        "label": "Package"
+      },
+      {
+        "field": "Action_Title",
+        "label": "Action Title"
+      },
+      {
+        "field": "Action_Type",
+        "label": "Action Type"
+      },
+      {
+        "field": "Changes",
+        "label": "Changes"
+      },
+      {
+        "field": "Actor",
+        "label": "Actor"
+      },
+      {
+        "field": "Logged_On",
+        "label": "Logged On"
+      },
+      {
+        "field": "From",
+        "label": "From"
+      }
+    ],
+    "blocks": [],
+    "line": 21900
+  },
+  {
+    "name": "SOF_Internal_Messages_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "SOF Internal Messages Report",
+    "form": "SOF_Internal_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Package",
+        "label": "Package"
+      },
+      {
+        "field": "Sender_Email",
+        "label": "Sender Email"
+      },
+      {
+        "field": "Sender_Role",
+        "label": "Sender Role"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      },
+      {
+        "field": "From",
+        "label": "From"
+      }
+    ],
+    "blocks": [],
+    "line": 21914
+  },
+  {
+    "name": "DMS_Schedule_Request_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Dms Schedule Requests",
+    "form": "DMS_Schedule_Request",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "CMS_Schedule_Request_ID",
+        "label": "CMS Schedule Request ID"
+      },
+      {
+        "field": "Sales_Order_Number",
+        "label": "Sales Order Number"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Requested_Date",
+        "label": "Requested Date"
+      },
+      {
+        "field": "Requested_Time",
+        "label": "Requested Time"
+      },
+      {
+        "field": "Requested_By",
+        "label": "Requested By"
+      },
+      {
+        "field": "Notes",
+        "label": "Notes"
+      },
+      {
+        "field": "Status",
+        "label": "Status"
+      },
+      {
+        "field": "Service_Appointment_Record_ID",
+        "label": "Service Appointment Record ID"
+      },
+      {
+        "field": "Books_Sales_Order_ID",
+        "label": "Books Sales Order ID"
+      },
+      {
+        "field": "Type_of_Delivery",
+        "label": "Type of Delivery"
+      }
+    ],
+    "blocks": [],
+    "line": 21927
+  },
+  {
+    "name": "DMS_Schedule_Request_Messages_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Dms Schedule Request Messages",
+    "form": "DMS_Schedule_Request_Messages",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "DMS_Schedule_Request_ID",
+        "label": "DMS Schedule Request ID"
+      },
+      {
+        "field": "Sender_Email",
+        "label": "Sender Email"
+      },
+      {
+        "field": "Sender_Name",
+        "label": "Sender Name"
+      },
+      {
+        "field": "Message",
+        "label": "Message"
+      },
+      {
+        "field": "Sent_On",
+        "label": "Sent On"
+      },
+      {
+        "field": "Synced_To_CMS",
+        "label": "Synced To CMS"
+      }
+    ],
+    "blocks": [],
+    "line": 21945
+  },
+  {
+    "name": "Daily_Checklist_for_Vehicle_Report",
+    "type": "list",
+    "isDefault": true,
+    "label": "Daily Checklist for Vehicle Report",
+    "form": "Daily_Checklist_for_Vehicle",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Date_Time",
+        "label": "Date-Time"
+      },
+      {
+        "field": "Vehicle_Name",
+        "label": "Vehicle Name"
+      },
+      {
+        "field": "ODO_Number",
+        "label": "ODO Number"
+      },
+      {
+        "field": "Gas_Number",
+        "label": "Gas Number"
+      },
+      {
+        "field": "Vehicle_Checker",
+        "label": "Vehicle Checker"
+      },
+      {
+        "field": "Vehicle_Driver",
+        "label": "Vehicle Driver"
+      },
+      {
+        "field": "Vehicle_Checklist",
+        "label": "Vehicle Checklist"
+      },
+      {
+        "field": "Issue_Found",
+        "label": "Issue Found?"
+      },
+      {
+        "field": "Issue_Description",
+        "label": "Issue Description"
+      },
+      {
+        "field": "Odometer_Photo_Upload",
+        "label": "Odometer Photo Upload"
+      },
+      {
+        "field": "Checker_s_Signature",
+        "label": "Checker's Signature"
+      },
+      {
+        "field": "Tracking_Number",
+        "label": "Tracking Number"
+      }
+    ],
+    "blocks": [],
+    "line": 21958
+  },
+  {
+    "name": "All_Fuel_Entries",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Fuel Entries",
+    "form": "Fuel_Entries",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Vehicle",
+        "label": "Vehicle"
+      },
+      {
+        "field": "Date_field",
+        "label": "Date"
+      },
+      {
+        "field": "Gas_Bar",
+        "label": "Gas Bar"
+      },
+      {
+        "field": "Odometer",
+        "label": "Odometer"
+      },
+      {
+        "field": "Price_Unit",
+        "label": "Price/Unit"
+      },
+      {
+        "field": "Vendor",
+        "label": "Vendor"
+      },
+      {
+        "field": "Invoice_No",
+        "label": "Invoice No#"
+      },
+      {
+        "field": "Invoice_Receipt",
+        "label": "Invoice Receipt"
+      },
+      {
+        "field": "Remarks",
+        "label": "Remarks"
+      }
+    ],
+    "blocks": [],
+    "line": 21977
+  },
+  {
+    "name": "All_Service_Entries",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Service Entries",
+    "form": "Service_Entries",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Vehicle",
+        "label": "Vehicle"
+      },
+      {
+        "field": "Service",
+        "label": "Service"
+      },
+      {
+        "field": "Remarks",
+        "label": "Remarks"
+      },
+      {
+        "field": "Labor",
+        "label": "Labor"
+      },
+      {
+        "field": "Parts",
+        "label": "Parts"
+      },
+      {
+        "field": "Tax",
+        "label": "Tax"
+      },
+      {
+        "field": "Total",
+        "label": "Total"
+      },
+      {
+        "field": "Invoice_Number",
+        "label": "Invoice Number"
+      },
+      {
+        "field": "Invoice_Receipt",
+        "label": "Invoice Receipt"
+      },
+      {
+        "field": "Submitted_by",
+        "label": "Submitted by"
+      }
+    ],
+    "blocks": [],
+    "line": 21993
+  },
+  {
+    "name": "All_Dispatch_Checklists",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Dispatch Checklists",
+    "form": "Dispatch_Checklist",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Dis",
+        "label": "Dispatch ID"
+      },
+      {
+        "field": "Service_Appointment_ID",
+        "label": "Service Appointment ID"
+      },
+      {
+        "field": "Sales_Order",
+        "label": "Sales Order"
+      },
+      {
+        "field": "Package_Number",
+        "label": "Package Number"
+      },
+      {
+        "field": "Dispatch_Status",
+        "label": "Dispatch Status"
+      },
+      {
+        "field": "Dispatch_By",
+        "label": "Dispatch By"
+      },
+      {
+        "field": "Dispatched_At2",
+        "label": "Dispatched_At"
+      },
+      {
+        "field": "Check_Items_Complete",
+        "label": "Check Items Complete"
+      },
+      {
+        "field": "Check_Contact_Details",
+        "label": "Check Contact Details"
+      },
+      {
+        "field": "Check_Payment",
+        "label": "Check Payment"
+      },
+      {
+        "field": "Check_No_Exception",
+        "label": "Check No Exception"
+      },
+      {
+        "field": "DR_No",
+        "label": "DR No"
+      },
+      {
+        "field": "Check_SO_Number",
+        "label": "I-check ang Sales Order Number kung tama"
+      },
+      {
+        "field": "Check_SKU_Match",
+        "label": "I-check ang SKU ng box kung tugma sa item list sa Shipment Order"
+      },
+      {
+        "field": "Check_Box_Quality",
+        "label": "I-check ang quality ng boxes/crates"
+      },
+      {
+        "field": "Check_Box_Count",
+        "label": "I-check ang bilang ng boxes na ilalabas  at ang bilang mismo"
+      },
+      {
+        "field": "Signature_Dispatcher",
+        "label": "Signature (Dispatcher)"
+      }
+    ],
+    "blocks": [],
+    "line": 22010
+  },
+  {
+    "name": "Delivery_Scheduling_Report",
+    "type": "list",
+    "isDefault": false,
+    "label": "Delivery Scheduling  Report",
+    "form": "Delivery_Scheduling",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Date_field",
+        "label": "Date"
+      },
+      {
+        "field": "Time",
+        "label": "Time"
+      },
+      {
+        "field": "SO",
+        "label": "SO#"
+      },
+      {
+        "field": "Type_of_Delivery",
+        "label": "Type of Delivery"
+      },
+      {
+        "field": "Item_Detail",
+        "label": "Item Detail"
+      },
+      {
+        "field": "Qty",
+        "label": "Qty"
+      },
+      {
+        "field": "City",
+        "label": "City"
+      },
+      {
+        "field": "Installer",
+        "label": "Installer"
+      },
+      {
+        "field": "Vehicle_Name",
+        "label": "Vehicle Name"
+      },
+      {
+        "field": "Driver",
+        "label": "Driver"
+      },
+      {
+        "field": "Notes",
+        "label": "Notes"
+      },
+      {
+        "field": "Completed",
+        "label": "Completed"
+      },
+      {
+        "field": "Rescheduled",
+        "label": "Rescheduled"
+      },
+      {
+        "field": "Package_Number",
+        "label": "Package Number"
+      },
+      {
+        "field": "Order_Aggregation_ID",
+        "label": "Order Aggregation ID"
+      },
+      {
+        "field": "Service_Request_ID",
+        "label": "Service Request ID"
+      },
+      {
+        "field": "Customer_Name",
+        "label": "Customer Name"
+      },
+      {
+        "field": "Customer_Address",
+        "label": "Customer Address"
+      },
+      {
+        "field": "Delivery_City",
+        "label": "Delivery City"
+      },
+      {
+        "field": "Email",
+        "label": "Email"
+      },
+      {
+        "field": "Contact",
+        "label": "Contact"
+      },
+      {
+        "raw": "("
+      },
+      {
+        "raw": "displayformat = plainnumber"
+      },
+      {
+        "raw": ")"
+      },
+      {
+        "field": "Order_Date",
+        "label": "Order Date"
+      },
+      {
+        "field": "Schedule_Status",
+        "label": "Schedule Status"
+      },
+      {
+        "field": "Item_Details.PAC",
+        "label": "Item Details"
+      }
+    ],
+    "blocks": [],
+    "line": 22034
+  },
+  {
+    "name": "All_Settings",
+    "type": "list",
+    "isDefault": true,
+    "label": "All Settings",
+    "form": "Forecast_Settings",
+    "criteria": null,
+    "columns": [
+      {
+        "field": "Air_Transit_Min",
+        "label": " Air Transit Min (Days)"
+      },
+      {
+        "field": "Air_Transit_Max",
+        "label": " Air Transit Max (Days)"
+      },
+      {
+        "field": "Air_Customs_to_WH_Min",
+        "label": "Air Customs to WH Min (Days)"
+      },
+      {
+        "field": "Air_Customs_to_WH_Max",
+        "label": " Air Customs to WH Max (Days)"
+      },
+      {
+        "field": "LCL_Transit_Min",
+        "label": "LCL Transit Min (Days)"
+      },
+      {
+        "field": "LCL_Transit_Max",
+        "label": "LCL Transit Max (Days)"
+      },
+      {
+        "field": "LCL_Customs_to_WH_Min",
+        "label": "LCL Customs to WH Min (Days)"
+      },
+      {
+        "field": "LCL_Customs_to_WH_Max",
+        "label": "LCL Customs to WH Max (Days)"
+      },
+      {
+        "field": "FCL_Transit_Min",
+        "label": " FCL Transit Min (Days)"
+      },
+      {
+        "field": "FCL_Transit_Max",
+        "label": "FCL Transit Max (Days)"
+      },
+      {
+        "field": "FCL_Customs_to_WH_Min",
+        "label": "FCL Customs to WH Min (Days)"
+      },
+      {
+        "field": "FCL_Customs_to_WH_Max",
+        "label": "FCL Customs to WH Max (Days)"
+      },
+      {
+        "field": "Prep_Days_Thru_QC",
+        "label": "Prep Days Thru QC"
+      },
+      {
+        "field": "Delivery_Days",
+        "label": "Delivery Days"
+      },
+      {
+        "field": "Local_Transit_Days",
+        "label": "Local Transit Days"
+      },
+      {
+        "field": "Local_Customs_Days",
+        "label": "Local Customs Days"
+      },
+      {
+        "field": "Re_anchor_on_Latest_Real_Event",
+        "label": "Re-anchor on Latest Real Event"
+      },
+      {
+        "field": "Include_Supplier_Lead_Time",
+        "label": "Include Supplier Lead Time"
+      },
+      {
+        "field": "Horizon_Weeks",
+        "label": "Horizon (Weeks)"
+      }
+    ],
+    "blocks": [],
+    "line": 22068
+  }
+]

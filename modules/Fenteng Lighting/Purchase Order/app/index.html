@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fenteng Lighting — Purchase Orders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="notification_component/notification.css" />
+<style>
+  :root {
+    --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+    --green:#16A34A; --green-light:#DCFCE7; --green-mid:#86EFAC;
+    --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+    --red:#DC2626; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+    --purple:#7C3AED; --purple-light:#EDE9FE; --purple-mid:#C4B5FD;
+    --orange:#EA580C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0;
+    --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B;
+    --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+    --white:#FFFFFF;
+    --radius-sm:4px; --radius:8px; --radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+    --t:150ms ease;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-sm{height:32px;padding:0 13px;font-size:13px}
+  .btn-orange{background:var(--orange);color:var(--white);font-weight:600;box-shadow:0 1px 3px rgba(234,88,12,.3)}
+  .btn-orange:hover{background:#C2410C;transform:translateY(-1px);box-shadow:0 4px 12px rgba(234,88,12,.3)}
+  .btn-orange:disabled{background:var(--gray-300);color:var(--gray-500);box-shadow:none;cursor:not-allowed;transform:none}
+
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transform:translateY(6px);transition:opacity 200ms ease,transform 200ms ease;pointer-events:none;max-width:340px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  .list-page{padding:24px;display:flex;flex-direction:column;gap:20px;min-height:100vh;box-sizing:border-box}
+  .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .page-header-left h1{font-size:24px;font-weight:700;color:var(--orange);letter-spacing:-.02em;line-height:1.2}
+  .page-header-left p{font-size:13px;color:var(--gray-500);margin-top:4px}
+  .page-header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+  .supplier-pill{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 6px;border-radius:999px;background:var(--white);border:1px solid var(--gray-200);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .supplier-pill span.name{font-size:13px;font-weight:600;color:var(--gray-800)}
+  .supplier-avatar{width:26px;height:26px;border-radius:50%;background:var(--orange);color:var(--white);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+  .lang-toggle{display:flex;align-items:center;gap:4px;height:36px;padding:0 12px;border-radius:999px;background:var(--white);border:1px solid var(--gray-200);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .lang-toggle:hover{border-color:var(--gray-400)}
+  .lang-opt{opacity:.4;transition:opacity var(--t),color var(--t)}
+  .lang-opt.active{opacity:1;color:var(--orange)}
+  .lang-sep{opacity:.3;font-size:11px}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:900px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:16px 20px;box-shadow:var(--shadow)}
+  .stat-label{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em}
+  .stat-value{font-size:28px;font-weight:700;line-height:1.1;margin:6px 0 4px;color:var(--gray-800)}
+  .stat-value.gray{color:var(--gray-500)}
+  .stat-value.amber{color:var(--amber)}
+  .stat-value.green{color:var(--green)}
+  .stat-sub{font-size:12px;color:var(--gray-400)}
+
+  .main-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .filter-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 14px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .pill:hover{border-color:var(--blue);color:var(--blue)}
+  .pill.active{background:var(--blue);border-color:var(--blue);color:var(--white)}
+  .search-wrap{position:relative;flex:0 1 220px;min-width:160px}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400);pointer-events:none}
+  .search-input{width:100%;height:32px;padding:0 10px 0 32px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--gray-50);color:var(--gray-700);font-family:inherit;font-size:13px;outline:none;transition:all var(--t);box-sizing:border-box}
+  .search-input::placeholder{color:var(--gray-400)}
+  .search-input:focus{border-color:var(--blue);background:var(--white)}
+
+  .table-wrap{overflow-x:auto}
+  .inq-table{width:100%;border-collapse:collapse;min-width:820px}
+  .inq-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .inq-table th{padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+  .inq-table tbody tr{border-bottom:1px solid var(--gray-100);transition:background var(--t);cursor:pointer}
+  .inq-table tbody tr:hover{background:var(--gray-50)}
+  .inq-table tbody tr:last-child{border-bottom:none}
+  .inq-table td{padding:12px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle}
+  .cell-sku{font-family:monospace;font-size:12px;color:var(--gray-500);background:var(--gray-100);padding:2px 7px;border-radius:var(--radius-sm);white-space:nowrap}
+  .cell-inq{font-weight:700;color:var(--orange);font-size:12.5px}
+  .empty{text-align:center;padding:48px 20px;color:var(--gray-400);font-size:13px}
+  .spin{display:inline-block;width:16px;height:16px;border:2.5px solid var(--gray-200);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .badge-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .badge-pill::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+  .status-draft{background:var(--gray-100);color:var(--gray-500);border-color:var(--gray-300)}
+  .status-sent{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+  .status-confirmed{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+
+  /* Row action button — color mirrors the row's own status badge, same convention as
+     the sibling Inquiries/PR widgets: Sent (needs your action) is blue, everything
+     else gray. */
+  .btn-status-draft{background:var(--white);border:1.5px solid var(--gray-300);color:var(--gray-600)}
+  .btn-status-draft:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-status-sent{background:var(--blue-light);border:1.5px solid var(--blue-mid);color:var(--blue)}
+  .btn-status-sent:hover{background:var(--blue);border-color:var(--blue);color:var(--white)}
+  .btn-status-confirmed{background:var(--gray-100);border:1.5px solid var(--gray-300);color:var(--gray-600)}
+  .btn-status-confirmed:hover{border-color:var(--gray-400);color:var(--gray-800)}
+
+  .detail-page{display:flex;flex-direction:column;min-height:100vh;background:var(--gray-100)}
+  .detail-topbar{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .detail-topbar-title{font-size:15px;font-weight:600;color:var(--gray-800);letter-spacing:-.01em}
+
+  .detail-subheader{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .detail-subheader-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .detail-inq-no{font-size:16px;font-weight:800;color:var(--orange);letter-spacing:-.01em}
+
+  .lock-banner{display:flex;align-items:center;gap:10px;margin:12px 24px 0;padding:10px 14px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);font-size:12.5px;color:var(--gray-600)}
+
+  /* CHANGED 2026-07-16, per user ("it looks weird there. put it at right side too like
+     in supplier's PR/INQ") — was a single flex-column stack (Conversation as just
+     another full-width card at the bottom, left a big awkward empty gap under the short
+     message list). Now a 2-column grid, right rail reserved for Conversation, matching
+     Fenteng-PR/Tony-PR's layout exactly. Everything else (PO Summary/Line Items/Status &
+     Audit/Shipment Timing/Acknowledge button) moved into a wrapping left-column <div>,
+     no changes to any of those cards themselves. */
+  .detail-body{display:grid;grid-template-columns:1fr 320px;gap:16px;padding:16px 24px 28px;align-items:start}
+  @media(max-width:1100px){.detail-body{grid-template-columns:1fr}}
+
+  .sec-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+  .sec-card:last-child{margin-bottom:0}
+  .sec-header{padding:12px 20px;background:var(--orange-light);border-left:4px solid var(--orange);border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .sec-header.blue{background:var(--blue-light);border-left-color:var(--blue)}
+  .sec-title{font-size:13px;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:.08em}
+  .sec-body{padding:20px}
+
+  /* ── Conversation panel — see UI/EndUser/INQs/app/index.html's own copy of this
+     comment for the full rationale (new plain form, polling not push, etc). Single
+     thread only (this supplier ↔ buyer). ── */
+  .chat-panel{display:flex;flex-direction:column;height:600px;position:sticky;top:16px}
+  .chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--gray-50)}
+  .chat-empty{color:var(--gray-400);font-size:12.5px;text-align:center;margin-top:20px}
+  .chat-bubble{max-width:82%;padding:7px 10px;border-radius:10px;font-size:12.5px;line-height:1.4;word-break:break-word}
+  .chat-bubble .chat-meta{font-size:10.5px;font-weight:600;opacity:.7;margin-bottom:2px}
+  .chat-bubble .chat-time{font-size:9.5px;opacity:.55;margin-top:3px}
+  .chat-bubble.mine{align-self:flex-end;background:var(--orange);color:var(--white);border-bottom-right-radius:2px}
+  .chat-bubble.theirs{align-self:flex-start;background:var(--white);color:var(--gray-800);border:1px solid var(--gray-200);border-bottom-left-radius:2px}
+  .chat-inputbar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--gray-100)}
+  .chat-inputbar textarea{flex:1;resize:none;border:1px solid var(--gray-200);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;max-height:80px}
+  .chat-send-btn{align-self:flex-end}
+
+  .fg{display:grid;gap:16px 24px}
+  .fg-4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:760px){.fg-4{grid-template-columns:repeat(2,1fr)}}
+  .fi-lbl{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+  .fi-val{font-size:14px;font-weight:600;color:var(--gray-800);line-height:1.3}
+  .fi-val.green{color:var(--green)}
+
+  .line-table{width:100%;border-collapse:collapse}
+  .line-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);padding:9px 12px;text-align:left;border-bottom:1px solid var(--gray-100);white-space:nowrap}
+  .line-table td{padding:10px 12px;font-size:12.5px;border-bottom:1px solid var(--gray-50);vertical-align:middle;color:var(--gray-700)}
+  .line-table tbody tr:last-child td{border-bottom:none}
+  .line-total-row td{border-top:1.5px solid var(--gray-200);font-weight:700;color:var(--gray-500);font-size:11.5px;text-align:right;padding:10px 12px}
+  .line-total-row .amt{color:var(--green);font-size:14px;font-weight:700}
+  .ship-badge{background:var(--blue-light);color:var(--blue-dark);border-color:var(--blue-mid);font-size:11.5px}
+  .priority-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+  .pri-high{color:var(--red);font-weight:700;font-size:12px}
+  .pri-high .priority-dot{background:var(--red)}
+  .pri-med{color:var(--amber);font-weight:700;font-size:12px}
+  .pri-med .priority-dot{background:var(--amber)}
+  .pri-low{color:var(--gray-400);font-weight:600;font-size:12px}
+  .pri-low .priority-dot{background:var(--gray-300)}
+  .delay-ontrack{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .delay-atrisk{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+  .delay-delayed{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+
+  .audit-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--gray-50);font-size:12.5px}
+  .audit-row:last-child{border-bottom:none}
+  .audit-label{color:var(--gray-400);font-size:11.5px}
+  .audit-value{color:var(--gray-700);font-weight:500}
+
+  .submit-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:16px;margin-top:4px;border-top:1px solid var(--gray-100);flex-wrap:wrap}
+  .submit-note{font-size:11.5px;color:var(--gray-400);max-width:420px}
+  .btn-submit{height:40px;padding:0 20px;font-size:14px;font-weight:700;box-shadow:0 2px 6px rgba(234,88,12,.3)}
+
+  .alert-overlay{display:none;position:fixed;inset:0;z-index:7000;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.5)}
+  .alert-overlay.open{display:flex}
+  .alert-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:380px;max-width:100%;padding:22px}
+  .alert-msg{font-size:13.5px;color:var(--gray-700);line-height:1.55;margin-bottom:18px;white-space:pre-line}
+  .alert-ok{width:100%;justify-content:center}
+
+  .confirm-overlay{display:none;position:fixed;inset:0;z-index:7000;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.5)}
+  .confirm-overlay.open{display:flex}
+  .confirm-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:400px;max-width:100%;padding:22px}
+  .confirm-title{font-size:15px;font-weight:700;color:var(--gray-800);margin-bottom:8px}
+  .confirm-msg{font-size:13.5px;color:var(--gray-600);line-height:1.55;margin-bottom:20px}
+  .confirm-actions{display:flex;justify-content:flex-end;gap:8px}
+  /* ADDED 2026-07-16, per user — mandatory ETD/ETA on Acknowledge, see field-grid below */
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field-item{display:flex;flex-direction:column;gap:4px}
+  .field-label{font-size:12px;font-weight:600;color:var(--gray-700)}
+  .field-hint{font-size:11px;color:var(--gray-400)}
+  .form-input{font:inherit;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-800);background:var(--white)}
+  .form-input:focus{outline:none;border-color:var(--orange)}
+  .form-input.field-error{border-color:var(--red)}
+
+  /* ADDED 2026-09-21, per user ("Lagyan mo ng groupings ang PO, shipment at replacement") —
+     "Groups" tab, same idea as the sibling PR widget's own PR Groups tab: rows clustered by
+     the buyer-side Sales Order, which is resolved quietly and NEVER shown to the supplier
+     (card header only says "Total <things>: N"). */
+  .tab-nav{display:flex;gap:4px;padding:0 20px;border-bottom:1.5px solid var(--gray-200);background:var(--white)}
+  .tab-btn2{display:flex;align-items:center;gap:7px;padding:14px 4px 12px;margin-right:22px;border:none;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;background:transparent;color:var(--gray-500);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:color var(--t),border-color var(--t)}
+  .tab-btn2:hover{color:var(--gray-700)}
+  .tab-btn2.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+  .grp-empty{padding:60px 20px;text-align:center;color:var(--gray-400);font-size:13px}
+  .grp-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;margin:16px 20px}
+  .grp-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .grp-card-title{font-size:14px;font-weight:700;color:var(--gray-800)}
+  .grp-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:820px}
+  .grp-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .grp-table th{padding:8px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grp-table tbody tr{border-bottom:1px solid var(--gray-100);transition:background var(--t);cursor:pointer}
+  .grp-table tbody tr:hover{background:var(--gray-50)}
+  .grp-table tbody tr:last-child{border-bottom:none}
+  .grp-table td{padding:10px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
+</style>
+<script>
+/* ════════════════════════════════
+   PR ON HOLD — PR On Hold plan, Phase 3 (ADDED 2026-10-01)
+   A PR can be put On Hold / Cancelled in the Purchase Request widget
+   (Purchase_Request1.Hold_Status). Every line in this widget carries its PR No,
+   so this looks up the held PRs and lets the widget badge and lock just that
+   line. Read-only here: Hold / Resume / Cancel / Restore live only in the
+   Purchase Request widget.
+════════════════════════════════ */
+var PRHold = (function(){
+  var map = {}, busy = false, waiters = [];
+  function v(x){
+    if(x===null||x===undefined) return '';
+    if(typeof x==='object') return x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'';
+    return String(x);
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function zh(){ try{ return typeof LANG!=='undefined' && LANG==='zh'; }catch(e){ return false; } }
+  function key(prNo){ return String(prNo===null||prNo===undefined ? '' : prNo).trim(); }
+  /* Re-fetches every call (cheap: only held PRs match), so a Resume/Restore shows up
+     on the next list load. A failed fetch keeps the last known map. */
+  function load(cb){
+    if(cb) waiters.push(cb);
+    if(busy) return;
+    busy = true;
+    function done(next){
+      if(next) map = next;
+      busy = false;
+      var w = waiters; waiters = [];
+      w.forEach(function(f){ try{ f(); }catch(e){ console.warn('[PRHold] callback error', e); } });
+    }
+    if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function'){ done(null); return; }
+    ZOHO.CREATOR.DATA.getRecords({ report_name:'All_Purchase_Request', criteria:'(Hold_Status == "On Hold" || Hold_Status == "Cancelled")', field_config:'all', max_records:200 })
+      .then(function(resp){
+        var next = {};
+        if(resp && resp.code===3000 && Array.isArray(resp.data)){
+          resp.data.forEach(function(r){
+            var pr = key(v(r.PR_No)), st = v(r.Hold_Status);
+            if(pr && (st==='On Hold' || st==='Cancelled')) next[pr] = { state:st, reason:v(r.Hold_Reason), date:v(r.Hold_Date) };
+          });
+        }
+        done(next);
+      })
+      .catch(function(err){
+        /* 9220 = no PR is held right now, which is a real (empty) answer. */
+        var empty = false;
+        try{
+          var txt = err && (err.responseText || (err.content && err.content.responseText));
+          var p = txt ? JSON.parse(txt) : err;
+          if(p && String(p.code)==='9220') empty = true;
+        }catch(e){}
+        if(!empty) console.warn('[PRHold] could not load held PRs:', err);
+        done(empty ? {} : null);
+      });
+  }
+  function state(prNo){ var m = map[key(prNo)]; return m ? m.state : ''; }
+  function locked(prNo){ return !!state(prNo); }
+  function label(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消' : 'CANCELLED';
+    return zh() ? '暂停' : 'ON HOLD';
+  }
+  function text(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消 — 客户已取消此产品，请勿继续。' : 'CANCELLED — the client cancelled this item. Do not proceed.';
+    return zh() ? '暂停 — 客户已暂停此产品，请勿继续。' : 'ON HOLD — the client paused this item. Do not proceed.';
+  }
+  function badge(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    var m = map[key(prNo)];
+    var c = s==='Cancelled' ? 'background:#FEE2E2;color:#DC2626;border:1px solid #FCA5A5' : 'background:#FEF3C7;color:#92400E;border:1px solid #FCD34D';
+    var tip = text(prNo) + (m.date ? ' (' + m.date + ')' : '');
+    return ' <span class="pr-hold-badge" title="'+esc(tip)+'" style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;'+c+'">'+label(prNo)+'</span>';
+  }
+  /* Which of these PR numbers are held (for PO / shipment level summaries). */
+  function heldOf(prNos){ return (prNos||[]).filter(function(p){ return locked(p); }); }
+  return { load:load, state:state, locked:locked, label:label, text:text, badge:badge, heldOf:heldOf };
+})();
+</script>
+</head>
+<body>
+
+<!-- ══ LIST VIEW ══ -->
+<div id="view-list" class="list-page">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 data-i18n="appTitle">Supplier Portal</h1>
+      <p data-i18n="pageSubtitle">Purchase Orders — review line items and acknowledge to confirm.</p>
+    </div>
+    <div class="page-header-right">
+      <button class="lang-toggle" id="langToggleBtn" onclick="toggleLang()" title="Switch language / 切换语言">
+        <span class="lang-opt" id="langOptEn">EN</span><span class="lang-sep">/</span><span class="lang-opt" id="langOptZh">中</span>
+      </button>
+      <div class="supplier-pill">
+        <span class="supplier-avatar" id="avatarMark">F</span>
+        <span class="name" id="supplierNameLabel">Fenteng Lighting</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-cards" id="statStrip"></div>
+
+  <div class="tab-nav">
+    <button class="tab-btn2 active" data-maintab="all" onclick="switchMainTab('all')" data-i18n="grpTabAll">All POs</button>
+    <button class="tab-btn2" data-maintab="groups" onclick="switchMainTab('groups')" data-i18n="grpTabGroups">PO Groups</button>
+  </div>
+
+  <div id="panel-main-all">
+  <div class="main-card">
+    <div class="filter-row">
+      <div class="filter-pills" id="filterPills">
+        <div class="pill active" data-filter="all" onclick="setFilter('all')" data-i18n="filterAll">All</div>
+        <div class="pill" data-filter="Sent" onclick="setFilter('Sent')" data-i18n="filterAwaiting">Awaiting Acknowledge</div>
+        <div class="pill" data-filter="Confirmed" onclick="setFilter('Confirmed')" data-i18n="filterConfirmed">Confirmed</div>
+      </div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" class="search-input" id="searchBox" placeholder="Search PO No…" data-i18n-placeholder="searchPlaceholder" oninput="renderList()">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="inq-table">
+        <thead>
+          <tr><th data-i18n="thPoNo">PO No</th><th data-i18n="thLines">Lines</th><th data-i18n="thTotalValue">Total Value</th><th data-i18n="thPoDate">PO Date</th><th data-i18n="thStatus">Status</th><th></th></tr>
+        </thead>
+        <tbody id="listBody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--gray-400)"><span class="spin"></span><span data-i18n="loadingList">Loading from Zoho Creator…</span></td></tr></tbody>
+      </table>
+      <div class="empty" id="emptyState" style="display:none;" data-i18n="emptyList">No purchase orders yet.</div>
+    </div>
+  </div>
+  </div>
+
+  <div id="panel-main-groups" style="display:none">
+    <div class="main-card">
+      <div class="filter-row">
+        <div style="font-size:13px;color:var(--gray-500)" id="grpSummary"></div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" class="search-input" id="grpSearch" placeholder="Search PO No…" data-i18n-placeholder="grpSearch" oninput="renderGroupCards()">
+        </div>
+      </div>
+      <div id="grpCardsWrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DETAIL VIEW ══ -->
+<div id="view-detail" style="display:none">
+  <div class="detail-page">
+    <div class="detail-topbar">
+      <span class="detail-topbar-title" data-i18n="detailTitle">Purchase Order</span>
+      <button class="btn btn-ghost btn-sm" onclick="showList()" data-i18n="backToQueue">← Back to queue</button>
+    </div>
+    <div class="detail-subheader">
+      <div class="detail-subheader-left">
+        <span class="detail-inq-no" id="d-pono"></span>
+      </div>
+      <div id="d-statstamp"></div>
+    </div>
+
+    <div id="lockBanner" class="lock-banner" style="display:none;"></div>
+
+    <div class="detail-body">
+      <div>
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title" data-i18n="secPoSummary">PO Summary</span></div>
+        <div class="sec-body">
+          <div class="fg fg-4">
+            <div><div class="fi-lbl" data-i18n="fiTotalLines">Total Lines</div><div class="fi-val" id="s-lines"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiTotalValue">Total PO Value</div><div class="fi-val green" id="s-value"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiMixedShipping">Mixed Shipping</div><div class="fi-val" id="s-mixed"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiPoDate">PO Date</div><div class="fi-val" id="s-date"></div></div>
+          </div>
+          <div class="fi-lbl" id="s-notes-lbl" style="margin-top:16px;display:none" data-i18n="fiNotes">Notes</div>
+          <div class="fi-val" id="s-notes" style="font-weight:500;display:none"></div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header blue"><span class="sec-title" data-i18n="secLineItems">Line Items — Read-Only</span></div>
+        <div style="overflow-x:auto;">
+          <table class="line-table">
+            <thead>
+              <tr><th data-i18n="thPrNo">PR No.</th><th data-i18n="thSku">SKU</th><th data-i18n="thProduct">Product</th><th data-i18n="thQty">Qty</th><th data-i18n="thShipMode">Shipping Mode</th><th data-i18n="thTargetDelivery">Target Delivery</th><th data-i18n="thPriority">Priority</th><th data-i18n="thDelay">Delay</th></tr>
+            </thead>
+            <tbody id="d-line-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title" data-i18n="secStatusAudit">Status &amp; Audit</span></div>
+        <div class="sec-body" id="d-audit"></div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title" data-i18n="secShipmentTiming">Shipment Timing</span></div>
+        <div class="sec-body">
+          <div id="s-target-ref" class="submit-note" style="margin-bottom:14px"></div>
+          <div class="field-grid">
+            <div class="field-item">
+              <label class="field-label" for="ackEtd"><span data-i18n="fieldEtd">ETD</span> <span style="color:var(--red)">*</span></label>
+              <input class="form-input" type="date" id="ackEtd" />
+              <div class="field-hint" data-i18n="fieldEtdHint">Estimated Time of Departure from your side</div>
+            </div>
+            <div class="field-item">
+              <label class="field-label" for="ackEta"><span data-i18n="fieldEta">ETA</span> <span style="color:var(--red)">*</span></label>
+              <input class="form-input" type="date" id="ackEta" />
+              <div class="field-hint" data-i18n="fieldEtaHint">Estimated Time of Arrival at warehouse — should not be later than the buyer's Target Delivery above</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-body">
+          <div class="submit-row">
+            <div class="submit-note" id="submitNote" data-i18n="submitNoteAck">Enter ETD/ETA above, then acknowledge to confirm this PO and notify the buyer.</div>
+            <button class="btn btn-orange btn-submit" id="ackBtn" onclick="confirmAcknowledge()" data-i18n="ackBtn">Acknowledge PO</button>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <div>
+        <div class="sec-card chat-panel">
+          <div class="sec-header"><span class="sec-title" data-i18n="secConversation">Conversation</span></div>
+          <div class="chat-msgs" id="chatMsgs"></div>
+          <div class="chat-inputbar">
+            <textarea id="chatInput" rows="1" placeholder="Message the buyer…" data-i18n-placeholder="chatPlaceholder"></textarea>
+            <button class="btn btn-orange btn-sm chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()" data-i18n="chatSendBtn">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="alertOverlay" class="alert-overlay">
+  <div class="alert-box">
+    <div class="alert-msg" id="alertMsg"></div>
+    <button class="btn btn-orange alert-ok" id="alertOkBtn" data-i18n="okBtn">OK</button>
+  </div>
+</div>
+
+<div id="confirmOverlay" class="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title" data-i18n="confirmTitleAck">Acknowledge this Purchase Order?</div>
+    <div class="confirm-msg" data-i18n="confirmMsgAck">This confirms you can fulfill this PO as listed and notifies the buyer. ETD/ETA above will be saved with it.</div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()" data-i18n="cancelBtn">Cancel</button>
+      <button class="btn btn-orange" id="confirmAckBtn" data-i18n="yesAckBtn">Yes, Acknowledge</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script src="notification_component/notification.js"></script>
+<div id="fentengNotifMount"></div>
+<script>
+/* ════════════════════════════════
+   CREATOR CONFIG — the only block that differs between the Fenteng and
+   Tony copies of this widget. Keep everything below identical across both.
+   Mirrors Fenteng-PR/app/index.html's structure — see CLAUDE.md's
+   "Books Purchase Order Sync" section + DelugeScripts/purchase_order_scripts.txt
+   + DelugeScripts/acknowledge_po_custom_api.txt for the native workflow this
+   widget's Acknowledge button replicates via Custom API (Report Action Items can't
+   be invoked via any Creator API/SDK call — same limitation as PR_Approved).
+   REPORT_NAME is an educated guess (FormName_Report, the convention every other
+   duplicated report in this app follows) — not yet confirmed live, verify first if
+   getRecords errors on report-not-found.
+════════════════════════════════ */
+const REPORT_NAME = 'Fenteng_Lighting_Purchase_Order_Report';
+const SUPPLIER_LABEL = 'Fenteng Lighting';
+const SUPPLIER_INITIAL = 'F';
+/* SHORT form, matches what Deluge actually stores on Shipments.Supplier
+   (insert into Shipments [...Supplier="Fenteng"...], see pr_to_po_grouping.txt) — NOT
+   SUPPLIER_LABEL ("Fenteng Lighting"), same short/full split documented elsewhere in
+   this app. */
+const SUPPLIER_SHORT = 'Fenteng';
+/* Confirmed live report name (see CLAUDE.md's Shipments widget row, 2026-07-13). */
+const SHIPMENTS_REPORT = 'All_Shipments';
+const SUBFORM_NAME = 'PO_Line_Items_Supplier1';
+const F = {
+  poNo: 'PO_No_Supplier1', poDate: 'PO_Date_Supplier1', totalValue: 'Total_PO_Value_Supplier1',
+  totalLines: 'Total_Lines_Supplier1', mixedShipping: 'Mixed_Shipping_Supplier1', notes: 'Notes_Supplier1',
+  poStatus: 'PO_Status_Supplier1', sentOn: 'Sent_On_Supplier1', ackOn: 'Acknowledge_On_Supplier1',
+  compOn: 'Completed_On_Supplier1',
+  prNo: 'PR_No_Supplier1', item: 'Item_Supplier1', sku: 'SKU_Supplier1', qty: 'QTY_Supplier1',
+  unit: 'Unit_Supplier1', finalPrice: 'Final_Price_Supplier1', lineTotal: 'Line_Total_Supplier1',
+  targetDelivery: 'Target_Delivery_Supplier1', shipMode: 'Shipping_Mode_Supplier1',
+  delayStatus: 'Delay_Status_Supplier1', priority: null /* no per-line Priority field confirmed on this subform */
+};
+/* Acknowledge Custom API — see acknowledge_po_custom_api.txt for the function body.
+   Argument is this record's own PO_No_Supplier1 (business key). */
+const CUSTOM_API_NAME_ACK = 'acknowledge_po_fenteng';
+const CUSTOM_API_KEY_ACK = 'VVChhQxn7DvK4ETHXkmK3gn84';
+let REAL_APP_NAME = 'supply-chain-app';
+let ACCOUNT_OWNER = 'homecartel';
+const CHAT_REPORT = 'All_PO_Messages'; /* form 'PO_Messages' — see startChatPolling() NOTES */
+
+document.getElementById('supplierNameLabel').textContent = SUPPLIER_LABEL;
+document.getElementById('avatarMark').textContent = SUPPLIER_INITIAL;
+
+/* Notification System (Fenteng-only) — bottom-right bell, not scoped to this (or any)
+   record; see notification_component/README.md. Same shared Fenteng_Notifications form
+   as Fenteng-Inquiries/Fenteng-PR/Fenteng-RR. No currentUserEmail/roleMap needed — this
+   form is already exclusively Fenteng's own data. */
+var fentengNotifications = FentengNotifications.init({
+  mountId:    'fentengNotifMount',
+  appName:    function(){ return REAL_APP_NAME; },
+  reportName: 'Fenteng_Notifications_Report',
+  title:      'Notifications',
+  onNotificationClick: function(n){
+    if(n.Notification_Type === 'Purchase Order added' && n.Source_Record_No){
+      var match = ALL_ROWS.find(function(r){ return r.poNo === n.Source_Record_No; });
+      if(match){ openDetail(match.id); return true; }
+    }
+    return false;
+  }
+});
+
+/* ════════════════════════════════
+   STATE
+════════════════════════════════ */
+const $ = id => document.getElementById(id);
+let ALL_ROWS = [];
+let currentFilter = 'all';
+let currentId = null;
+let _currentRaw = null;
+
+/* ════════════════════════════════
+   LANGUAGE TOGGLE (EN / 中文) — shared localStorage key across every supplier
+   widget so a supplier's language choice persists as they move between
+   Inquiry/PO/PR/RR/Shipment. Static labels use [data-i18n]/[data-i18n-placeholder]
+   attributes applied by applyStaticI18n(); JS-generated strings (list rows, badges,
+   toasts) call t('key') directly and get refreshed by refreshDynamicUI(). Values
+   that come FROM Zoho data (Delay_Status text, etc.) are matched/classified on
+   their original English value and only their on-screen label is translated via
+   DELAY_LABEL_KEYS, so toggling language never changes what the code compares against.
+════════════════════════════════ */
+const I18N = {
+  en: {
+    grpTabAll:'All POs', grpTabGroups:'PO Groups', grpTotal:'Total POs: {n}', grpSummary:'{groups} groups · {n} POs total', grpSearch:'Search PO No…', grpNone:'No purchase orders found.', grpLoading:'Loading…',
+    appTitle:'Supplier Portal', pageSubtitle:'Purchase Orders — review line items and acknowledge to confirm.',
+    filterAll:'All', filterAwaiting:'Awaiting Acknowledge', filterConfirmed:'Confirmed',
+    searchPlaceholder:'Search PO No…',
+    thPoNo:'PO No', thLines:'Lines', thTotalValue:'Total Value', thPoDate:'PO Date', thStatus:'Status',
+    loadingList:'Loading from Zoho Creator…', emptyList:'No purchase orders yet.',
+    detailTitle:'Purchase Order', backToQueue:'← Back to queue',
+    secPoSummary:'PO Summary', secLineItems:'Line Items — Read-Only', secStatusAudit:'Status & Audit',
+    secShipmentTiming:'Shipment Timing', secConversation:'Conversation',
+    fiTotalLines:'Total Lines', fiTotalValue:'Total PO Value', fiMixedShipping:'Mixed Shipping', fiPoDate:'PO Date', fiNotes:'Notes',
+    thPrNo:'PR No.', thSku:'SKU', thProduct:'Product', thQty:'Qty', thShipMode:'Shipping Mode', thTargetDelivery:'Target Delivery', thPriority:'Priority', thDelay:'Delay',
+    fieldEtd:'ETD', fieldEtdHint:'Estimated Time of Departure from your side',
+    fieldEta:'ETA', fieldEtaHint:"Estimated Time of Arrival at warehouse — should not be later than the buyer's Target Delivery above",
+    submitNoteAck:'Enter ETD/ETA above, then acknowledge to confirm this PO and notify the buyer.',
+    ackBtn:'Acknowledge PO', ackingBtn:'Acknowledging…',
+    chatPlaceholder:'Message the buyer…', chatSendBtn:'Send',
+    okBtn:'OK', confirmTitleAck:'Acknowledge this Purchase Order?',
+    confirmMsgAck:'This confirms you can fulfill this PO as listed and notifies the buyer. ETD/ETA above will be saved with it.',
+    cancelBtn:'Cancel', yesAckBtn:'Yes, Acknowledge',
+    statusDraft:'Draft', statusSent:'Awaiting Acknowledge', statusConfirmed:'Confirmed',
+    statTotalPos:'Total POs', statAllTime:'All time', statAwaitingAck:'Awaiting Acknowledge', statNeedsAction:'Needs your action',
+    statConfirmed:'Confirmed', statAcknowledged:'Acknowledged', statTotalValue:'Total Value', statAllPos:'All POs',
+    reviewBtn:'Review', viewBtn:'View',
+    yesLabel:'Yes', noLabel:'No', mixedShippingYes:'Yes', mixedShippingNo:'No',
+    delayOnTrack:'On Track', delayAtRisk:'At Risk', delayDelayed:'Delayed',
+    auditPoStatus:'PO Status', auditSentOn:'Sent On', auditAckOn:'Acknowledged On', auditCompOn:'Completed On',
+    targetRefPrefix:"Buyer's Target Delivery Date: ", targetRefNone:'No Target Delivery Date set by buyer yet.',
+    lockBannerAck:'✓ Acknowledged — this PO is confirmed.',
+    chatNoMessages:'No messages yet — start the conversation.', chatBuyerFallback:'Buyer',
+    toastTypeMessage:'Type a message first', toastApiUnavailable:'Creator API not available — widget must be uploaded to Creator.',
+    toastSendFailedCode:'Could not send message — code {code}', toastSendError:'Error sending message — see console',
+    toastPoNotFound:'PO not found', toastRecordNotFound:'Record not found', toastRecordNotLoaded:'Record not loaded yet',
+    toastAlreadyAck:'Already acknowledged.', toastEnterEtdEta:'Enter ETD and ETA before acknowledging.',
+    toastMissingPoNo:'Missing PO No — cannot acknowledge', toastSdkUnavailable:'Creator SDK not available',
+    toastAcknowledged:'Acknowledged.', toastAckFailedConsole:'Acknowledge failed — see console.',
+    toastAckFailedConsole2:'Acknowledge failed — see console',
+    toastTimeout:'Creator timeout — check widget permissions', toastLoadListFail:'Could not load purchase orders — see console'
+  },
+  zh: {
+    grpTabAll:'全部采购订单', grpTabGroups:'采购订单分组', grpTotal:'采购订单总数：{n}', grpSummary:'{groups} 个分组 · 共 {n} 张采购订单', grpSearch:'搜索采购订单号…', grpNone:'未找到采购订单。', grpLoading:'加载中…',
+    appTitle:'供应商门户', pageSubtitle:'采购订单 — 请查看项目明细并确认以进行验收。',
+    filterAll:'全部', filterAwaiting:'待确认', filterConfirmed:'已确认',
+    searchPlaceholder:'搜索采购订单号…',
+    thPoNo:'采购订单号', thLines:'项目数', thTotalValue:'总金额', thPoDate:'订单日期', thStatus:'状态',
+    loadingList:'正在从 Zoho Creator 加载…', emptyList:'目前没有采购订单。',
+    detailTitle:'采购订单', backToQueue:'← 返回列表',
+    secPoSummary:'订单概要', secLineItems:'项目明细 — 只读', secStatusAudit:'状态与记录',
+    secShipmentTiming:'发货时间', secConversation:'对话',
+    fiTotalLines:'总项目数', fiTotalValue:'订单总金额', fiMixedShipping:'混合运输', fiPoDate:'订单日期', fiNotes:'备注',
+    thPrNo:'PR编号', thSku:'SKU', thProduct:'产品', thQty:'数量', thShipMode:'运输方式', thTargetDelivery:'目标交货日期', thPriority:'优先级', thDelay:'延误',
+    fieldEtd:'预计发货日期(ETD)', fieldEtdHint:'您这边的预计发货时间',
+    fieldEta:'预计到达日期(ETA)', fieldEtaHint:'预计到达仓库的时间 — 不应晚于买方设定的目标交货日期',
+    submitNoteAck:'请先填写以上ETD/ETA，然后点击确认以确认此订单并通知买方。',
+    ackBtn:'确认订单', ackingBtn:'确认中…',
+    chatPlaceholder:'给买方留言…', chatSendBtn:'发送',
+    okBtn:'确定', confirmTitleAck:'确认此采购订单？',
+    confirmMsgAck:'这将确认您可以按清单履行此订单，并通知买方。以上的ETD/ETA将一并保存。',
+    cancelBtn:'取消', yesAckBtn:'是，确认',
+    statusDraft:'草稿', statusSent:'待确认', statusConfirmed:'已确认',
+    statTotalPos:'订单总数', statAllTime:'全部时间', statAwaitingAck:'待确认', statNeedsAction:'需要您处理',
+    statConfirmed:'已确认', statAcknowledged:'已确认', statTotalValue:'总金额', statAllPos:'所有订单',
+    reviewBtn:'审核', viewBtn:'查看',
+    yesLabel:'是', noLabel:'否', mixedShippingYes:'是', mixedShippingNo:'否',
+    delayOnTrack:'按时', delayAtRisk:'有风险', delayDelayed:'已延误',
+    auditPoStatus:'订单状态', auditSentOn:'发送日期', auditAckOn:'确认日期', auditCompOn:'完成日期',
+    targetRefPrefix:'买方目标交货日期：', targetRefNone:'买方尚未设定目标交货日期。',
+    lockBannerAck:'✓ 已确认 — 此订单已确认。',
+    chatNoMessages:'暂无消息 — 开始对话吧。', chatBuyerFallback:'买方',
+    toastTypeMessage:'请先输入消息内容', toastApiUnavailable:'Creator API 不可用 — 小组件必须先上传到 Creator。',
+    toastSendFailedCode:'发送失败 — 代码 {code}', toastSendError:'发送出错 — 请查看控制台',
+    toastPoNotFound:'未找到该采购订单', toastRecordNotFound:'未找到该记录', toastRecordNotLoaded:'记录尚未加载',
+    toastAlreadyAck:'已确认过。', toastEnterEtdEta:'请先填写ETD和ETA再确认。',
+    toastMissingPoNo:'缺少采购订单号 — 无法确认', toastSdkUnavailable:'Creator SDK 不可用',
+    toastAcknowledged:'已确认。', toastAckFailedConsole:'确认失败 — 请查看控制台。',
+    toastAckFailedConsole2:'确认失败 — 请查看控制台',
+    toastTimeout:'Creator 超时 — 请检查小组件权限', toastLoadListFail:'无法加载采购订单 — 请查看控制台'
+  }
+};
+let LANG = localStorage.getItem('supplierPortalLang') || 'en';
+function t(key, vars){
+  var s = (I18N[LANG] && I18N[LANG][key]) || (I18N.en && I18N.en[key]) || key;
+  if(vars){ Object.keys(vars).forEach(function(k){ s = s.replace('{'+k+'}', vars[k]); }); }
+  return s;
+}
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){ el.placeholder = t(el.getAttribute('data-i18n-placeholder')); });
+  document.documentElement.lang = LANG;
+}
+function updateLangToggleUI(){
+  $('langOptEn').classList.toggle('active', LANG==='en');
+  $('langOptZh').classList.toggle('active', LANG==='zh');
+}
+function refreshDynamicUI(){
+  applyStaticI18n();
+  updateLangToggleUI();
+  if(currentId){
+    const r = ALL_ROWS.find(x=>String(x.id)===currentId);
+    if(r) renderDetailShell(r);
+    if(_currentRaw) renderDetailFull(_currentRaw);
+  } else {
+    renderList();
+  }
+}
+function toggleLang(){
+  LANG = (LANG==='en') ? 'zh' : 'en';
+  localStorage.setItem('supplierPortalLang', LANG);
+  refreshDynamicUI();
+}
+
+const STATUS_META = {
+  "Draft": { cls:"draft", key:"statusDraft" },
+  "Sent": { cls:"sent", key:"statusSent" },
+  "Confirmed": { cls:"confirmed", key:"statusConfirmed" }
+};
+function badgeHtml(status){
+  const m = STATUS_META[status] || STATUS_META["Draft"];
+  return `<span class="badge-pill status-${m.cls}">${t(m.key)}</span>`;
+}
+/* FIXED 2026-07-15, per user: Final_Price_Supplier1/Line_Total_Supplier1 are
+   Selcted_Final_Cost-sourced, confirmed Currency(CNY) in the native form (what's paid to
+   Fenteng) — was showing ₱ (PHP), wrong currency entirely. Unambiguous single-currency
+   fix here (unlike PRs widget's own mixed-source finalPrice). */
+function fmtCurrency(n){
+  return '¥' + (Number(n)||0).toLocaleString('en-PH', {maximumFractionDigits:2});
+}
+function priorityHtml(p){
+  if(p==='HIGH') return `<span class="pri-high"><span class="priority-dot"></span>HIGH</span>`;
+  if(p==='MEDIUM'||p==='MED') return `<span class="pri-med"><span class="priority-dot"></span>MED</span>`;
+  if(p==='LOW') return `<span class="pri-low"><span class="priority-dot"></span>LOW</span>`;
+  return `<span style="color:var(--gray-300)">—</span>`;
+}
+function delayBadge(v){
+  if(!v || v==='—') return `<span style="color:var(--gray-300)">—</span>`;
+  const cls = v==='On Track'?'delay-ontrack':v==='At Risk'?'delay-atrisk':'delay-delayed';
+  const label = v==='On Track'?t('delayOnTrack'):v==='At Risk'?t('delayAtRisk'):(v==='Delayed'?t('delayDelayed'):v);
+  return `<span class="badge-pill ${cls}">&#9679; ${escapeHtml(label)}</span>`;
+}
+function escapeHtml(v){
+  return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+/* ════════════════════════════════
+   ALERT MODAL — same pattern as Fenteng-Inquiries/Fenteng-PR, replaces the ugly
+   browser-native alert() for surfacing real Creator validation errors.
+════════════════════════════════ */
+function showAlertModal(msg){
+  $('alertMsg').textContent = msg;
+  $('alertOverlay').classList.add('open');
+}
+function closeAlertModal(){
+  $('alertOverlay').classList.remove('open');
+}
+$('alertOkBtn').addEventListener('click', closeAlertModal);
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape'){
+    if($('alertOverlay').classList.contains('open')) closeAlertModal();
+    if($('confirmOverlay').classList.contains('open')) closeConfirm();
+  }
+});
+function closeConfirm(){ $('confirmOverlay').classList.remove('open'); }
+
+/* ════════════════════════════════
+   MAPPING — Sent_On/PO_Status are auto-stamped by approvePOFenteng/pr_to_po_grouping.txt
+   the instant a PR converts into this PO (confirmed via source), so every record here
+   already has Sent_On set from creation — status is really just Sent (default) or
+   Confirmed (after Acknowledge). "Draft" kept as a defensive fallback only, same as
+   the buyer-facing POs widget's own derivedStatus.
+════════════════════════════════ */
+function mapRow(raw){
+  var poStatusRaw = raw[F.poStatus] || '';
+  var status = poStatusRaw==='Confirmed' ? 'Confirmed' : (raw[F.sentOn] ? 'Sent' : 'Draft');
+  return {
+    id: raw.ID,
+    poNo: raw[F.poNo] || '',
+    totalValue: parseFloat(raw[F.totalValue])||0,
+    totalLines: parseInt(raw[F.totalLines],10)||0,
+    poDate: raw[F.poDate] || '',
+    status: status,
+    prNos: extractSubformRows(raw[SUBFORM_NAME]).map(function(ln){ return grpExtractVal(ln[F.prNo]); }).filter(Boolean)
+  };
+}
+
+/* ════════════════════════════════
+   LIST RENDER
+════════════════════════════════ */
+function renderStats(){
+  const counts = { Draft:0, Sent:0, Confirmed:0 };
+  ALL_ROWS.forEach(r => { if(counts[r.status]===undefined) counts[r.status]=0; counts[r.status]++; });
+  $('statStrip').innerHTML = `
+    <div class="stat-card"><div class="stat-label">${t('statTotalPos')}</div><div class="stat-value" id="statTotal">${ALL_ROWS.length}</div><div class="stat-sub">${t('statAllTime')}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('statAwaitingAck')}</div><div class="stat-value amber">${counts["Sent"]}</div><div class="stat-sub">${t('statNeedsAction')}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('statConfirmed')}</div><div class="stat-value green">${counts["Confirmed"]}</div><div class="stat-sub">${t('statAcknowledged')}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('statTotalValue')}</div><div class="stat-value gray">${fmtCurrency(ALL_ROWS.reduce((s,r)=>s+r.totalValue,0))}</div><div class="stat-sub">${t('statAllPos')}</div></div>
+  `;
+}
+
+function setFilter(f){
+  currentFilter = f;
+  document.querySelectorAll('#filterPills .pill').forEach(p=>p.classList.toggle('active', p.dataset.filter===f));
+  renderList();
+}
+
+function renderList(){
+  renderStats();
+  if(typeof CURRENT_MAIN_TAB!=='undefined' && CURRENT_MAIN_TAB==='groups') renderGroupCards();
+  const q = $('searchBox').value.trim().toLowerCase();
+  const filtered = ALL_ROWS.filter(r=>{
+    const matchFilter = currentFilter==="all" || r.status===currentFilter;
+    const matchSearch = !q || r.poNo.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+  const body = $('listBody');
+  const empty = $('emptyState');
+  if(filtered.length===0){ body.innerHTML=""; empty.style.display="block"; return; }
+  empty.style.display = "none";
+  body.innerHTML = filtered.map(listRowHtml).join('');
+}
+
+/* PR On Hold (Phase 3): a PO is never held as a whole, only its lines. Shows the
+   badge plus how many of its lines are affected. */
+function poHoldBadge(r){
+  var held = PRHold.heldOf(r.prNos);
+  if(!held.length) return '';
+  return PRHold.badge(held[0]) + ' <span style="font-size:11px;color:var(--gray-500)">' + held.length + '/' + (r.prNos||[]).length + '</span>';
+}
+function listRowHtml(r){
+    const m = STATUS_META[r.status] || STATUS_META["Draft"];
+    const needsAction = r.status==='Sent';
+    return `<tr onclick="openDetail('${r.id}')">
+      <td class="cell-inq">${escapeHtml(r.poNo)}</td>
+      <td>${r.totalLines}</td>
+      <td style="font-weight:600">${fmtCurrency(r.totalValue)}</td>
+      <td>${escapeHtml(r.poDate)}</td>
+      <td>${badgeHtml(r.status)}${poHoldBadge(r)}</td>
+      <td><button class="btn btn-status-${m.cls} btn-sm" onclick="event.stopPropagation(); openDetail('${r.id}')">${needsAction?t('reviewBtn'):t('viewBtn')}</button></td>
+    </tr>`;
+}
+
+function showList(){
+  $('view-list').style.display = "flex";
+  $('view-detail').style.display = "none";
+  currentId = null;
+  _currentRaw = null;
+  stopChatPolling();
+  loadFromCreator();
+}
+
+/* ════════════════════════════════
+   CONVERSATION (PO_Messages) — per-PO buyer↔supplier chat. Single thread only (this
+   supplier ↔ buyer) — mirrors UI/EndUser/INQs/app/index.html's chat feature, keyed by
+   PO_No instead of INQ_No. See that file's own copy of this comment for the full
+   architecture rationale (new plain form not a subform, polling not push, etc).
+════════════════════════════════ */
+let chatPollTimer = null;
+let chatCurrentPoNo = '';
+let chatLastSignature = '';
+function chatVal(v){ return (v==null) ? '' : String(v); }
+function chatEsc(s){ var d=document.createElement('div'); d.textContent=chatVal(s); return d.innerHTML; }
+function chatFmtDateTime(d){
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+}
+function startChatPolling(poNo){
+  stopChatPolling();
+  chatCurrentPoNo = poNo || '';
+  chatLastSignature = '';
+  $('chatInput').value = '';
+  $('chatSendBtn').disabled = true;
+  if(!chatCurrentPoNo) return;
+  loadChatMessages();
+  chatPollTimer = setInterval(loadChatMessages, 5000);
+}
+function stopChatPolling(){
+  if(chatPollTimer){ clearInterval(chatPollTimer); chatPollTimer = null; }
+}
+async function loadChatMessages(){
+  if(!chatCurrentPoNo || typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
+  try{
+    var criteria = 'PO_No=="'+chatCurrentPoNo.replace(/"/g,'\\"')+'" && Supplier=="'+SUPPLIER_SHORT+'"';
+    var resp = await ZOHO.CREATOR.DATA.getRecords({ app_name: REAL_APP_NAME, report_name: CHAT_REPORT, criteria: criteria, max_records: 500 });
+    var rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+    rows.sort(function(a,b){ return chatVal(a.Sent_On).localeCompare(chatVal(b.Sent_On)); });
+    var sig = rows.length + '|' + (rows.length ? chatVal(rows[rows.length-1].ID) : '');
+    if(sig === chatLastSignature) return;
+    chatLastSignature = sig;
+    renderChatMessages(rows);
+  } catch(err){
+    console.warn('[Chat] load failed:', err);
+    renderChatMessages([]);
+  }
+}
+function renderChatMessages(rows){
+  var box = $('chatMsgs');
+  var wasNearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 60;
+  if(!rows.length){
+    box.innerHTML = '<div class="chat-empty">' + t('chatNoMessages') + '</div>';
+    return;
+  }
+  box.innerHTML = rows.map(function(m){
+    var mine = chatVal(m.Sender_Role) === 'Supplier';
+    var name = chatEsc(chatVal(m.Sender_Name) || (mine ? SUPPLIER_LABEL : t('chatBuyerFallback')));
+    var time = chatEsc(chatVal(m.Sent_On));
+    return '<div class="chat-bubble '+(mine?'mine':'theirs')+'">'
+      + '<div class="chat-meta">'+name+'</div>'
+      + chatEsc(chatVal(m.Message))
+      + '<div class="chat-time">'+time+'</div>'
+      + '</div>';
+  }).join('');
+  if(wasNearBottom) box.scrollTop = box.scrollHeight;
+}
+async function sendChatMessage(){
+  var msg = $('chatInput').value.trim();
+  if(!msg){ showToast(t('toastTypeMessage')); return; }
+  if(!chatCurrentPoNo) return;
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.addRecords!=='function'){
+    showToast(t('toastApiUnavailable'));
+    return;
+  }
+  var btn = $('chatSendBtn');
+  btn.disabled = true;
+  try{
+    var payload = {
+      PO_No: chatCurrentPoNo,
+      Supplier: SUPPLIER_SHORT,
+      Sender_Role: 'Supplier',
+      Sender_Name: SUPPLIER_LABEL,
+      Message: msg,
+      Sent_On: chatFmtDateTime(new Date())
+    };
+    var resp = await ZOHO.CREATOR.DATA.addRecords({ app_name: REAL_APP_NAME, form_name: 'PO_Messages', payload: { data: payload } });
+    if(resp && resp.code === 3000){
+      $('chatInput').value = '';
+      $('chatSendBtn').disabled = true;
+      chatLastSignature = '';
+      loadChatMessages();
+    } else {
+      showToast(t('toastSendFailedCode',{code:(resp && resp.code)}));
+    }
+  } catch(err){
+    console.error('[Chat] send failed:', err);
+    showToast(t('toastSendError'));
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('chatInput').addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChatMessage(); }
+});
+$('chatInput').addEventListener('input', function(){
+  $('chatSendBtn').disabled = !$('chatInput').value.trim();
+});
+$('chatSendBtn').disabled = true;
+
+/* ════════════════════════════════
+   DETAIL
+════════════════════════════════ */
+/* Deep link from a notification click — same pattern as Fenteng-Inquiries'/
+   Fenteng-PR's/Fenteng-RR's checkDeepLinkParam(). Matches by PO_No (r.poNo,
+   from raw[F.poNo]) instead of the raw Zoho record ID, so a deleted/recreated
+   PO doesn't break the link. Page variable is named `fentengpoid` (Page
+   Builder -> Variables tab) — needs to be created on this widget's page if it
+   doesn't exist yet. */
+let deepLinkChecked = false;
+function checkDeepLinkParam(){
+  if(deepLinkChecked) return;
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams !== 'function') return;
+  deepLinkChecked = true;
+  ZOHO.CREATOR.UTIL.getQueryParams().then(function(params){
+    var poNo = params && params.fentengpoid;
+    if(!poNo) return;
+    var match = ALL_ROWS.find(function(r){ return r.poNo === poNo; });
+    if(match){
+      openDetail(match.id);
+    } else {
+      showToast(t('toastPoNotFound'));
+    }
+  }).catch(function(){});
+}
+
+function openDetail(id){
+  currentId = String(id);
+  const r = ALL_ROWS.find(x=>String(x.id)===currentId);
+  if(!r){ showToast(t('toastRecordNotFound')); return; }
+
+  $('view-list').style.display = "none";
+  $('view-detail').style.display = "block";
+  window.scrollTo(0,0);
+
+  /* Reset ETD/ETA on every open — new 2026-07-16, per user ("let's add this the ETA
+     and ETD so i can see, before i acknowledge") — moved from a last-second modal onto
+     the detail page itself so the supplier sees/fills it before clicking Acknowledge,
+     not just at confirm time. Must reset per-open so a value typed for one PO doesn't
+     leak into the next PO opened in the same session. */
+  $('ackEtd').value = ''; $('ackEta').value = '';
+  $('ackEtd').classList.remove('field-error'); $('ackEta').classList.remove('field-error');
+
+  renderDetailShell(r);
+  startChatPolling(r.poNo);
+
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.DATA && typeof ZOHO.CREATOR.DATA.getRecordById==='function'){
+    /* field_config defaults to 'detail_view' — confirmed elsewhere in this project this
+       silently omits subforms for reports like this one. 'all' pulls both layouts. Same
+       reason PO_Line_Items_Supplier1/2 must be added to this report's own "Configure
+       Fields" panel before the API returns it at all — same gotcha as Supplier_quotes. */
+    ZOHO.CREATOR.DATA.getRecordById({ report_name: REPORT_NAME, id: currentId, field_config: 'all' })
+      .then(function(resp){
+        if(resp && resp.code===3000 && resp.data){
+          _currentRaw = resp.data;
+          console.log('[PO Portal] FULL raw record (all keys):', JSON.stringify(resp.data));
+          renderDetailFull(resp.data);
+          loadShipmentTiming(resp.data[F.poNo]);
+        } else {
+          console.warn('[PO Portal] getRecordById non-3000:', resp && resp.code);
+        }
+      })
+      .catch(function(err){ console.warn('[PO Portal] getRecordById error:', JSON.stringify(err)); });
+  }
+}
+
+/* ════════════════════════════════
+   SHIPMENT TIMING — shows the REAL saved ETD/ETA on the detail page. ADDED 2026-07-16,
+   per user ("done acknowledged but no value in supplier's side") — the write itself
+   was always working (confirmed live, native Shipments form showed the real dates),
+   this widget just never fetched them back, so the page always showed blank inputs
+   even after a successful acknowledge. `PO_No.PO_No == ...` is a dot-chain criteria
+   into a lookup field (Shipments.PO_No -> Purchase_Order.PO_No) — Creator's REST
+   criteria docs support this shape, but it's UNCONFIRMED live in this specific
+   codebase; if it 400s/9xxxs, the fallback is a Deluge Custom Function wrapper
+   (same pattern as every other "widget can't reach this directly" case in this app).
+   Only ever fills the fields with a found value — never blocks the page if the
+   fetch fails, matches the same "fail open, blank stays blank" caution used
+   elsewhere in this app for defensive lookups. */
+/* <input type="date"> only accepts strict YYYY-MM-DD — Creator's getRecords date
+   format varies by report/field (ISO already seen in this app, also "DD-MMM-YYYY").
+   Normalize defensively so a format mismatch just leaves the field blank instead of
+   silently failing the whole assignment. */
+function toDateInputValue(s){
+  if(!s) return '';
+  s = String(s).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  var months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  var m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/);
+  if(m && months[m[2]]) return m[3]+'-'+months[m[2]]+'-'+(m[1].length<2?'0'+m[1]:m[1]);
+  var m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m2) return m2[3]+'-'+(m2[1].length<2?'0'+m2[1]:m2[1])+'-'+(m2[2].length<2?'0'+m2[2]:m2[2]);
+  return '';
+}
+function loadShipmentTiming(poNo){
+  if(!poNo) return;
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
+  var criteria = 'PO_No.PO_No == "' + String(poNo).replace(/"/g,'\\"') + '"';
+  ZOHO.CREATOR.DATA.getRecords({ report_name: SHIPMENTS_REPORT, criteria: criteria, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      if(!(resp && resp.code===3000 && Array.isArray(resp.data) && resp.data.length)) return;
+      var match = resp.data.find(function(s){ return (s.Supplier||'')===SUPPLIER_SHORT; }) || resp.data[0];
+      if(!match) return;
+      var etdV = toDateInputValue(match.ETD), etaV = toDateInputValue(match.ETA);
+      if(etdV){ $('ackEtd').value = etdV; }
+      if(etaV){ $('ackEta').value = etaV; }
+    })
+    .catch(function(err){ console.warn('[PO Portal] loadShipmentTiming failed:', JSON.stringify(err)); });
+}
+
+function renderDetailShell(r){
+  $('d-pono').textContent = r.poNo;
+  $('d-statstamp').innerHTML = badgeHtml(r.status);
+  $('s-lines').textContent = r.totalLines;
+  $('s-value').textContent = fmtCurrency(r.totalValue);
+  $('s-date').textContent = r.poDate || '—';
+  $('s-mixed').textContent = '—';
+  applyFieldStates(r);
+}
+
+function extractSubformRows(raw){
+  if(Array.isArray(raw)) return raw;
+  if(raw && typeof raw==='object'){
+    if(Array.isArray(raw.data)) return raw.data;
+    if(Array.isArray(raw.records)) return raw.records;
+    if(Object.keys(raw).length) return [raw];
+  }
+  return [];
+}
+
+function renderDetailFull(raw){
+  const r = mapRow(raw);
+  $('d-statstamp').innerHTML = badgeHtml(r.status);
+  $('s-mixed').textContent = (raw[F.mixedShipping]===true||raw[F.mixedShipping]==='true') ? t('mixedShippingYes') : t('mixedShippingNo');
+
+  const notes = raw[F.notes];
+  if(notes){ $('s-notes-lbl').style.display='block'; $('s-notes').style.display='block'; $('s-notes').textContent = notes; }
+  else { $('s-notes-lbl').style.display='none'; $('s-notes').style.display='none'; }
+
+  const lines = extractSubformRows(raw[SUBFORM_NAME]);
+  console.log('[PO Portal] renderDetailFull — line rows:', lines.length, JSON.stringify(lines));
+
+  /* ADDED — reference note in the Shipment Timing card so the supplier isn't guessing
+     ETD/ETA blind; pulls the same Target_Delivery already shown per-line in the table
+     above, deduped (usually one shared date across a PO's lines, but shown as-is if not). */
+  const targetDates = Array.from(new Set(lines.map(function(ln){ return (ln[F.targetDelivery]||'').trim(); }).filter(Boolean)));
+  const targetRefEl = $('s-target-ref');
+  if(targetRefEl){
+    targetRefEl.textContent = targetDates.length
+      ? t('targetRefPrefix') + targetDates.join(', ')
+      : t('targetRefNone');
+  }
+
+  const ltbody = $('d-line-tbody');
+  ltbody.innerHTML = lines.map(function(ln){
+    return `<tr>
+      <td><span style="color:var(--orange);font-weight:600">${escapeHtml(ln[F.prNo]||'—')}</span>${PRHold.badge(ln[F.prNo])}</td>
+      <td><span class="cell-sku">${escapeHtml(ln[F.sku]||'—')}</span></td>
+      <td>${escapeHtml(ln[F.item]||'—')}</td>
+      <td>${escapeHtml(ln[F.qty]||0)} ${escapeHtml(ln[F.unit]||'pcs')}</td>
+      <td><span class="badge-pill ship-badge">${escapeHtml(ln[F.shipMode]||'—')}</span></td>
+      <td>${escapeHtml(ln[F.targetDelivery]||'—')}</td>
+      <td>${priorityHtml(F.priority ? ln[F.priority] : null)}</td>
+      <td>${delayBadge(ln[F.delayStatus])}</td>
+    </tr>`;
+  }).join('');
+
+  $('d-audit').innerHTML = `
+    <div class="audit-row"><span class="audit-label">${t('auditPoStatus')}</span><span class="audit-value">${badgeHtml(r.status)}</span></div>
+    <div class="audit-row"><span class="audit-label">${t('auditSentOn')}</span><span class="audit-value">${escapeHtml(raw[F.sentOn]||'—')}</span></div>
+    <div class="audit-row"><span class="audit-label">${t('auditAckOn')}</span><span class="audit-value">${escapeHtml(raw[F.ackOn]||'—')}</span></div>
+    <div class="audit-row"><span class="audit-label">${t('auditCompOn')}</span><span class="audit-value">${escapeHtml(raw[F.compOn]||'—')}</span></div>
+  `;
+
+  applyFieldStates(r);
+}
+
+/* ════════════════════════════════
+   FIELD STATE — mirrors Disable_All_Fields_PO_Supplier1/2 (everything on this form is
+   permanently read-only for the supplier) plus the Report Action Item's own condition
+   (PO_Status_Supplier1/2 != "Confirmed") that hides the Acknowledge button once
+   already clicked.
+════════════════════════════════ */
+function applyFieldStates(r){
+  /* PR On Hold (Phase 3): acknowledging is per PO, so it stays open while at least
+     one line is still active. Only a PO whose lines are ALL held is blocked. */
+  const heldPrs = PRHold.heldOf(r.prNos);
+  const allHeld = heldPrs.length > 0 && heldPrs.length === (r.prNos||[]).length;
+  const canAcknowledge = r.status !== 'Confirmed' && !allHeld;
+  $('ackBtn').style.display = canAcknowledge ? 'inline-flex' : 'none';
+  $('submitNote').style.display = canAcknowledge ? 'block' : 'none';
+  $('ackEtd').disabled = !canAcknowledge;
+  $('ackEta').disabled = !canAcknowledge;
+
+  const banner = $('lockBanner');
+  if(heldPrs.length){
+    banner.style.display = 'flex';
+    banner.innerHTML = '&#9208;&nbsp; ' + escapeHtml(PRHold.text(heldPrs[0])) + ' (' + escapeHtml(heldPrs.join(', ')) + ')' + (r.status === 'Confirmed' ? '<br>' + t('lockBannerAck') : '');
+  } else if(r.status === 'Confirmed'){
+    banner.style.display = 'flex';
+    banner.innerHTML = t('lockBannerAck');
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+/* ════════════════════════════════
+   TOAST
+════════════════════════════════ */
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+/* ════════════════════════════════
+   ACKNOWLEDGE — calls the Custom API (Report Action Items can't be invoked via any
+   Creator API/SDK call, same limitation documented for PR_Approved). CHANGED
+   2026-07-16, per user request: Shipments/Receiving/Books PO now get built at
+   PR_Approved time, not here — this only stamps PO_Status/Acknowledge_On and writes
+   the now-mandatory ETD/ETA onto the Shipment PR_Approved already created. See
+   acknowledge_po_custom_api.txt's own header note for the full writeup.
+════════════════════════════════ */
+function confirmAcknowledge(){
+  if(!_currentRaw){ showToast(t('toastRecordNotLoaded')); return; }
+  if((_currentRaw[F.poStatus]||'') === 'Confirmed'){ showToast(t('toastAlreadyAck')); return; }
+  var ackPrNos = mapRow(_currentRaw).prNos, ackHeld = PRHold.heldOf(ackPrNos);
+  if(ackHeld.length && ackHeld.length === ackPrNos.length){ showToast(PRHold.text(ackHeld[0])); return; }
+  /* Mandatory ETD/ETA, per user request 2026-07-16 — now inline on the detail page
+     (Shipment Timing card) instead of inside the modal, so it's visible before this
+     click, not collected at the last second. Validated here, again server-side in
+     acknowledgePOFenteng (see acknowledge_po_custom_api.txt) since a Custom API call
+     can be hit directly. */
+  var etdOk = !!$('ackEtd').value, etaOk = !!$('ackEta').value;
+  $('ackEtd').classList.toggle('field-error', !etdOk);
+  $('ackEta').classList.toggle('field-error', !etaOk);
+  if(!etdOk || !etaOk){ showToast(t('toastEnterEtdEta')); return; }
+  $('confirmOverlay').classList.add('open');
+  $('confirmAckBtn').onclick = function(){
+    closeConfirm();
+    doAcknowledge($('ackEtd').value, $('ackEta').value);
+  };
+}
+
+function doAcknowledge(etd, eta){
+  const poNo = _currentRaw ? (_currentRaw[F.poNo]||'') : '';
+  if(!poNo){ showToast(t('toastMissingPoNo')); return; }
+
+  const btn = $('ackBtn');
+  btn.textContent = t('ackingBtn'); btn.disabled = true;
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    btn.textContent=t('ackBtn'); btn.disabled=false;
+    showToast(t('toastSdkUnavailable')); return;
+  }
+
+  ZOHO.CREATOR.DATA.invokeCustomApi({
+    api_name: CUSTOM_API_NAME_ACK,
+    http_method: 'POST',
+    content_type: 'application/json',
+    payload: { poNoSupplier1: poNo, etd: etd, eta: eta },
+    public_key: CUSTOM_API_KEY_ACK
+  }).then(function(resp){
+    /* Confirmed live 2026-07-09 via the Custom API's own Summary page: Standard
+       response wraps the function's returned Map under "result", not "data"
+       ({"code":3000,"result":{...}}) — check both, "data" first for safety since
+       other invokeCustomApi call shapes in this project were built defensively
+       against that key before this was confirmed. */
+    var result = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+    console.log('[PO Portal] acknowledge resp:', JSON.stringify(result));
+    if(result && (result.status==='success' || result.status==='already')){
+      showToast(result.message || t('toastAcknowledged'));
+      showList();
+    } else {
+      btn.textContent=t('ackBtn'); btn.disabled=false;
+      showAlertModal((result && result.message) || t('toastAckFailedConsole'));
+    }
+  }).catch(function(err){
+    console.error('[PO Portal] acknowledge error:', JSON.stringify(err));
+    btn.textContent=t('ackBtn'); btn.disabled=false;
+    showToast(t('toastAckFailedConsole2'));
+  });
+}
+
+/* ════════════════════════════════
+   CREATOR SDK LOAD
+════════════════════════════════ */
+function loadFromCreator(){
+  /* PR On Hold (Phase 3): refresh the held-PR map on every list load, then repaint. */
+  PRHold.load(function(){ if(ALL_ROWS.length) renderList(); });
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams==='function'){
+    ZOHO.CREATOR.UTIL.getInitParams().then(function(params){
+      if(params && params.appLinkName) REAL_APP_NAME = params.appLinkName;
+      if(params && params.scope) ACCOUNT_OWNER = params.scope;
+      console.log('[Init] Resolved app_name:', REAL_APP_NAME, 'owner:', ACCOUNT_OWNER);
+    }).catch(function(err){ console.warn('[Init] getInitParams failed, keeping defaults:', err && err.message || err); });
+  }
+
+  const _timeout = setTimeout(function(){
+    console.warn('[PO Portal] getRecords timed out');
+    showToast(t('toastTimeout'));
+    ALL_ROWS = []; renderList();
+  }, 10000);
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    clearTimeout(_timeout);
+    console.warn('[PO Portal] SDK not available');
+    ALL_ROWS = []; renderList();
+    return;
+  }
+
+  const gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: REPORT_NAME, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      clearTimeout(_timeout);
+      console.log('[PO Portal] getRecords code:', resp && resp.code, '| records:', resp && resp.data && resp.data.length);
+      if(resp && resp.code===3000){
+        const raw = Array.isArray(resp.data) ? resp.data : [];
+        ALL_ROWS = raw.map(mapRow);
+      } else if(resp && resp.code===9220){
+        ALL_ROWS = []; // empty report, not a real error
+      } else {
+        console.warn('[PO Portal] getRecords non-3000:', resp && resp.code);
+        ALL_ROWS = [];
+      }
+      renderList();
+      checkDeepLinkParam();
+    })
+    .catch(function(err){
+      clearTimeout(_timeout);
+      /* A genuinely empty report (code 9220) comes back as an HTTP 400 — the SDK
+         promise REJECTS instead of resolving. See reference-deluge-quirks memory
+         (found 2026-07-09 building Fenteng-PR) — same fix needed here. */
+      var isEmptyReport = false;
+      try{
+        var text = err && (err.responseText || (err.content && err.content.responseText));
+        var parsed = text ? JSON.parse(text) : null;
+        if(parsed && (parsed.code === 9220 || String(parsed.code) === '9220')) isEmptyReport = true;
+      } catch(e){ /* not JSON, fall through to real-error handling */ }
+      if(isEmptyReport){
+        console.log('[PO Portal] getRecords: empty report (9220), not a real error');
+        ALL_ROWS = []; renderList();
+        return;
+      }
+      console.error('[PO Portal] getRecords error:', JSON.stringify(err));
+      showToast(t('toastLoadListFail'));
+      ALL_ROWS = []; renderList();
+    });
+}
+
+/* ════════════════════════════════
+   GROUPS TAB — ADDED 2026-09-21, per user ("Lagyan mo ng groupings ang PO, shipment at
+   replacement"). Same idea as the sibling PR widget's PR Groups tab: every row is
+   clustered by the buyer-side Sales Order it traces back to, but the SO# itself is
+   NEVER rendered (card header is just "Total ...: N"), and it is deliberately not
+   searchable either. Resolution chain: this row's PR No(s) -> All_Purchase_Request.
+   Sales_Order (one lazy fetch, first time the tab is opened; same call the PR widget
+   already makes). RR additionally carries SO_No directly on its Replacement_Summary
+   row, which wins over the lookup. Rows that touch several SOs are grouped with other
+   rows that touch the exact same SO set; rows with no resolvable SO (e.g. stock
+   replacements with no PR) show as their own single-row card, never dropped.
+════════════════════════════════ */
+var GRP_PR_NO_TO_SO = {};
+var grpSoMapLoaded = false;
+function grpExtractVal(x){
+  if(x===null||x===undefined) return '';
+  if(typeof x==='object') return String(x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'').trim();
+  return String(x).trim();
+}
+function grpLoadSoMap(cb){
+  if(grpSoMapLoaded){ cb(); return; }
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    grpSoMapLoaded = true; cb(); return;
+  }
+  ZOHO.CREATOR.DATA.getRecords({ report_name: 'All_Purchase_Request', page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      if(resp && resp.code===3000 && Array.isArray(resp.data)){
+        resp.data.forEach(function(r){
+          var pr = grpExtractVal(r['PR_No']);
+          var so = grpExtractVal(r['Sales_Order']);
+          if(pr) GRP_PR_NO_TO_SO[pr] = so || '';
+        });
+      }
+      grpSoMapLoaded = true; cb();
+    })
+    .catch(function(err){
+      console.warn('[Groups] SO lookup failed (rows fall back to standalone cards):', err);
+      grpSoMapLoaded = true; cb();
+    });
+}
+
+var CURRENT_MAIN_TAB = 'all';
+function switchMainTab(tab){
+  CURRENT_MAIN_TAB = tab;
+  document.querySelectorAll('.tab-btn2').forEach(function(b){ b.classList.toggle('active', b.dataset.maintab===tab); });
+  $('panel-main-all').style.display = tab==='all' ? '' : 'none';
+  $('panel-main-groups').style.display = tab==='groups' ? '' : 'none';
+  if(tab==='groups'){
+    $('grpCardsWrap').innerHTML = '<div class="grp-empty">'+t('grpLoading')+'</div>';
+    grpLoadSoMap(function(){ renderGroupCards(); });
+  }
+}
+
+function grpSoList(r){
+  var set = {};
+  (r.prNos||[]).forEach(function(p){ var so = GRP_PR_NO_TO_SO[p]; if(so) set[so] = true; });
+  return Object.keys(set).sort();
+}
+var GRP_COLGROUP = '<colgroup><col style="width:22%"><col style="width:10%"><col style="width:22%"><col style="width:18%"><col style="width:18%"><col style="width:10%"></colgroup>';
+function renderGroupCards(){
+  var wrap = $('grpCardsWrap');
+  if(!wrap) return;
+  var q = (($('grpSearch') && $('grpSearch').value)||'').toLowerCase().trim();
+  var map = {};
+  ALL_ROWS.forEach(function(r){
+    if(q && [r.poNo].join(' ').toLowerCase().indexOf(q)===-1) return;
+    var sos = grpSoList(r);
+    var key = sos.length ? ('SO::'+sos.join('|')) : ('STANDALONE::'+r.id);
+    if(!map[key]) map[key] = { standalone: !sos.length, key: key, rows: [] };
+    map[key].rows.push(r);
+  });
+  var buckets = Object.keys(map).map(function(k){ return map[k]; });
+  buckets.sort(function(a,b){
+    if(a.standalone !== b.standalone) return a.standalone ? 1 : -1;
+    return a.key.localeCompare(b.key);
+  });
+  var groupCount = buckets.filter(function(b){ return !b.standalone; }).length;
+  var total = buckets.reduce(function(s,b){ return s+b.rows.length; }, 0);
+  $('grpSummary').textContent = t('grpSummary',{groups:groupCount, n:total});
+  if(!buckets.length){
+    wrap.innerHTML = '<div class="grp-empty">'+t('grpNone')+'</div>';
+    return;
+  }
+  var head = '<thead><tr>'+['thPoNo','thLines','thTotalValue','thPoDate','thStatus'].map(function(k){ return '<th>'+t(k)+'</th>'; }).join('')+'<th></th></tr></thead>';
+  wrap.innerHTML = buckets.map(function(b){
+    return '<div class="grp-card">'
+      +'<div class="grp-card-hdr"><div class="grp-card-title">'+t('grpTotal',{n:b.rows.length})+'</div></div>'
+      +'<div class="table-wrap"><table class="grp-table">'+GRP_COLGROUP+head
+      +'<tbody>'+b.rows.map(listRowHtml).join('')+'</tbody></table></div>'
+    +'</div>';
+  }).join('');
+}
+
+applyStaticI18n();
+updateLangToggleUI();
+loadFromCreator();
+</script>
+</body>
+</html>

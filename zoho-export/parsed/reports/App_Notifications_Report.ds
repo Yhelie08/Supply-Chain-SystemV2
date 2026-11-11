@@ -1,0 +1,14 @@
+
+			displayName = "App_Notifications_Report"
+			show all rows from App_Notifications    
+			(
+				Recipient_Email
+				Notification_Type
+				Message
+				Created_On
+				Read
+				Target_URL
+				Source_Record_No
+				Source_Record_ID
+			)
+		

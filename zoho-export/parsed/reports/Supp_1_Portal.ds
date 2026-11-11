@@ -1,0 +1,35 @@
+
+			displayName = "Supp 1 Portal"
+			show all rows from Inquiry_Form  [Suppliers.ID == 4662244000012469015]  
+			(
+				INQ_No as "INQ No."
+				created_date as "Created Date"
+				quote_group as "Quote Group"
+				sku as "SKU"
+				description as "Description"
+				quantity as "Quantity"
+				unit as "Unit"
+				target_date as "Target Date"
+				Waiting_On as "Waiting On"
+				Addtional_Description
+				Attachments
+				Open_to_similar_design as "Open to similar design"
+				Product_Sample as "Product Sample"
+				D_Image as "3D Image"
+				Technical_Drawing as "Technical Drawing"
+				Specification
+				Supplier_Selected as "Supplier Selected"
+				Availability as "Availability Confirmed"
+				Final_Price_Exists as "Final Price Exists"
+				Collateral_Comple_NA as "Collateral Comple/NA"
+				SRP_Approved as "SRP Approved"
+				Select_Final_Cost as "Select Final Cost"
+				SRP_Approved1 as "SRP (Approved)"
+				SRP_Status as "SRP Status"
+				Sales_Owner as "Sales Owner"
+				Customer
+				Items
+				Suppliers
+				Suppliers.ID
+			)
+		

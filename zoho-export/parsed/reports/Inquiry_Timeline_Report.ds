@@ -1,0 +1,12 @@
+
+			displayName = "Inquiry_Timeline Report"
+			show all rows from Inquiry_Timeline    
+			(
+				INQ_No
+				Action_Title as "Action"
+				Action_Type
+				Changes
+				Actor
+				Logged_On
+			)
+		

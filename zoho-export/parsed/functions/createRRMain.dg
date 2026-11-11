@@ -1,0 +1,256 @@
+// map createRRMain(String exceptionId)   [.ds lines 30669-30925]
+response = Map();
+r = Exceptions[ID == exceptionId.toLong()];
+if(r == null)
+{
+    response.put("status","error");
+    response.put("message","Exception not found.");
+    return response;
+}
+groupKeys = List();
+groupSku = Map();
+groupItem = Map();
+groupSupplier = Map();
+groupType = Map();
+groupQty = Map();
+// ADDED 2026-08-08, mirrored from create_rr_button.txt Action 1 — FIXED per
+// that file's own code review: RR_Spare_Parts must hold a PAIRED "Type: Qty"
+// string (comma-joined across rows), matching checker_checklist_qc_sync.txt's
+// own QC-side aggregation and what Fenteng-RR/Tony-RR/ExceptionControl already
+// parse (split on "," then ":" per segment). Built per-row, inside this same
+// loop, so type and qty can never misalign across multiple physical units of
+// the same SKU. groupSpareType (bare type names, no qty) is kept for
+// RR_Item_to_Replace.
+groupSpareType = Map();
+groupSparePairs = Map();
+for each  pc in r.Product_Context1
+{
+    /* ADDED 2026-07-21, mirrored from create_rr_button.txt — see that file's
+       own comment for the full reasoning. */
+    if(pc.Type_field == "Damage" && pc.Repairable == "Yes" && pc.Repair_Outcome != "Not Fixed")
+    {
+        continue;
+    }
+    gKey = pc.SKU + "||" + pc.Type_field;
+    if(!groupKeys.contains(gKey))
+    {
+        groupKeys.add(gKey);
+        groupSku.put(gKey,pc.SKU);
+        groupItem.put(gKey,pc.Item);
+        groupSupplier.put(gKey,pc.Supplier);
+        groupType.put(gKey,pc.Type_field);
+        groupQty.put(gKey,0);
+        groupSpareType.put(gKey,"");
+        groupSparePairs.put(gKey,"");
+    }
+    groupQty.put(gKey,groupQty.get(gKey) + ifnull(pc.Qty,0));
+    pcQtyRaw = pc.Quantity_of_damage_spare_s + "";
+    if(pcQtyRaw != "" && pcQtyRaw != "null")
+    {
+        // CHANGED 2026-08-08d, per user request ("separate quantities per
+        // sparepart needed, per line item") — Quantity_of_damage_spare_s now
+        // holds the FULL "Type: Qty, Type: Qty" pairs directly (the widget
+        // builds one qty box per checked type), so this row's own contribution
+        // is parsed straight out of it instead of reconstructed from one
+        // shared qty. "Others" is still resolved to the officer's own typed
+        // Spare_Part_Type_Other text per segment.
+        pcOtherText = pc.Spare_Part_Type_Other + "";
+        segs = pcQtyRaw.toList(",");
+        pcSpareType = "";
+        pcPairsThisRow = "";
+        for each  seg in segs
+        {
+            segTrim = seg.trim();
+            segType = segTrim.getPrefix(":").trim();
+            segQty = segTrim.getSuffix(":").trim();
+            if(segQty == "" || segQty == "null")
+            {
+                segQty = "—";
+            }
+            if(segType == "Others" && pcOtherText != "" && pcOtherText != "null")
+            {
+                segType = pcOtherText;
+            }
+            if(pcSpareType == "")
+            {
+                pcSpareType = segType;
+            }
+            else
+            {
+                pcSpareType = pcSpareType + ", " + segType;
+            }
+            segPair = segType + ": " + segQty;
+            if(pcPairsThisRow == "")
+            {
+                pcPairsThisRow = segPair;
+            }
+            else
+            {
+                pcPairsThisRow = pcPairsThisRow + ", " + segPair;
+            }
+        }
+        existingSpareType = groupSpareType.get(gKey);
+        if(existingSpareType == "")
+        {
+            groupSpareType.put(gKey,pcSpareType);
+        }
+        else
+        {
+            groupSpareType.put(gKey,existingSpareType + ", " + pcSpareType);
+        }
+        existingPair = groupSparePairs.get(gKey);
+        if(existingPair == "")
+        {
+            groupSparePairs.put(gKey,pcPairsThisRow);
+        }
+        else
+        {
+            groupSparePairs.put(gKey,existingPair + ", " + pcPairsThisRow);
+        }
+    }
+}
+existingPairs = List();
+existingRRsForExc = Replacement_Request[Source_Exception_No == r.Exception_No];
+for each  exrr in existingRRsForExc
+{
+    for each  srow in exrr.Replacement_Summary
+    {
+        existingPairs.add(srow.SKU + "||" + exrr.Source_Type);
+    }
+}
+maxNum = 0;
+existingRRsAll = Replacement_Request[ID != 0];
+for each  rr in existingRRsAll
+{
+    rrNoStr = rr.RR_No;
+    if(rrNoStr != null && rrNoStr != "")
+    {
+        numPart = rrNoStr.removeFirstOccurence("RR-");
+        num = numPart.toLong();
+        if(num > maxNum)
+        {
+            maxNum = num;
+        }
+    }
+}
+createdCount = 0;
+for each  gKey in groupKeys
+{
+    gSku = groupSku.get(gKey);
+    gType = groupType.get(gKey);
+    sourceType = "";
+    if(r.Source_Module == "Receiving")
+    {
+        if(gType == "Damage")
+        {
+            sourceType = "Receiving Damage";
+        }
+        else
+        {
+            sourceType = "Receiving Missing";
+        }
+    }
+    else if(r.Source_Module == "Fulfillment QC")
+    {
+        sourceType = "QC Failure";
+    }
+    else
+    {
+        sourceType = "Management Decision";
+    }
+    pairKey = gSku + "||" + sourceType;
+    if(existingPairs.contains(pairKey))
+    {
+        continue;
+    }
+    maxNum = maxNum + 1;
+    newNum = maxNum;
+    if(newNum < 10)
+    {
+        newRRNo = "RR-0000" + newNum;
+    }
+    else if(newNum < 100)
+    {
+        newRRNo = "RR-000" + newNum;
+    }
+    else if(newNum < 1000)
+    {
+        newRRNo = "RR-00" + newNum;
+    }
+    else if(newNum < 10000)
+    {
+        newRRNo = "RR-0" + newNum;
+    }
+    else
+    {
+        newRRNo = "RR-" + newNum;
+    }
+    /* ADDED 2026-07-20, mirrored from create_rr_button.txt — see that file's own
+       NOTES for the full reasoning (Clone Shipment mechanism reads these safely
+       instead of a subform on a criteria-queried record). */
+    newRRID = insert into Replacement_Request
+    [
+        RR_No=newRRNo
+        RR_Date=zoho.currentdate
+        RR_Status="Open"
+        Source_Type=sourceType
+        Source_Exception_No=r.Exception_No
+        Last_Updated=zoho.currenttime
+        Added_User=zoho.loginuser
+        RR_Supplier=groupSupplier.get(gKey)
+        RR_SKU=gSku
+        RR_Item_Name=groupItem.get(gKey)
+        RR_Qty_Value=groupQty.get(gKey)
+        RR_PR_No=r.Receiving_Line_ID
+        RR_Item_to_Replace=groupSpareType.get(gKey)
+        RR_Damage_Qty=groupQty.get(gKey)
+        RR_Spare_Parts=groupSparePairs.get(gKey)
+    ];
+    newRR = Replacement_Request[ID == newRRID];
+    newRow = Replacement_Request.Replacement_Summary();
+    newRow.PR_No=r.Receiving_Line_ID;
+    newRow.Supplier=groupSupplier.get(gKey);
+    newRow.SKU=gSku;
+    newRow.Item=groupItem.get(gKey);
+    newRow.SO_No=r.Sales_Order;
+    newRow.Original_PO_No=r.PO_No;
+    newRow.Priority=r.Priority;
+    newRow.RR_Qty=groupQty.get(gKey);
+    newRR.Replacement_Summary.insert(newRow);
+    createdCount = createdCount + 1;
+    /* ADDED 2026-07-20, mirrored from create_rr_button.txt Action 1 — Missing_SKUs
+       stamp / new replacement PO creation, moved here (officer-triggered Create RR)
+       from approve_rr_custom_api.txt (was supplier-triggered Approve RR). */
+    if(sourceType == "Receiving Missing")
+    {
+        targetPOsRR = Purchase_Order[PO_No == r.PO_No];
+        for each  poRR in targetPOsRR
+        {
+            poRR.Missing_SKUs=gSku;
+        }
+    }
+    else
+    {
+        /* CHANGED 2026-07-20, mirrored from create_rr_button.txt — see that file's
+           own NOTES for the full reasoning. No new PO created — stamps Damage_SKUs
+           on the ORIGINAL PO instead, same pattern as the Missing branch above. */
+        targetPOsRRDmg = Purchase_Order[PO_No == r.PO_No];
+        for each  poRRDmg in targetPOsRRDmg
+        {
+            poRRDmg.Damage_SKUs=gSku;
+        }
+    }
+}
+if(createdCount > 0)
+{
+    r.Exception_Status="Under Review";
+}
+messageText = "No new RR needed — every item already has one.";
+if(createdCount > 0)
+{
+    messageText = createdCount + " RR(s) created.";
+}
+response.put("status","success");
+response.put("created",createdCount);
+response.put("message",messageText);
+return response;

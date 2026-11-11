@@ -1,0 +1,25 @@
+
+			displayName = "All Settings"
+			show all rows from Forecast_Settings    
+			(
+				Air_Transit_Min as " Air Transit Min (Days)"
+				Air_Transit_Max as " Air Transit Max (Days)"
+				Air_Customs_to_WH_Min as "Air Customs to WH Min (Days)"
+				Air_Customs_to_WH_Max as " Air Customs to WH Max (Days)"
+				LCL_Transit_Min as "LCL Transit Min (Days)"
+				LCL_Transit_Max as "LCL Transit Max (Days)"
+				LCL_Customs_to_WH_Min as "LCL Customs to WH Min (Days)"
+				LCL_Customs_to_WH_Max as "LCL Customs to WH Max (Days)"
+				FCL_Transit_Min as " FCL Transit Min (Days)"
+				FCL_Transit_Max as "FCL Transit Max (Days)"
+				FCL_Customs_to_WH_Min as "FCL Customs to WH Min (Days)"
+				FCL_Customs_to_WH_Max as "FCL Customs to WH Max (Days)"
+				Prep_Days_Thru_QC as "Prep Days Thru QC"
+				Delivery_Days as "Delivery Days"
+				Local_Transit_Days as "Local Transit Days"
+				Local_Customs_Days as "Local Customs Days"
+				Re_anchor_on_Latest_Real_Event as "Re-anchor on Latest Real Event"
+				Include_Supplier_Lead_Time as "Include Supplier Lead Time"
+				Horizon_Weeks as "Horizon (Weeks)"
+			)
+		

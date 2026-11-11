@@ -1,0 +1,158 @@
+// form: SA_Geocode_Address  form=Service_Appointment_Form event=on add or edit on success  [.ds line 42244]
+    if(input.Customer_Address != null && input.Customer_Address != "" && input.Delivery_Latitude == null || input.Delivery_Latitude == "")
+{
+    rec = Service_Appointment_Form[ID == input.ID];
+    addrRaw = input.Customer_Address;
+    // Truncate at "Corner"/"Cor." — PH's common way of writing intersection addresses
+    // (e.g. "Malaya St. Corner Banawe St. Barangay St Peter Quezon City"). Confirmed
+    // live 2026-07-18 that just removing the WORD "Corner" (keeping the 2nd street name
+    // in place) still wasn't enough — Geoapify's parser stayed confused enough that
+    // candidates spanned totally different unrelated cities. Dropping the 2nd street +
+    // everything after it ENTIRELY (keep only the housenumber + primary street) gives
+    // Geoapify a clean, unambiguous single-street query instead — real tradeoff: loses
+    // whatever barangay/city text happened to be positioned after the corner phrase in
+    // the raw text, but City gets re-appended from the separate input.City field right
+    // below regardless, and a true intersection point was never fully recoverable this
+    // way anyway (this gets "the right street, right city," not the literal corner).
+    // REVERTED 2026-07-18: a 2-street midpoint-average version was tried per user
+    // request, tested live, and confirmed LESS accurate than this single-street version
+    // — reverted back to this. Not re-attempting the midpoint approach without a
+    // concrete new idea; the single-street truncation is the confirmed-best version.
+    // getPrefix/contains used (not replaceAll) since we want everything BEFORE the
+    // marker, not just the marker removed — only applied when the marker is actually
+    // present, each casing checked explicitly (Deluge string matching is case-sensitive).
+    if(addrRaw.contains(" Corner "))
+    {
+        addrRaw = addrRaw.getPrefix(" Corner ");
+    }
+    else if(addrRaw.contains(" corner "))
+    {
+        addrRaw = addrRaw.getPrefix(" corner ");
+    }
+    else if(addrRaw.contains(" CORNER "))
+    {
+        addrRaw = addrRaw.getPrefix(" CORNER ");
+    }
+    else if(addrRaw.contains(" Cor. "))
+    {
+        addrRaw = addrRaw.getPrefix(" Cor. ");
+    }
+    else if(addrRaw.contains(" cor. "))
+    {
+        addrRaw = addrRaw.getPrefix(" cor. ");
+    }
+    else if(addrRaw.contains(" COR. "))
+    {
+        addrRaw = addrRaw.getPrefix(" COR. ");
+    }
+    // Dedup guard: Customer_Address often already ends with the City text (confirmed
+    // live, e.g. "216 Lumawig St. Bagong Barrio Caloocan City") — appending City again
+    // produced a duplicated "caloocan city caloocan city" in Geoapify's own parsed
+    // query, confirmed live via a direct API check to actively hurt matching. Only
+    // append if not already present (case-insensitive).
+    if(input.City != null && input.City != "" && addrRaw.toLowerCase().contains(input.City.toLowerCase()) == false)
+    {
+        addrRaw = addrRaw + ", " + input.City;
+    }
+    addrRaw = addrRaw + ", Philippines";
+    // Basic query encoding — not a full URL-encode, sufficient for typical PH
+    // street-address text (spaces/commas). NOTE if addresses ever contain other
+    // special characters (&, ?, %) this needs a real encode function instead.
+    addrQuery = addrRaw.replaceAll(" ","%20").replaceAll(",","%2C").replaceAll("#","%23");
+    geoapifyKey = "6f9b26dbee0343928a891616ce088e91";
+    info "[Geocode] querying: " + addrRaw;
+    response = invokeurl
+    [
+        url :"https://api.geoapify.com/v1/geocode/search?text=" + addrQuery + "&format=json&apiKey=" + geoapifyKey
+        type :GET
+    ];
+    info "[Geocode] raw response: " + response;
+    found = false;
+    if(response != null)
+    {
+        results = response.get("results");
+        if(results != null && results.size() > 0)
+        {
+            // Score each candidate instead of blindly taking index 0 — City match
+            // weighted higher (+2) than barangay/neighbourhood text match (+1), highest
+            // score wins (first-seen wins ties). CONFIRMED both matter independently,
+            // live 2026-07-18: (a) Caloocan alone has 4 streets all named "Pag-asa
+            // Street" in different barangays, all tied at identical confidence 0.9 —
+            // needed the barangay-text tier to land on the right one; (b) "Malaya
+            // Street" is common enough that a barangay-only match still isn't enough —
+            // candidates spanned totally different CITIES (Marikina/Mandaluyong/QC)
+            // with none matching on barangay text either, so City needed its own,
+            // higher-weighted tier to at least rule out the wrong-city candidates
+            // first.
+            addrLower = addrRaw.toLowerCase();
+            cityLower = "";
+            if(input.City != null)
+            {
+                cityLower = input.City.toLowerCase();
+            }
+            first = results.get(0);
+            bestScore = -1;
+            for each  cand in results
+            {
+                score = 0;
+                candCity = cand.get("city");
+                nb = cand.get("neighbourhood");
+                sub = cand.get("suburb");
+                if(candCity != null && candCity != "" && cityLower != "" && candCity.toLowerCase().contains(cityLower) || cityLower.contains(candCity.toLowerCase()))
+                {
+                    score = score + 2;
+                }
+                if(nb != null && nb != "" && addrLower.contains(nb.toLowerCase()))
+                {
+                    score = score + 1;
+                }
+                else if(sub != null && sub != "" && addrLower.contains(sub.toLowerCase()))
+                {
+                    score = score + 1;
+                }
+                if(score > bestScore)
+                {
+                    bestScore = score;
+                    first = cand;
+                }
+            }
+            info "[Geocode] " + results.size() + " candidates, best match score=" + bestScore;
+            latVal = first.get("lat");
+            lonVal = first.get("lon");
+            resultType = first.get("result_type");
+            rankInfo = first.get("rank");
+            confidence = 0.0;
+            if(rankInfo != null && rankInfo.get("confidence") != null)
+            {
+                confidence = rankInfo.get("confidence").toDecimal();
+            }
+            // Geoapify silently falls back to a city/district-centroid match when it
+            // can't find the real street — confirmed live 2026-07-18 (TEST-SO-DMS-005,
+            // "Lumawig St." isn't indexed in Geoapify's sources at all: 2 differently-
+            // phrased queries both returned result_type="city", confidence~0.22, no
+            // error). Still write the coordinates (a city-center pin beats no pin at
+            // all on the map) but label it honestly instead of claiming street-level
+            // "Success" it didn't actually achieve.
+            info "[Geocode] lat=" + latVal + " lon=" + lonVal + " result_type=" + resultType + " confidence=" + confidence;
+            if(latVal != null && lonVal != null)
+            {
+                rec.Delivery_Latitude=latVal + "";
+                rec.Delivery_Longitude=lonVal + "";
+                isCoarse = resultType == "city" || resultType == "state" || resultType == "country" || confidence < 0.4;
+                if(isCoarse)
+                {
+                    rec.Geocode_Status="Approximate (City Level)";
+                }
+                else
+                {
+                    rec.Geocode_Status="Success";
+                }
+                found = true;
+            }
+        }
+    }
+    if(found == false)
+    {
+        rec.Geocode_Status="No Match";
+    }
+}

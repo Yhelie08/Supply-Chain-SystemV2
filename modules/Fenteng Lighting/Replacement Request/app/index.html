@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fenteng Lighting — Replacement Requests</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+    --green:#16A34A; --green-light:#DCFCE7; --green-mid:#86EFAC;
+    --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+    --red:#DC2626; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+    --purple:#7C3AED; --purple-dark:#6D28D9; --purple-light:#F5F3FF; --purple-mid:#C4B5FD;
+    --orange:#EA580C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0;
+    --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B;
+    --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+    --white:#FFFFFF;
+    --radius-sm:4px; --radius:8px; --radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+    --t:150ms ease;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font-family:inherit}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-sm{height:32px;padding:0 13px;font-size:13px}
+  .btn-purple{background:var(--purple);color:var(--white);font-weight:600;box-shadow:0 1px 3px rgba(124,58,237,.3)}
+  .btn-purple:hover{background:var(--purple-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3)}
+  .btn-purple:disabled{background:var(--gray-300);color:var(--gray-500);box-shadow:none;cursor:not-allowed;transform:none}
+
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transform:translateY(6px);transition:opacity 200ms ease,transform 200ms ease;pointer-events:none;max-width:340px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  .list-page{padding:24px;display:flex;flex-direction:column;gap:20px;min-height:100vh;box-sizing:border-box}
+  .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .page-header-left h1{font-size:24px;font-weight:700;color:var(--purple);letter-spacing:-.02em;line-height:1.2}
+  .page-header-left p{font-size:13px;color:var(--gray-500);margin-top:4px}
+  .page-header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+  .supplier-pill{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 6px;border-radius:999px;background:var(--white);border:1px solid var(--gray-200);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .supplier-pill span.name{font-size:13px;font-weight:600;color:var(--gray-800)}
+  .supplier-avatar{width:26px;height:26px;border-radius:50%;background:var(--purple);color:var(--white);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+  .lang-toggle{display:flex;align-items:center;gap:4px;height:36px;padding:0 12px;border-radius:999px;background:var(--white);border:1px solid var(--gray-200);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .lang-toggle:hover{border-color:var(--gray-400)}
+  .lang-opt{opacity:.4;transition:opacity var(--t),color var(--t)}
+  .lang-opt.active{opacity:1;color:var(--purple)}
+  .lang-sep{opacity:.3;font-size:11px}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:900px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:16px 20px;box-shadow:var(--shadow)}
+  .stat-label{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em}
+  .stat-value{font-size:28px;font-weight:700;line-height:1.1;margin:6px 0 4px;color:var(--gray-800)}
+  .stat-value.gray{color:var(--gray-500)}
+  .stat-value.amber{color:var(--amber)}
+  .stat-value.green{color:var(--green)}
+  .stat-sub{font-size:12px;color:var(--gray-400)}
+
+  .main-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .filter-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 14px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .pill:hover{border-color:var(--purple);color:var(--purple)}
+  .pill.active{background:var(--purple);border-color:var(--purple);color:var(--white)}
+  .search-wrap{position:relative;flex:0 1 220px;min-width:160px}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400);pointer-events:none}
+  .search-input{width:100%;height:32px;padding:0 10px 0 32px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--gray-50);color:var(--gray-700);font-family:inherit;font-size:13px;outline:none;transition:all var(--t);box-sizing:border-box}
+  .search-input:focus{border-color:var(--purple);background:var(--white)}
+
+  .table-wrap{overflow-x:auto}
+  .inq-table{width:100%;border-collapse:collapse;min-width:820px}
+  .inq-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .inq-table th{padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+  .inq-table tbody tr{border-bottom:1px solid var(--gray-100);transition:background var(--t);cursor:pointer}
+  .inq-table tbody tr:hover{background:var(--gray-50)}
+  .inq-table tbody tr:last-child{border-bottom:none}
+  .inq-table td{padding:12px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle}
+  .cell-sku{font-family:monospace;font-size:12px;color:var(--gray-500);background:var(--gray-100);padding:2px 7px;border-radius:var(--radius-sm);white-space:nowrap}
+  .cell-rr{font-weight:700;color:var(--purple);font-size:12.5px}
+  .empty{text-align:center;padding:48px 20px;color:var(--gray-400);font-size:13px}
+  .spin{display:inline-block;width:16px;height:16px;border:2.5px solid var(--gray-200);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .badge-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .badge-pill::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+  .status-open{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+  .status-acknowledged{background:var(--blue-light);color:var(--blue-dark);border-color:var(--blue-mid)}
+  .status-inproduction{background:var(--purple-light);color:var(--purple-dark);border-color:var(--purple-mid)}
+  .status-shipped{background:var(--blue-light);color:var(--blue-dark);border-color:var(--blue-mid)}
+  .status-received{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .status-closed{background:var(--gray-100);color:var(--gray-500);border-color:var(--gray-300)}
+  .status-cancelled{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+
+  .btn-status-open{background:var(--amber-light);border:1.5px solid var(--amber-mid);color:var(--amber)}
+  .btn-status-open:hover{background:var(--amber);border-color:var(--amber);color:var(--white)}
+  .btn-status-other{background:var(--gray-100);border:1.5px solid var(--gray-300);color:var(--gray-600)}
+  .btn-status-other:hover{border-color:var(--gray-400);color:var(--gray-800)}
+
+  .detail-page{display:flex;flex-direction:column;min-height:100vh;background:var(--gray-100)}
+  .detail-topbar{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .detail-topbar-title{font-size:15px;font-weight:600;color:var(--gray-800);letter-spacing:-.01em}
+
+  .detail-subheader{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .detail-subheader-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .detail-rr-no{font-size:16px;font-weight:800;color:var(--purple);letter-spacing:-.01em}
+
+  .lock-banner{display:flex;align-items:center;gap:10px;margin:12px 24px 0;padding:10px 14px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);font-size:12.5px;color:var(--gray-600)}
+
+  .detail-body{display:flex;flex-direction:column;gap:16px;padding:16px 24px 28px}
+
+  .sec-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+  .sec-card:last-child{margin-bottom:0}
+  .sec-header{padding:12px 20px;background:var(--purple-light);border-left:4px solid var(--purple);border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .sec-header.blue{background:var(--blue-light);border-left-color:var(--blue)}
+  .sec-title{font-size:13px;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:.08em}
+  .sec-body{padding:20px}
+
+  .fg{display:grid;gap:16px 24px}
+  .fg-4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:760px){.fg-4{grid-template-columns:repeat(2,1fr)}}
+  .fi-lbl{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+  .fi-val{font-size:14px;font-weight:600;color:var(--gray-800);line-height:1.3}
+  .fi-val.green{color:var(--green)}
+  .fi-input{width:100%;font-family:inherit;font-size:13px;color:var(--gray-800);background:var(--white);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:7px 9px;outline:none}
+  .fi-input:focus{border-color:var(--purple)}
+
+  .audit-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--gray-50);font-size:12.5px}
+  .audit-row:last-child{border-bottom:none}
+  .audit-label{color:var(--gray-400);font-size:11.5px}
+  .audit-value{color:var(--gray-700);font-weight:500}
+
+  .submit-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:16px;margin-top:4px;border-top:1px solid var(--gray-100);flex-wrap:wrap}
+  .submit-note{font-size:11.5px;color:var(--gray-400);max-width:420px}
+  .btn-submit{height:40px;padding:0 20px;font-size:14px;font-weight:700;box-shadow:0 2px 6px rgba(124,58,237,.3)}
+
+  .alert-overlay{display:none;position:fixed;inset:0;z-index:7000;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.5)}
+  .alert-overlay.open{display:flex}
+  .alert-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:380px;max-width:100%;padding:22px}
+  .alert-msg{font-size:13.5px;color:var(--gray-700);line-height:1.55;margin-bottom:18px;white-space:pre-line}
+  .alert-ok{width:100%;justify-content:center}
+
+  .confirm-overlay{display:none;position:fixed;inset:0;z-index:7000;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.5)}
+  .confirm-overlay.open{display:flex}
+  .confirm-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:400px;max-width:100%;padding:22px}
+  .confirm-title{font-size:15px;font-weight:700;color:var(--gray-800);margin-bottom:8px}
+  .confirm-msg{font-size:13.5px;color:var(--gray-600);line-height:1.55;margin-bottom:20px}
+  .confirm-actions{display:flex;justify-content:flex-end;gap:8px}
+
+  /* ADDED 2026-07-28 — Damage/Replacement Details + live Photos/Video card */
+  .mini-table{width:100%;border-collapse:collapse;margin-top:10px}
+  .mini-table th{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:6px 10px;border-bottom:1.5px solid var(--gray-200)}
+  .mini-table td{font-size:13px;color:var(--gray-700);padding:7px 10px;border-bottom:1px solid var(--gray-100)}
+  .photo-grid{display:flex;flex-wrap:wrap;gap:8px}
+  .photo-thumb{width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--gray-200)}
+  .photo-thumb.hidden{display:none}
+  .vid-spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--gray-200);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle}
+  .lightbox-overlay{display:none;position:fixed;inset:0;z-index:8000;align-items:center;justify-content:center;background:rgba(15,23,42,.85)}
+  .lightbox-overlay.open{display:flex}
+  .lightbox-img{max-width:90vw;max-height:85vh;border-radius:8px}
+  .lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:#fff;font-size:26px;width:42px;height:42px;border-radius:50%;cursor:pointer}
+  .lightbox-nav.prev{left:20px}
+  .lightbox-nav.next{right:20px}
+  .lightbox-close{position:absolute;top:18px;right:20px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer}
+  .lightbox-counter{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px}
+
+  /* ADDED 2026-09-21, per user ("Lagyan mo ng groupings ang PO, shipment at replacement") —
+     "Groups" tab, same idea as the sibling PR widget's own PR Groups tab: rows clustered by
+     the buyer-side Sales Order, which is resolved quietly and NEVER shown to the supplier
+     (card header only says "Total <things>: N"). */
+  .tab-nav{display:flex;gap:4px;padding:0 20px;border-bottom:1.5px solid var(--gray-200);background:var(--white)}
+  .tab-btn2{display:flex;align-items:center;gap:7px;padding:14px 4px 12px;margin-right:22px;border:none;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;background:transparent;color:var(--gray-500);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:color var(--t),border-color var(--t)}
+  .tab-btn2:hover{color:var(--gray-700)}
+  .tab-btn2.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+  .grp-empty{padding:60px 20px;text-align:center;color:var(--gray-400);font-size:13px}
+  .grp-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;margin:16px 20px}
+  .grp-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .grp-card-title{font-size:14px;font-weight:700;color:var(--gray-800)}
+  .grp-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:820px}
+  .grp-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .grp-table th{padding:8px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grp-table tbody tr{border-bottom:1px solid var(--gray-100);transition:background var(--t);cursor:pointer}
+  .grp-table tbody tr:hover{background:var(--gray-50)}
+  .grp-table tbody tr:last-child{border-bottom:none}
+  .grp-table td{padding:10px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+
+<!-- ══ LIST VIEW ══ -->
+<div id="view-list" class="list-page">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 data-i18n="appTitle">Supplier Portal</h1>
+      <p data-i18n="pageSubtitle">Replacement Requests — review and approve replacements for damaged/missing items.</p>
+    </div>
+    <div class="page-header-right">
+      <button class="lang-toggle" id="langToggleBtn" onclick="toggleLang()" title="Switch language / 切换语言">
+        <span class="lang-opt" id="langOptEn">EN</span><span class="lang-sep">/</span><span class="lang-opt" id="langOptZh">中</span>
+      </button>
+      <div class="supplier-pill">
+        <span class="supplier-avatar" id="avatarMark">F</span>
+        <span class="name" id="supplierNameLabel">Fenteng Lighting</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-cards" id="statStrip"></div>
+
+  <div class="tab-nav">
+    <button class="tab-btn2 active" data-maintab="all" onclick="switchMainTab('all')" data-i18n="grpTabAll">All RRs</button>
+    <button class="tab-btn2" data-maintab="groups" onclick="switchMainTab('groups')" data-i18n="grpTabGroups">RR Groups</button>
+  </div>
+
+  <div id="panel-main-all">
+  <div class="main-card">
+    <div class="filter-row">
+      <div class="filter-pills" id="filterPills">
+        <div class="pill active" data-filter="all" onclick="setFilter('all')" data-i18n="filterAll">All</div>
+        <div class="pill" data-filter="Open" onclick="setFilter('Open')" data-i18n="filterOpen">Awaiting Approval</div>
+        <div class="pill" data-filter="Acknowledged" onclick="setFilter('Acknowledged')" data-i18n="filterAcknowledged">Acknowledged</div>
+        <div class="pill" data-filter="In Production" onclick="setFilter('In Production')" data-i18n="filterInProduction">In Production</div>
+        <div class="pill" data-filter="Shipped" onclick="setFilter('Shipped')" data-i18n="filterShipped">Shipped</div>
+      </div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" class="search-input" id="searchBox" placeholder="Search RR No, SKU…" data-i18n-placeholder="searchPlaceholder" oninput="renderList()">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="inq-table">
+        <thead>
+          <tr><th data-i18n="thRrNo">RR No</th><th data-i18n="thSku">SKU</th><th data-i18n="thItem">Item</th><th data-i18n="thQty">Qty</th><th data-i18n="thReason">Reason</th><th data-i18n="thRrDate">RR Date</th><th data-i18n="thStatus">Status</th><th></th></tr>
+        </thead>
+        <tbody id="listBody"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--gray-400)"><span class="spin"></span><span data-i18n="loadingList">Loading from Zoho Creator…</span></td></tr></tbody>
+      </table>
+      <div class="empty" id="emptyState" style="display:none;" data-i18n="emptyList">No replacement requests yet.</div>
+    </div>
+  </div>
+  </div>
+
+  <div id="panel-main-groups" style="display:none">
+    <div class="main-card">
+      <div class="filter-row">
+        <div style="font-size:13px;color:var(--gray-500)" id="grpSummary"></div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" class="search-input" id="grpSearch" placeholder="Search RR No, SKU…" data-i18n-placeholder="grpSearch" oninput="renderGroupCards()">
+        </div>
+      </div>
+      <div id="grpCardsWrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DETAIL VIEW ══ -->
+<div id="view-detail" style="display:none">
+  <div class="detail-page">
+    <div class="detail-topbar">
+      <span class="detail-topbar-title" data-i18n="detailTitle">Replacement Request</span>
+      <button class="btn btn-ghost btn-sm" onclick="showList()" data-i18n="backToQueue">← Back to queue</button>
+    </div>
+    <div class="detail-subheader">
+      <div class="detail-subheader-left">
+        <span class="detail-rr-no" id="d-rrno"></span>
+      </div>
+      <div id="d-statstamp"></div>
+    </div>
+
+    <div id="lockBanner" class="lock-banner" style="display:none;"></div>
+
+    <div class="detail-body">
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title" data-i18n="secRequestSummary">Request Summary</span></div>
+        <div class="sec-body">
+          <div class="fg fg-4">
+            <div><div class="fi-lbl" data-i18n="thReason">Reason</div><div class="fi-val" id="s-source"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiSourceExcNo">Source Exception #</div><div class="fi-val" id="s-excno"></div></div>
+            <div><div class="fi-lbl" data-i18n="thRrDate">RR Date</div><div class="fi-val" id="s-date"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiOriginalPo">Original PO #</div><div class="fi-val" id="s-origpo"></div></div>
+          </div>
+          <div class="fi-lbl" id="s-reason-lbl" style="margin-top:16px;display:none" data-i18n="fiReasonForReplacement">Reason for Replacement</div>
+          <div class="fi-val" id="s-reason" style="font-weight:500;display:none"></div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header blue"><span class="sec-title" data-i18n="secItemReadOnly">Item — Read-Only</span></div>
+        <div class="sec-body">
+          <div class="fg fg-4">
+            <div><div class="fi-lbl" data-i18n="thSku">SKU</div><div class="fi-val" id="s-sku"></div></div>
+            <div><div class="fi-lbl" data-i18n="thItem">Item</div><div class="fi-val" id="s-item"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiRrQty">RR Qty</div><div class="fi-val" id="s-qty"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiPriority">Priority</div><div class="fi-val" id="s-priority"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADDED 2026-07-28 — carries Exception_Control1's own damage/replacement
+           details + spare-parts breakdown through to RR so supplier can see what's
+           actually being replaced, not just SKU/Qty. -->
+      <div class="sec-card" id="dmgCard" style="display:none">
+        <div class="sec-header blue"><span class="sec-title" data-i18n="secDamageDetails">Damage / Replacement Details</span></div>
+        <div class="sec-body">
+          <div class="fg fg-4">
+            <div><div class="fi-lbl" data-i18n="fiItemToReplace">Item to Replace</div><div class="fi-val" id="dmg-item"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiDamageQty">Qty of Damage Items</div><div class="fi-val" id="dmg-qty"></div></div>
+          </div>
+          <div id="dmgSparePartsWrap" style="display:none">
+            <div class="fi-lbl" style="margin-top:16px" data-i18n="fiSparePartsNeeded">Spare Parts Needed</div>
+            <table class="mini-table"><thead><tr><th data-i18n="thPart">Part</th><th data-i18n="thQty">Qty</th></tr></thead><tbody id="dmgSparePartsBody"></tbody></table>
+          </div>
+          <div id="dmgRemarksWrap" style="display:none">
+            <div class="fi-lbl" style="margin-top:16px" data-i18n="fiRemarks">Remarks</div>
+            <div class="fi-val" id="dmg-remarks" style="font-weight:500"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Photos/video read LIVE from Exception_Control_Media (SO|SKU|PAC key) —
+           no copy, always in sync with whatever QC/Exception Control attached. -->
+      <div class="sec-card" id="mediaCard" style="display:none">
+        <div class="sec-header blue"><span class="sec-title" data-i18n="secPhotosVideo">Photos &amp; Video</span></div>
+        <div class="sec-body">
+          <div class="fi-lbl" data-i18n="fiImages">Images</div>
+          <div class="photo-grid" id="rrImageThumbs"></div>
+          <div class="fi-lbl" style="margin-top:14px" data-i18n="fiVideo">Video</div>
+          <div id="rrVideoExisting" style="font-size:13px;color:var(--gray-500)"></div>
+          <!-- ADDED 2026-09-04 — files uploaded directly on the Exceptions record's own
+               "Evidence" section (New Exception form's File_upload field) when the
+               exception was created straight in Widget/Proc/Exception rather than
+               escalated from an existing Receiving line. Neither create_rr_custom_api.txt
+               nor this card's own existing branches (Exception_Control_Media / Receiving's
+               Evidence_Photos) ever carried this header-level attachment forward — see
+               loadExceptionAttachments() below. -->
+          <div class="fi-lbl" style="margin-top:14px">Exception Attachments</div>
+          <div class="file-chips" id="rrExcAttachments"></div>
+          <div id="rrExcEvidenceDesc" style="font-size:13px;color:var(--gray-500);margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title" data-i18n="secUpdateProgress">Update Progress</span></div>
+        <div class="sec-body">
+          <div id="s-target-ref" class="fi-lbl" style="margin-bottom:12px;color:var(--gray-500)"></div>
+          <div class="fg fg-4">
+            <div>
+              <div class="fi-lbl" data-i18n="fiShipmentMode">Shipment Mode</div>
+              <select class="fi-input" id="in-shipmode">
+                <option value="" data-i18n="optSelect">-Select-</option>
+                <option value="Airfreight">Airfreight</option>
+                <option value="LCL">LCL</option>
+                <option value="FCL">FCL</option>
+              </select>
+            </div>
+            <div>
+              <div class="fi-lbl" data-i18n="fiExpectedShipDate">Expected Ship Date</div>
+              <input type="date" class="fi-input" id="in-expship">
+            </div>
+            <div id="fld-actship">
+              <div class="fi-lbl" data-i18n="fiActualShipDate">Actual Ship Date</div>
+              <input type="date" class="fi-input" id="in-actship">
+            </div>
+            <div>
+              <div class="fi-lbl" data-i18n="fiEta">ETA</div>
+              <input type="date" class="fi-input" id="in-eta">
+            </div>
+            <div id="fld-status">
+              <div class="fi-lbl" data-i18n="thStatus">Status</div>
+              <select class="fi-input" id="in-status">
+                <option value="Acknowledged" data-i18n="filterAcknowledged">Acknowledged</option>
+                <option value="In Production" data-i18n="filterInProduction">In Production</option>
+                <option value="Shipped" data-i18n="filterShipped">Shipped</option>
+              </select>
+            </div>
+          </div>
+          <div class="submit-note" id="preApproveNote" style="margin-top:12px" data-i18n="preApproveNote">Fill these in, then click Approve RR below — this card's own Save button is disabled until after you approve, so Approve RR is always the one real "yes I can fulfill this" action.</div>
+          <div class="submit-row" id="progressSaveRow" style="margin-top:16px">
+            <div class="submit-note" data-i18n="progressSaveNote">Updates ship dates, ETA, and status (up to Shipped) — the buyer marks Received/Closed on their end.</div>
+            <button class="btn btn-purple btn-sm" id="saveProgressBtn" onclick="saveProgress()" data-i18n="saveProgressBtn">Save Progress</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title" data-i18n="secStatusAudit">Status &amp; Audit</span></div>
+        <div class="sec-body" id="d-audit"></div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-body">
+          <div class="submit-row">
+            <div class="submit-note" id="submitNote" data-i18n="submitNoteApprove">Approving confirms you can fulfill this replacement. Fill Expected Ship Date and ETA above first — both are required to approve.</div>
+            <button class="btn btn-purple btn-submit" id="approveBtn" onclick="confirmApprove()" data-i18n="approveBtn">Approve RR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="alertOverlay" class="alert-overlay">
+  <div class="alert-box">
+    <div class="alert-msg" id="alertMsg"></div>
+    <button class="btn btn-purple alert-ok" id="alertOkBtn" data-i18n="okBtn">OK</button>
+  </div>
+</div>
+
+<div id="confirmOverlay" class="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title" data-i18n="confirmTitleApprove">Approve this Replacement Request?</div>
+    <div class="confirm-msg" data-i18n="confirmMsgApprove">This confirms you can fulfill the replacement as listed. It cannot be undone from here.</div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()" data-i18n="cancelBtn">Cancel</button>
+      <button class="btn btn-purple" id="confirmApproveBtn" data-i18n="yesApproveBtn">Yes, Approve</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADDED 2026-07-28 — image + video lightbox, ported from UI/FF Widget/ExceptionControl's
+     own proven markup/mechanism (position:fixed overlay + video-element reparenting). -->
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+  <button class="lightbox-nav prev" id="lbPrev" onclick="lightboxStep(-1)">&#8249;</button>
+  <img class="lightbox-img" id="lightboxImg">
+  <button class="lightbox-nav next" id="lbNext" onclick="lightboxStep(1)">&#8250;</button>
+  <div class="lightbox-counter" id="lbCounter"></div>
+</div>
+<div class="lightbox-overlay" id="videoLightboxOverlay">
+  <button class="lightbox-close" onclick="closeVideoLightbox()">&times;</button>
+  <div id="videoLightboxSlot"></div>
+</div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* ════════════════════════════════
+   CREATOR CONFIG — the only block that differs between the Fenteng and Tony copies of
+   this widget. Field link names confirmed via ReplacementRequestFields.txt — the
+   supplier forms use IDENTICAL link names to the base Replacement_Request form (no
+   _Supplier1/2 suffix, the OPPOSITE convention from every other duplicated-supplier
+   form pair in this app, confirmed not guessed). REPORT_NAME confirmed live via
+   approve_rr_supplier.txt's own workflow-setup header (that's literally where the
+   native "Approve RR" Report Action Item lives). "Approve RR" calls the
+   approve_rr_fenteng/approve_rr_tony Custom API (see
+   DelugeScripts/approve_rr_custom_api.txt) rather than updateRecordById — approving
+   does far more than flip one field (Missing_SKUs flagging or a whole new replacement
+   PO), same un-callable-Action-Item workaround used throughout this app.
+   "Update Progress" (Expected_Ship_Date/Actual_Ship/ETA/RR_Status up to Shipped) is a
+   plain updateRecordById — no lock/disable script exists for these RR forms anywhere
+   in this codebase (unlike the PO forms), so nothing blocks it natively; scoped to
+   forward-only status values since Received/Closed/Cancelled are buyer-side terminal
+   calls, not something a supplier should self-declare.
+════════════════════════════════ */
+const REPORT_NAME = 'Fenteng_Lighting_Replacement_Request_Report';
+const SUPPLIER_LABEL = 'Fenteng Lighting';
+const SUPPLIER_INITIAL = 'F';
+const CUSTOM_API_NAME_APPROVE = 'approve_rr_fenteng';
+
+/* ADDED 2026-07-23, per user ("let's add the target date like in PO") — same reference
+   note pattern already built for Fenteng-PO/Tony-PO's Shipment Timing card, so the
+   supplier isn't guessing Expected Ship Date/ETA blind here either. RR has no Target
+   Delivery of its own — traced through Original_PO_No (Replacement_Summary, already
+   read into s-origpo) -> this supplier's own PO form's Target_Delivery_Supplier1. */
+const SUPPLIER_PO_REPORT = 'Fenteng_Lighting_Purchase_Order_Report';
+const PO_SUBFORM_NAME = 'PO_Line_Items_Supplier1';
+const PO_NO_FIELD = 'PO_No_Supplier1';
+const PO_TARGET_FIELD = 'Target_Delivery_Supplier1';
+const CUSTOM_API_KEY_APPROVE = 'wxFAV5q8Xdy3NWkZx1uhRRfnO';
+
+document.getElementById('supplierNameLabel').textContent = SUPPLIER_LABEL;
+document.getElementById('avatarMark').textContent = SUPPLIER_INITIAL;
+
+/* ════════════════════════════════
+   STATE
+════════════════════════════════ */
+const $ = id => document.getElementById(id);
+let ALL_ROWS = [];
+let currentFilter = 'all';
+let currentId = null;
+let _currentRaw = null;
+
+/* ════════════════════════════════
+   LANGUAGE TOGGLE (EN / 中文) — shared localStorage key across every supplier
+   widget so a supplier's language choice persists as they move between
+   Inquiry/PO/PR/RR/Shipment. Static labels use [data-i18n]/[data-i18n-placeholder]
+   attributes applied by applyStaticI18n(); JS-generated strings (list rows, badges,
+   toasts) call t('key') directly and get refreshed by refreshDynamicUI(). The
+   in-status <select> already had explicit value="Acknowledged"/etc attributes before
+   this change, so translating its option labels is safe. SOURCE_TYPE_LABEL is a
+   display-only relabel of the raw Source_Type value — sourceTypeLabel() now returns a
+   translated label via t() while still keying off the untranslated raw value.
+════════════════════════════════ */
+const I18N = {
+  en: {
+    grpTabAll:'All RRs', grpTabGroups:'RR Groups', grpTotal:'Total RRs: {n}', grpSummary:'{groups} groups · {n} RRs total', grpSearch:'Search RR No, SKU…', grpNone:'No replacement requests found.', grpLoading:'Loading…',
+    appTitle:'Supplier Portal', pageSubtitle:'Replacement Requests — review and approve replacements for damaged/missing items.',
+    filterAll:'All', filterOpen:'Awaiting Approval', filterAcknowledged:'Acknowledged', filterInProduction:'In Production', filterShipped:'Shipped',
+    searchPlaceholder:'Search RR No, SKU…',
+    thRrNo:'RR No', thSku:'SKU', thItem:'Item', thQty:'Qty', thReason:'Reason', thRrDate:'RR Date', thStatus:'Status', thPart:'Part',
+    loadingList:'Loading from Zoho Creator…', emptyList:'No replacement requests yet.',
+    detailTitle:'Replacement Request', backToQueue:'← Back to queue',
+    secRequestSummary:'Request Summary', secItemReadOnly:'Item — Read-Only', secDamageDetails:'Damage / Replacement Details',
+    secPhotosVideo:'Photos & Video', secUpdateProgress:'Update Progress', secStatusAudit:'Status & Audit',
+    fiSourceExcNo:'Source Exception #', fiOriginalPo:'Original PO #', fiReasonForReplacement:'Reason for Replacement',
+    fiRrQty:'RR Qty', fiPriority:'Priority', fiItemToReplace:'Item to Replace', fiDamageQty:'Qty of Damage Items',
+    fiSparePartsNeeded:'Spare Parts Needed', fiRemarks:'Remarks', fiImages:'Images', fiVideo:'Video',
+    fiShipmentMode:'Shipment Mode', fiExpectedShipDate:'Expected Ship Date', fiActualShipDate:'Actual Ship Date', fiEta:'ETA',
+    optSelect:'-Select-',
+    preApproveNote:'Fill these in, then click Approve RR below — this card\'s own Save button is disabled until after you approve, so Approve RR is always the one real "yes I can fulfill this" action.',
+    progressSaveNote:'Updates ship dates, ETA, and status (up to Shipped) — the buyer marks Received/Closed on their end.',
+    saveProgressBtn:'Save Progress', savingProgressBtn:'Saving…',
+    submitNoteApprove:'Approving confirms you can fulfill this replacement. Fill Expected Ship Date and ETA above first — both are required to approve.',
+    approveBtn:'Approve RR', approvingBtn:'Approving…',
+    okBtn:'OK', confirmTitleApprove:'Approve this Replacement Request?',
+    confirmMsgApprove:'This confirms you can fulfill the replacement as listed. It cannot be undone from here.',
+    cancelBtn:'Cancel', yesApproveBtn:'Yes, Approve',
+    statusOpen:'Awaiting Approval', statusAcknowledged:'Acknowledged', statusInProduction:'In Production', statusShipped:'Shipped',
+    statusReceived:'Received', statusCompleted:'Completed', statusClosed:'Closed', statusCancelled:'Cancelled',
+    sourceLabelDamage:'Damage', sourceLabelMissing:'Missing',
+    statTotalRRs:'Total RRs', statAllTime:'All time', statAwaitingApproval:'Awaiting Approval', statNeedsAction:'Needs your action',
+    statInProgress:'In Progress', statAckToShipped:'Acknowledged → Shipped', statReceived:'Received', statDelivered:'Delivered',
+    reviewBtn:'Review', viewBtn:'View',
+    toastRecordNotFound:'Record not found',
+    toastFillShipFields:'Fill Shipment Mode, Expected Ship Date, and ETA before approving.',
+    toastRecordNotLoaded:'Record not loaded yet', toastAlreadyApproved:'Already approved.',
+    toastApproved:'Approved.', toastApproveFailedConsole:'Approve failed — see console.',
+    toastApproveFailedConsole2:'Approve failed — see console', toastSdkUnavailable:'Creator SDK not available',
+    toastUseApproveFirst:'Use Approve RR first.', toastProgressSaved:'Progress saved.',
+    toastSaveFailedCode:'Save failed — code {code}', toastSaveFailedConsole:'Save failed — see console',
+    toastTimeout:'Creator timeout — check widget permissions', toastLoadListFail:'Could not load replacement requests — see console',
+    lockBannerTerminal:'✓ This RR is {status} — no further updates needed from you.',
+    lockBannerApproved:'↻ Approved — update ship dates/ETA/status below as the replacement progresses.',
+    auditRrStatus:'RR Status', auditSupplierAck:'Supplier Acknowledged', auditSupplierAckDate:'Supplier Acknowledge Date',
+    auditLastUpdated:'Last Updated', auditClosedAt:'Closed At', yesLabel:'Yes', noLabel:'No',
+    targetRefPrefix:"Buyer's Target Delivery Date: ",
+    noVideoUploaded:'No video uploaded.', downloadLabel:'Download', fullscreenLabel:'Fullscreen',
+    loadingPreview:'Loading preview…', previewUnavailable:'Preview unavailable — download to view.'
+  },
+  zh: {
+    grpTabAll:'全部RR', grpTabGroups:'RR分组', grpTotal:'RR总数：{n}', grpSummary:'{groups} 个分组 · 共 {n} 项RR', grpSearch:'搜索RR编号、SKU…', grpNone:'未找到补发申请。', grpLoading:'加载中…',
+    appTitle:'供应商门户', pageSubtitle:'换货请求 — 请审核并批准损坏/缺失物品的更换。',
+    filterAll:'全部', filterOpen:'待批准', filterAcknowledged:'已确认', filterInProduction:'生产中', filterShipped:'已发货',
+    searchPlaceholder:'搜索RR编号、SKU…',
+    thRrNo:'RR编号', thSku:'SKU', thItem:'品项', thQty:'数量', thReason:'原因', thRrDate:'RR日期', thStatus:'状态', thPart:'部件',
+    loadingList:'正在从 Zoho Creator 加载…', emptyList:'目前没有换货请求。',
+    detailTitle:'换货请求', backToQueue:'← 返回列表',
+    secRequestSummary:'请求概要', secItemReadOnly:'品项 — 只读', secDamageDetails:'损坏 / 更换详情',
+    secPhotosVideo:'照片和视频', secUpdateProgress:'更新进度', secStatusAudit:'状态与记录',
+    fiSourceExcNo:'来源异常编号', fiOriginalPo:'原采购订单号', fiReasonForReplacement:'更换原因',
+    fiRrQty:'RR数量', fiPriority:'优先级', fiItemToReplace:'待更换品项', fiDamageQty:'损坏数量',
+    fiSparePartsNeeded:'所需备件', fiRemarks:'备注', fiImages:'图片', fiVideo:'视频',
+    fiShipmentMode:'运输方式', fiExpectedShipDate:'预计发货日期', fiActualShipDate:'实际发货日期', fiEta:'预计到达日期(ETA)',
+    optSelect:'-请选择-',
+    preApproveNote:'请先填写以上信息，然后点击下方的"批准RR" — 此卡片自身的保存按钮在您批准之前处于禁用状态，因此"批准RR"始终是唯一真正代表"是的，我能履行"的操作。',
+    progressSaveNote:'更新发货日期、ETA和状态（最多到已发货）— 买方会在其一端标记为已收货/已关闭。',
+    saveProgressBtn:'保存进度', savingProgressBtn:'保存中…',
+    submitNoteApprove:'批准即确认您可以履行此更换。请先填写上方的预计发货日期和ETA — 两者均为批准前的必填项。',
+    approveBtn:'批准RR', approvingBtn:'批准中…',
+    okBtn:'确定', confirmTitleApprove:'批准此换货请求？',
+    confirmMsgApprove:'这将确认您可以按清单履行此更换，且无法在此撤销。',
+    cancelBtn:'取消', yesApproveBtn:'是，批准',
+    statusOpen:'待批准', statusAcknowledged:'已确认', statusInProduction:'生产中', statusShipped:'已发货',
+    statusReceived:'已收货', statusCompleted:'已完成', statusClosed:'已关闭', statusCancelled:'已取消',
+    sourceLabelDamage:'损坏', sourceLabelMissing:'缺失',
+    statTotalRRs:'RR总数', statAllTime:'全部时间', statAwaitingApproval:'待批准', statNeedsAction:'需要您处理',
+    statInProgress:'进行中', statAckToShipped:'已确认 → 已发货', statReceived:'已收货', statDelivered:'已送达',
+    reviewBtn:'审核', viewBtn:'查看',
+    toastRecordNotFound:'未找到该记录',
+    toastFillShipFields:'请在批准前填写运输方式、预计发货日期和ETA。',
+    toastRecordNotLoaded:'记录尚未加载', toastAlreadyApproved:'已批准过。',
+    toastApproved:'已批准。', toastApproveFailedConsole:'批准失败 — 请查看控制台。',
+    toastApproveFailedConsole2:'批准失败 — 请查看控制台', toastSdkUnavailable:'Creator SDK 不可用',
+    toastUseApproveFirst:'请先使用"批准RR"。', toastProgressSaved:'进度已保存。',
+    toastSaveFailedCode:'保存失败 — 代码 {code}', toastSaveFailedConsole:'保存失败 — 请查看控制台',
+    toastTimeout:'Creator 超时 — 请检查小组件权限', toastLoadListFail:'无法加载换货请求 — 请查看控制台',
+    lockBannerTerminal:'✓ 此RR已{status} — 您这边无需再进行任何更新。',
+    lockBannerApproved:'↻ 已批准 — 请在下方随更换进度更新发货日期/ETA/状态。',
+    auditRrStatus:'RR状态', auditSupplierAck:'供应商已确认', auditSupplierAckDate:'供应商确认日期',
+    auditLastUpdated:'最后更新时间', auditClosedAt:'关闭时间', yesLabel:'是', noLabel:'否',
+    targetRefPrefix:'买方目标交货日期：',
+    noVideoUploaded:'尚未上传视频。', downloadLabel:'下载', fullscreenLabel:'全屏',
+    loadingPreview:'正在加载预览…', previewUnavailable:'预览不可用 — 请下载查看。'
+  }
+};
+let LANG = localStorage.getItem('supplierPortalLang') || 'en';
+function t(key, vars){
+  var s = (I18N[LANG] && I18N[LANG][key]) || (I18N.en && I18N.en[key]) || key;
+  if(vars){ Object.keys(vars).forEach(function(k){ s = s.replace('{'+k+'}', vars[k]); }); }
+  return s;
+}
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){ el.placeholder = t(el.getAttribute('data-i18n-placeholder')); });
+  document.documentElement.lang = LANG;
+}
+function updateLangToggleUI(){
+  $('langOptEn').classList.toggle('active', LANG==='en');
+  $('langOptZh').classList.toggle('active', LANG==='zh');
+}
+function refreshDynamicUI(){
+  applyStaticI18n();
+  updateLangToggleUI();
+  if(currentId){
+    const r = ALL_ROWS.find(x=>String(x.id)===currentId);
+    if(r) renderDetailShell(r);
+    if(_currentRaw){
+      renderDetailFull(_currentRaw);
+      renderDamageDetailsCard(_currentRaw);
+    }
+  } else {
+    renderList();
+  }
+}
+function toggleLang(){
+  LANG = (LANG==='en') ? 'zh' : 'en';
+  localStorage.setItem('supplierPortalLang', LANG);
+  refreshDynamicUI();
+}
+
+const STATUS_META = {
+  "Open": { cls:"open", key:"statusOpen" },
+  "Acknowledged": { cls:"acknowledged", key:"statusAcknowledged" },
+  "In Production": { cls:"inproduction", key:"statusInProduction" },
+  "Shipped": { cls:"shipped", key:"statusShipped" },
+  "Received": { cls:"received", key:"statusReceived" },
+  /* ADDED 2026-08-17, real live bug (RR-00001/RR-00002, screenshot) — the
+     buyer-side receiving flow (receiving_create_bin_receiving.txt /
+     receiving_widget_custom_api.txt) is the ONLY thing that ever writes a
+     terminal RR_Status, and it always writes "Completed" (6+ sites, confirmed
+     by grep across every Deluge script in the project) — "Received" above was
+     never actually a real value any backend script produces. Without this
+     entry, badgeHtml()'s `|| STATUS_META["Open"]` fallback silently mislabeled
+     an actually-finished RR as "Awaiting Approval", identical badge/urgency as
+     a genuinely brand-new one. Reuses the existing green "received" styling
+     (already correct for a done/success state) with the accurate label. */
+  "Completed": { cls:"received", key:"statusCompleted" },
+  "Closed": { cls:"closed", key:"statusClosed" },
+  "Cancelled": { cls:"cancelled", key:"statusCancelled" }
+};
+function badgeHtml(status){
+  const m = STATUS_META[status] || STATUS_META["Open"];
+  return `<span class="badge-pill status-${m.cls}">${t(m.key)}</span>`;
+}
+function escapeHtml(v){
+  return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+/* ════════════════════════════════
+   DAMAGE/REPLACEMENT DETAILS + PHOTOS — ADDED 2026-07-28, per user request
+   ("bring spareparts details... to RR and Supplier's RR so supplier can see
+   what's gonna replace. also the picture. remarks and like all the
+   damage/needs replacement details"). Spare-parts table parse mirrors
+   UI/FF Widget/ExceptionControl's own renderQcRejectionCard exactly (same
+   paired "Type: Qty, Type: Qty" string, now in RR_Spare_Parts). Photos read
+   LIVE from Exception_Control_Media by the same SO|SKU|PAC composite key —
+   no copy, no new fields for media, always in sync with whatever QC/
+   Exception Control has attached. MEDIA_REPORT link name is an educated
+   guess (same one ExceptionControl uses, unconfirmed) — flag if it 400s.
+════════════════════════════════ */
+const MEDIA_REPORT = 'Exception_Control_Media_Report';
+const EVIDENCE_REPORT = 'All_Evidence_Photos';
+
+function renderDamageDetailsCard(raw){
+  const card = $('dmgCard');
+  const hasData = !!(raw.RR_Item_to_Replace || raw.RR_Damage_Qty || raw.RR_Spare_Parts || raw.RR_Remarks);
+  if(!hasData){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  $('dmg-item').textContent = raw.RR_Item_to_Replace || '—';
+  $('dmg-qty').textContent = raw.RR_Damage_Qty || '—';
+
+  const pairStr = raw.RR_Spare_Parts || '';
+  const rows = [];
+  if(pairStr){
+    pairStr.split(',').forEach(function(seg){
+      seg = seg.trim();
+      if(!seg) return;
+      const idx = seg.indexOf(':');
+      if(idx > -1) rows.push([seg.slice(0, idx).trim(), seg.slice(idx+1).trim()]);
+      else rows.push([seg, '—']);
+    });
+  }
+  if(rows.length){
+    $('dmgSparePartsWrap').style.display = 'block';
+    $('dmgSparePartsBody').innerHTML = rows.map(function(r){
+      return '<tr><td>'+escapeHtml(r[0])+'</td><td>'+escapeHtml(r[1])+'</td></tr>';
+    }).join('');
+  } else {
+    $('dmgSparePartsWrap').style.display = 'none';
+  }
+
+  if(raw.RR_Remarks){
+    $('dmgRemarksWrap').style.display = 'block';
+    $('dmg-remarks').textContent = raw.RR_Remarks;
+  } else {
+    $('dmgRemarksWrap').style.display = 'none';
+  }
+}
+
+function attachRawToString(raw){
+  if(!raw) return '';
+  if(typeof raw==='object') return raw.url || raw.download_url || raw.value || raw.filepath || raw.filePath || '';
+  return String(raw);
+}
+function attachFileName(raw){
+  if(raw && typeof raw==='object' && (raw.file_name||raw.name)) return raw.file_name||raw.name;
+  const s = attachRawToString(raw);
+  if(!s) return 'File';
+  const m = s.match(/[?&]filepath=([^&]+)/);
+  if(m){ const name = decodeURIComponent(m[1]); return name.replace(/^\d+_/, ''); }
+  return s.split('/').pop().split('?')[0] || 'File';
+}
+function normalizeFileList(rawValue){
+  if(!rawValue) return [];
+  if(Array.isArray(rawValue)) return rawValue.filter(Boolean);
+  return [rawValue];
+}
+function applyImgPreview(imgEl, rawValue){
+  if(!rawValue){ imgEl.classList.add('hidden'); imgEl.src=''; return; }
+  imgEl.classList.remove('hidden');
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData){
+    ZOHO.CREATOR.UTIL.setImageData(imgEl, rawValue, function(){});
+  } else {
+    imgEl.src = rawValue;
+  }
+}
+/* Video preview via the same setImageData bridge trick proven in
+   UI/FF Widget/QCChecklist and ported into ExceptionControl — resolves a
+   Creator file's relative path into a real same-origin blob:/data: URL,
+   handed straight to a real <video src>. */
+function resolveBridgeSrc(url){
+  return new Promise(function(resolve){
+    if(!(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.setImageData==='function')){ resolve(null); return; }
+    const img = new Image();
+    ZOHO.CREATOR.UTIL.setImageData(img, url, function(){
+      const src = img.src || '';
+      resolve((src.indexOf('blob:')===0 || src.indexOf('data:')===0) ? src : null);
+    });
+  });
+}
+
+let LIGHTBOX_URLS = [];
+let LIGHTBOX_IDX = 0;
+window.openLightbox = function(urls, idx){
+  LIGHTBOX_URLS = Array.isArray(urls) ? urls : [urls];
+  LIGHTBOX_IDX = idx || 0;
+  if(!LIGHTBOX_URLS.length) return;
+  $('lightboxOverlay').classList.add('open');
+  renderLightboxImage();
+};
+function renderLightboxImage(){
+  const url = LIGHTBOX_URLS[LIGHTBOX_IDX];
+  if(!url) return;
+  applyImgPreview($('lightboxImg'), url);
+  $('lbCounter').textContent = (LIGHTBOX_IDX+1) + ' / ' + LIGHTBOX_URLS.length;
+  $('lbPrev').style.visibility = LIGHTBOX_IDX>0 ? 'visible':'hidden';
+  $('lbNext').style.visibility = LIGHTBOX_IDX<LIGHTBOX_URLS.length-1 ? 'visible':'hidden';
+}
+window.lightboxStep = function(delta){
+  const next = LIGHTBOX_IDX + delta;
+  if(next<0 || next>=LIGHTBOX_URLS.length) return;
+  LIGHTBOX_IDX = next;
+  renderLightboxImage();
+};
+window.closeLightbox = function(){
+  $('lightboxOverlay').classList.remove('open');
+  $('lightboxImg').src = '';
+  LIGHTBOX_URLS = [];
+};
+
+let VIDEO_LIGHTBOX_HOME = null;
+window.openVideoLightbox = function(videoEl, homeParent){
+  VIDEO_LIGHTBOX_HOME = homeParent;
+  videoEl.style.width = 'auto';
+  videoEl.style.maxWidth = '90vw';
+  videoEl.style.maxHeight = '85vh';
+  $('videoLightboxSlot').appendChild(videoEl);
+  $('videoLightboxOverlay').classList.add('open');
+};
+window.closeVideoLightbox = function(){
+  const overlay = $('videoLightboxOverlay');
+  if(!overlay.classList.contains('open')) return;
+  overlay.classList.remove('open');
+  const slot = $('videoLightboxSlot');
+  const videoEl = slot.firstElementChild;
+  if(videoEl && VIDEO_LIGHTBOX_HOME){
+    videoEl.pause();
+    // FIXED 2026-08-08g, real bug found live ("closing fullscreen... video box
+    // still big") — this was ported from ExceptionControl's own lightbox, which
+    // sizes its video via Tailwind classes (w-full max-w-sm) so clearing inline
+    // styles to '' correctly falls back to those classes. This widget's video is
+    // sized via a pure INLINE cssText (see renderVideoList below) with no class
+    // to fall back to — clearing to '' left no size at all, reverting to the
+    // browser's native/large default. Restore the exact original inline values
+    // instead of clearing them.
+    videoEl.style.width='100%'; videoEl.style.maxWidth='320px'; videoEl.style.maxHeight='';
+    VIDEO_LIGHTBOX_HOME.insertBefore(videoEl, VIDEO_LIGHTBOX_HOME.firstChild);
+  }
+  VIDEO_LIGHTBOX_HOME = null;
+};
+document.addEventListener('keydown', function(e){
+  if($('lightboxOverlay').classList.contains('open')){
+    if(e.key==='Escape') closeLightbox();
+    else if(e.key==='ArrowLeft') lightboxStep(-1);
+    else if(e.key==='ArrowRight') lightboxStep(1);
+  }
+  if($('videoLightboxOverlay').classList.contains('open') && e.key==='Escape') closeVideoLightbox();
+});
+
+function renderImageThumbs(containerId, rawValue){
+  const container = $(containerId);
+  const items = normalizeFileList(rawValue);
+  container.innerHTML = '';
+  if(!items.length) return;
+  const urls = items.map(attachRawToString).filter(Boolean);
+  items.forEach(function(raw, idx){
+    const url = attachRawToString(raw);
+    if(!url) return;
+    const img = document.createElement('img');
+    img.className = 'photo-thumb';
+    img.onclick = function(){ openLightbox(urls, idx); };
+    applyImgPreview(img, url);
+    container.appendChild(img);
+  });
+}
+function renderVideoList(containerId, rawValue){
+  const container = $(containerId);
+  const items = normalizeFileList(rawValue);
+  if(!items.length){ container.textContent = t('noVideoUploaded'); return; }
+  container.innerHTML = '';
+  items.forEach(function(raw){
+    const url = attachRawToString(raw);
+    const label = attachFileName(raw);
+    if(!url) return;
+    const row = document.createElement('div');
+    row.style.marginBottom = '8px';
+    const video = document.createElement('video');
+    video.controls = true;
+    video.preload = 'metadata';
+    video.style.cssText = 'width:100%;max-width:320px;border-radius:8px;border:1px solid var(--gray-200);margin-bottom:4px;display:none';
+    const meta = document.createElement('div');
+    meta.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px';
+    meta.innerHTML = '<span>&#127916; '+escapeHtml(label)+'</span>'
+      + '<a data-dl download="'+escapeHtml(label)+'" style="display:none;color:var(--purple)">'+t('downloadLabel')+'</a>'
+      + '<button type="button" data-fs style="display:none;color:var(--purple);background:none;border:none;cursor:pointer;text-decoration:underline">'+t('fullscreenLabel')+'</button>'
+      + '<span data-loading><span class="vid-spinner"></span>'+t('loadingPreview')+'</span>';
+    row.appendChild(video);
+    row.appendChild(meta);
+    container.appendChild(row);
+    meta.querySelector('[data-fs]').onclick = function(){ openVideoLightbox(video, row); };
+    resolveBridgeSrc(url).then(function(resolvedSrc){
+      const loadingEl = meta.querySelector('[data-loading]');
+      if(loadingEl) loadingEl.remove();
+      if(resolvedSrc){
+        video.src = resolvedSrc;
+        video.style.display = 'block';
+        const dlEl = meta.querySelector('[data-dl]');
+        dlEl.href = resolvedSrc;
+        dlEl.style.display = 'inline';
+        meta.querySelector('[data-fs]').style.display = 'inline';
+      } else {
+        meta.appendChild(Object.assign(document.createElement('span'), {style:'color:var(--gray-400)', textContent:t('previewUnavailable')}));
+      }
+    });
+  });
+}
+
+/* ADDED 2026-09-04, per user report ("di nasasama sa Tony/Fenteng Replacement
+   Request yung photo and evidence") — a NEW exception created directly in
+   Widget/Proc/Exception (not escalated from an existing Receiving line) lets the
+   officer attach files in its own "Evidence" section, but those files land on the
+   Exceptions record's own header field (File_upload) — a completely separate
+   storage location from both branches loadRRMedia already knew about
+   (Exception_Control_Media for Fulfillment-QC RRs, Evidence_Photos/Row_Key for
+   Receiving-origin RRs). create_rr_custom_api.txt's 3 Custom Functions never
+   copy File_upload anywhere either — the RR's Replacement_Summary row only ever
+   carries PR_No/Supplier/SKU/Item/SO_No/Original_PO_No/Priority/RR_Qty. The RR
+   DOES already carry Source_Exception_No back to the originating Exceptions
+   record (set at creation by every one of those 3 functions), so this reads the
+   attachment straight from there instead of trying to copy it at create-time —
+   always in sync with whatever's currently attached on the Exception, same
+   "live read, no copy" principle as the other 2 branches. Runs unconditionally,
+   in ADDITION to whichever branch below actually applies, since a manually-
+   created exception can have any Source_Type/Source_Module. */
+function loadExceptionAttachments(raw){
+  const wrap = $('rrExcAttachments');
+  const descEl = $('rrExcEvidenceDesc');
+  wrap.innerHTML = '';
+  descEl.textContent = '';
+  const excNo = raw.Source_Exception_No || '';
+  if(!excNo || typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA) return;
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: 'Exceptions_Report',
+    field_config: 'all',
+    criteria: '(Exception_No=="' + excNo.replace(/"/g,'\\"') + '")',
+    max_records: 1
+  }).then(function(resp){
+    const row = (resp && resp.code===3000 && Array.isArray(resp.data) && resp.data[0]) ? resp.data[0] : null;
+    if(!row) return;
+    const files = normalizeFileList(row.File_upload);
+    if(files.length){
+      $('mediaCard').style.display = 'block';
+      renderFileList('rrExcAttachments', files);
+    }
+    if(row.Evidence_Descriptions) descEl.textContent = row.Evidence_Descriptions;
+  }).catch(function(err){
+    console.warn('[RR Portal] Exception attachment load error:', JSON.stringify(err));
+  });
+}
+/* Generic file chip + Download link — same resolveBridgeSrc mechanism as
+   renderVideoList's own download link, minus the forced <video> element, so this
+   works regardless of whether the attached file is a photo or a document
+   ("Photos, supplier docs, etc." per the New Exception form's own upload hint). */
+function renderFileList(containerId, rawValue){
+  const container = $(containerId);
+  const items = normalizeFileList(rawValue);
+  container.innerHTML = '';
+  items.forEach(function(raw){
+    const url = attachRawToString(raw);
+    const label = attachFileName(raw);
+    if(!url) return;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px';
+    row.innerHTML = '<span>&#128206; '+escapeHtml(label)+'</span>'
+      + '<a data-dl download="'+escapeHtml(label)+'" style="display:none;color:var(--purple)">'+t('downloadLabel')+'</a>'
+      + '<span data-loading><span class="vid-spinner"></span>'+t('loadingPreview')+'</span>';
+    container.appendChild(row);
+    resolveBridgeSrc(url).then(function(resolvedSrc){
+      const loadingEl = row.querySelector('[data-loading]');
+      if(loadingEl) loadingEl.remove();
+      const dlEl = row.querySelector('[data-dl]');
+      if(resolvedSrc){
+        dlEl.href = resolvedSrc;
+        dlEl.style.display = 'inline';
+      } else {
+        row.appendChild(Object.assign(document.createElement('span'), {style:'color:var(--gray-400)', textContent:t('previewUnavailable')}));
+      }
+    });
+  });
+}
+
+function loadRRMedia(raw, sr){
+  const card = $('mediaCard');
+  card.style.display = 'none';
+  loadExceptionAttachments(raw);
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA) return;
+  const sku = (sr && sr.SKU) || '';
+
+  /* Receiving-origin RRs (Source_Type "Receiving Damage"/"Receiving Missing") never
+     carry RR_SO/RR_PAC — those two fields only ever get set by the Fulfillment
+     Exception Control widget's own QC-Failure RR-creation path (added 2026-07-28,
+     see that widget's own NOTES). More importantly, even if they were set, a
+     Receiving-origin RR's photos were never uploaded into Exception_Control_Media in
+     the first place — Receiving's own widget uploads damage/missing evidence into a
+     completely separate form, Evidence_Photos (report All_Evidence_Photos), keyed by
+     Row_Key = PR_No||SKU||Type_field||position (see Widget/Proc/Receiving/app/
+     index.html's own "EVIDENCE PHOTOS" block). Route by Source_Type to whichever form
+     actually holds this RR's photos instead of always querying
+     Exception_Control_Media. */
+  if(raw.Source_Type === 'Receiving Damage' || raw.Source_Type === 'Receiving Missing'){
+    loadRRMediaFromReceiving(raw, sku);
+    return;
+  }
+
+  const so = raw.RR_SO || '';
+  const pac = raw.RR_PAC || '';
+  if(!so || !sku || !pac) return;
+  const rowKey = so + '|' + sku + '|' + pac;
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: MEDIA_REPORT,
+    field_config: 'all',
+    criteria: '(Record_ID == "' + rowKey.replace(/"/g,'\\"') + '")',
+    max_records: 200
+  }).then(function(resp){
+    const rows = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    if(!rows.length) return;
+    const images = [];
+    const videos = [];
+    rows.forEach(function(row){
+      const files = normalizeFileList(row.Media);
+      if(String(row.File_Type).toLowerCase()==='video') videos.push.apply(videos, files);
+      else images.push.apply(images, files);
+    });
+    if(!images.length && !videos.length) return;
+    card.style.display = 'block';
+    renderImageThumbs('rrImageThumbs', images);
+    renderVideoList('rrVideoExisting', videos);
+  }).catch(function(err){
+    console.warn('[RR Portal] media load error:', JSON.stringify(err));
+  });
+}
+
+/* RR_PR_No already carries the real PR_No — create_rr_button.txt sets it from
+   input.Receiving_Line_ID, which is itself the source PR's own PR_No (a pre-existing
+   misnamed field on the Exceptions form, not a real receiving-line ID — see that
+   script's own NOTES). Match every Evidence_Photos Row_Key sharing this PR_No+SKU+Type
+   prefix regardless of its trailing position digit, so every physical unit's photo
+   under this SKU/type group shows up — matching how the RR itself already sums their
+   quantities into one line. Evidence_Photos has no video concept (Receiving only
+   captures photos), so the video slot always renders empty here. */
+function loadRRMediaFromReceiving(raw, sku){
+  const card = $('mediaCard');
+  const prNo = raw.RR_PR_No || '';
+  const typeField = raw.Source_Type === 'Receiving Missing' ? 'Missing' : 'Damage';
+  if(!prNo || !sku) return;
+  const prefix = prNo + '||' + sku + '||' + typeField + '||';
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: EVIDENCE_REPORT,
+    field_config: 'all',
+    criteria: '(Row_Key.contains("' + prefix.replace(/"/g,'\\"') + '"))',
+    max_records: 200
+  }).then(function(resp){
+    const rows = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    const images = rows.map(function(row){ return row.Photo; }).filter(Boolean);
+    if(!images.length) return;
+    card.style.display = 'block';
+    renderImageThumbs('rrImageThumbs', images);
+    renderVideoList('rrVideoExisting', null);
+  }).catch(function(err){
+    console.warn('[RR Portal] Evidence_Photos load error:', JSON.stringify(err));
+  });
+}
+
+/* ════════════════════════════════
+   ALERT / CONFIRM MODALS — same pattern as every other SupplierPortal widget
+════════════════════════════════ */
+function showAlertModal(msg){ $('alertMsg').textContent = msg; $('alertOverlay').classList.add('open'); }
+function closeAlertModal(){ $('alertOverlay').classList.remove('open'); }
+$('alertOkBtn').addEventListener('click', closeAlertModal);
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape'){
+    if($('alertOverlay').classList.contains('open')) closeAlertModal();
+    if($('confirmOverlay').classList.contains('open')) closeConfirm();
+  }
+});
+function closeConfirm(){ $('confirmOverlay').classList.remove('open'); }
+
+/* ════════════════════════════════
+   MAPPING — first Replacement_Summary row only (always exactly 1 row per RR, by
+   construction — see create_rr_button.txt).
+════════════════════════════════ */
+// ADDED 2026-08-06, per user — display-only relabel of Source_Type for the supplier
+// portal ("Source" column/label -> "Reason", raw values -> simpler supplier-facing
+// wording). Purely cosmetic: r.sourceType itself stays the real raw value, only the
+// rendered text changes, via this lookup at the 2 render sites below.
+var SOURCE_TYPE_LABEL = { 'QC Failure': 'sourceLabelDamage', 'Receiving Missing': 'sourceLabelMissing', 'Receiving Damage': 'sourceLabelDamage' };
+function sourceTypeLabel(v){ var k = SOURCE_TYPE_LABEL[v]; return k ? t(k) : v; }
+function firstSummaryRow(raw){
+  var rows = raw.Replacement_Summary;
+  return (Array.isArray(rows) && rows.length) ? rows[0] : {};
+}
+function mapRow(raw){
+  var sr = firstSummaryRow(raw);
+  return {
+    id: raw.ID,
+    rrNo: raw.RR_No || '',
+    sourceType: raw.Source_Type || '',
+    status: raw.RR_Status || 'Open',
+    rrDate: raw.RR_Date || '',
+    sku: sr.SKU || '',
+    item: sr.Item || '',
+    qty: sr.RR_Qty || 0,
+    priority: sr.Priority || '',
+    soNo: grpExtractVal(sr.SO_No),
+    prNos: [grpExtractVal(sr.PR_No)].filter(Boolean)
+  };
+}
+
+/* ════════════════════════════════
+   LIST RENDER
+════════════════════════════════ */
+function renderStats(){
+  const counts = {};
+  ALL_ROWS.forEach(r => { counts[r.status] = (counts[r.status]||0) + 1; });
+  $('statStrip').innerHTML = `
+    <div class="stat-card"><div class="stat-label">${t('statTotalRRs')}</div><div class="stat-value" id="statTotal">${ALL_ROWS.length}</div><div class="stat-sub">${t('statAllTime')}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('statAwaitingApproval')}</div><div class="stat-value amber">${counts["Open"]||0}</div><div class="stat-sub">${t('statNeedsAction')}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('statInProgress')}</div><div class="stat-value" id="statProgress">${(counts["Acknowledged"]||0)+(counts["In Production"]||0)+(counts["Shipped"]||0)}</div><div class="stat-sub">${t('statAckToShipped')}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('statReceived')}</div><div class="stat-value green">${(counts["Completed"]||0)+(counts["Received"]||0)}</div><div class="stat-sub">${t('statDelivered')}</div></div>
+  `;
+}
+
+function setFilter(f){
+  currentFilter = f;
+  document.querySelectorAll('#filterPills .pill').forEach(p=>p.classList.toggle('active', p.dataset.filter===f));
+  renderList();
+}
+
+function renderList(){
+  renderStats();
+  if(typeof CURRENT_MAIN_TAB!=='undefined' && CURRENT_MAIN_TAB==='groups') renderGroupCards();
+  const q = $('searchBox').value.trim().toLowerCase();
+  const filtered = ALL_ROWS.filter(r=>{
+    const matchFilter = currentFilter==="all" || r.status===currentFilter;
+    const matchSearch = !q || r.rrNo.toLowerCase().includes(q) || r.sku.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+  const body = $('listBody');
+  const empty = $('emptyState');
+  if(filtered.length===0){ body.innerHTML=""; empty.style.display="block"; return; }
+  empty.style.display = "none";
+  body.innerHTML = filtered.map(listRowHtml).join('');
+}
+
+function listRowHtml(r){
+    const m = STATUS_META[r.status] || STATUS_META["Open"];
+    const needsAction = r.status==='Open';
+    const btnCls = needsAction ? 'btn-status-open' : 'btn-status-other';
+    return `<tr onclick="openDetail('${r.id}')">
+      <td class="cell-rr">${escapeHtml(r.rrNo)}</td>
+      <td><span class="cell-sku">${escapeHtml(r.sku)}</span></td>
+      <td>${escapeHtml(r.item)}</td>
+      <td>${r.qty}</td>
+      <td>${escapeHtml(sourceTypeLabel(r.sourceType))}</td>
+      <td>${escapeHtml(r.rrDate)}</td>
+      <td>${badgeHtml(r.status)}</td>
+      <td><button class="btn ${btnCls} btn-sm" onclick="event.stopPropagation(); openDetail('${r.id}')">${needsAction?t('reviewBtn'):t('viewBtn')}</button></td>
+    </tr>`;
+}
+
+function showList(){
+  $('view-list').style.display = "flex";
+  $('view-detail').style.display = "none";
+  currentId = null;
+  _currentRaw = null;
+  loadFromCreator();
+}
+
+/* ════════════════════════════════
+   DETAIL
+════════════════════════════════ */
+function openDetail(id){
+  currentId = String(id);
+  const r = ALL_ROWS.find(x=>String(x.id)===currentId);
+  if(!r){ showToast(t('toastRecordNotFound')); return; }
+
+  $('view-list').style.display = "none";
+  $('view-detail').style.display = "block";
+  window.scrollTo(0,0);
+
+  renderDetailShell(r);
+
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.DATA && typeof ZOHO.CREATOR.DATA.getRecordById==='function'){
+    ZOHO.CREATOR.DATA.getRecordById({ report_name: REPORT_NAME, id: currentId, field_config: 'all' })
+      .then(function(resp){
+        if(resp && resp.code===3000 && resp.data){
+          _currentRaw = resp.data;
+          renderDetailFull(resp.data);
+          renderDamageDetailsCard(resp.data);
+          loadRRMedia(resp.data, firstSummaryRow(resp.data));
+        } else {
+          console.warn('[RR Portal] getRecordById non-3000:', resp && resp.code);
+        }
+      })
+      .catch(function(err){ console.warn('[RR Portal] getRecordById error:', JSON.stringify(err)); });
+  }
+}
+
+function renderDetailShell(r){
+  $('d-rrno').textContent = r.rrNo;
+  $('d-statstamp').innerHTML = badgeHtml(r.status);
+  $('s-source').textContent = sourceTypeLabel(r.sourceType) || '—';
+  $('s-date').textContent = r.rrDate || '—';
+  $('s-sku').textContent = r.sku || '—';
+  $('s-item').textContent = r.item || '—';
+  $('s-qty').textContent = r.qty;
+  $('s-priority').textContent = r.priority || '—';
+}
+
+function renderDetailFull(raw){
+  const r = mapRow(raw);
+  const sr = firstSummaryRow(raw);
+  $('d-statstamp').innerHTML = badgeHtml(r.status);
+  $('s-excno').textContent = raw.Source_Exception_No || '—';
+  $('s-origpo').textContent = sr.Original_PO_No || '—';
+
+  var reason = raw.RR_Reason || sr.RR_Reason || '';
+  if(reason){ $('s-reason-lbl').style.display='block'; $('s-reason').style.display='block'; $('s-reason').textContent = reason; }
+  else { $('s-reason-lbl').style.display='none'; $('s-reason').style.display='none'; }
+
+  $('in-shipmode').value = raw.Shipment_Mode || '';
+  $('in-expship').value = fmtDateForInput(raw.Expected_Ship_Date);
+  $('in-actship').value = fmtDateForInput(raw.Actual_Ship);
+  $('in-eta').value = fmtDateForInput(raw.ETA);
+  $('in-status').value = ['Acknowledged','In Production','Shipped'].indexOf(r.status)!==-1 ? r.status : 'Acknowledged';
+
+  loadTargetDeliveryRef(sr.Original_PO_No);
+
+  $('d-audit').innerHTML = `
+    <div class="audit-row"><span class="audit-label">${t('auditRrStatus')}</span><span class="audit-value">${badgeHtml(r.status)}</span></div>
+    <div class="audit-row"><span class="audit-label">${t('auditSupplierAck')}</span><span class="audit-value">${(raw.Supplier_Acknowledgement1===true||raw.Supplier_Acknowledgement1==='true') ? t('yesLabel') : t('noLabel')}</span></div>
+    <div class="audit-row"><span class="audit-label">${t('auditSupplierAckDate')}</span><span class="audit-value">${escapeHtml(raw.Supplier_Acknowledge_Date||'—')}</span></div>
+    <div class="audit-row"><span class="audit-label">${t('auditLastUpdated')}</span><span class="audit-value">${escapeHtml(raw.Last_Updated||'—')}</span></div>
+    <div class="audit-row"><span class="audit-label">${t('auditClosedAt')}</span><span class="audit-value">${escapeHtml(raw.Closed_At||'—')}</span></div>
+  `;
+
+  applyFieldStates(r);
+}
+
+function extractSubformRows(raw){
+  if(Array.isArray(raw)) return raw;
+  if(raw && typeof raw==='object'){
+    if(Array.isArray(raw.data)) return raw.data;
+    if(Array.isArray(raw.records)) return raw.records;
+    if(Object.keys(raw).length) return [raw];
+  }
+  return [];
+}
+
+/* ADDED 2026-07-23 — fetches this supplier's own PO record (by PO_No_Supplier1 match
+   against Original_PO_No, already known from Replacement_Summary) and surfaces its
+   Target_Delivery_Supplier1 (deduped across lines) right above the Expected Ship
+   Date/ETA inputs, same reference-note pattern as Fenteng-PO/Tony-PO's Shipment
+   Timing card. Fails open/blank on any miss — purely informational, never blocks. */
+function loadTargetDeliveryRef(poNo){
+  var el = $('s-target-ref');
+  if(!el) return;
+  el.textContent = '';
+  if(!poNo || typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: SUPPLIER_PO_REPORT, criteria: '('+PO_NO_FIELD+'=="'+String(poNo).replace(/"/g,'\\"')+'")', field_config: 'all' })
+    .then(function(resp){
+      if(!(resp && resp.code===3000 && Array.isArray(resp.data) && resp.data.length)) return;
+      var lines = extractSubformRows(resp.data[0][PO_SUBFORM_NAME]);
+      var dates = Array.from(new Set(lines.map(function(ln){ return (ln[PO_TARGET_FIELD]||'').trim(); }).filter(Boolean)));
+      if(dates.length) el.textContent = t('targetRefPrefix') + dates.join(', ');
+    })
+    .catch(function(err){ console.warn('[RR Portal] loadTargetDeliveryRef error:', JSON.stringify(err)); });
+}
+
+/* Creator date fields commonly come back as "DD-MMM-YYYY" — <input type="date"> needs
+   "YYYY-MM-DD". Converts defensively; leaves blank on an unrecognized shape. */
+function fmtDateForInput(val){
+  if(!val) return '';
+  var m = String(val).match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+  if(m){
+    var months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+    var mm = months[m[2]];
+    if(mm) return m[3] + '-' + mm + '-' + (m[1].length===1?'0'+m[1]:m[1]);
+  }
+  if(/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  return '';
+}
+function fmtDateForPayload(val){
+  if(!val) return '';
+  var m = String(val).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return val;
+  var months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return m[3] + '-' + months[parseInt(m[2],10)] + '-' + m[1];
+}
+
+/* ════════════════════════════════
+   FIELD STATE — Approve RR offered while Open. Update Progress card ALSO shown while
+   Open (CHANGED 2026-07-20 — this card holds the Expected Ship Date/ETA inputs that
+   Approve RR itself now reads and requires; it used to only show from Acknowledged
+   onward, which meant those 2 fields were genuinely unreachable at the one moment
+   they're actually needed — real bug caught live, first RR ever approved under the
+   new gate).
+   BUG found live same day: with the whole card visible at Open, its OWN "Status"
+   dropdown (defaults to "Acknowledged") + separate "Save Progress" button became a
+   silent bypass of Approve RR — clicking Save Progress while Open writes
+   RR_Status="Acknowledged" directly via plain field update, skipping
+   Supplier_Acknowledgement1/Supplier_Acknowledge_Date entirely (those are ONLY ever
+   set by the real approveRRFenteng/approveRRTony call). Confirmed live: RR-00001
+   showed RR_Status=Acknowledged but Supplier_Acknowledgement1 stayed false because the
+   supplier clicked Save Progress instead of Approve RR. FIXED: Actual Ship Date,
+   Status, and the Save Progress button/row are now hidden while Open — only Expected
+   Ship Date + ETA show (feeding Approve RR itself), with a note explaining why Save
+   is disabled until after approval. Approve RR is now the ONLY path off Open.
+════════════════════════════════ */
+function applyFieldStates(r){
+  const canApprove = r.status === 'Open';
+  $('approveBtn').style.display = canApprove ? 'inline-flex' : 'none';
+  $('submitNote').style.display = canApprove ? 'block' : 'none';
+
+  const progressCard = $('saveProgressBtn').closest('.sec-card');
+  const canUpdateProgress = ['Open','Acknowledged','In Production','Shipped'].indexOf(r.status) !== -1;
+  progressCard.style.display = canUpdateProgress ? 'block' : 'none';
+
+  const isApprovedOrLater = ['Acknowledged','In Production','Shipped'].indexOf(r.status) !== -1;
+  $('fld-actship').style.display = isApprovedOrLater ? '' : 'none';
+  $('fld-status').style.display = isApprovedOrLater ? '' : 'none';
+  $('progressSaveRow').style.display = isApprovedOrLater ? 'flex' : 'none';
+  $('preApproveNote').style.display = (canApprove && !isApprovedOrLater) ? 'block' : 'none';
+
+  const banner = $('lockBanner');
+  if(r.status === 'Open'){
+    banner.style.display = 'none';
+  } else if(['Received','Closed','Cancelled'].indexOf(r.status) !== -1){
+    banner.style.display = 'flex';
+    const m = STATUS_META[r.status] || STATUS_META["Open"];
+    banner.innerHTML = t('lockBannerTerminal', {status: t(m.key)});
+  } else {
+    banner.style.display = 'flex';
+    banner.innerHTML = t('lockBannerApproved');
+  }
+}
+
+/* ════════════════════════════════
+   TOAST
+════════════════════════════════ */
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+/* ════════════════════════════════
+   APPROVE RR — calls the Custom API (Report Action Items can't be invoked via any
+   Creator API/SDK call). ADDED 2026-07-20, per user request ("their only job is to
+   approve and populate ETA/ETD"): Missing_SKUs flagging / new replacement PO creation
+   moved OUT of this click entirely (now fires at officer's Create RR time instead) —
+   this button's only remaining job is the status flip + requiring Expected Ship
+   Date/ETA to be filled, sent as real args so one click both approves AND persists
+   them (no separate Save Progress round-trip needed first).
+════════════════════════════════ */
+function confirmApprove(){
+  if(!_currentRaw){ showToast(t('toastRecordNotLoaded')); return; }
+  if((_currentRaw.RR_Status||'') !== 'Open'){ showToast(t('toastAlreadyApproved')); return; }
+  var shipMode = $('in-shipmode').value;
+  var expShip = $('in-expship').value;
+  var eta = $('in-eta').value;
+  if(!shipMode || !expShip || !eta){
+    showToast(t('toastFillShipFields'));
+    if(!shipMode){ $('in-shipmode').focus(); } else if(!expShip){ $('in-expship').focus(); } else { $('in-eta').focus(); }
+    return;
+  }
+  $('confirmOverlay').classList.add('open');
+  $('confirmApproveBtn').onclick = function(){
+    closeConfirm();
+    doApprove(shipMode, expShip, eta);
+  };
+}
+
+function doApprove(shipMode, expShip, eta){
+  const btn = $('approveBtn');
+  btn.textContent = t('approvingBtn'); btn.disabled = true;
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    btn.textContent=t('approveBtn'); btn.disabled=false;
+    showToast(t('toastSdkUnavailable')); return;
+  }
+
+  /* Shipment Mode isn't part of approveRRFenteng/Tony's own Custom Function args (that
+     function only ever took rrRecordId/expectedShipDate/eta) — saved here as a plain
+     field write instead, same "no lock script blocks these fields" reasoning
+     saveProgress() already relies on, so no Deluge change needed for this half. */
+  var sku = $('s-sku').textContent || '';
+  var prNo = (firstSummaryRow(_currentRaw||{}).PR_No) || '';
+  var sourceExcNo = (_currentRaw && _currentRaw.Source_Exception_No) || '';
+
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: currentId,
+    payload: { data: { Shipment_Mode: shipMode } }
+  }).catch(function(err){ console.warn('[RR Portal] Shipment_Mode pre-save error:', JSON.stringify(err)); });
+
+  ZOHO.CREATOR.DATA.invokeCustomApi({
+    api_name: CUSTOM_API_NAME_APPROVE,
+    http_method: 'POST',
+    content_type: 'application/json',
+    payload: { rrRecordId: currentId, expectedShipDate: expShip, eta: eta },
+    public_key: CUSTOM_API_KEY_APPROVE
+  }).then(function(resp){
+    /* Standard response wraps the function's Map under "result", not "data" — check
+       both, see the invokeCustomApi Deluge Gotchas entry in CLAUDE.md. */
+    var result = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+    console.log('[RR Portal] approve resp:', JSON.stringify(result));
+    if(result && result.status === 'success'){
+      showToast(result.message || t('toastApproved'));
+      pushShipmentModeToReceiving(sourceExcNo, sku, prNo, shipMode);
+      showList();
+    } else {
+      btn.textContent=t('approveBtn'); btn.disabled=false;
+      showAlertModal((result && result.message) || t('toastApproveFailedConsole'));
+    }
+  }).catch(function(err){
+    console.error('[RR Portal] approve error:', JSON.stringify(err));
+    btn.textContent=t('approveBtn'); btn.disabled=false;
+    showToast(t('toastApproveFailedConsole2'));
+  });
+}
+
+/* ADDED 2026-07-23, per user ("shipment type/mode... mandatory to fill. when
+   acknowledge, save that shipment mode to = Ship Mode Received in receiving") — the
+   replacement is physically going back into the SAME Receiving record (per this app's
+   own "same RCV, same PO" recycle architecture), so the mode the supplier picks here
+   should land on that Receiving line's own Shipment_Mode_When_Received, same field
+   Receiving's own dropdown writes for a normal item. Chain: RR's own Source_Exception_No
+   (header) -> Exceptions[Exception_No==that].Receive_No (header) -> Receiving_Report
+   [Receive_No1==that] -> match the line by SKU(+PR_No) -> full Receiving_Line_Items
+   replace, every other field carried verbatim (same reconcile shape already proven in
+   the Exception widget's own reconcileReceivingOnRepairFixed() this same session).
+   Best-effort — Approve RR itself already succeeded by the time this runs, a failure
+   here only means the Receiving line needs a manual mode correction. */
+/* ADDED 2026-07-27, per user ("supplier acknowledge RR can populate Shipment_Mode_
+   When_Received immediately so receiving officer wont have to") — the original
+   version above only ever resolved the target Receiving record via
+   Exceptions[Exception_No==sourceExcNo].Receive_No, a NATIVE Exceptions record.
+   A "Fulfillment EXC" RR (UI/FF Widget/ExceptionControl) has no such record —
+   sourceExcNo is an Exception_Control1.Exception_Number instead — so this always
+   silently no-op'd for that source (confirmed live, RR-00004/EXC-FF-00004). Same
+   fallback chain already added to clone_shipment_for_replacement.txt/receiving_
+   create_bin_receiving.txt: Exception_Control1[Exception_Number==sourceExcNo].PR
+   -> Purchase_Request1[PR_No==that].Link_PO_No -> Receiving[PO_No==that] (skips
+   the Receive_No indirection entirely for this path, one fewer hop). */
+function resolveReceivingForPush(sourceExcNo){
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  var esc = function(v){ return String(v).replace(/"/g,'\\"'); };
+  return gr({ report_name: 'Exceptions_Report', criteria: '(Exception_No=="'+esc(sourceExcNo)+'")', field_config: 'all' })
+    .then(function(excResp){
+      if(excResp && excResp.code===3000 && Array.isArray(excResp.data) && excResp.data.length){
+        var receiveNo = excResp.data[0].Receive_No;
+        if(receiveNo){
+          return gr({ report_name: 'Receiving_Report', criteria: '(Receive_No1=="'+esc(receiveNo)+'")', field_config: 'all' })
+            .then(function(recResp){
+              return (recResp && recResp.code===3000 && recResp.data && recResp.data.length) ? recResp.data[0] : null;
+            });
+        }
+      }
+      return gr({ report_name: 'Exception_Control_Report', criteria: '(Exception_Number=="'+esc(sourceExcNo)+'")', field_config: 'all' })
+        .then(function(ecResp){
+          if(!(ecResp && ecResp.code===3000 && ecResp.data && ecResp.data.length)) return null;
+          var prNo2 = ecResp.data[0].PR;
+          if(!prNo2) return null;
+          return gr({ report_name: 'All_Purchase_Request', criteria: '(PR_No=="'+esc(prNo2)+'")', field_config: 'all' })
+            .then(function(prResp){
+              if(!(prResp && prResp.code===3000 && prResp.data && prResp.data.length)) return null;
+              var poNo2 = prResp.data[0].Link_PO_No;
+              if(!poNo2) return null;
+              return gr({ report_name: 'Receiving_Report', criteria: '(PO_No=="'+esc(poNo2)+'")', field_config: 'all' })
+                .then(function(recResp2){
+                  return (recResp2 && recResp2.code===3000 && recResp2.data && recResp2.data.length) ? recResp2.data[0] : null;
+                });
+            });
+        });
+    })
+    .catch(function(err){ console.warn('[RR Portal] resolveReceivingForPush error:', JSON.stringify(err)); return null; });
+}
+
+function pushShipmentModeToReceiving(sourceExcNo, sku, prNo, shipMode){
+  if(!sourceExcNo || !sku){
+    console.warn('[RR Portal] pushShipmentModeToReceiving — missing sourceExcNo/sku, skipping');
+    return;
+  }
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
+  resolveReceivingForPush(sourceExcNo)
+    .then(function(recvRaw){
+      if(!recvRaw){
+        console.warn('[RR Portal] pushShipmentModeToReceiving — could not resolve a Receiving record for', sourceExcNo);
+        return;
+      }
+      var lines = extractSubformRows(recvRaw['Receiving_Line_Items']);
+      var matchIdx = -1;
+      for(var i=0;i<lines.length;i++){
+        var skuMatch = (lines[i].SKU||'') === sku;
+        var prMatch = !prNo || (lines[i].PR_No||'') === prNo;
+        if(skuMatch && prMatch){ matchIdx = i; break; }
+      }
+      if(matchIdx===-1){
+        console.warn('[RR Portal] pushShipmentModeToReceiving — no matching Receiving line for', sku);
+        return;
+      }
+      var newLines = lines.map(function(ln, i){
+        var row = {
+          PR_No: ln.PR_No, RR_No: ln.RR_No, SKU: ln.SKU, Single_Line: ln.Single_Line,
+          Item_Name: ln.Item_Name, Expected_Qty: ln.Expected_Qty,
+          Accepted_Qty: ln.Accepted_Qty, Damage_Qty: ln.Damage_Qty, Missing_Qty: ln.Missing_Qty,
+          Bin_location: ln.Bin_location, Shipment_Mode_When_Received: ln.Shipment_Mode_When_Received,
+          Line_Result: ln.Line_Result, Has_Exceptions: ln.Has_Exceptions,
+          Ready_for_Fulfillment: ln.Ready_for_Fulfillment, Label_Ready: ln.Label_Ready,
+          Label_Printed: ln.Label_Printed
+        };
+        if(i===matchIdx) row.Shipment_Mode_When_Received = shipMode;
+        return row;
+      });
+      var ubr = ZOHO.CREATOR.DATA.updateRecordById.bind(ZOHO.CREATOR.DATA);
+      return ubr({ report_name: 'Receiving_Report', id: String(recvRaw.ID), payload: { data: { Receiving_Line_Items: newLines } } });
+    })
+    .then(function(uresp){
+      if(uresp && (uresp.code===3000 || String(uresp.code)==='3000')){
+        console.log('[RR Portal] Ship Mode Received pushed to Receiving successfully.');
+      }
+    })
+    .catch(function(err){ console.warn('[RR Portal] pushShipmentModeToReceiving error:', JSON.stringify(err)); });
+}
+
+/* ════════════════════════════════
+   SAVE PROGRESS — plain updateRecordById (no lock/disable script blocks these fields).
+════════════════════════════════ */
+function saveProgress(){
+  if(!_currentRaw){ showToast(t('toastRecordNotLoaded')); return; }
+  if((_currentRaw.RR_Status||'') === 'Open'){ showToast(t('toastUseApproveFirst')); return; }
+  const btn = $('saveProgressBtn');
+  btn.textContent = t('savingProgressBtn'); btn.disabled = true;
+
+  /* ISO yyyy-mm-dd passed straight through — the write API wants plain ISO, not
+     fmtDateForPayload's DD-MMM-YYYY (that shape is only for GET-response display,
+     converting before a write errors "code 3002 Enter a valid date format", same
+     documented Deluge Gotcha already fixed once in the PRs/Shipments widgets). Found
+     while wiring Approve RR's own ETD/ETA the same day — fixed here too since it's
+     the same latent bug on the same 2 fields, just via a different button. */
+  const payload = {
+    Shipment_Mode: $('in-shipmode').value,
+    Expected_Ship_Date: $('in-expship').value,
+    Actual_Ship: $('in-actship').value,
+    ETA: $('in-eta').value,
+    RR_Status: $('in-status').value,
+    Last_Updated: new Date().toISOString()
+  };
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: currentId,
+    payload: { data: payload }
+  }).then(function(resp){
+    console.log('[RR Portal] saveProgress resp:', JSON.stringify(resp));
+    btn.textContent=t('saveProgressBtn'); btn.disabled=false;
+    if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+      showToast(t('toastProgressSaved'));
+      openDetail(currentId);
+    } else {
+      showAlertModal(t('toastSaveFailedCode',{code:(resp && resp.code)}));
+    }
+  }).catch(function(err){
+    console.error('[RR Portal] saveProgress error:', JSON.stringify(err));
+    btn.textContent=t('saveProgressBtn'); btn.disabled=false;
+    showToast(t('toastSaveFailedConsole'));
+  });
+}
+
+/* ════════════════════════════════
+   CREATOR SDK LOAD
+════════════════════════════════ */
+function loadFromCreator(){
+  const _timeout = setTimeout(function(){
+    console.warn('[RR Portal] getRecords timed out');
+    showToast(t('toastTimeout'));
+    ALL_ROWS = []; renderList();
+  }, 10000);
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    clearTimeout(_timeout);
+    console.warn('[RR Portal] SDK not available');
+    ALL_ROWS = []; renderList();
+    return;
+  }
+
+  ZOHO.CREATOR.DATA.getRecords({ report_name: REPORT_NAME, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      clearTimeout(_timeout);
+      console.log('[RR Portal] getRecords code:', resp && resp.code, '| records:', resp && resp.data && resp.data.length);
+      if(resp && resp.code===3000){
+        const raw = Array.isArray(resp.data) ? resp.data : [];
+        ALL_ROWS = raw.map(mapRow);
+      } else if(resp && resp.code===9220){
+        ALL_ROWS = [];
+      } else {
+        console.warn('[RR Portal] getRecords non-3000:', resp && resp.code);
+        ALL_ROWS = [];
+      }
+      renderList();
+    })
+    .catch(function(err){
+      clearTimeout(_timeout);
+      /* A genuinely empty report (code 9220) comes back as an HTTP 400 — the SDK
+         promise REJECTS instead of resolving. Confirmed established gotcha elsewhere
+         in this app. */
+      var isEmptyReport = false;
+      try{
+        var text = err && (err.responseText || (err.content && err.content.responseText));
+        var parsed = text ? JSON.parse(text) : null;
+        if(parsed && (parsed.code === 9220 || String(parsed.code) === '9220')) isEmptyReport = true;
+      } catch(e){ }
+      if(isEmptyReport){
+        ALL_ROWS = []; renderList();
+        return;
+      }
+      console.error('[RR Portal] getRecords error:', JSON.stringify(err));
+      showToast(t('toastLoadListFail'));
+      ALL_ROWS = []; renderList();
+    });
+}
+
+/* ════════════════════════════════
+   GROUPS TAB — ADDED 2026-09-21, per user ("Lagyan mo ng groupings ang PO, shipment at
+   replacement"). Same idea as the sibling PR widget's PR Groups tab: every row is
+   clustered by the buyer-side Sales Order it traces back to, but the SO# itself is
+   NEVER rendered (card header is just "Total ...: N"), and it is deliberately not
+   searchable either. Resolution chain: this row's PR No(s) -> All_Purchase_Request.
+   Sales_Order (one lazy fetch, first time the tab is opened; same call the PR widget
+   already makes). RR additionally carries SO_No directly on its Replacement_Summary
+   row, which wins over the lookup. Rows that touch several SOs are grouped with other
+   rows that touch the exact same SO set; rows with no resolvable SO (e.g. stock
+   replacements with no PR) show as their own single-row card, never dropped.
+════════════════════════════════ */
+var GRP_PR_NO_TO_SO = {};
+var grpSoMapLoaded = false;
+function grpExtractVal(x){
+  if(x===null||x===undefined) return '';
+  if(typeof x==='object') return String(x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'').trim();
+  return String(x).trim();
+}
+function grpLoadSoMap(cb){
+  if(grpSoMapLoaded){ cb(); return; }
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    grpSoMapLoaded = true; cb(); return;
+  }
+  ZOHO.CREATOR.DATA.getRecords({ report_name: 'All_Purchase_Request', page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      if(resp && resp.code===3000 && Array.isArray(resp.data)){
+        resp.data.forEach(function(r){
+          var pr = grpExtractVal(r['PR_No']);
+          var so = grpExtractVal(r['Sales_Order']);
+          if(pr) GRP_PR_NO_TO_SO[pr] = so || '';
+        });
+      }
+      grpSoMapLoaded = true; cb();
+    })
+    .catch(function(err){
+      console.warn('[Groups] SO lookup failed (rows fall back to standalone cards):', err);
+      grpSoMapLoaded = true; cb();
+    });
+}
+
+var CURRENT_MAIN_TAB = 'all';
+function switchMainTab(tab){
+  CURRENT_MAIN_TAB = tab;
+  document.querySelectorAll('.tab-btn2').forEach(function(b){ b.classList.toggle('active', b.dataset.maintab===tab); });
+  $('panel-main-all').style.display = tab==='all' ? '' : 'none';
+  $('panel-main-groups').style.display = tab==='groups' ? '' : 'none';
+  if(tab==='groups'){
+    $('grpCardsWrap').innerHTML = '<div class="grp-empty">'+t('grpLoading')+'</div>';
+    grpLoadSoMap(function(){ renderGroupCards(); });
+  }
+}
+
+function grpSoList(r){
+  var set = {};
+  if(r.soNo) set[r.soNo] = true;
+  (r.prNos||[]).forEach(function(p){ var so = GRP_PR_NO_TO_SO[p]; if(so) set[so] = true; });
+  return Object.keys(set).sort();
+}
+var GRP_COLGROUP = '<colgroup><col style="width:13%"><col style="width:13%"><col style="width:20%"><col style="width:7%"><col style="width:14%"><col style="width:13%"><col style="width:12%"><col style="width:8%"></colgroup>';
+function renderGroupCards(){
+  var wrap = $('grpCardsWrap');
+  if(!wrap) return;
+  var q = (($('grpSearch') && $('grpSearch').value)||'').toLowerCase().trim();
+  var map = {};
+  ALL_ROWS.forEach(function(r){
+    if(q && [r.rrNo, r.sku, r.item].join(' ').toLowerCase().indexOf(q)===-1) return;
+    var sos = grpSoList(r);
+    var key = sos.length ? ('SO::'+sos.join('|')) : ('STANDALONE::'+r.id);
+    if(!map[key]) map[key] = { standalone: !sos.length, key: key, rows: [] };
+    map[key].rows.push(r);
+  });
+  var buckets = Object.keys(map).map(function(k){ return map[k]; });
+  buckets.sort(function(a,b){
+    if(a.standalone !== b.standalone) return a.standalone ? 1 : -1;
+    return a.key.localeCompare(b.key);
+  });
+  var groupCount = buckets.filter(function(b){ return !b.standalone; }).length;
+  var total = buckets.reduce(function(s,b){ return s+b.rows.length; }, 0);
+  $('grpSummary').textContent = t('grpSummary',{groups:groupCount, n:total});
+  if(!buckets.length){
+    wrap.innerHTML = '<div class="grp-empty">'+t('grpNone')+'</div>';
+    return;
+  }
+  var head = '<thead><tr>'+['thRrNo','thSku','thItem','thQty','thReason','thRrDate','thStatus'].map(function(k){ return '<th>'+t(k)+'</th>'; }).join('')+'<th></th></tr></thead>';
+  wrap.innerHTML = buckets.map(function(b){
+    return '<div class="grp-card">'
+      +'<div class="grp-card-hdr"><div class="grp-card-title">'+t('grpTotal',{n:b.rows.length})+'</div></div>'
+      +'<div class="table-wrap"><table class="grp-table">'+GRP_COLGROUP+head
+      +'<tbody>'+b.rows.map(listRowHtml).join('')+'</tbody></table></div>'
+    +'</div>';
+  }).join('');
+}
+
+applyStaticI18n();
+updateLangToggleUI();
+loadFromCreator();
+</script>
+</body>
+</html>

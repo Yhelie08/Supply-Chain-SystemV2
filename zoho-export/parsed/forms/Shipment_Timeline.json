@@ -1,0 +1,61 @@
+{
+  "name": "Shipment_Timeline",
+  "label": "Shipment Timeline",
+  "successMessage": "Data Added Successfully!",
+  "line": 16237,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Shipment_No",
+      "label": "Shipment No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Action_Title",
+      "label": "Action",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Action_Type",
+      "label": "Action Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Created",
+        "Updated",
+        "Approval",
+        "Delayed",
+        "Delivered",
+        "Message",
+        "Deleted"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Changes",
+      "label": "Changes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Actor",
+      "label": "Actor",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Logged_On",
+      "label": "Logged On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+// form: SA_Site_Confirmation_Initiate  form=Service_Appointment_Form event=on add or edit on success  [.ds line 41310]
+    statusIsPendingOrBlank = input.Site_Confirmation_Status == "Pending" || input.Site_Confirmation_Status == null || input.Site_Confirmation_Status == "";
+if(input.Fulfillment_Completed_Date != null && statusIsPendingOrBlank && input.Outreach_Sent_Date == null)
+{
+    rec = Service_Appointment_Form[ID == input.ID];
+    if(input.Site_Confirmation_Status == null || input.Site_Confirmation_Status == "")
+    {
+        rec.Site_Confirmation_Status="Pending";
+        // normalize once, so downstream checks (e.g. the daily follow-up scan) can rely on a real value
+    }
+    custName = "";
+    if(input.Customer_Name != null)
+    {
+        custName = input.Customer_Name.first_name + " " + input.Customer_Name.last_name;
+    }
+    soRef = input.Sales_Order;
+    hasSMS = input.Contact != null && input.Contact != "";
+    hasEmail = input.Email != null && input.Email != "";
+    // ADDED 2026-08-26, per user request — list the actual items on the order in
+    // the outreach message, one line each: "<b>Item:</b><name> | <b>Quantity:</b><qty>"
+    // (labels bolded, per the user's own "<Bold>Item:<Bold>... | <Bold>Quantity:<Bold>..."
+    // template markup). Item_Details is Service_Appointment_Form's own subform
+    // (Item_Name/Quantity/SKU/PAC per row, confirmed via a live record read) —
+    // dot-notation row access matches this file's own established native-workflow
+    // subform pattern. sendmail's message renders as HTML, so "<br>"/"<b>" not
+    // "\n"/other markup for line breaks/bold (confirmed live via screenshot —
+    // plain "\n" silently collapses).
+    itemLines = "";
+    if(input.Item_Details != null)
+    {
+        for each  itRow in input.Item_Details
+        {
+            itemLines = itemLines + "<b>Item:</b>" + itRow.Item_Name + " | <b>Quantity:</b>" + itRow.Quantity + "<br>";
+        }
+    }
+    // REPLACED 2026-08-26, per user — 2 real templates (pasted verbatim from the
+    // user's own real customer-facing scripts, Temp.txt, several revisions).
+    // Pick Up got a FULL rewrite same day (schedule/location/reminders instead of
+    // a site-confirmation-style message — makes more sense for an in-store
+    // pickup, no customer address/site-requirement questions needed at all) —
+    // static Home Cartel pickup location, no Requested_Delivery_Date line (a
+    // pickup has its own fixed schedule, not a delivery date). The
+    // Delivery/Delivery & Installation template keeps the optional Delivery
+    // Date line (officer-given at dispatch via OrderAggregation's dispatch-modal
+    // date field) — omitted entirely when blank, since no real date exists yet
+    // at this pipeline stage in the normal case.
+    deliveryDateLine = "";
+    if(input.Requested_Delivery_Date != null && input.Requested_Delivery_Date + "" != "")
+    {
+        deliveryDateLine = "<b>Delivery Date:</b> " + input.Requested_Delivery_Date + "<br><br>";
+    }
+    if(input.Type_of_Delivery == "Pick Up")
+    {
+        msgBody = "<b>Good day!</b><br><br>This is Jhi from the Home Cartel Delivery Team. Please see below the available schedule and important guidelines for your upcoming pick-up.<br><br><b>Item/s:</b><br>" + itemLines + "<br><b>Pick-up Schedule:</b><br><br>&#128344; 9:00 a.m. – 11:00 a.m.<br>&#128337; 2:00 p.m. – 4:00 p.m.<br><br><b>Days:</b> Monday to Saturday<br><br>Strictly within the designated pick-up time slots.<br><br><b>Pick-up Location:</b><br><br>&#127970; Home Cartel<br>&#128205; 673 GLC Building, Malaya St. corner Banawe St., Quezon City<br>&#128222; Contact Person: Jhi – 09126699980<br><br><b>Kindly provide the following details:</b><br><br>Pick-up Person:<br>Contact Number:<br>Order Number:<br><br><b>Important Reminders:</b><br><br>&#9679;The pick-up personnel must declare the Sales Order Number upon arrival for verification and reference.<br>&#9679;Pick-ups outside the designated schedule will have to wait until the next available pick-up time, as the personnel in charge may have other assigned tasks.<br>&#9679;Please ensure that the required details are provided before the scheduled pick-up to avoid delays.<br><br>Thank you for your cooperation!<br><b>Home Cartel</b>";
+    }
+    else
+    {
+        // Everything that isn't specifically Pick Up (Delivery Only, With
+        // Installation, Full-Day Install, Multi-Day Install, Replacement, Site
+        // Visit, Pullout) — the message itself asks the customer to confirm which
+        // of Delivery Only / Delivery & Installation / Pick-up this actually is,
+        // so one shared template covers the whole "not yet known to be Pick Up"
+        // bucket rather than needing a template per DMS type.
+        msgBody = "<b>Good day!</b><br><br>This is Jhi from the Home Cartel Delivery Team. We would like to inform you that your order under SO-" + soRef + " is already prepared and ready for delivery.<br><br><b>Item/s:</b><br>" + itemLines + "<br><b>May we kindly ask for the following details:</b><br><br>Contact Name:<br>Contact Number:<br>Shipping Address:<br>Pin Location:<br><br><b>Please let us know:</b><br><br>&#9679; If this is Delivery Only, Delivery & Installation, or Pick-up.<br>&#9679; If a permit/gate pass is required.<br>&#9679; Receiving Hours:<br><br><b>For orders with installation, kindly confirm the following site requirements:</b><br><br>&#9679; If the necessary support/\"abang\" is already prepared on-site.<br>&#9679; If scaffolding will be needed for the installation.<br>&#9679; If a permit or gate pass is required for delivery and/or installation.<br>&#9679; The type/material of the wall or ceiling where the item will be installed.<br>&#9679; Any other site requirements or additional details that we should be aware of.<br><br>" + deliveryDateLine + "If there are any changes to the details provided, please let us know as well.<br><br>Thank you,<br><b>Home Cartel</b>";
+    }
+    // CHANGED 2026-08-26, per user ("use email only for now") — email checked FIRST
+    // and no longer gated behind "no phone on file". SMS itself stays paused (iTexMo
+    // account issue still unresolved) — see the file header note above.
+    if(hasEmail)
+    {
+        sendmail
+        [
+            from :zoho.adminuserid
+            to :input.Email
+            subject :"Delivery Confirmation Needed — " + soRef
+            message :msgBody
+        ]
+        info "[Email] Sent to: " + input.Email;
+    }
+    else if(hasSMS)
+    {
+        // Phone-only, no email — SMS is still paused, so there's no real channel to
+        // use right now. Per explicit user decision (asked directly 2026-08-26, not
+        // guessed): do NOT escalate to the Exception Queue here — we DO have a way to
+        // reach this customer, it's just off. Outreach_Sent_Date is left unset, which
+        // means (a) this action's own re-entry guard (input.Outreach_Sent_Date ==
+        // null, top of this action) lets it re-run on every future edit of the
+        // record, and (b) the daily DMS_Site_Confirmation_FollowUp scan below does
+        // NOT pick it up (its own query requires Outreach_Sent_Date != null) — a
+        // phone-only record only gets re-evaluated by someone actually editing it
+        // (e.g. an officer adding an email), not automatically day to day.
+        info "[SITE CONFIRMATION] Phone on file but no email, SMS paused — record " + input.ID + " (" + soRef + ") left Pending, will re-check on next edit.";
+        return;
+    }
+    else
+    {
+        // Per the plan (C.2 Step 1): "No Contact Info" is its own immediate escalation,
+        // distinct from "Unreachable" (which only applies after a real send attempt
+        // gets no reply, see C.3). Status stays Pending — we don't yet know whether the
+        // customer is reachable, just that we have no channel to try.
+        rec.Site_Confirmation_Notes="No contact info (no phone or email) on file — escalated to Exception Queue.";
+        rec.Exception_Status="Flagged";
+        // Outreach_Sent_Date never gets set on this branch (it's set below, outside
+        // this if/else, only reached by the Email branch) — so this whole
+        // action re-fires on every subsequent edit while status stays Pending/no
+        // contact info. Dedup guard: only insert once, first time Exception_Status
+        // isn't already Flagged (checks the PRE-save input value, still valid here).
+        if(input.Exception_Status != "Flagged")
+        {
+            insert into DMS_Exception_Queue
+            [
+                Sales_Order_Reference=rec.ID
+                Customer_Name=custName
+                Exception_Stage="Site Confirmation"
+                Exception_Reason="No Contact Info"
+                Severity="High"
+                Raised_By="System"
+                Date_Raised=zoho.currenttime
+                Status="Open"
+                Added_User=zoho.loginuser
+            ]
+        }
+        info "[SITE CONFIRMATION] No contact info for record " + input.ID + " (" + soRef + ")";
+        return;
+    }
+    rec.Outreach_Sent_Date=zoho.currentdate;
+    rec.Followup_Count=0;
+}

@@ -1,0 +1,45 @@
+// form: Mandatory_Supplier_Fields  form=Supplier_1 event=on edit on validate  [.ds line 36494]
+    if(input.edit_counter == 0)
+{
+    alert "Editing is locked. Wait for inquiry update.";
+    cancel submit;
+}
+hasEmpty = false;
+msg = "";
+for each  sq in input.Supplier_quotes
+{
+    if(sq.Availability_Supplier == null || sq.Availability_Supplier == "")
+    {
+        hasEmpty = true;
+        msg = msg + "Availability, ";
+    }
+    if(sq.Availability_Supplier != "Cannot Produce" && sq.Availability_Supplier != "Unavailable" && sq.Availability_Supplier != "Confirmed")
+    {
+        if(sq.Initial_Price_Supplier == null || sq.Initial_Price_Supplier == 0)
+        {
+            hasEmpty = true;
+            msg = msg + "Initial Price, ";
+        }
+        if(sq.Final_Price_Supplier == null || sq.Final_Price_Supplier == 0)
+        {
+            hasEmpty = true;
+            msg = msg + "Final Price, ";
+        }
+    }
+    if(sq.Availability_Supplier != "Cannot Produce" && sq.Availability_Supplier != "Unavailable")
+    {
+        if(sq.Availability_Supplier != "Confirmed")
+        {
+            if(sq.Lead_Time_Supplier == null || sq.Lead_Time_Supplier == "")
+            {
+                hasEmpty = true;
+                msg = msg + "Lead Time, ";
+            }
+        }
+    }
+}
+if(hasEmpty == true)
+{
+    alert "Required fields missing: " + msg.removeLastOccurence(", ");
+    cancel submit;
+}

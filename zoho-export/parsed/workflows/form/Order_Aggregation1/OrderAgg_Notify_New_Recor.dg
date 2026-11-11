@@ -1,0 +1,13 @@
+// form: OrderAgg_Notify_New_Record  form=Order_Aggregation1 event=on add on success  [.ds line 44936]
+    insert into OrderAgg_Notifications
+[
+    Recipient_Email="homecartelff@gmail.com"
+    Notification_Type="Order Aggregation Record Created"
+    Message="New Order Aggregation record — " + input.SO + " (" + input.Customer_Name + "). Click to open it."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:Order_Aggregation2?orderAggRecordId=" + input.ID
+    Source_Record_No=input.SO
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]

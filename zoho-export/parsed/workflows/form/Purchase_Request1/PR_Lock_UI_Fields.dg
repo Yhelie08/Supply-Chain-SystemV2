@@ -1,0 +1,39 @@
+// form: PR_Lock_UI_Fields  form=Purchase_Request1 event=on add or edit on load  [.ds line 37314]
+    // === PR_Lock_UI_Fields ===
+// Form: Purchase_Request1 | Event: Created or Edited | Load of the form
+if(input.PR_Status == "Converted to PO")
+{
+    disable quantity;
+    disable Selected_Supplier;
+    disable Shipment_Mode;
+    disable Target_Delivery;
+    disable Selcted_Final_Cost;
+    disable Supplier_Selected.Supplier_ID;
+    disable Supplier_Selected.Suppliers;
+    disable Supplier_Selected.Availability;
+    disable Supplier_Selected.Initial_Price;
+    disable Supplier_Selected.Negotiated;
+    disable Supplier_Selected.Final_Price;
+    disable Supplier_Selected.Lead_Time;
+    disable Supplier_Selected.Status;
+    disable Supplier_Selected.Selected;
+    disable Production_Date;
+}
+else
+{
+    enable quantity;
+    enable Selected_Supplier;
+    enable Shipment_Mode;
+    enable Target_Delivery;
+    enable Selcted_Final_Cost;
+    enable Supplier_Selected.Supplier_ID;
+    enable Supplier_Selected.Suppliers;
+    enable Supplier_Selected.Availability;
+    enable Supplier_Selected.Initial_Price;
+    enable Supplier_Selected.Negotiated;
+    enable Supplier_Selected.Final_Price;
+    enable Supplier_Selected.Lead_Time;
+    enable Supplier_Selected.Status;
+    enable Supplier_Selected.Selected;
+    enable Production_Date;
+}

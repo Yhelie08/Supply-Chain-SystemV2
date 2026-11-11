@@ -1,0 +1,25 @@
+
+			displayName = "Pack Report"
+			show all rows from Pack    
+			(
+				Assign_Packer as "Assign Packer"
+				SO as "SO #"
+				PR as "PR #"
+				RR as "RR #"
+				PAC as "PAC #"
+				Demo as "Demo #"
+				Order_Type as "Order Type"
+				For_Crate as "For Crate"
+				Delivery_Type as "Delivery Type"
+				Customer_Name as "Customer Name"
+				Customer_Type as "Customer Type"
+				Customer_Address as "Customer Address"
+				Item_Name as "Item Name"
+				SKU
+				Quantity
+				Bin_Location as "Bin Location"
+				Send_to_QC as "Send to QC"
+				Added_Time as "Added Time"
+				Target_Delivery_Date as "Target Delivery Date"
+			)
+		

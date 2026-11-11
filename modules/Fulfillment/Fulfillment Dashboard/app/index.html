@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fulfillment Scoreboard</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  Read-only analytics dashboard for the Fulfillment module. No writes anywhere
+  in this file — Creator.report.READ only.
+
+  REBUILT 2026-09-05, per direct user instruction ("UI and UX niya. check mo
+  yung sa PR" — pointing at Widget/Proc/Procurement Dashboard) — the old build
+  (hand-rolled vanilla JS + custom inline-SVG charts, Plus Jakarta Sans/blue-
+  orange palette) is replaced with the SAME stack/design system Procurement
+  Dashboard already established as this app's newest, most polished analytics
+  template: React 18 UMD + Recharts 2.12.7 UMD + Babel-standalone (in-browser
+  JSX, no build step) + Tailwind CDN + Inter/JetBrains Mono, same KpiCard/
+  SectionCard/StatusBreakdown/Sparkline/ActivityFeed component shapes, same
+  accent/good/warning/critical color tokens, same single-scrolling-page +
+  pill-nav layout (no sidebar, no fixed top header — both were explicitly
+  removed from Procurement Dashboard's own build history for wasting space).
+  Every real data source/computation the old build had is preserved (stage
+  counts, composition, QC good/damaged, per-checker, per-picker, per-packer,
+  weekday distribution, next target delivery, pipeline load) — only the visual
+  layer changed, nothing here was fabricated to fit the new look.
+
+  1. Zoho Creator -> Settings -> Widgets -> New Widget -> "Upload HTML". Zip
+     app/index.html + plugin-manifest.json + app/translations/en.json.
+  2. CONFIG.APP_NAME below is already "supply-chain-app" to match every other
+     widget in this app.
+  3. Add the widget to a page under the Fulfillment section.
+
+  Uses JS API v2 (ZOHO.CREATOR.DATA.getRecords, field_config: "all") — same
+  approach as every sibling widget in this app.
+
+  Real report/field names, all confirmed against sibling widgets before use
+  (not guessed — this app's whole history is full of guessed-name incidents):
+  Sales_Order_Fulfillment_Report (Fulfillment_Stage/Status/Added_Time/
+  target_delivery_date/SO_No — SO_No confirmed via Widget/Fulfillment/SO
+  Report's own r.SO_No usage), All_Qc_Reports1 (Date_Checked/Item_to_Replace/
+  Quality_Checker/SO/Item_Name — confirmed via Widget/Fulfillment/QC
+  Checklist), Pick1_Report (Picker, Added_Time — confirmed via Widget/
+  Fulfillment/Pick), Pack_Report (Assign_Packer, Added_Time — confirmed via
+  Widget/Fulfillment/Pack).
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+        colors: {
+          accent: { 50:'#eef4fc',100:'#cde2fb',200:'#9ec5f4',300:'#6da7ec',400:'#3987e5',500:'#2a78d6',600:'#1c5cab',700:'#184f95',800:'#104281',900:'#0d366b' },
+          good: '#0ca30c', warning: '#fab219', critical: '#d03b3b', orange: '#eb6834'
+        }
+      }
+    }
+  };
+</script>
+<style>
+  html,body{ background:#f4f6f9; }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:99px; }
+  .tabular{ font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body class="font-sans text-slate-800 antialiased">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+const {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend
+} = Recharts;
+
+/* ================= CONFIG ================= */
+const CONFIG = {
+  APP_NAME: "supply-chain-app",
+  SOF_REPORT: "Sales_Order_Fulfillment_Report",
+  QC_REPORT: "All_Qc_Reports1",
+  PICK_REPORT: "Pick1_Report",
+  PACK_REPORT: "Pack_Report",
+  MAX_RECORDS: 1000,
+};
+
+const STAGE_KEYS = ["Waiting For Package","Order Readiness","Picking","Pack","Quality Checking","Crate","For Delivery"];
+const STAGE_SHORT = { "Waiting For Package":"Waiting", "Order Readiness":"Readiness", "Picking":"Picking", "Pack":"Pack", "Quality Checking":"QC", "Crate":"Crate", "For Delivery":"Delivered" };
+const STAGE_COLOR = { "Waiting For Package":"#94a3b8", "Order Readiness":"#9ec5f4", "Picking":"#6da7ec", "Pack":"#3987e5", "Quality Checking":"#2a78d6", "Crate":"#184f95", "For Delivery":"#0ca30c" };
+const WEEKDAY_LABELS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+/* Confirmed live 2026-08-27 (Widget/Fulfillment/Scoreboard's own original
+   build): ZOHO.CREATOR.DATA.getRecords throws a hard HTTP 400 (code 9220, "No
+   records exist in this report.") for a genuinely EMPTY report — not a real
+   failure. Same pattern already proven in Procurement Dashboard. */
+function fetchReport(reportName){
+  var params = { app_name: CONFIG.APP_NAME, report_name: reportName, field_config: "all", max_records: CONFIG.MAX_RECORDS };
+  return ZOHO.CREATOR.DATA.getRecords(params).then(function(response){
+    return (response && response.data) || [];
+  }).catch(function(err){
+    var code = null;
+    try { code = JSON.parse(err && err.responseText).code; } catch (e) {}
+    if (code === 9220) return [];
+    throw err;
+  });
+}
+
+/* ================= HELPERS ================= */
+function str(rec, field){ var v = rec && rec[field]; return (v === undefined || v === null) ? "" : String(v).trim(); }
+function parseCreatorDate(s){
+  if (!s || typeof s !== "string") return null;
+  var datePart = s.split(" ")[0];
+  var parts = datePart.split("-");
+  if (parts.length !== 3) return null;
+  var mm=parseInt(parts[0],10), dd=parseInt(parts[1],10), yyyy=parseInt(parts[2],10);
+  if (!mm || !dd || !yyyy) return null;
+  return new Date(yyyy, mm-1, dd);
+}
+function startOfWeek(d){
+  var x = new Date(d); var day = x.getDay();
+  var diff = (day === 0 ? -6 : 1) - day;
+  x.setDate(x.getDate() + diff); x.setHours(0,0,0,0);
+  return x;
+}
+function weeklyBuckets(dates, weeks){
+  var now = new Date();
+  var thisWeekStart = startOfWeek(now);
+  var buckets = [];
+  for (var i = weeks - 1; i >= 0; i--){
+    var start = new Date(thisWeekStart); start.setDate(start.getDate() - i*7);
+    var end = new Date(start); end.setDate(end.getDate() + 7);
+    buckets.push({ start: start, end: end, label: (start.getMonth()+1) + "/" + start.getDate(), count: 0 });
+  }
+  dates.forEach(function(d){
+    if (!d) return;
+    for (var i = 0; i < buckets.length; i++){
+      if (d >= buckets[i].start && d < buckets[i].end){ buckets[i].count++; break; }
+    }
+  });
+  return buckets;
+}
+function pctChange(curr, prev){
+  if (prev === 0) return curr === 0 ? 0 : 100;
+  return Math.round(((curr - prev) / prev) * 100);
+}
+function timeAgo(d){
+  if (!d) return "";
+  var diffMs = Date.now() - d.getTime();
+  var days = Math.floor(diffMs / 86400000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return days + "d ago";
+  var weeks = Math.floor(days / 7);
+  if (weeks < 5) return weeks + "w ago";
+  return (d.getMonth()+1) + "/" + d.getDate() + "/" + d.getFullYear();
+}
+function daysBetween(a,b){ return Math.round((b - a) / 86400000); }
+function countByField(records, fieldName){
+  var map = {};
+  records.forEach(function(r){
+    var name = str(r, fieldName);
+    if (!name || name.toLowerCase() === "none") return;
+    map[name] = (map[name]||0) + 1;
+  });
+  return Object.keys(map).map(function(k){ return { name:k, count: map[k] }; }).sort(function(a,b){ return b.count - a.count; });
+}
+
+/* ================= ICONS (hand-authored, Lucide-style: 24x24, stroke 2, currentColor) ================= */
+function Icon(props){
+  return React.createElement("svg", {
+    width: props.size||18, height: props.size||18, viewBox:"0 0 24 24", fill:"none",
+    stroke:"currentColor", strokeWidth:2, strokeLinecap:"round", strokeLinejoin:"round",
+    className: props.className
+  }, props.children);
+}
+const IconPackage = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"m7.5 4.27 9 5.15"}),React.createElement("path",{d:"M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"}),
+  React.createElement("path",{d:"m3.3 7 8.7 5 8.7-5"}),React.createElement("line",{x1:12,y1:22,x2:12,y2:12})));
+const IconInbox = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("polyline",{points:"22 12 16 12 14 15 10 15 8 12 2 12"}),
+  React.createElement("path",{d:"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"})));
+const IconTruck = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M1 3h15v13H1z"}),React.createElement("path",{d:"M16 8h4l3 3v5h-7V8Z"}),
+  React.createElement("circle",{cx:5.5,cy:18.5,r:2.5}),React.createElement("circle",{cx:18.5,cy:18.5,r:2.5})));
+const IconCheck = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M22 11.08V12a10 10 0 1 1-5.93-9.14"}),React.createElement("polyline",{points:"22 4 12 14.01 9 11.01"})));
+const IconAlert = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"}),
+  React.createElement("line",{x1:12,y1:9,x2:12,y2:13}),React.createElement("line",{x1:12,y1:17,x2:12.01,y2:17})));
+const IconBox = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"}),
+  React.createElement("polyline",{points:"3.27 6.96 12 12.01 20.73 6.96"}),React.createElement("line",{x1:12,y1:22.08,x2:12,y2:12})));
+const IconSearch = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("circle",{cx:11,cy:11,r:8}),React.createElement("line",{x1:21,y1:21,x2:16.65,y2:16.65})));
+const IconUp = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("polyline",{points:"23 6 13.5 15.5 8.5 10.5 1 18"}),React.createElement("polyline",{points:"17 6 23 6 23 12"})));
+const IconDown = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("polyline",{points:"23 18 13.5 8.5 8.5 13.5 1 6"}),React.createElement("polyline",{points:"17 18 23 18 23 12"})));
+
+/* ================= SMALL VISUAL PRIMITIVES (same shapes as Procurement Dashboard) ================= */
+function Sparkline({ data, color }){
+  var w = 96, h = 32;
+  if (!data.length) return <svg width={w} height={h} />;
+  var max = Math.max.apply(null, data.concat([1]));
+  var min = Math.min.apply(null, data.concat([0]));
+  var range = (max - min) || 1;
+  var step = w / Math.max(data.length - 1, 1);
+  var pts = data.map(function(v, i){ return (i*step).toFixed(1) + "," + (h - ((v-min)/range) * (h-4) - 2).toFixed(1); }).join(" ");
+  var last = data[data.length-1];
+  var lastX = ((data.length-1)*step).toFixed(1);
+  var lastY = (h - ((last-min)/range) * (h-4) - 2).toFixed(1);
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastY} r="3" fill="white" stroke={color} strokeWidth="2" />
+    </svg>
+  );
+}
+
+function KpiCard({ icon, label, value, deltaPct, deltaGoodWhen, sparkData, sparkColor, sub }){
+  var deltaKnown = typeof deltaPct === "number";
+  var isUp = deltaPct > 0, isDown = deltaPct < 0;
+  var isGood = deltaGoodWhen === "up" ? isUp : deltaGoodWhen === "down" ? isDown : null;
+  var deltaColor = deltaPct === 0 ? "text-slate-400" : (isGood === false ? "text-critical" : isGood === true ? "text-good" : "text-slate-500");
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">{label}</p>
+          <p className="text-2xl font-extrabold text-slate-800 tabular">{value}</p>
+          {sub ? <p className="text-[11px] text-slate-400 mt-1">{sub}</p> : null}
+        </div>
+        <div className="w-9 h-9 rounded-xl bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">{icon}</div>
+      </div>
+      <div className="flex items-center justify-between mt-4">
+        {deltaKnown ? (
+          <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${deltaColor}`}>
+            {isUp ? <IconUp size={12} /> : isDown ? <IconDown size={12} /> : null}
+            {deltaPct === 0 ? "No change" : `${Math.abs(deltaPct)}% vs last 4wk`}
+          </span>
+        ) : <span />}
+        {sparkData ? <Sparkline data={sparkData} color={sparkColor} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, action, children, className }){
+  return (
+    <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col ${className||""}`}>
+      <div className="flex items-center justify-between px-5 pt-5 pb-1 shrink-0">
+        <h3 className="text-[13px] font-bold text-slate-700">{title}</h3>
+        {action}
+      </div>
+      <div className="px-5 pb-5 flex-1 min-h-0">{children}</div>
+    </div>
+  );
+}
+
+function EmptyState({ text }){
+  return <div className="h-full min-h-[120px] flex items-center justify-center text-[12.5px] text-slate-400">{text}</div>;
+}
+
+function StatusBreakdown({ rows }){
+  var total = rows.reduce(function(s,r){ return s+r.count; }, 0);
+  if (!total) return <EmptyState text="No records yet." />;
+  return (
+    <div className="space-y-3.5">
+      {rows.map(function(r){
+        var pct = Math.round((r.count / total) * 100);
+        return (
+          <div key={r.key}>
+            <div className="flex items-center justify-between text-[12.5px] mb-1.5">
+              <span className="flex items-center gap-2 font-semibold text-slate-700">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: r.color }} />
+                {r.label}
+              </span>
+              <span className="text-slate-400 tabular">{r.count}</span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: pct + "%", background: r.color }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Generic ranked horizontal-bar list — same visual shape as Procurement
+   Dashboard's TopSuppliers, without the money formatting (Fulfillment ranks
+   by item COUNT, not spend). Reused for Items per Picker / Items per Packer. */
+function RankedList({ rows, noun }){
+  if (!rows.length) return <EmptyState text={`No ${noun} assigned yet.`} />;
+  var max = Math.max.apply(null, rows.map(function(r){ return r.count; }).concat([1]));
+  return (
+    <div className="space-y-4">
+      {rows.map(function(r, i){
+        var pct = Math.round((r.count / max) * 100);
+        return (
+          <div key={r.name}>
+            <div className="flex items-center justify-between text-[12.5px] mb-1.5">
+              <span className="font-semibold text-slate-700">{i+1}. {r.name}</span>
+              <span className="text-slate-400 tabular">{r.count} item{r.count===1?"":"s"}</span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-full rounded-full bg-accent-500" style={{ width: pct + "%" }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProgressRow({ label, value, max }){
+  var pct = max > 0 ? Math.min(100, Math.round((value/max)*100)) : 0;
+  return (
+    <div className="flex items-center gap-3 mb-3 last:mb-0">
+      <span className="w-14 text-[11.5px] text-slate-500 shrink-0">{label}</span>
+      <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+        <div className="h-full rounded-full bg-accent-500" style={{ width: pct + "%" }} />
+      </div>
+      <span className="w-8 text-right text-[12px] font-bold text-slate-700 tabular shrink-0">{value}</span>
+    </div>
+  );
+}
+
+function ActivityFeed({ items }){
+  if (!items.length) return <EmptyState text="No recent fulfillment activity." />;
+  return (
+    <div className="divide-y divide-slate-100">
+      {items.map(function(it, i){
+        return (
+          <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${it.tint}`}>{it.icon}</div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] text-slate-700 truncate"><span className="font-semibold">{it.title}</span> {it.desc}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{it.when}</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ================= CHARTS (Recharts, same style as Procurement Dashboard's VolumeChart) ================= */
+function GroupedBarChart({ data, bars, height }){
+  var hasAny = data.some(function(d){ return bars.some(function(b){ return d[b.key] > 0; }); });
+  if (!hasAny) return <EmptyState text="No activity in this window yet." />;
+  return (
+    <ResponsiveContainer width="100%" height={height||260}>
+      <BarChart data={data} barCategoryGap="28%" barGap={2} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+        <CartesianGrid vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={{ stroke:"#e2e8f0" }} tickLine={false} />
+        <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} allowDecimals={false} />
+        <Tooltip cursor={{ fill: "#f1f5f9" }} contentStyle={{ borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12.5, boxShadow: "0 4px 16px rgba(15,23,42,.08)" }} />
+        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} iconType="circle" iconSize={8} />
+        {bars.map(function(b){ return <Bar key={b.key} dataKey={b.key} name={b.name} fill={b.color} radius={[4,4,0,0]} maxBarSize={22} />; })}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ================= APP ================= */
+function App(){
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+  const [raw, setRaw] = useState(null);
+
+  useEffect(function(){
+    Promise.all([
+      fetchReport(CONFIG.SOF_REPORT), fetchReport(CONFIG.QC_REPORT),
+      fetchReport(CONFIG.PICK_REPORT), fetchReport(CONFIG.PACK_REPORT),
+    ]).then(function(results){
+      setRaw({ sof: results[0], qc: results[1], pick: results[2], pack: results[3] });
+      setLoading(false);
+    }).catch(function(err){
+      console.error("[FulfillmentScoreboard] load failed:", err);
+      setError("Could not load live data. Please reopen this widget inside Zoho Creator.");
+      setLoading(false);
+    });
+  }, []);
+
+  const computed = useMemo(function(){
+    if (!raw) return null;
+
+    var sofDates = raw.sof.map(function(r){ return parseCreatorDate(str(r,"Added_Time")); });
+    var stageCounts = {}; STAGE_KEYS.forEach(function(k){ stageCounts[k] = 0; });
+    var partialIdx = [];
+    raw.sof.forEach(function(r, i){
+      var stage = str(r,"Fulfillment_Stage");
+      if (stageCounts.hasOwnProperty(stage)) stageCounts[stage]++;
+      if (str(r,"Status") === "Partial") partialIdx.push(i);
+    });
+    var notStarted = stageCounts["Waiting For Package"]||0;
+    var inProgress = (stageCounts["Order Readiness"]||0)+(stageCounts["Picking"]||0)+(stageCounts["Pack"]||0)+(stageCounts["Quality Checking"]||0)+(stageCounts["Crate"]||0);
+    var delivered = stageCounts["For Delivery"]||0;
+    var pipelineTotal = notStarted + inProgress + delivered;
+
+    // New items (all records, any stage) — same "count of X created recently,
+    // trending" pattern Procurement Dashboard uses for PR/Inquiry.
+    var newBuckets = weeklyBuckets(sofDates, 8);
+    var newLast4 = newBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var newPrev4 = newBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+
+    // In Pipeline — active (not yet Delivered) records only, same "Active PO"
+    // pattern Procurement Dashboard uses.
+    var activeDates = raw.sof.filter(function(r){ return str(r,"Fulfillment_Stage") !== "For Delivery"; })
+      .map(function(r){ return parseCreatorDate(str(r,"Added_Time")); });
+    var activeBuckets = weeklyBuckets(activeDates, 8);
+    var activeLast4 = activeBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var activePrev4 = activeBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+
+    // Delivered — records currently at "For Delivery", bucketed by their own
+    // Added_Time (this app has no separate delivered-on timestamp anywhere in
+    // Sales_Order_Fulfillment — same limitation already documented elsewhere
+    // in this codebase's own history — so Added_Time is the closest available
+    // trend proxy, same tradeoff already accepted for other date-less metrics).
+    var deliveredDates = raw.sof.filter(function(r){ return str(r,"Fulfillment_Stage") === "For Delivery"; })
+      .map(function(r){ return parseCreatorDate(str(r,"Added_Time")); });
+    var deliveredBuckets = weeklyBuckets(deliveredDates, 8);
+    var deliveredLast4 = deliveredBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var deliveredPrev4 = deliveredBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+
+    // Open Issues — Status=="Partial" (short/incomplete receive), same
+    // "Open Exceptions" pattern.
+    var partialDates = partialIdx.map(function(i){ return sofDates[i]; });
+    var partialBuckets = weeklyBuckets(partialDates, 8);
+    var partialLast4 = partialBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var partialPrev4 = partialBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+
+    var stageBreakdown = STAGE_KEYS.map(function(k){ return { key:k, label:k, count: stageCounts[k]||0, color: STAGE_COLOR[k] }; });
+    var bottleneckStage = stageBreakdown.slice().sort(function(a,b){ return b.count-a.count; })[0];
+
+    // Pipeline Load — Today / This Week / This Month, same 3-row panel the
+    // old build had.
+    var now0 = new Date(); now0.setHours(0,0,0,0);
+    var curMonth = now0.getMonth()+1, curYear = now0.getFullYear();
+    var loadDay=0, loadWeek=0, loadMonth=0;
+    sofDates.forEach(function(d){
+      if (!d) return;
+      var diffDays = daysBetween(d, now0);
+      if (d.getMonth()+1===curMonth && d.getFullYear()===curYear) loadMonth++;
+      if (diffDays>=0 && diffDays<7) loadWeek++;
+      if (diffDays===0) loadDay++;
+    });
+
+    // Next Target Delivery
+    var soonest = null, countAtSoonest = 0;
+    raw.sof.forEach(function(r){
+      if (str(r,"Fulfillment_Stage") === "For Delivery") return;
+      var d = parseCreatorDate(str(r,"target_delivery_date"));
+      if (!d) return;
+      if (soonest === null || d < soonest){ soonest = d; countAtSoonest = 1; }
+      else if (d.getTime() === soonest.getTime()) countAtSoonest++;
+    });
+    var nextTargetDelivery = soonest ? { date: soonest, daysLeft: daysBetween(now0, soonest), count: countAtSoonest } : null;
+
+    // ---- QC ----
+    var qcDates = raw.qc.map(function(r){ return parseCreatorDate(str(r,"Date_Checked")); });
+    var isDamagedArr = raw.qc.map(function(r){ var it = str(r,"Item_to_Replace"); return it !== "" && it !== "No damage"; });
+    var goodDates = [], damagedDates = [];
+    qcDates.forEach(function(d,i){ if (isDamagedArr[i]) damagedDates.push(d); else goodDates.push(d); });
+    var goodBuckets = weeklyBuckets(goodDates, 8);
+    var damagedBuckets = weeklyBuckets(damagedDates, 8);
+    var goodLast4 = goodBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var goodPrev4 = goodBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var damagedLast4 = damagedBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var damagedPrev4 = damagedBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var qcVolumeChart = goodBuckets.map(function(b,i){ return { label:b.label, Good:b.count, Damaged:damagedBuckets[i].count }; });
+
+    var byCheckerMap = {};
+    raw.qc.forEach(function(r,i){
+      var checker = str(r,"Quality_Checker") || "Unassigned";
+      if (!byCheckerMap[checker]) byCheckerMap[checker] = { label:checker, Good:0, Damaged:0 };
+      if (isDamagedArr[i]) byCheckerMap[checker].Damaged++; else byCheckerMap[checker].Good++;
+    });
+    var byChecker = Object.keys(byCheckerMap).map(function(k){ return byCheckerMap[k]; })
+      .sort(function(a,b){ return (b.Good+b.Damaged)-(a.Good+a.Damaged); });
+
+    // Weekday distribution — same rolling 8-week window as everything else
+    // (avoids the old build's own calendar-month edge cases).
+    var eightWeeksAgo = new Date(); eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+    var weekdayCounts = [0,0,0,0,0,0,0];
+    raw.qc.forEach(function(r,i){
+      var d = qcDates[i];
+      if (!d || d < eightWeeksAgo) return;
+      var jsWeekday = d.getDay();
+      weekdayCounts[jsWeekday===0 ? 6 : jsWeekday-1]++;
+    });
+    var weekdayChart = WEEKDAY_LABELS.map(function(lab,i){ return { label:lab, Checked: weekdayCounts[i] }; });
+
+    // ---- Pick / Pack ----
+    var pickDates = raw.pick.map(function(r){ return parseCreatorDate(str(r,"Added_Time")); });
+    var pickBuckets = weeklyBuckets(pickDates, 8);
+    var pickLast4 = pickBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var pickPrev4 = pickBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var byPicker = countByField(raw.pick, "Picker");
+
+    var packDates = raw.pack.map(function(r){ return parseCreatorDate(str(r,"Added_Time")); });
+    var packBuckets = weeklyBuckets(packDates, 8);
+    var packLast4 = packBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var packPrev4 = packBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var byPacker = countByField(raw.pack, "Assign_Packer");
+
+    // ---- Recent Activity (merged, same pattern as Procurement Dashboard) ----
+    var activity = [];
+    raw.sof.forEach(function(r,i){
+      activity.push({ date: sofDates[i], title: str(r,"SO_No") || "Item", desc: "entered " + (str(r,"Fulfillment_Stage")||"pipeline"),
+        icon: <IconPackage size={14}/>, tint:"bg-accent-50 text-accent-600" });
+    });
+    raw.qc.forEach(function(r,i){
+      var label = [str(r,"SO"), str(r,"Item_Name")].filter(Boolean).join(" · ") || "QC Report";
+      activity.push({ date: qcDates[i], title: label, desc: isDamagedArr[i] ? "flagged damaged in QC" : "passed QC",
+        icon: isDamagedArr[i] ? <IconAlert size={14}/> : <IconCheck size={14}/>, tint: isDamagedArr[i] ? "bg-red-50 text-critical" : "bg-green-50 text-good" });
+    });
+    raw.pick.forEach(function(r,i){
+      var picker = str(r,"Picker");
+      if (!picker) return;
+      activity.push({ date: pickDates[i], title: picker, desc: "picked an item", icon: <IconBox size={14}/>, tint:"bg-slate-100 text-slate-500" });
+    });
+    raw.pack.forEach(function(r,i){
+      var packer = str(r,"Assign_Packer");
+      if (!packer) return;
+      activity.push({ date: packDates[i], title: packer, desc: "packed an item", icon: <IconInbox size={14}/>, tint:"bg-slate-100 text-slate-500" });
+    });
+    activity = activity.filter(function(a){ return a.date; }).sort(function(a,b){ return b.date - a.date; }).slice(0,9)
+      .map(function(a){ return Object.assign({}, a, { when: timeAgo(a.date) }); });
+
+    return {
+      pipelineTotal: pipelineTotal, notStarted: notStarted, inProgress: inProgress, delivered: delivered,
+      activeLast4: activeLast4, activePrev4: activePrev4, activeSpark: activeBuckets.map(function(b){return b.count;}),
+      newLast4: newLast4, newPrev4: newPrev4, newSpark: newBuckets.map(function(b){return b.count;}), newTotal: raw.sof.length,
+      deliveredCount: delivered, deliveredLast4: deliveredLast4, deliveredPrev4: deliveredPrev4, deliveredSpark: deliveredBuckets.map(function(b){return b.count;}),
+      openIssuesCount: partialIdx.length, partialLast4: partialLast4, partialPrev4: partialPrev4, partialSpark: partialBuckets.map(function(b){return b.count;}),
+      stageBreakdown: stageBreakdown, bottleneckStage: bottleneckStage,
+      loadDay: loadDay, loadWeek: loadWeek, loadMonth: loadMonth,
+      nextTargetDelivery: nextTargetDelivery,
+      qcGoodCount: goodDates.length, goodLast4: goodLast4, goodPrev4: goodPrev4, goodSpark: goodBuckets.map(function(b){return b.count;}),
+      qcDamagedCount: damagedDates.length, damagedLast4: damagedLast4, damagedPrev4: damagedPrev4, damagedSpark: damagedBuckets.map(function(b){return b.count;}),
+      qcVolumeChart: qcVolumeChart, byChecker: byChecker, weekdayChart: weekdayChart,
+      pickedCount: raw.pick.length, pickLast4: pickLast4, pickPrev4: pickPrev4, pickSpark: pickBuckets.map(function(b){return b.count;}), byPicker: byPicker,
+      packedCount: raw.pack.length, packLast4: packLast4, packPrev4: packPrev4, packSpark: packBuckets.map(function(b){return b.count;}), byPacker: byPacker,
+      activity: activity,
+    };
+  }, [raw]);
+
+  const filteredActivity = useMemo(function(){
+    if (!computed) return [];
+    if (!search.trim()) return computed.activity;
+    var q = search.trim().toLowerCase();
+    return computed.activity.filter(function(a){ return (a.title + a.desc).toLowerCase().indexOf(q) >= 0; });
+  }, [computed, search]);
+
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center max-w-sm">
+          <IconAlert size={28} className="mx-auto text-critical mb-3" />
+          <p className="text-[13.5px] text-slate-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  function jumpTo(id){
+    var el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  var navItems = [
+    { key:"overview", label:"Overview" },
+    { key:"quality", label:"Quality" },
+    { key:"team", label:"Team" },
+  ];
+
+  return (
+    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+      <main className="flex-1 overflow-y-auto p-6">
+        {loading || !computed ? (
+          <div className="h-full flex items-center justify-center text-slate-400 text-[13px]">Loading live fulfillment data&hellip;</div>
+        ) : (
+          <div className="w-full space-y-10">
+            <section id="overview" className="space-y-6 scroll-mt-4">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-500 mb-1">Supply Chain App &middot; Fulfillment</p>
+                  <h1 className="text-xl font-extrabold text-slate-800">Fulfillment Scoreboard</h1>
+                  <p className="text-[12.5px] text-slate-400 mt-0.5">Live data across the Fulfillment pipeline — Order Readiness through Pick, Pack, Quality Check &amp; Delivery.</p>
+                </div>
+                <nav className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shrink-0">
+                  {navItems.map(function(it){
+                    return (
+                      <button key={it.key} onClick={function(){ jumpTo(it.key); }}
+                        className="px-3 py-1.5 rounded-lg text-[12.5px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors">
+                        {it.label}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+                <KpiCard label="Items In Pipeline" icon={<IconPackage size={17}/>} value={computed.pipelineTotal - computed.delivered}
+                  sub="not yet delivered"
+                  deltaPct={pctChange(computed.activeLast4, computed.activePrev4)} deltaGoodWhen={null}
+                  sparkData={computed.activeSpark} sparkColor="#2a78d6" />
+                <KpiCard label="New Items" icon={<IconInbox size={17}/>} value={computed.newTotal}
+                  sub="last 4 weeks vs prior 4"
+                  deltaPct={pctChange(computed.newLast4, computed.newPrev4)} deltaGoodWhen={null}
+                  sparkData={computed.newSpark} sparkColor="#3987e5" />
+                <KpiCard label="Delivered" icon={<IconTruck size={17}/>} value={computed.deliveredCount}
+                  sub="currently at For Delivery"
+                  deltaPct={pctChange(computed.deliveredLast4, computed.deliveredPrev4)} deltaGoodWhen="up"
+                  sparkData={computed.deliveredSpark} sparkColor="#0ca30c" />
+                <KpiCard label="Open Issues" icon={<IconAlert size={17}/>} value={computed.openIssuesCount}
+                  sub="short / partial receive"
+                  deltaPct={pctChange(computed.partialLast4, computed.partialPrev4)} deltaGoodWhen="down"
+                  sparkData={computed.partialSpark} sparkColor="#d03b3b" />
+                <KpiCard label="QC Passed" icon={<IconCheck size={17}/>} value={computed.qcGoodCount}
+                  sub="last 8 weeks"
+                  deltaPct={pctChange(computed.goodLast4, computed.goodPrev4)} deltaGoodWhen="up"
+                  sparkData={computed.goodSpark} sparkColor="#0ca30c" />
+                <KpiCard label="QC Damaged" icon={<IconAlert size={17}/>} value={computed.qcDamagedCount}
+                  sub="last 8 weeks"
+                  deltaPct={pctChange(computed.damagedLast4, computed.damagedPrev4)} deltaGoodWhen="down"
+                  sparkData={computed.damagedSpark} sparkColor="#d03b3b" />
+                <KpiCard label="Items Picked" icon={<IconBox size={17}/>} value={computed.pickedCount}
+                  sub="last 4 weeks vs prior 4"
+                  deltaPct={pctChange(computed.pickLast4, computed.pickPrev4)} deltaGoodWhen={null}
+                  sparkData={computed.pickSpark} sparkColor="#6da7ec" />
+                <KpiCard label="Items Packed" icon={<IconInbox size={17}/>} value={computed.packedCount}
+                  sub="last 4 weeks vs prior 4"
+                  deltaPct={pctChange(computed.packLast4, computed.packPrev4)} deltaGoodWhen={null}
+                  sparkData={computed.packSpark} sparkColor="#184f95" />
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+                <SectionCard title="QC Good vs Damaged — last 8 weeks" className="xl:col-span-8">
+                  <GroupedBarChart data={computed.qcVolumeChart} bars={[
+                    { key:"Good", name:"Good", color:"#0ca30c" },
+                    { key:"Damaged", name:"Damaged", color:"#d03b3b" },
+                  ]} />
+                </SectionCard>
+                <SectionCard title="Pipeline Stage Breakdown" className="xl:col-span-4">
+                  <StatusBreakdown rows={computed.stageBreakdown} />
+                </SectionCard>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+                <SectionCard title="Next Target Delivery" className="xl:col-span-4">
+                  {computed.nextTargetDelivery ? (
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-accent-500 text-white flex flex-col items-center justify-center shrink-0">
+                        <span className="text-[9px] font-bold uppercase tracking-wide opacity-85">{computed.nextTargetDelivery.date.toLocaleString('en-US',{month:'short'})}</span>
+                        <span className="text-xl font-extrabold tabular leading-none">{computed.nextTargetDelivery.date.getDate()}</span>
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-semibold text-slate-700">{computed.nextTargetDelivery.count} item{computed.nextTargetDelivery.count>1?"s":""} due</p>
+                        <p className="text-[11.5px] text-slate-400 mt-0.5">
+                          {computed.nextTargetDelivery.daysLeft < 0 ? `${Math.abs(computed.nextTargetDelivery.daysLeft)} day(s) overdue`
+                            : computed.nextTargetDelivery.daysLeft === 0 ? "Due today" : `${computed.nextTargetDelivery.daysLeft} day(s) left`}
+                        </p>
+                      </div>
+                    </div>
+                  ) : <EmptyState text="No upcoming target delivery." />}
+                </SectionCard>
+                <SectionCard title="Pipeline Load" className="xl:col-span-4">
+                  <ProgressRow label="Today" value={computed.loadDay} max={Math.max(computed.loadMonth,1)} />
+                  <ProgressRow label="This Week" value={computed.loadWeek} max={Math.max(computed.loadMonth,1)} />
+                  <ProgressRow label="This Month" value={computed.loadMonth} max={Math.max(computed.loadMonth,1)} />
+                </SectionCard>
+                <SectionCard title="Bottleneck Stage" className="xl:col-span-4">
+                  {computed.bottleneckStage && computed.bottleneckStage.count > 0 ? (
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-white font-extrabold text-lg tabular"
+                        style={{ background: computed.bottleneckStage.color }}>{computed.bottleneckStage.count}</div>
+                      <div>
+                        <p className="text-[13px] font-semibold text-slate-700">{computed.bottleneckStage.label}</p>
+                        <p className="text-[11.5px] text-slate-400 mt-0.5">has the most items right now</p>
+                      </div>
+                    </div>
+                  ) : <EmptyState text="No items in the pipeline." />}
+                </SectionCard>
+              </div>
+
+              <SectionCard
+                title="Recent Activity"
+                action={
+                  <div className="relative">
+                    <IconSearch size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={search}
+                      onChange={function(e){ setSearch(e.target.value); }}
+                      placeholder="Search SO#, checker, picker..."
+                      className="pl-7 pr-3 py-1.5 text-[12px] w-52 bg-slate-100 rounded-lg border border-transparent focus:border-accent-400 focus:bg-white focus:outline-none transition-colors"
+                    />
+                  </div>
+                }
+              >
+                <ActivityFeed items={filteredActivity} />
+              </SectionCard>
+            </section>
+
+            <section id="quality" className="space-y-4 scroll-mt-4">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-800">Quality</h2>
+                <p className="text-[12.5px] text-slate-400 mt-0.5">QC outcomes, per checker and by day of week.</p>
+              </div>
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+                <SectionCard title="Good vs Damaged — per Checker" className="xl:col-span-7">
+                  <GroupedBarChart data={computed.byChecker} bars={[
+                    { key:"Good", name:"Good", color:"#0ca30c" },
+                    { key:"Damaged", name:"Damaged", color:"#d03b3b" },
+                  ]} />
+                </SectionCard>
+                <SectionCard title="Items Checked — per Weekday" className="xl:col-span-5">
+                  <GroupedBarChart data={computed.weekdayChart} bars={[
+                    { key:"Checked", name:"Checked", color:"#2a78d6" },
+                  ]} />
+                </SectionCard>
+              </div>
+            </section>
+
+            <section id="team" className="space-y-4 scroll-mt-4">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-800">Team</h2>
+                <p className="text-[12.5px] text-slate-400 mt-0.5">Workload by picker and packer, this data set.</p>
+              </div>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                <SectionCard title="Items per Picker">
+                  <RankedList rows={computed.byPicker} noun="picker" />
+                </SectionCard>
+                <SectionCard title="Items per Packer">
+                  <RankedList rows={computed.byPacker} noun="packer" />
+                </SectionCard>
+              </div>
+            </section>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+/* ================= MOUNT ================= */
+function SdkMissing(){
+  return (
+    <div className="h-screen flex items-center justify-center bg-slate-50">
+      <div className="text-center max-w-sm">
+        <IconAlert size={28} className="mx-auto text-critical mb-3" />
+        <p className="text-[13.5px] text-slate-600">This widget must be opened inside Zoho Creator to load live data.</p>
+      </div>
+    </div>
+  );
+}
+var _root = ReactDOM.createRoot(document.getElementById("root"));
+(function waitForSdk(attempt){
+  var ready = typeof window.ZOHO !== "undefined" && window.ZOHO.CREATOR && window.ZOHO.CREATOR.DATA;
+  if (ready){ _root.render(<App />); return; }
+  if (attempt >= 30){ _root.render(<SdkMissing />); return; }
+  setTimeout(function(){ waitForSdk(attempt + 1); }, 200);
+})(0);
+</script>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+</body>
+</html>

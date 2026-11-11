@@ -1,0 +1,345 @@
+[
+  {
+    "id": "analytic",
+    "label": "Analytic",
+    "tabs": [
+      {
+        "page": "Supply_Chain_Analytic",
+        "label": "Supply Chain Analytic",
+        "widget": "Analytic/Supply Chain Analytic",
+        "entry": "index.html",
+        "zip": "_Shared/Widget/Supply Chain Conversion/SupplyChainConversion.zip",
+        "guess": true
+      }
+    ]
+  },
+  {
+    "id": "procurement",
+    "label": "Procurement",
+    "tabs": [
+      {
+        "page": "Dashboard",
+        "label": "Dashboard",
+        "widget": "Procurement/Dashboard",
+        "entry": "index.html",
+        "zip": "Procurement/Dashboard/Widget/ProcurementDashboard.zip"
+      },
+      {
+        "page": "Inquiry",
+        "label": "Inquiry List",
+        "widget": "Procurement/Inquiry List",
+        "entry": "index.html",
+        "zip": "Procurement/Inquiry/Widget/INQsv2.zip"
+      },
+      {
+        "page": "Purchase_Request",
+        "label": "Purchase Request",
+        "widget": "Procurement/Purchase Request",
+        "entry": "index.html",
+        "zip": "Procurement/Purchase Request/Widget/PRs.zip"
+      },
+      {
+        "page": "Purchase_Order1",
+        "label": "Purchase Order",
+        "widget": "Procurement/Purchase Order",
+        "entry": "PO.html",
+        "zip": "Procurement/Purchase Order/Widget/POs.zip"
+      },
+      {
+        "page": "Shipments1",
+        "label": "Shipments",
+        "widget": "Procurement/Shipments",
+        "entry": "index.html",
+        "zip": "Procurement/Shipments/Widget/Shipmentsv2.zip"
+      },
+      {
+        "page": "Receiving1",
+        "label": "Receiving",
+        "widget": "Procurement/Receiving",
+        "entry": "index.html",
+        "zip": "Procurement/Receiving/Widget/Receiving.zip"
+      },
+      {
+        "page": "Replacement_Request1",
+        "label": "Replacement Request",
+        "widget": "Procurement/Replacement Request",
+        "entry": "index.html",
+        "zip": "Procurement/Replacement/Widget/ReplacementRequest.zip"
+      },
+      {
+        "page": "Exceptions1",
+        "label": "Exceptions",
+        "widget": "Procurement/Exceptions",
+        "entry": "index.html",
+        "zip": "Procurement/Exceptions/Widget/Exception.zip"
+      },
+      {
+        "page": "Forecast_Setting",
+        "label": "Forecast Setting",
+        "widget": "Procurement/Forecast Setting",
+        "entry": "index.html",
+        "zip": "_Shared/Forecast/Widget/Delivery Forecast/DeliveryForecast.zip",
+        "guess": true
+      }
+    ]
+  },
+  {
+    "id": "tony-fan",
+    "label": "Tony Fan",
+    "tabs": [
+      {
+        "page": "Tony_Fan_Inquiries",
+        "label": "Inquiries",
+        "widget": "Tony Fan/Inquiries",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Tony Fan/Widget/Tony Inq/Tony-Inquiries.zip"
+      },
+      {
+        "page": "Tony_Fan_PR",
+        "label": "Purchase Request",
+        "widget": "Tony Fan/Purchase Request",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Tony Fan/Widget/Tony PR/Tony-PR.zip"
+      },
+      {
+        "page": "Tony_Fan_PO",
+        "label": "Purchase Order",
+        "widget": "Tony Fan/Purchase Order",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Tony Fan/Widget/Tony PO/Tony-PO.zip"
+      },
+      {
+        "page": "Tony_Shipments",
+        "label": "Shipments",
+        "widget": "Tony Fan/Shipments",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Tony Fan/Widget/Tony Shipment/Tony-Shipment.zip"
+      },
+      {
+        "page": "Replacement_Request_Tony",
+        "label": "Replacement Request",
+        "widget": "Tony Fan/Replacement Request",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Tony Fan/Widget/Tony Replacement Request/Tony-RR.zip"
+      }
+    ]
+  },
+  {
+    "id": "fenteng-lighting",
+    "label": "Fenteng Lighting",
+    "tabs": [
+      {
+        "page": "Fenteng_Lighting_Inquiries",
+        "label": "Inquiries",
+        "widget": "Fenteng Lighting/Inquiries",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Fenteng/Widget/Fengteng Inq/Fenteng-Inquiries.zip"
+      },
+      {
+        "page": "Fenteng_Lighting_PR",
+        "label": "Purchase Request",
+        "widget": "Fenteng Lighting/Purchase Request",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Fenteng/Widget/Fenteng PR/Fenteng-PR.zip"
+      },
+      {
+        "page": "Fenteng_Lighting_PO",
+        "label": "Purchase Order",
+        "widget": "Fenteng Lighting/Purchase Order",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Fenteng/Widget/Fenteng PO/Fenteng-PO.zip"
+      },
+      {
+        "page": "Fenteng_Shipments",
+        "label": "Shipments",
+        "widget": "Fenteng Lighting/Shipments",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Fenteng/Widget/Fenteng Shipment/Fenteng-Shipment.zip"
+      },
+      {
+        "page": "Replacement_Request_Fenteng",
+        "label": "Replacement Request",
+        "widget": "Fenteng Lighting/Replacement Request",
+        "entry": "index.html",
+        "zip": "Procurement/Supplier - Fenteng/Widget/Fenteng Repalcement Request/Fenteng-RR.zip"
+      }
+    ]
+  },
+  {
+    "id": "fulfillment",
+    "label": "Fulfillment",
+    "tabs": [
+      {
+        "page": "Fulfillment_Dashboard",
+        "label": "Fulfillment Dashboard",
+        "widget": "Fulfillment/Fulfillment Dashboard",
+        "entry": "index.html",
+        "zip": "Fulfillment/Scoreboard/Widget/Scoreboard.zip"
+      },
+      {
+        "page": "SOR",
+        "label": "Sales Order Report",
+        "widget": "Fulfillment/Sales Order Report",
+        "entry": "index.html",
+        "zip": "Fulfillment/SO Report/Widget/SO.zip"
+      },
+      {
+        "page": "Pre_Order2",
+        "label": "Pre-Order",
+        "widget": "Fulfillment/Pre-Order",
+        "entry": "index.html",
+        "zip": "Fulfillment/Pre-Order/Widget/PreOrderReport.zip"
+      },
+      {
+        "page": "Order_Readiness1",
+        "label": "Order Readiness",
+        "widget": "Fulfillment/Order Readiness",
+        "entry": "index.html",
+        "zip": "Fulfillment/Order Readiness/Widget/ReadinessGate.zip"
+      },
+      {
+        "page": "Pick2",
+        "label": "Pick",
+        "widget": "Fulfillment/Pick",
+        "entry": "index.html",
+        "zip": "Fulfillment/Pick/Widget/Pick.zip"
+      },
+      {
+        "page": "Quality_Check",
+        "label": "Pack & QC",
+        "widget": "Fulfillment/Pack & QC",
+        "entry": "index.html",
+        "zip": "Fulfillment/QC Checklist/Widget/QCChecklist.zip"
+      },
+      {
+        "page": "Crate1",
+        "label": "Crate",
+        "widget": "Fulfillment/Crate",
+        "entry": "index.html",
+        "zip": "Fulfillment/Crate/Widget/CrateChecklist.zip"
+      },
+      {
+        "page": "Order_Aggregation2",
+        "label": "To Ship",
+        "widget": "Fulfillment/To Ship",
+        "entry": "index.html",
+        "zip": "Fulfillment/Order Aggregation/Widget/OrderAggregation.zip"
+      },
+      {
+        "page": "Exception_Control2",
+        "label": "Exception Control",
+        "widget": "Fulfillment/Exception Control",
+        "entry": "index.html",
+        "zip": "Fulfillment/Exception Control/Widget/ExceptionControl.zip"
+      },
+      {
+        "page": "Transfer_Item",
+        "label": "Transfer Item",
+        "widget": "Fulfillment/Transfer Item",
+        "entry": "index.html",
+        "zip": "Fulfillment/Transfer Item/Widget/TransferWarehouse.zip"
+      },
+      {
+        "page": "Pack1",
+        "label": "Pack",
+        "widget": "Fulfillment/Pack",
+        "entry": "index.html",
+        "zip": "Fulfillment/Pack/Widget/Pack.zip",
+        "hidden": true
+      },
+      {
+        "page": "KANBAN",
+        "label": "Kanban",
+        "widget": "Fulfillment/Kanban",
+        "entry": "index.html",
+        "zip": "Fulfillment/KANBAN/Widget/FulfillmentKanban.zip",
+        "hidden": true
+      }
+    ]
+  },
+  {
+    "id": "delivery",
+    "label": "Delivery Management",
+    "tabs": [
+      {
+        "page": "Delivery_Analytics1",
+        "label": "Delivery Analytics",
+        "widget": "Delivery Management/Delivery Analytics",
+        "entry": "index.html"
+      },
+      {
+        "page": "Daily_Team_Availability1",
+        "label": "Daily Team Availability",
+        "widget": "Delivery Management/Daily Team Availability",
+        "entry": "index.html"
+      },
+      {
+        "page": "Initial_Scheduling1",
+        "label": "Initial Scheduling",
+        "widget": "Delivery Management/Initial Scheduling",
+        "entry": "index.html"
+      },
+      {
+        "page": "Service_Request2",
+        "label": "Service Request",
+        "widget": "Delivery Management/Service Request",
+        "entry": "index.html"
+      },
+      {
+        "page": "Service_Appointment1",
+        "label": "Service Appointment",
+        "widget": "Delivery Management/Service Appointment",
+        "entry": "index.html"
+      },
+      {
+        "page": "Ongoing_Service1",
+        "label": "Ongoing Service",
+        "widget": "Delivery Management/Ongoing Service",
+        "entry": "index.html"
+      },
+      {
+        "page": "Archived",
+        "label": "Archived",
+        "widget": "Delivery Management/Archived",
+        "entry": "index.html"
+      },
+      {
+        "page": "Field_Service_Site_Visits1",
+        "label": "Field Service Site Visits",
+        "widget": "Delivery Management/Field Service Site Visits",
+        "entry": "index.html"
+      },
+      {
+        "page": "Sales_Returns1",
+        "label": "Sales Returns",
+        "widget": "Delivery Management/Sales Returns",
+        "entry": "index.html"
+      },
+      {
+        "page": "DMS_Exception_Queue1",
+        "label": "DMS Exception Queue",
+        "widget": "Delivery Management/DMS Exception Queue",
+        "entry": "index.html"
+      },
+      {
+        "page": "Truck_Maintenance",
+        "label": "Truck Maintenance",
+        "widget": "Delivery Management/Truck Maintenance",
+        "entry": "index.html"
+      },
+      {
+        "page": "Schedule_Requests",
+        "label": "Schedule Requests",
+        "widget": "Delivery Management/Schedule Requests",
+        "entry": "dms-schedule-request.html"
+      },
+      {
+        "page": "Policy_Setting",
+        "label": "Policy Settings",
+        "widget": "Delivery Management/Policy Settings",
+        "entry": "index.html",
+        "hidden": true
+      }
+    ]
+  }
+]

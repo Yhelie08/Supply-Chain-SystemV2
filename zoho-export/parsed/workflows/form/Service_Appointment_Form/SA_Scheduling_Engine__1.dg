@@ -1,0 +1,5 @@
+// form: SA_Scheduling_Engine  form=Service_Appointment_Form event=on add or edit on success  [.ds line 41498]
+    if(input.Site_Confirmation_Status == "Confirmed" && input.Suggested_Schedule_Date == null && input.Confirmed_Schedule_Date == null)
+{
+    schedOut = thisapp.dmsScheduleSlot(input.ID.toString(),false);
+}

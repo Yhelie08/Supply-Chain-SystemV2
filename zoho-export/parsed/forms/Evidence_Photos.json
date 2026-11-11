@@ -1,0 +1,51 @@
+{
+  "name": "Evidence_Photos",
+  "label": "Evidence Photos",
+  "successMessage": "Data Added Successfully!",
+  "line": 1956,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Source_Form",
+      "label": "Source Form",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Record_ID",
+      "label": "Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Row_Key",
+      "label": "Row Key",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "File_Name",
+      "label": "File Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Photo",
+      "label": "Photo",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "Uploaded_On",
+      "label": "Uploaded On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

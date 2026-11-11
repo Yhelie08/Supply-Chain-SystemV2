@@ -1,0 +1,5 @@
+// form: SR_Instant_Forecast  form=Service_Request1 event=on add or edit on success  [.ds line 47071]
+    /* Ito ang hindi mo pinangalanan kanina. May tatak na ito gabi-gabi, kaya
+   dagdag lang ito — pero parehong butas sa maraming SO ang hawak nito ngayon.
+   `Sales_Order` ang baybay. */
+info thisapp.fcStampDelivery(input.Sales_Order + "");

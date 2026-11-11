@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Procurement to Delivery Forecast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+        colors: {
+          accent: { 50:'#eef4fc',100:'#cde2fb',200:'#9ec5f4',300:'#6da7ec',400:'#3987e5',500:'#2a78d6',600:'#1c5cab',700:'#184f95',800:'#104281',900:'#0d366b' },
+          good: '#0ca30c', warning: '#fab219', critical: '#d03b3b', orange: '#eb6834'
+        }
+      }
+    }
+  };
+</script>
+<style>
+  html,body{ background:#f4f6f9; }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:99px; }
+  .tabular{ font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body class="font-sans text-slate-800 antialiased">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useCallback } = React;
+const {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList, Cell
+} = Recharts;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DELIVERY FORECAST — procurement (PR) through to delivery at the customer.
+
+   The forecast model is the user's own, spelled out 2026-10-30:
+     start = PR Added_Time
+       + transit leg by Shipment_Mode   (Air 5-7 days / LCL & FCL 35-60 days)
+       + customs clearance to warehouse (Air 2-3 days / sea 7-10 days)
+       + preparation through QC         (7 days)
+       + delivery                       ("basta prepared na, pwede na umalis" = 0)
+
+   Every one of those numbers is a CONTROL SETTING, not a constant. They live on
+   the native `Forecast_Settings` form — one record, 19 fields — which the user
+   built on 2026-11-04. This widget READS that record and never writes it; editing
+   happens in the form itself, which is a better editor than anything here.
+
+   Until that record exists the widget runs on the built-in defaults below, which
+   are exactly the user's original spec.
+
+   Before 2026-11-04 these were 22 `fc_`-prefixed rows on `Policy_Settings`, written
+   by a Save button on this widget's own Control Settings tab. The internal `fc_*`
+   key names are kept as the engine's vocabulary — FS_FIELD_MAP below translates
+   the form's field names into them — so the forecast maths and the Deluge
+   agreement test did not have to change.
+
+   Because every leg is a RANGE, the output is a window (Earliest / Likely /
+   Latest), never a single fake-precise date. "Likely" is the midpoint and is
+   what the weekly volume chart buckets on.
+
+   Every forecast is then scored against WHAT THE CLIENT EXPECTS. That date
+   originates in Zoho Books as the Sales Order custom field
+   `cf_target_delivery_date`, which `so_fulfillment_sync` copies onto Sales Order
+   Fulfillment's own `target_delivery_date` (and which then propagates down to
+   Gate / Pick / QC / OA / Crate as Target_Delivery_Date / Target_Date). This
+   widget reads the Fulfillment copy, so it sees the same date the warehouse and
+   the client-facing screens see. An order with no such date is counted
+   separately rather than quietly treated as on time — you cannot be on time
+   against a promise nobody recorded.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CONFIG = {
+  APP_NAME: "supply-chain-app",
+  PR_REPORT:       "All_Purchase_Request",
+  SHIPMENT_REPORT: "All_Shipments",
+  SOF_REPORT:      "Sales_Order_Fulfillment_Report",
+  GATE_REPORT:     "Sales_Order_Readiness_Gate_Report",
+  PICK_REPORT:     "Pick1_Report",
+  QC_REPORT:       "All_Qc_Reports1",
+  CRATE_REPORT:    "All_Crates",
+  /* `All_Forecast_Settings` is Creator's DEFAULT report name for the form, but
+     the default is derived from the form's DISPLAY name, so it is a guess. On
+     2026-11-06 the widget showed "Hindi nabuksan: All_Forecast_Settings" in
+     production. It now tries the usual spellings in order and keeps the first
+     one that opens -- that same name is what Save writes back through, so the
+     read and the write can never end up pointing at different reports. */
+  FS_REPORT_CANDIDATES: [
+    "All_Forecast_Settings",
+    "Forecast_Settings_Report",
+    "All_Forecast_Setting",
+    "Forecast_Setting_Report",
+    "Forecast_Settings",
+    "Forecast_Setting",
+  ],
+  FS_FORM: "Forecast_Settings",
+  MAX_RECORDS: 1000,
+};
+
+/* Severity palette for the stacked weekly chart. Validated with the dataviz
+   six-checks validator (light surface): lightness band PASS, chroma floor PASS,
+   CVD separation PASS (worst adjacent pair ΔE 8.5 deutan), normal-vision floor
+   PASS (15.6), contrast vs surface PASS. The app's own `warning: #fab219` FAILS
+   the lightness band (0.811) and contrast (1.79) as a chart fill, so the chart
+   uses the darker #c47f00 while the small UI chips keep the lighter app amber. */
+const SEV = { ontrack: "#2a78d6", atrisk: "#c47f00", miss: "#d03b3b" };
+
+/* ═══════════ SETTINGS — defaults are exactly the user's spec ═══════════ */
+const SETTING_DEFS = [
+  { group:"Air Freight",   key:"fc_air_transit_min",   label:"Transit — min",            def:5  },
+  { group:"Air Freight",   key:"fc_air_transit_max",   label:"Transit — max",            def:7  },
+  { group:"Air Freight",   key:"fc_air_customs_min",   label:"Customs to WH — min",      def:2  },
+  { group:"Air Freight",   key:"fc_air_customs_max",   label:"Customs to WH — max",      def:3  },
+  { group:"LCL",           key:"fc_lcl_transit_min",   label:"Transit — min",            def:35 },
+  { group:"LCL",           key:"fc_lcl_transit_max",   label:"Transit — max",            def:60 },
+  { group:"LCL",           key:"fc_lcl_customs_min",   label:"Customs to WH — min",      def:7  },
+  { group:"LCL",           key:"fc_lcl_customs_max",   label:"Customs to WH — max",      def:10 },
+  { group:"FCL",           key:"fc_fcl_transit_min",   label:"Transit — min",            def:35 },
+  { group:"FCL",           key:"fc_fcl_transit_max",   label:"Transit — max",            def:60 },
+  { group:"FCL",           key:"fc_fcl_customs_min",   label:"Customs to WH — min",      def:7  },
+  { group:"FCL",           key:"fc_fcl_customs_max",   label:"Customs to WH — max",      def:10 },
+  { group:"Local (HC System)", key:"fc_local_transit_min", label:"Transit — min",        def:0  },
+  { group:"Local (HC System)", key:"fc_local_transit_max", label:"Transit — max",        def:0  },
+  { group:"Local (HC System)", key:"fc_local_customs_min", label:"Customs to WH — min",  def:0  },
+  { group:"Local (HC System)", key:"fc_local_customs_max", label:"Customs to WH — max",  def:0  },
+  { group:"Warehouse",     key:"fc_prep_min",          label:"Preparation thru QC — min", def:7 },
+  { group:"Warehouse",     key:"fc_prep_max",          label:"Preparation thru QC — max", def:7 },
+  { group:"Warehouse",     key:"fc_delivery_min",      label:"Delivery — min",            def:0 },
+  { group:"Warehouse",     key:"fc_delivery_max",      label:"Delivery — max",            def:0 },
+];
+const TOGGLE_DEFS = [
+  { key:"fc_reanchor", label:"Re-anchor on the latest real event",
+    help:"ON: once a shipment has actually sailed, or the order is already in Picking/QC/Crate, the forecast counts forward from THAT event instead of from the PR date, so it tightens as the order moves. OFF: always count the full chain from the PR date.", def:1 },
+  { key:"fc_include_supplier_lead", label:"Add the supplier's Required Days Lead",
+    help:"OFF (your spec): the transit range already absorbs production time. ON: also add the PR's own Required_Days_Lead on top, for orders still in procurement.", def:0 },
+];
+const HORIZON_DEF = { key:"fc_horizon_weeks", label:"Weeks shown in the volume chart", def:12 };
+
+const ALL_KEYS = SETTING_DEFS.map(s=>s.key)
+  .concat(TOGGLE_DEFS.map(t=>t.key))
+  .concat([HORIZON_DEF.key]);
+const DEFAULTS = (function(){
+  var d = {};
+  SETTING_DEFS.forEach(function(s){ d[s.key] = s.def; });
+  TOGGLE_DEFS.forEach(function(t){ d[t.key] = t.def; });
+  d[HORIZON_DEF.key] = HORIZON_DEF.def;
+  return d;
+})();
+/* Forecast_Settings field link name -> the engine's internal key(s).
+   Four of the form's fields carry NO min/max (Prep, Delivery, Local Transit, Local
+   Customs): one number each, so it feeds both ends of the range. Nothing is lost —
+   min and max were identical for all four in the original spec (7/7, 0/0, 0/0, 0/0).
+   Field names here are copied from the live form definition the user pasted
+   2026-11-04; they are NOT guesses, and `Air_Customs_to_WH_Min` really does spell
+   out "to_WH" while the internal key does not. */
+const FS_FIELD_MAP = {
+  Air_Transit_Min:        ["fc_air_transit_min"],
+  Air_Transit_Max:        ["fc_air_transit_max"],
+  Air_Customs_to_WH_Min:  ["fc_air_customs_min"],
+  Air_Customs_to_WH_Max:  ["fc_air_customs_max"],
+  LCL_Transit_Min:        ["fc_lcl_transit_min"],
+  LCL_Transit_Max:        ["fc_lcl_transit_max"],
+  LCL_Customs_to_WH_Min:  ["fc_lcl_customs_min"],
+  LCL_Customs_to_WH_Max:  ["fc_lcl_customs_max"],
+  FCL_Transit_Min:        ["fc_fcl_transit_min"],
+  FCL_Transit_Max:        ["fc_fcl_transit_max"],
+  FCL_Customs_to_WH_Min:  ["fc_fcl_customs_min"],
+  FCL_Customs_to_WH_Max:  ["fc_fcl_customs_max"],
+  Local_Transit_Days:     ["fc_local_transit_min", "fc_local_transit_max"],
+  Local_Customs_Days:     ["fc_local_customs_min", "fc_local_customs_max"],
+  Prep_Days_Thru_QC:      ["fc_prep_min", "fc_prep_max"],
+  Delivery_Days:          ["fc_delivery_min", "fc_delivery_max"],
+  Horizon_Weeks:          ["fc_horizon_weeks"],
+};
+/* ── THE EDITOR'S OWN SHAPE ──────────────────────────────────────────────────
+   Driven by the FORM's fields, not by SETTING_DEFS. SETTING_DEFS has separate
+   min and max entries for Local Transit, Local Customs, Prep and Delivery, but
+   the live form holds ONE number for each of those four -- so an editor built
+   from SETTING_DEFS would offer two boxes that cannot both be stored. Here one
+   box = one real field, which is the only way what you type is what is saved.
+   `keys` is what that one field feeds inside the engine. */
+const FS_EDIT_GROUPS = [
+  { name:"Air Freight", fields:[
+    { field:"Air_Transit_Min",       label:"Transit \u2014 min",        keys:["fc_air_transit_min"] },
+    { field:"Air_Transit_Max",       label:"Transit \u2014 max",        keys:["fc_air_transit_max"] },
+    { field:"Air_Customs_to_WH_Min", label:"Customs to WH \u2014 min",  keys:["fc_air_customs_min"] },
+    { field:"Air_Customs_to_WH_Max", label:"Customs to WH \u2014 max",  keys:["fc_air_customs_max"] },
+  ]},
+  { name:"LCL", fields:[
+    { field:"LCL_Transit_Min",       label:"Transit \u2014 min",        keys:["fc_lcl_transit_min"] },
+    { field:"LCL_Transit_Max",       label:"Transit \u2014 max",        keys:["fc_lcl_transit_max"] },
+    { field:"LCL_Customs_to_WH_Min", label:"Customs to WH \u2014 min",  keys:["fc_lcl_customs_min"] },
+    { field:"LCL_Customs_to_WH_Max", label:"Customs to WH \u2014 max",  keys:["fc_lcl_customs_max"] },
+  ]},
+  { name:"FCL", fields:[
+    { field:"FCL_Transit_Min",       label:"Transit \u2014 min",        keys:["fc_fcl_transit_min"] },
+    { field:"FCL_Transit_Max",       label:"Transit \u2014 max",        keys:["fc_fcl_transit_max"] },
+    { field:"FCL_Customs_to_WH_Min", label:"Customs to WH \u2014 min",  keys:["fc_fcl_customs_min"] },
+    { field:"FCL_Customs_to_WH_Max", label:"Customs to WH \u2014 max",  keys:["fc_fcl_customs_max"] },
+  ]},
+  { name:"Local (HC System)", fields:[
+    { field:"Local_Transit_Days",    label:"Transit",                 keys:["fc_local_transit_min","fc_local_transit_max"] },
+    { field:"Local_Customs_Days",    label:"Customs to WH",           keys:["fc_local_customs_min","fc_local_customs_max"] },
+  ]},
+  { name:"Warehouse", fields:[
+    { field:"Prep_Days_Thru_QC",     label:"Preparation thru QC",     keys:["fc_prep_min","fc_prep_max"] },
+    { field:"Delivery_Days",         label:"Delivery",                keys:["fc_delivery_min","fc_delivery_max"] },
+  ]},
+];
+const FS_HORIZON_FIELD = "Horizon_Weeks";
+const FS_TOGGLE_FIELDS = [
+  { field:"Re_anchor_on_Latest_Real_Event", key:"fc_reanchor" },
+  { field:"Include_Supplier_Lead_Time",     key:"fc_include_supplier_lead" },
+];
+
+/* Checkboxes come back as a boolean or as the text "true"/"false" depending on how
+   Creator serialises the report row, so both shapes are accepted. */
+const FS_CHECKBOX_MAP = {
+  Re_anchor_on_Latest_Real_Event: "fc_reanchor",
+  Include_Supplier_Lead_Time:     "fc_include_supplier_lead",
+};
+function fsTruthy(v){
+  if (v === true) return true;
+  return String(v == null ? "" : v).trim().toLowerCase() === "true";
+}
+/* Reads the FIRST Forecast_Settings record over the defaults. More than one record
+   and the first wins silently — the form is meant to hold exactly one. */
+function settingsFromForm(recs){
+  var next = Object.assign({}, DEFAULTS);
+  if (!recs || !recs.length) return { settings: next, found: false, recId: null };
+  var r = recs[0];
+  Object.keys(FS_FIELD_MAP).forEach(function(field){
+    var v = numOrNull(val(r, field));
+    if (v === null) return;
+    FS_FIELD_MAP[field].forEach(function(k){ next[k] = v; });
+  });
+  Object.keys(FS_CHECKBOX_MAP).forEach(function(field){
+    /* `field in r`, not val()'s empty string: val() cannot tell an unchecked box
+       from a field that is not on the report at all, and reading a MISSING
+       Re-anchor field as false would silently switch the behaviour off. */
+    if (!(field in r)) return;
+    next[FS_CHECKBOX_MAP[field]] = fsTruthy(r[field]) ? 1 : 0;
+  });
+  return { settings: next, found: true, recId: (r.ID || r.id || null) };
+}
+
+/* ═══════════ CREATOR DATA ═══════════ */
+/* Confirmed live 2026-08-27 (Procurement Dashboard): getRecords throws a hard
+   HTTP 400 (code 9220, "No records exist in this report.") for a genuinely
+   EMPTY report — that is not a real failure, so it resolves to []. */
+function fetchReport(reportName){
+  var params = { app_name: CONFIG.APP_NAME, report_name: reportName, field_config:"all", max_records: CONFIG.MAX_RECORDS };
+  return ZOHO.CREATOR.DATA.getRecords(params).then(function(resp){
+    return (resp && resp.data) || [];
+  }).catch(function(err){
+    var code = null;
+    try { code = JSON.parse(err && err.responseText).code; } catch(e){}
+    if (code === 9220) return [];
+    console.warn("[Forecast] report unavailable:", reportName, err && (err.message||err.responseText||err));
+    return { __failed: reportName };
+  });
+}
+
+/* Tries each candidate report name in turn and resolves with the first one that
+   opens: { name, rows }. A report that does not exist comes back from
+   fetchReport() as { __failed }, which is NOT the same as an empty report -- an
+   empty one already resolves to []. If none open, `name` is null and the caller
+   shows the banner naming every spelling it tried. */
+function fetchFirstReport(names){
+  var i = 0;
+  function step(){
+    if (i >= names.length) return Promise.resolve({ name:null, rows:[] });
+    var nm = names[i++];
+    return fetchReport(nm).then(function(r){
+      if (r && r.__failed) return step();
+      return { name: nm, rows: r || [] };
+    });
+  }
+  return step();
+}
+
+/* ═══════════ HELPERS ═══════════ */
+function val(rec, field, fallback){
+  var v = rec && rec[field];
+  if (v === undefined || v === null || v === "") return fallback !== undefined ? fallback : "";
+  if (typeof v === "object") return v.zc_display_value || v.display_value || fallback || "";
+  return v;
+}
+function numOrNull(v){ var n = parseFloat(v); return isNaN(n) ? null : n; }
+function extractSubformRows(raw){
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") return Object.values(raw).filter(function(v){ return v && typeof v === "object"; });
+  return [];
+}
+const MONTHS = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+
+/* Creator hands dates back in whichever format the app is set to. The sibling
+   Procurement Dashboard assumes MM-dd-yyyy; rather than depend on that one
+   shape, this accepts MM-dd-yyyy, dd-MMM-yyyy, MM/dd/yyyy and yyyy-MM-dd, and
+   returns null rather than an Invalid Date for anything it cannot read. */
+function parseCreatorDate(s){
+  if (!s) return null;
+  if (s instanceof Date) return isNaN(s.getTime()) ? null : s;
+  var str = String(s).trim();
+  if (!str) return null;
+  var datePart = str.split(" ")[0];
+  var p = datePart.indexOf("/") > -1 ? datePart.split("/") : datePart.split("-");
+  if (p.length !== 3) return null;
+  var y, m, d;
+  if (p[0].length === 4){                       // yyyy-MM-dd
+    y = +p[0]; m = +p[1] - 1; d = +p[2];
+  } else if (isNaN(+p[1])){                     // dd-MMM-yyyy
+    d = +p[0]; m = MONTHS[String(p[1]).slice(0,3).toLowerCase()]; y = +p[2];
+  } else {                                      // MM-dd-yyyy / MM/dd/yyyy
+    m = +p[0] - 1; d = +p[1]; y = +p[2];
+  }
+  if (isNaN(y) || isNaN(m) || isNaN(d) || m < 0 || m > 11) return null;
+  var out = new Date(y, m, d);
+  return isNaN(out.getTime()) ? null : out;
+}
+function startOfDay(d){ var x = new Date(d); x.setHours(0,0,0,0); return x; }
+function addDays(d, n){ var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function daysBetween(a, b){ return Math.round((startOfDay(b) - startOfDay(a)) / 86400000); }
+function fmtDate(d){
+  if (!d) return "—";
+  var mm = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return mm[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
+}
+function fmtShort(d){
+  if (!d) return "—";
+  var mm = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return mm[d.getMonth()] + " " + d.getDate();
+}
+function startOfWeek(d){
+  var x = startOfDay(d); var day = x.getDay();
+  x.setDate(x.getDate() + ((day === 0 ? -6 : 1) - day));   // Monday
+  return x;
+}
+function norm(v){ return String(v == null ? "" : v).trim(); }
+function keyOf(v){ return norm(v).toUpperCase(); }
+
+/* ═══════════ THE FORECAST MODEL ═══════════ */
+const PREP_STAGES = ["Order Readiness","Picking","Pack","Quality Checking","Crate"];
+
+/* Which leg lengths apply, from the shipment mode and the sourcing type. */
+function legsFor(mode, sourcing, S){
+  var m = keyOf(mode);
+  if (keyOf(sourcing) === "LOCAL"){
+    return { bucket:"Local (HC System)", assumed:false,
+             transit:[S.fc_local_transit_min, S.fc_local_transit_max],
+             customs:[S.fc_local_customs_min, S.fc_local_customs_max] };
+  }
+  if (m.indexOf("AIR") > -1){
+    return { bucket:"Air Freight", assumed:false,
+             transit:[S.fc_air_transit_min, S.fc_air_transit_max],
+             customs:[S.fc_air_customs_min, S.fc_air_customs_max] };
+  }
+  if (m === "FCL"){
+    return { bucket:"FCL", assumed:false,
+             transit:[S.fc_fcl_transit_min, S.fc_fcl_transit_max],
+             customs:[S.fc_fcl_customs_min, S.fc_fcl_customs_max] };
+  }
+  /* Blank or unrecognised mode: fall back to LCL (the common case here) but say
+     so on the row, so nobody reads an assumed 35-60 days as a known one. */
+  return { bucket:"LCL", assumed:(m !== "LCL"),
+           transit:[S.fc_lcl_transit_min, S.fc_lcl_transit_max],
+           customs:[S.fc_lcl_customs_min, S.fc_lcl_customs_max] };
+}
+
+/* Walks the chain backwards from the most advanced real event we can see, and
+   returns the anchor date + the legs still left to run from it. */
+function buildForecast(o, S, today){
+  var L = legsFor(o.mode, o.sourcing, S);
+  var prep     = [S.fc_prep_min, S.fc_prep_max];
+  var delivery = [S.fc_delivery_min, S.fc_delivery_max];
+  var reanchor = !!S.fc_reanchor;
+  /* STOCK ON HAND: the order has reached Fulfillment and is not a pre-order,
+     so there is no import leg left - preparation + delivery only. Not gated on
+     reanchor: that decides where to start counting, this decides which legs
+     exist at all. A normal order never had a transit leg. (User, 2026-11-04.) */
+  var preOrder = String(o.orderType || "").toUpperCase().indexOf("PRE ORDER") > -1;
+  var stockOnHand = !!o.hasSof && !preOrder;
+  var legs = [], anchor = null, position = "", anchorLabel = "";
+
+  if (reanchor && o.stage === "For Delivery"){
+    anchor = today; position = "Ready for delivery"; anchorLabel = "today";
+    legs = [{ name:"Delivery", days:delivery }];
+
+  } else if (reanchor && PREP_STAGES.indexOf(o.stage) > -1){
+    var prepStart = o.prepStart || o.packageDate || today;
+    var elapsed = Math.max(0, daysBetween(prepStart, today));
+    anchor = today; position = "In " + o.stage; anchorLabel = "today";
+    legs = [
+      { name:"Preparation left (" + elapsed + " of " + prep[1] + " days used)",
+        days:[Math.max(0, prep[0] - elapsed), Math.max(0, prep[1] - elapsed)] },
+      { name:"Delivery", days:delivery }
+    ];
+
+  } else if (stockOnHand){
+    anchor = today; position = "Stock on hand"; anchorLabel = "today";
+    legs = [{ name:"Preparation thru QC", days:prep }, { name:"Delivery", days:delivery }];
+  } else if (reanchor && o.shipArrived){
+    anchor = today; position = "At warehouse"; anchorLabel = "today";
+    legs = [{ name:"Preparation thru QC", days:prep }, { name:"Delivery", days:delivery }];
+
+  } else if (reanchor && o.dateShipped){
+    anchor = o.dateShipped; position = "In transit"; anchorLabel = "shipped " + fmtShort(o.dateShipped);
+    legs = [
+      { name:L.bucket + " transit", days:L.transit },
+      { name:"Customs to WH",       days:L.customs },
+      { name:"Preparation thru QC", days:prep },
+      { name:"Delivery",            days:delivery }
+    ];
+
+  } else {
+    anchor = o.prAdded; position = o.prAdded ? "Procurement" : "No PR date";
+    anchorLabel = o.prAdded ? "PR " + fmtShort(o.prAdded) : "—";
+    legs = [];
+    if (S.fc_include_supplier_lead && o.supplierLead)
+      legs.push({ name:"Supplier production lead", days:[o.supplierLead, o.supplierLead] });
+    legs.push({ name:L.bucket + " transit", days:L.transit });
+    legs.push({ name:"Customs to WH",       days:L.customs });
+    legs.push({ name:"Preparation thru QC", days:prep });
+    legs.push({ name:"Delivery",            days:delivery });
+  }
+
+  if (!anchor) return { position:position, bucket:L.bucket, assumedMode:L.assumed, legs:legs, earliest:null, likely:null, latest:null, anchorLabel:anchorLabel, overdueModel:false };
+
+  var sumMin = 0, sumMax = 0;
+  legs.forEach(function(l){ sumMin += (l.days[0]||0); sumMax += (l.days[1]||0); });
+  var earliest = addDays(startOfDay(anchor), sumMin);
+  var latest   = addDays(startOfDay(anchor), sumMax);
+
+  /* The model can land wholly in the past on an order that never moved. That is
+     real information — the chain has already blown through its own estimate — so
+     it is flagged, and the dates are pulled to today rather than shown as a
+     delivery that supposedly already happened. */
+  var overdueModel = latest < today;
+  if (earliest < today) earliest = startOfDay(today);
+  if (latest   < today) latest   = startOfDay(today);
+  var likely = addDays(earliest, Math.round(daysBetween(earliest, latest) / 2));
+
+  return { position:position, bucket:L.bucket, assumedMode:L.assumed, legs:legs,
+           earliest:earliest, likely:likely, latest:latest, spanDays:sumMax - sumMin,
+           anchorLabel:anchorLabel, overdueModel:overdueModel };
+}
+
+function severityOf(f, target, today){
+  if (!f.likely) return { code:"unknown", label:"No date", tone:"slate" };
+  if (!target)   return { code:"notarget", label:"No target", tone:"slate" };
+  if (today > startOfDay(target))      return { code:"miss",    label:"Overdue",   tone:"critical" };
+  if (f.latest   <= startOfDay(target)) return { code:"ontrack", label:"On track",  tone:"accent" };
+  if (f.earliest <= startOfDay(target)) return { code:"atrisk",  label:"At risk",   tone:"warning" };
+  return { code:"miss", label:"Will miss", tone:"critical" };
+}
+
+/* ═══════════ BUILD THE ORDER LIST ═══════════ */
+/* Spine is the Purchase Request, because the user's model starts at the PR's own
+   Added_Time. Each PR is joined forward: Shipments (via the PR_No carried on the
+   Supplier_Shipment_Details subform rows) -> Sales Order Fulfillment (via its own
+   PR_No field) -> the per-stage records, whose Added_Time is the only real
+   evidence of when preparation actually started. */
+function buildOrders(data){
+  var prs       = data.prs || [];
+  var shipments = data.shipments || [];
+  var sofs      = data.sofs || [];
+
+  var shipByPr = {};
+  shipments.forEach(function(sh){
+    var parentMode   = val(sh, "Shipment_Mode");
+    var parentStatus = val(sh, "Shipment_Status");
+    var shipNo       = val(sh, "Shipment_No");
+    var eta          = parseCreatorDate(val(sh, "Estimated_Warehouse_Arrival"));
+    extractSubformRows(sh.Supplier_Shipment_Details).forEach(function(row){
+      var pr = keyOf(val(row, "PR_No"));
+      if (!pr) return;
+      var shipped = parseCreatorDate(val(row, "Date_Shipped"));
+      var cur = shipByPr[pr];
+      /* Several subform rows can carry the same PR. Keep the EARLIEST shipped
+         date — the order starts moving when its first line sails. */
+      if (!cur || (shipped && (!cur.dateShipped || shipped < cur.dateShipped))){
+        shipByPr[pr] = {
+          shipNo: shipNo, status: parentStatus, eta: eta,
+          mode: val(row, "Shipment_Mode") || parentMode,
+          dateShipped: shipped || (cur && cur.dateShipped) || null,
+          salesOrder: val(row, "Sales_Order")
+        };
+      }
+    });
+  });
+
+  /* Earliest stage-record Added_Time per SO = when prep genuinely began. */
+  var prepStartBySo = {};
+  [["gates","sales_order_number"], ["picks","SO"], ["qcs","SO"], ["crates","SO"]].forEach(function(pair){
+    (data[pair[0]] || []).forEach(function(rec){
+      var so = keyOf(val(rec, pair[1]));
+      if (!so) return;
+      var t = parseCreatorDate(val(rec, "Added_Time"));
+      if (!t) return;
+      if (!prepStartBySo[so] || t < prepStartBySo[so]) prepStartBySo[so] = t;
+    });
+  });
+
+  var sofByPr = {};
+  sofs.forEach(function(s){
+    var pr = keyOf(val(s, "PR_No"));
+    if (!pr) return;
+    (sofByPr[pr] = sofByPr[pr] || []).push(s);
+  });
+
+  var orders = [];
+  prs.forEach(function(pr){
+    var prNo = val(pr, "PR_No");
+    var ship = shipByPr[keyOf(prNo)] || null;
+    var prItem = val(pr, "Items") || val(pr, "Description1") || val(pr, "Item_Name");
+    var prSku  = val(pr, "sku") || val(pr, "SKU");
+    var prQty  = val(pr, "quantity") || val(pr, "Quantity");
+    var prSo   = val(pr, "Sales_Order");
+    var base = {
+      prNo: prNo,
+      soNo: prSo,
+      itemName: prItem,
+      sku: prSku,
+      qty: prQty,
+      prAdded: parseCreatorDate(val(pr, "Added_Time")),
+      supplier: val(pr, "Supplier") || val(pr, "Selected_Supplier"),
+      sourcing: val(pr, "Sourcing_Type"),
+      prStatus: val(pr, "PR_Status"),
+      supplierLead: numOrNull(val(pr, "Required_Days_Lead")),
+      shipNo: ship ? ship.shipNo : "",
+      dateShipped: ship ? ship.dateShipped : null,
+      shipArrived: ship ? keyOf(ship.status) === "DELIVERED" : false,
+      shipEta: ship ? ship.eta : null,
+      shipStatus: ship ? ship.status : ""
+    };
+    var linked = sofByPr[keyOf(prNo)] || [];
+    if (!linked.length){
+      orders.push(Object.assign({}, base, {
+        customer: val(pr, "Customer") || "", hasSof:false, stage:"", target:null, packageDate:null, prepStart:null,
+        mode: (ship && ship.mode) || val(pr, "Shipment_Mode"),
+        deliveryType:"", orderType:""
+      }));
+      return;
+    }
+    linked.forEach(function(s){
+      var soNo = val(s, "SO_No") || base.soNo;
+      var subItems = extractSubformRows(s.Item_Details1);
+      var sofItem = subItems.length ? (val(subItems[0], "Item") || "") : "";
+      var sofSku  = subItems.length ? (val(subItems[0], "SKU") || "") : "";
+      var sofQty  = subItems.length ? (val(subItems[0], "Quantity") || "") : "";
+
+      orders.push(Object.assign({}, base, {
+        soNo: soNo,
+        itemName: sofItem || base.itemName,
+        sku: sofSku || base.sku,
+        qty: sofQty || base.qty,
+        customer: val(s, "Customer") || val(pr, "Customer") || "",
+        hasSof: true,
+        stage: val(s, "Fulfillment_Stage"),
+        target: parseCreatorDate(val(s, "target_delivery_date")),
+        packageDate: parseCreatorDate(val(s, "Package_Date")),
+        prepStart: prepStartBySo[keyOf(soNo)] || null,
+        mode: val(s, "Shipment_Mode") || (ship && ship.mode) || val(pr, "Shipment_Mode"),
+        deliveryType: val(s, "Delivery_Type"),
+        orderType: val(s, "order_type")
+      }));
+    });
+  });
+  return orders;
+}
+
+/* ═══════════ ICONS ═══════════ */
+function Ico({d, size=16, className=""}){
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      {d}
+    </svg>
+  );
+}
+const IcoTruck    = (p)=> <Ico {...p} d={<><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>} />;
+const IcoCal      = (p)=> <Ico {...p} d={<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></>} />;
+const IcoAlert    = (p)=> <Ico {...p} d={<><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></>} />;
+const IcoCheck    = (p)=> <Ico {...p} d={<><path d="M20 6 9 17l-5-5"/></>} />;
+const IcoSliders  = (p)=> <Ico {...p} d={<><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></>} />;
+const IcoChart    = (p)=> <Ico {...p} d={<><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="13" y="8" width="3" height="10"/><rect x="19" y="5" width="2" height="13"/></>} />;
+const IcoRefresh  = (p)=> <Ico {...p} d={<><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></>} />;
+const IcoChevron  = (p)=> <Ico {...p} d={<><path d="m6 9 6 6 6-6"/></>} />;
+
+/* ═══════════ SMALL UI ═══════════ */
+const TONE = {
+  accent:   "bg-accent-50 text-accent-700 ring-accent-200",
+  warning:  "bg-amber-50 text-amber-800 ring-amber-200",
+  critical: "bg-red-50 text-critical ring-red-200",
+  slate:    "bg-slate-100 text-slate-600 ring-slate-200",
+  good:     "bg-green-50 text-good ring-green-200",
+};
+function Chip({tone="slate", children, title}){
+  return <span title={title} className={"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset "+(TONE[tone]||TONE.slate)}>{children}</span>;
+}
+function Tile({label, value, sub, tone="slate", icon}){
+  return (
+    <div className="flex-1 min-w-[150px] rounded-xl bg-white ring-1 ring-slate-200/80 p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+        <span className={"rounded-md p-1 "+(TONE[tone]||TONE.slate).split(" ").slice(0,2).join(" ")}>{icon}</span>
+      </div>
+      <div className="mt-2 text-[26px] font-extrabold leading-none tabular text-slate-900">{value}</div>
+      {sub ? <div className="mt-1 text-[11.5px] text-slate-500">{sub}</div> : null}
+    </div>
+  );
+}
+
+/* ═══════════ WEEKLY VOLUME CHART ═══════════ */
+/* One stacked bar per week, bucketed on the Likely date. Three segments only
+   (On track / At risk / Will miss or overdue) with a legend always present, the
+   week total direct-labelled above each bar (selective labels — never a number
+   on every segment), a 2px surface gap between segments, a recessive grid, and
+   a per-bar hover tooltip. The Forecast tab is this chart's table view. */
+function VolumeChart({weeks}){
+  var data = weeks;
+  var total = data.reduce(function(a,w){ return a + w.total; }, 0);
+  if (!total){
+    return <div className="rounded-xl bg-white ring-1 ring-slate-200/80 p-10 text-center text-[13px] text-slate-500">
+      Walang order na pumapasok sa horizon na ito.
+    </div>;
+  }
+  function TT({active, payload, label}){
+    if (!active || !payload || !payload.length) return null;
+    var row = payload[0] && payload[0].payload;
+    if (!row) return null;
+    return (
+      <div className="rounded-lg bg-white px-3 py-2 shadow-lg ring-1 ring-slate-200 text-[12px]">
+        <div className="font-bold text-slate-900">{row.range}</div>
+        <div className="mt-1.5 space-y-1">
+          <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm" style={{background:SEV.ontrack}}/>On track <b className="ml-auto tabular">{row.ontrack}</b></div>
+          <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm" style={{background:SEV.atrisk}}/>At risk <b className="ml-auto tabular">{row.atrisk}</b></div>
+          <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm" style={{background:SEV.miss}}/>Will miss / overdue <b className="ml-auto tabular">{row.miss}</b></div>
+          <div className="flex items-center gap-2 border-t border-slate-200 pt-1 font-bold">Total <span className="ml-auto tabular">{row.total}</span></div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl bg-white ring-1 ring-slate-200/80 p-5">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-[14px] font-bold text-slate-900">Expected deliveries per week</h3>
+        <span className="text-[11.5px] text-slate-500">{total} order{total===1?"":"s"} · bucketed on the Likely date</span>
+      </div>
+      <div className="mt-4" style={{height:300}}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{top:22,right:8,left:-18,bottom:4}} barCategoryGap="22%">
+            <CartesianGrid stroke="#e9eef5" vertical={false} />
+            <XAxis dataKey="label" tick={{fontSize:11, fill:"#64748b"}} axisLine={{stroke:"#e2e8f0"}} tickLine={false} interval={0} />
+            <YAxis tick={{fontSize:11, fill:"#64748b"}} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip content={<TT/>} cursor={{fill:"#f1f5f9"}} />
+            <Legend verticalAlign="top" align="right" height={28} iconType="square" iconSize={9}
+                    wrapperStyle={{fontSize:11.5, color:"#475569", paddingBottom:6}} />
+            <Bar dataKey="ontrack" name="On track"            stackId="w" fill={SEV.ontrack} stroke="#ffffff" strokeWidth={2} />
+            <Bar dataKey="atrisk"  name="At risk"             stackId="w" fill={SEV.atrisk}  stroke="#ffffff" strokeWidth={2} />
+            <Bar dataKey="miss"    name="Will miss / overdue"  stackId="w" fill={SEV.miss}    stroke="#ffffff" strokeWidth={2}
+                 radius={[4,4,0,0]}>
+              <LabelList dataKey="total" position="top" offset={8}
+                         style={{fontSize:11, fontWeight:700, fill:"#334155"}} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <p className="mt-1 text-[11.5px] text-slate-500">
+        A bar counts an order in the week its <b>Likely</b> date falls, and the colour is that order
+        measured against <b>what the client expects</b> (the Sales Order's own target delivery date).
+        The real window is wider than one week — open the Forecast tab for each order's Earliest,
+        Latest, and how many days early or late that lands versus the client's date.
+      </p>
+    </div>
+  );
+}
+
+/* ═══════════ FORECAST TABLE ═══════════ */
+function ForecastTable({rows, today}){
+  var [open, setOpen] = useState(null);
+  if (!rows.length){
+    return <div className="rounded-xl bg-white ring-1 ring-slate-200/80 p-10 text-center text-[13px] text-slate-500">
+      Walang tumugmang order sa filter na ito.
+    </div>;
+  }
+  return (
+    <div className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200/80">
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12.5px]">
+          <thead>
+            <tr className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-2.5">PR / SO</th>
+              <th className="px-3 py-2.5">Customer</th>
+              <th className="px-3 py-2.5">Mode</th>
+              <th className="px-3 py-2.5">Position now</th>
+              <th className="px-3 py-2.5">Earliest</th>
+              <th className="px-3 py-2.5">Likely</th>
+              <th className="px-3 py-2.5">Latest</th>
+              <th className="px-3 py-2.5 border-l border-slate-200">Client expects</th>
+              <th className="px-3 py-2.5">Early / late</th>
+              <th className="px-3 py-2.5">Status</th>
+              <th className="px-3 py-2.5 w-8"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map(function(r, i){
+              var isOpen = open === i;
+              return (
+                <React.Fragment key={i}>
+                  <tr className={"hover:bg-slate-50/70 cursor-pointer "+(isOpen?"bg-slate-50/70":"")}
+                      onClick={function(){ setOpen(isOpen ? null : i); }}>
+                    <td className="px-3 py-2.5 align-top">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-slate-900">{r.o.soNo || "No SO"}</span>
+                        {r.o.prNo ? <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-slate-600">{r.o.prNo}</span> : null}
+                      </div>
+                      {(r.o.itemName || r.o.sku) ? (
+                        <div className="mt-1 text-[11.5px] text-slate-700 leading-tight">
+                          <span className="font-medium text-slate-800">{r.o.itemName || r.o.sku}</span>
+                          {r.o.sku && r.o.itemName && r.o.sku !== r.o.itemName ? (
+                            <span className="ml-1 text-[10.5px] font-mono text-slate-400">[{r.o.sku}]</span>
+                          ) : null}
+                          {r.o.qty ? <span className="ml-1 text-slate-500 font-semibold">×{r.o.qty}</span> : null}
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-slate-400 mt-0.5">{r.o.shipNo || r.o.prStatus || ""}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 align-top text-slate-700">{r.o.customer || "—"}</td>
+                    <td className="px-3 py-2.5 align-top">
+                      <div className="text-slate-700">{r.f.bucket}</div>
+                      {r.f.assumedMode ? <Chip tone="warning" title="This order has no Shipment Mode on record, so the LCL range was assumed.">mode assumed</Chip> : null}
+                    </td>
+                    <td className="px-3 py-2.5 align-top">
+                      <div className="text-slate-700">{r.f.position}</div>
+                      <div className="text-[11px] text-slate-500">from {r.f.anchorLabel}</div>
+                    </td>
+                    <td className="px-3 py-2.5 align-top tabular text-slate-700">{fmtDate(r.f.earliest)}</td>
+                    <td className="px-3 py-2.5 align-top tabular font-bold text-slate-900">{fmtDate(r.f.likely)}</td>
+                    <td className="px-3 py-2.5 align-top tabular text-slate-700">{fmtDate(r.f.latest)}</td>
+                    <td className="px-3 py-2.5 align-top tabular border-l border-slate-200 text-slate-700">
+                      {r.o.target ? fmtDate(r.o.target)
+                                  : <span className="text-amber-700 font-semibold">walang petsa</span>}
+                    </td>
+                    <td className="px-3 py-2.5 align-top tabular">
+                      {r.variance === null ? <span className="text-slate-400">—</span> : (
+                        <span className={"font-bold "+(r.variance > 0 ? "text-critical" : "text-accent-700")}>
+                          {r.variance > 0 ? "+"+r.variance+"d late" : (r.variance === 0 ? "exactly" : (-r.variance)+"d early")}
+                        </span>
+                      )}
+                      {r.varianceWorst !== null && r.varianceWorst !== r.variance ? (
+                        <div className="text-[11px] font-normal text-slate-500">
+                          worst case {r.varianceWorst > 0 ? "+"+r.varianceWorst+"d" : (r.varianceWorst === 0 ? "exactly" : r.varianceWorst+"d")}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2.5 align-top">
+                      <Chip tone={r.sev.tone}>
+                        {r.sev.code==="ontrack" ? <IcoCheck size={11}/> : (r.sev.code==="miss" ? <IcoAlert size={11}/> : null)}
+                        {r.sev.label}
+                      </Chip>
+                      {r.f.overdueModel ? <div className="mt-1"><Chip tone="critical" title="Even the slowest number in the model says this should already have been delivered. The chain has blown past its own estimate.">past its own estimate</Chip></div> : null}
+                    </td>
+                    <td className="px-3 py-2.5 align-top text-slate-400">
+                      <IcoChevron size={14} className={isOpen?"rotate-180 transition":"transition"}/>
+                    </td>
+                  </tr>
+                  {isOpen ? (
+                    <tr className="bg-slate-50/70">
+                      <td colSpan={12} className="px-3 pb-4 pt-1">
+                        <div className="rounded-lg bg-white ring-1 ring-slate-200 p-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            How this date was built
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
+                            <span className="rounded-md bg-slate-100 px-2 py-1 font-semibold text-slate-700">
+                              {r.f.anchorLabel}
+                            </span>
+                            {r.f.legs.map(function(l, j){
+                              return (
+                                <React.Fragment key={j}>
+                                  <span className="text-slate-400">+</span>
+                                  <span className="rounded-md bg-accent-50 px-2 py-1 text-accent-800 ring-1 ring-inset ring-accent-100">
+                                    {l.name} <b className="tabular">{l.days[0]===l.days[1] ? l.days[0] : l.days[0]+"–"+l.days[1]}d</b>
+                                  </span>
+                                </React.Fragment>
+                              );
+                            })}
+                            <span className="text-slate-400">=</span>
+                            <span className="rounded-md bg-slate-900 px-2 py-1 font-bold text-white tabular">
+                              {fmtShort(r.f.earliest)} – {fmtShort(r.f.latest)}
+                            </span>
+                          </div>
+                          <div className="mt-2.5 grid gap-x-6 gap-y-1 text-[11.5px] text-slate-600 sm:grid-cols-2 lg:grid-cols-4">
+                            <div><span className="text-slate-400">Item:</span> <span className="font-medium text-slate-800">{r.o.itemName || "—"}</span></div>
+                            <div><span className="text-slate-400">SKU / Qty:</span> <span className="font-mono text-slate-700">{r.o.sku || "—"}</span> {r.o.qty ? "("+r.o.qty+" pcs)" : ""}</div>
+                            <div><span className="text-slate-400">Supplier:</span> {r.o.supplier || "—"}</div>
+                            <div><span className="text-slate-400">Sourcing:</span> {r.o.sourcing || "—"}</div>
+                            <div><span className="text-slate-400">Shipment:</span> {r.o.shipNo || "—"} {r.o.shipStatus ? "("+r.o.shipStatus+")" : ""}</div>
+                            <div><span className="text-slate-400">Date shipped:</span> {fmtDate(r.o.dateShipped)}</div>
+                            <div><span className="text-slate-400">Fulfillment stage:</span> {r.o.stage || "—"}</div>
+                            <div><span className="text-slate-400">Prep started:</span> {fmtDate(r.o.prepStart)}</div>
+                            <div><span className="text-slate-400">Delivery type:</span> {r.o.deliveryType || "—"}</div>
+                            <div><span className="text-slate-400">Days from today:</span> <span className="tabular">{r.f.likely ? daysBetween(today, r.f.likely) : "—"}</span></div>
+                          </div>
+                          {r.o.shipEta ? (
+                            <div className="mt-2 text-[11.5px] text-slate-500">
+                              For reference, the Shipment record's own <b>Estimated Warehouse Arrival</b> says {fmtDate(r.o.shipEta)}.
+                              That field is computed by a different rule (Date&nbsp;Shipped + 67 LCL / 47 FCL / 12 Air) than the
+                              one this forecast uses, so the two can legitimately disagree.
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════ FORECAST SETTINGS — EDITABLE ═══════════ */
+/* History, so nobody flips this a third time:
+     - built 2026-10-30 as an editor writing `fc_` rows to Policy_Settings
+     - 2026-11-04 turned read-only when the numbers moved to the native
+       `Forecast_Settings` form, on the reasoning that two editors for one value
+       is how they drift apart
+     - 2026-11-06 made editable again, per user: "ayusin mo yung forecasting
+       setting, dapat naiedit ... kung sakaling may mababago sa shipment mode is
+       pwede iedit"
+   The drift worry is answered by WHERE it writes: this editor saves to the very
+   same `Forecast_Settings` record the form edits and the Deluge schedule reads.
+   One record, three doors. There is no second store and no localStorage layer —
+   a value cached in one person's browser silently disagreeing with the form
+   would be exactly the drift this was trying to avoid.
+
+   The editor is built from the FORM's 19 fields (FS_EDIT_GROUPS), not from
+   SETTING_DEFS, so every box on screen is a field that can actually be stored. */
+function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}){
+  /* Draft is keyed by FORM FIELD NAME — the same keys the payload uses — so
+     what you see, what is compared for "dirty", and what is sent are one thing. */
+  function draftFrom(src){
+    var d = {};
+    FS_EDIT_GROUPS.forEach(function(g){
+      g.fields.forEach(function(f){ d[f.field] = src[f.keys[0]]; });
+    });
+    FS_TOGGLE_FIELDS.forEach(function(t){ d[t.field] = !!src[t.key]; });
+    d[FS_HORIZON_FIELD] = src[HORIZON_DEF.key];
+    return d;
+  }
+
+  var [draft, setDraft]   = useState(function(){ return draftFrom(settings); });
+  var [saving, setSaving] = useState(false);
+  var [msg, setMsg]       = useState(null);   // { tone:"good"|"bad", text:"" }
+
+  /* A reload (Save, Refresh) hands down new `settings`; the draft follows it.
+     Keyed on the serialised settings rather than the object so a re-render with
+     an identical object does not wipe what is being typed. */
+  var settingsSig = JSON.stringify(settings);
+  useEffect(function(){
+    setDraft(draftFrom(JSON.parse(settingsSig)));
+  }, [settingsSig]);
+
+  var saved = useMemo(function(){ return draftFrom(settings); }, [settingsSig]);
+  var dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+
+  function setField(field, raw){
+    /* Kept as the raw string while typing so clearing a box does not jump to 0
+       under the cursor. It is coerced on save, and the save is blocked while any
+       box is not a number. */
+    setDraft(function(d){ var next = Object.assign({}, d); next[field] = raw; return next; });
+    setMsg(null);
+  }
+  function setToggle(field, on){
+    setDraft(function(d){ var next = Object.assign({}, d); next[field] = !!on; return next; });
+    setMsg(null);
+  }
+
+  /* Which boxes are not usable numbers. Shown per box AND used to block Save,
+     because a half-typed "3." written to the record is a silent wrong forecast
+     for everyone. */
+  var badFields = useMemo(function(){
+    var bad = {};
+    Object.keys(draft).forEach(function(field){
+      if (FS_TOGGLE_FIELDS.some(function(t){ return t.field === field; })) return;
+      var v = String(draft[field] == null ? "" : draft[field]).trim();
+      if (v === "" || isNaN(Number(v)) || Number(v) < 0) bad[field] = true;
+    });
+    return bad;
+  }, [draft]);
+  var badCount = Object.keys(badFields).length;
+
+  /* Min must not exceed max — the ladder would hand back a window that runs
+     backwards, and nothing downstream checks it. */
+  var rangeWarnings = useMemo(function(){
+    var out = [];
+    FS_EDIT_GROUPS.forEach(function(g){
+      g.fields.forEach(function(f){
+        if (!/_Min$/.test(f.field)) return;
+        var maxField = f.field.replace(/_Min$/, "_Max");
+        if (!(maxField in draft)) return;
+        var a = Number(draft[f.field]), b = Number(draft[maxField]);
+        if (!isNaN(a) && !isNaN(b) && a > b) out.push(g.name + " — " + f.label + " mas malaki sa max");
+      });
+    });
+    return out;
+  }, [draft]);
+
+  function saveErrorText(resp){
+    var code = resp && (resp.code || (resp.responseJSON && resp.responseJSON.code));
+    var text = "";
+    try { text = JSON.parse(resp && resp.responseText).message || ""; } catch(e){}
+    if (!text) text = (resp && (resp.message || resp.error)) || "";
+    if (String(code) === "2945" || /permission|unauthor|forbidden/i.test(String(text))) {
+      return "Walang write access ang widget sa Forecast_Settings. Kailangang nasa plugin-manifest.json ang Creator.forms.CREATE at Creator.forms.UPDATE, at i-upload ulit ang widget. Hindi nag-save.";
+    }
+    return "Hindi nag-save" + (text ? " — " + text : "") + (code ? " (code " + code + ")" : "") + ".";
+  }
+
+  function onSave(){
+    if (badCount) return;
+    setSaving(true); setMsg(null);
+
+    var data = {};
+    FS_EDIT_GROUPS.forEach(function(g){
+      g.fields.forEach(function(f){ data[f.field] = Number(draft[f.field]); });
+    });
+    data[FS_HORIZON_FIELD] = Number(draft[FS_HORIZON_FIELD]);
+    FS_TOGGLE_FIELDS.forEach(function(t){ data[t.field] = !!draft[t.field]; });
+
+    /* Update when the record exists, create when it does not. `addRecords` goes
+       through the FORM, so it still works on the very first save even when no
+       report name opened — which is also why the record id and the report name
+       are tracked separately. */
+    var req;
+    if (fsRecId && fsReport) {
+      req = ZOHO.CREATOR.DATA.updateRecordById({
+        report_name: fsReport, id: String(fsRecId), payload: { data: data }
+      });
+    } else {
+      req = ZOHO.CREATOR.DATA.addRecords({
+        form_name: CONFIG.FS_FORM, payload: { data: data }
+      });
+    }
+
+    req.then(function(resp){
+      var ok = resp && String(resp.code) === "3000";
+      if (!ok){
+        console.error("[Forecast] settings save non-3000", resp);
+        setMsg({ tone:"bad", text: saveErrorText(resp) });
+        setSaving(false);
+        return;
+      }
+      setMsg({ tone:"good", text:
+        (fsRecId ? "Na-save ang mga setting." : "Nagawa ang Forecast Settings record.") +
+        " Agad nang sumusunod ang dashboard; ang mga petsang nakatatak sa record ay mag-aayos sa susunod na takbo ng Forecast_Stamp_Daily (o pindutin ang Run Now doon)." });
+      setSaving(false);
+      if (onSaved) onSaved();
+    }).catch(function(e){
+      console.error("[Forecast] settings save failed", e);
+      setMsg({ tone:"bad", text: saveErrorText(e) });
+      setSaving(false);
+    });
+  }
+
+  function onRevert(){ setDraft(draftFrom(settings)); setMsg(null); }
+  function onDefaults(){ setDraft(draftFrom(DEFAULTS)); setMsg(null); }
+
+  function NumField({f}){
+    var bad = !!badFields[f.field];
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[12.5px] text-slate-600">{f.label}</span>
+        <span className="flex items-center gap-1.5">
+          <input
+            type="number" min="0" step="1"
+            value={draft[f.field] == null ? "" : draft[f.field]}
+            onChange={function(e){ setField(f.field, e.target.value); }}
+            className={"tabular w-20 rounded-lg px-2 py-1 text-right text-[13px] font-bold text-slate-900 ring-1 focus:outline-none focus:ring-2 " +
+                       (bad ? "bg-rose-50 ring-rose-300 focus:ring-rose-400"
+                            : "bg-white ring-slate-300 focus:ring-accent-400")}
+          />
+          <span className="text-[11px] text-slate-400 w-7">days</span>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className={"rounded-xl p-4 text-[12.5px] ring-1 " +
+                      (fsFound ? "bg-accent-50 ring-accent-100 text-accent-900"
+                               : "bg-amber-50 ring-amber-200 text-amber-900")}>
+        <div className="font-bold">
+          {fsFound
+            ? "Ito ang mga numerong ginagamit ng forecast ngayon — pwede mo nang i-edit dito."
+            : "Wala pang record sa Forecast Settings — default ang ginagamit."}
+        </div>
+        <p className="mt-1 leading-relaxed">
+          {fsFound
+            ? "Ang mismong Forecast Settings record ang sinusulatan nito — pareho ng binubuksan mo sa form at pareho ng binabasa ng araw-araw na Forecast_Stamp_Daily. Isang record lang, kaya walang pagkakataong mag-iba ang dalawa."
+            : "Punuin ang mga numero sa ibaba at pindutin ang Save — gagawa ito ng Forecast Settings record para sa inyo. Hangga't wala pa, ang orihinal mong spec ang ginagamit: Air 5–7 + 2–3 customs, LCL/FCL 35–60 + 7–10 customs, 7 araw na prep hanggang QC, 0 sa delivery."}
+        </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {FS_EDIT_GROUPS.map(function(g){
+          return (
+            <div key={g.name} className="rounded-xl bg-white ring-1 ring-slate-200/80 p-4">
+              <h4 className="text-[13px] font-bold text-slate-900">{g.name}</h4>
+              <div className="mt-3 space-y-2">
+                {g.fields.map(function(f){ return <NumField key={f.field} f={f} />; })}
+              </div>
+              {g.name === "Local (HC System)" ? (
+                <p className="mt-3 border-t border-slate-100 pt-2 text-[11.5px] text-slate-500">
+                  Isang numero lang ang hawak ng form para sa dalawang ito, kaya pareho ang
+                  min at max na ipinapakain sa engine. Walang nawawala — pareho rin naman
+                  sila sa orihinal na spec (0/0).
+                </p>
+              ) : null}
+              {g.name === "Warehouse" ? (
+                <p className="mt-3 border-t border-slate-100 pt-2 text-[11.5px] text-slate-500">
+                  Isang numero rin ang hawak ng form sa dalawang ito (min = max).
+                  {measured.prepMedian != null ? (
+                    <span>{" "}<b>Measured:</b> sa {measured.prepCount} order{measured.prepCount===1?"":"s"} na
+                    may stage records, ang median mula simula ng prep hanggang Crate/For Delivery ay{" "}
+                    <b className="tabular">{measured.prepMedian} araw</b>. Yan ang totoong bilang —
+                    ikumpara sa nakalagay sa itaas.</span>
+                  ) : null}
+                </p>
+              ) : null}
+              {g.name === "LCL" ? (
+                <p className="mt-3 border-t border-slate-100 pt-2 text-[11.5px] text-amber-800">
+                  Tandaan: dalawang ibang numero ang ginagamit ng mga live script ngayon —
+                  <b> PR_Compute_Shipment_Timeline</b> ay 30 araw para sa LCL/FCL, pero
+                  <b> supplier_shipment_sync</b> ay 67 (LCL) / 47 (FCL). Hindi binabago ng
+                  widget na ito ang kahit alin sa dalawa, kaya kung baguhin mo ang numero
+                  dito ay ang forecast lang ang susunod — hindi ang
+                  <b> Estimated_Warehouse_Arrival</b> ng Shipments.
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="rounded-xl bg-white ring-1 ring-slate-200/80 p-4">
+        <h4 className="text-[13px] font-bold text-slate-900">Behaviour</h4>
+        <div className="mt-3 space-y-3">
+          {TOGGLE_DEFS.map(function(t){
+            var tf = FS_TOGGLE_FIELDS.filter(function(x){ return x.key === t.key; })[0];
+            if (!tf) return null;
+            var on = !!draft[tf.field];
+            return (
+              <label key={t.key} className="flex gap-3 cursor-pointer">
+                <input
+                  type="checkbox" checked={on}
+                  onChange={function(e){ setToggle(tf.field, e.target.checked); }}
+                  className="mt-0.5 h-4 w-4 flex-none accent-accent-500"
+                />
+                <span>
+                  <span className="block text-[12.5px] font-semibold text-slate-800">{t.label}</span>
+                  <span className="block text-[11.5px] leading-relaxed text-slate-500">{t.help}</span>
+                </span>
+              </label>
+            );
+          })}
+          <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+            <span className="text-[12.5px] text-slate-600">{HORIZON_DEF.label}</span>
+            <span className="flex items-center gap-1.5">
+              <input
+                type="number" min="1" step="1"
+                value={draft[FS_HORIZON_FIELD] == null ? "" : draft[FS_HORIZON_FIELD]}
+                onChange={function(e){ setField(FS_HORIZON_FIELD, e.target.value); }}
+                className={"tabular w-20 rounded-lg px-2 py-1 text-right text-[13px] font-bold text-slate-900 ring-1 focus:outline-none focus:ring-2 " +
+                           (badFields[FS_HORIZON_FIELD] ? "bg-rose-50 ring-rose-300 focus:ring-rose-400"
+                                                        : "bg-white ring-slate-300 focus:ring-accent-400")}
+              />
+              <span className="text-[11px] text-slate-400 w-7">wks</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {rangeWarnings.length ? (
+        <div className="rounded-xl bg-amber-50 p-3 text-[12px] text-amber-900 ring-1 ring-amber-200">
+          <b>Baliktad ang window:</b> {rangeWarnings.join(" · ")}. Pwede pa ring i-save, pero
+          mas maaga ang Latest kaysa Earliest kapag ganyan.
+        </div>
+      ) : null}
+
+      <div className="sticky bottom-0 -mx-1 rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80 backdrop-blur">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={onSave}
+            disabled={saving || !dirty || badCount > 0}
+            className={"rounded-lg px-4 py-2 text-[13px] font-bold text-white " +
+                       (saving || !dirty || badCount > 0
+                          ? "bg-slate-300 cursor-not-allowed"
+                          : "bg-accent-500 hover:bg-accent-600")}>
+            {saving ? "Sinusave…" : (fsRecId ? "I-save ang mga setting" : "Gumawa ng Forecast Settings record")}
+          </button>
+          <button
+            onClick={onRevert} disabled={saving || !dirty}
+            className="rounded-lg px-3 py-2 text-[12.5px] font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40">
+            Ibalik sa naka-save
+          </button>
+          <button
+            onClick={onDefaults} disabled={saving}
+            className="rounded-lg px-3 py-2 text-[12.5px] font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40">
+            Balik sa orihinal na spec
+          </button>
+          <span className="text-[12px] text-slate-500">
+            {badCount
+              ? badCount + " kahon ang hindi balidong numero"
+              : (dirty ? "May hindi pa naka-save na pagbabago" : "Walang pagbabago")}
+          </span>
+        </div>
+        {msg ? (
+          <p className={"mt-2 text-[12px] font-semibold " +
+                        (msg.tone === "good" ? "text-good" : "text-critical")}>{msg.text}</p>
+        ) : null}
+      </div>
+
+      <p className="text-[11.5px] leading-relaxed text-slate-500">
+        Iisang <b>Forecast Settings</b> record ang sinusulatan nito — kaya pareho ang makikita
+        mo rito, sa form, at sa mga petsang itinatatak ng araw-araw na
+        <b> Forecast_Stamp_Daily</b> na schedule. Agad na nagbabago ang dashboard pagka-save;
+        ang mga petsang nakasulat na sa mga record ay mag-aayos sa susunod na takbo ng schedule.
+      </p>
+    </div>
+  );
+}
+
+/* ═══════════ APP ═══════════ */
+function App(){
+  var [loading, setLoading]   = useState(true);
+  var [err, setErr]           = useState(null);
+  var [failed, setFailed]     = useState([]);
+  var [raw, setRaw]           = useState({});
+  var [fsFound, setFsFound]   = useState(false);
+  var [fsRecId, setFsRecId]   = useState(null);
+  var [fsReport, setFsReport] = useState(null);
+  var [settings, setSettings] = useState(DEFAULTS);
+  var [tab, setTab]           = useState("volume");
+  var [q, setQ]               = useState("");
+  var [sevFilter, setSevFilter] = useState("all");
+  var [modeFilter, setModeFilter] = useState("all");
+  var [sort, setSort] = useState("soonest");
+
+  var today = useMemo(function(){ return startOfDay(new Date()); }, []);
+
+  var load = useCallback(function(){
+    setLoading(true); setErr(null);
+    Promise.all([
+      fetchReport(CONFIG.PR_REPORT),
+      fetchReport(CONFIG.SHIPMENT_REPORT),
+      fetchReport(CONFIG.SOF_REPORT),
+      fetchReport(CONFIG.GATE_REPORT),
+      fetchReport(CONFIG.PICK_REPORT),
+      fetchReport(CONFIG.QC_REPORT),
+      fetchReport(CONFIG.CRATE_REPORT),
+      fetchFirstReport(CONFIG.FS_REPORT_CANDIDATES)
+    ]).then(function(res){
+      /* The settings slot comes back as { name, rows }, not a plain array -- it
+         carries WHICH spelling opened, because Save has to write through that
+         same report. Unwrapped here so everything below stays array-shaped. */
+      var fsSlot = res[7] || { name:null, rows:[] };
+      res[7] = fsSlot.name ? fsSlot.rows : { __failed: CONFIG.FS_REPORT_CANDIDATES.join(" / ") };
+      setFsReport(fsSlot.name);
+      var names = ["prs","shipments","sofs","gates","picks","qcs","crates","fsettings"];
+      var bad = [], out = {};
+      res.forEach(function(r, i){
+        if (r && r.__failed){ bad.push(r.__failed); out[names[i]] = []; }
+        else out[names[i]] = r || [];
+      });
+      setFailed(bad);
+      setRaw(out);
+
+      /* The Forecast_Settings record wins; otherwise the built-in defaults.
+         No localStorage layer any more — with the form authoritative, a value left
+         in one person's browser silently disagreeing with the form is a bug, not a
+         convenience. */
+      var fs = settingsFromForm(out.fsettings);
+      setFsFound(fs.found);
+      setFsRecId(fs.recId);
+      setSettings(fs.settings);
+      setLoading(false);
+    }).catch(function(e){
+      console.error("[Forecast] load failed:", e);
+      setErr((e && (e.message || e.responseText)) || "Hindi makuha ang data.");
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(function(){
+    if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && typeof ZOHO.CREATOR.init === "function"){
+      ZOHO.CREATOR.init().then(load).catch(load);
+    } else { load(); }
+  }, [load]);
+
+  var orders = useMemo(function(){ return buildOrders(raw); }, [raw]);
+
+  /* Rows = every order that has not been delivered yet. An order already sitting
+     in a terminal state has nothing left to forecast. */
+  var rows = useMemo(function(){
+    return orders.map(function(o){
+      var f = buildForecast(o, settings, today);
+      /* Positive = that many days LATER than what the client expects. The
+         "worst case" figure is the same comparison against the Latest date, so
+         a row that only just fits shows how much slack it is actually running on. */
+      var variance      = (o.target && f.likely) ? daysBetween(o.target, f.likely) : null;
+      var varianceWorst = (o.target && f.latest) ? daysBetween(o.target, f.latest) : null;
+      return { o:o, f:f, sev:severityOf(f, o.target, today), variance:variance, varianceWorst:varianceWorst };
+    }).filter(function(r){
+      return keyOf(r.o.prStatus) !== "CANCELLED" && keyOf(r.o.prStatus) !== "VOID";
+    }).sort(function(a,b){
+      if (!a.f.likely) return 1;
+      if (!b.f.likely) return -1;
+      return a.f.likely - b.f.likely;
+    });
+  }, [orders, settings, today]);
+
+  var modes = useMemo(function(){
+    var s = {};
+    rows.forEach(function(r){ s[r.f.bucket] = 1; });
+    return Object.keys(s).sort();
+  }, [rows]);
+
+  var filtered = useMemo(function(){
+    var needle = q.trim().toLowerCase();
+    return rows.filter(function(r){
+      if (sevFilter !== "all" && r.sev.code !== sevFilter) return false;
+      if (modeFilter !== "all" && r.f.bucket !== modeFilter) return false;
+      if (!needle) return true;
+      return [r.o.soNo, r.o.prNo, r.o.customer, r.o.supplier, r.o.shipNo, r.o.itemName, r.o.sku]
+        .join(" ").toLowerCase().indexOf(needle) > -1;
+    }).sort(function(a, b){
+      if (sort === "latest"){
+        /* Worst promise-breakers first; rows with no client date sink to the
+           bottom rather than sorting as if they were perfectly on time. */
+        var av = a.variance === null ? -Infinity : a.variance;
+        var bv = b.variance === null ? -Infinity : b.variance;
+        return bv - av;
+      }
+      if (sort === "target"){
+        if (!a.o.target) return 1;
+        if (!b.o.target) return -1;
+        return a.o.target - b.o.target;
+      }
+      if (!a.f.likely) return 1;
+      if (!b.f.likely) return -1;
+      return a.f.likely - b.f.likely;
+    });
+  }, [rows, q, sevFilter, modeFilter, sort]);
+
+  var weeks = useMemo(function(){
+    var n = Math.max(1, Math.min(52, Number(settings.fc_horizon_weeks) || 12));
+    var w0 = startOfWeek(today), out = [];
+    for (var i = 0; i < n; i++){
+      var s = addDays(w0, i*7);
+      out.push({ start:s, label:fmtShort(s), range:fmtShort(s)+" – "+fmtShort(addDays(s,6)),
+                 ontrack:0, atrisk:0, miss:0, total:0 });
+    }
+    filtered.forEach(function(r){
+      if (!r.f.likely) return;
+      var idx = Math.floor(daysBetween(w0, startOfWeek(r.f.likely)) / 7);
+      if (idx < 0 || idx >= out.length) return;
+      var slot = r.sev.code === "ontrack" ? "ontrack" : (r.sev.code === "atrisk" ? "atrisk" : (r.sev.code === "miss" ? "miss" : "ontrack"));
+      out[idx][slot] += 1;
+      out[idx].total += 1;
+    });
+    return out;
+  }, [filtered, settings.fc_horizon_weeks, today]);
+
+  /* The one leg we can actually MEASURE from existing records: how long prep
+     really takes, from the earliest stage record to Crate / For Delivery. */
+  var measured = useMemo(function(){
+    var spans = [];
+    orders.forEach(function(o){
+      if (!o.prepStart) return;
+      if (o.stage !== "Crate" && o.stage !== "For Delivery") return;
+      var d = daysBetween(o.prepStart, today);
+      if (d >= 0 && d < 365) spans.push(d);
+    });
+    if (!spans.length) return { prepMedian:null, prepCount:0 };
+    spans.sort(function(a,b){ return a-b; });
+    var mid = Math.floor(spans.length/2);
+    return { prepCount:spans.length,
+             prepMedian: spans.length % 2 ? spans[mid] : Math.round((spans[mid-1]+spans[mid])/2) };
+  }, [orders, today]);
+
+  var tiles = useMemo(function(){
+    var thisWeekEnd = addDays(startOfWeek(today), 6);
+    var inWeek = filtered.filter(function(r){ return r.f.likely && r.f.likely <= thisWeekEnd; }).length;
+    return {
+      open: filtered.length,
+      week: inWeek,
+      atrisk: filtered.filter(function(r){ return r.sev.code === "atrisk"; }).length,
+      miss: filtered.filter(function(r){ return r.sev.code === "miss"; }).length,
+      notarget: filtered.filter(function(r){ return r.sev.code === "notarget"; }).length
+    };
+  }, [filtered, today]);
+
+  if (loading){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-accent-500"></div>
+          <p className="mt-3 text-[13px] text-slate-500">Binubuo ang forecast…</p>
+        </div>
+      </div>
+    );
+  }
+  if (err){
+    return (
+      <div className="flex h-screen items-center justify-center p-6">
+        <div className="max-w-sm text-center">
+          <IcoAlert size={26} className="mx-auto text-critical"/>
+          <p className="mt-3 text-[13px] text-slate-600">{err}</p>
+          <button onClick={load} className="mt-4 rounded-lg bg-accent-500 px-4 py-2 text-[13px] font-bold text-white">Subukan muli</button>
+        </div>
+      </div>
+    );
+  }
+
+  var TABS = [
+    { id:"volume",   label:"Volume",   icon:<IcoChart size={14}/> },
+    { id:"forecast", label:"Forecast", icon:<IcoTruck size={14}/> },
+    { id:"settings", label:"Forecast Settings", icon:<IcoSliders size={14}/> },
+  ];
+
+  return (
+    <div className="mx-auto max-w-[1500px] p-4 sm:p-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <div>
+          <h1 className="text-[19px] font-extrabold leading-tight text-slate-900">Procurement to Delivery Forecast</h1>
+          <p className="text-[12px] text-slate-500">Procurement hanggang delivery · {rows.length} open order{rows.length===1?"":"s"} · ngayon {fmtDate(today)}</p>
+        </div>
+        <button onClick={load} className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12.5px] font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-white">
+          <IcoRefresh size={14}/> Refresh
+        </button>
+      </div>
+
+      {failed.length ? (
+        <div className="mt-4 rounded-xl bg-amber-50 ring-1 ring-amber-200 p-3 text-[12.5px] text-amber-900">
+          <b>Hindi nabuksan:</b> {failed.join(", ")}. Tuloy pa rin ang forecast pero kulang ang ilang
+          hakbang — pakicheck kung tama ang pangalan ng report at may access ang widget dito.
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Tile label="Open orders"   value={tiles.open}   tone="slate"    icon={<IcoTruck size={14}/>} sub="hindi pa delivered" />
+        <Tile label="Ngayong linggo" value={tiles.week}  tone="accent"   icon={<IcoCal size={14}/>}   sub="likely date hanggang Linggo" />
+        <Tile label="At risk"        value={tiles.atrisk} tone="warning" icon={<IcoAlert size={14}/>} sub="kasya lang sa hinihintay ng client" />
+        <Tile label="Will miss"      value={tiles.miss}   tone="critical" icon={<IcoAlert size={14}/>} sub="lalampas sa hinihintay ng client" />
+        <Tile label="Walang client date" value={tiles.notarget} tone="slate" icon={<IcoCal size={14}/>} sub="wala pang cf_target_delivery_date" />
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className="flex rounded-lg bg-slate-200/70 p-0.5">
+          {TABS.map(function(t){
+            return (
+              <button key={t.id} onClick={function(){ setTab(t.id); }}
+                      className={"inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition "+
+                                 (tab===t.id ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}>
+                {t.icon}{t.label}
+              </button>
+            );
+          })}
+        </div>
+        {tab !== "settings" ? (
+          <React.Fragment>
+            <input value={q} onChange={function(e){ setQ(e.target.value); }} placeholder="Hanapin ang SO, PR, customer, supplier…"
+                   className="w-56 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[12.5px] focus:border-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-100" />
+            <select value={sevFilter} onChange={function(e){ setSevFilter(e.target.value); }}
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[12.5px]">
+              <option value="all">Lahat ng status</option>
+              <option value="ontrack">On track</option>
+              <option value="atrisk">At risk</option>
+              <option value="miss">Will miss / overdue</option>
+              <option value="notarget">Walang client date</option>
+            </select>
+            <select value={sort} onChange={function(e){ setSort(e.target.value); }}
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[12.5px]">
+              <option value="soonest">Pinakamalapit na darating</option>
+              <option value="latest">Pinaka-late sa client</option>
+              <option value="target">Ayon sa client date</option>
+            </select>
+            <select value={modeFilter} onChange={function(e){ setModeFilter(e.target.value); }}
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[12.5px]">
+              <option value="all">Lahat ng mode</option>
+              {modes.map(function(m){ return <option key={m} value={m}>{m}</option>; })}
+            </select>
+            <span className="text-[11.5px] text-slate-500">{filtered.length} ipinapakita</span>
+          </React.Fragment>
+        ) : null}
+      </div>
+
+      <div className="mt-4">
+        {tab === "volume"   ? <VolumeChart weeks={weeks} /> : null}
+        {tab === "forecast" ? <ForecastTable rows={filtered} today={today} /> : null}
+        {tab === "settings" ? (
+          <SettingsPanel settings={settings} fsFound={fsFound} fsReport={fsReport}
+                         fsRecId={fsRecId} measured={measured} onSaved={load} />
+        ) : null}
+      </div>
+
+      <p className="mt-6 text-[11px] leading-relaxed text-slate-400">
+        Ang forecast ay isang <b>window</b> (Earliest – Latest), hindi eksaktong petsa. Ang
+        “Client expects” ay ang <b>target delivery date</b> ng Sales Order — galing sa Zoho Books
+        (<b>cf_target_delivery_date</b>) at kinopya sa Fulfillment ng <b>so_fulfillment_sync</b>.
+        Kung wala itong laman, hindi ituturing na on-time ang order — ibubukod ito. Isang
+        bagay lang ang sinusulatan ng widget na ito: ang <b>Forecast Settings</b> na record,
+        sa <b>Forecast Settings</b> na tab. Walang order, PR, shipment o stage record ang
+        ginagalaw nito.
+      </p>
+    </div>
+  );
+}
+
+/* ═══════════ MOUNT ═══════════ */
+function SdkMissing(){
+  return (
+    <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="max-w-sm text-center">
+        <IcoAlert size={28} className="mx-auto text-critical mb-3" />
+        <p className="text-[13.5px] text-slate-600">Kailangang buksan ang widget na ito sa loob ng Zoho Creator para makabasa ng live data.</p>
+      </div>
+    </div>
+  );
+}
+var _root = ReactDOM.createRoot(document.getElementById("root"));
+(function waitForSdk(attempt){
+  var ready = typeof window.ZOHO !== "undefined" && window.ZOHO.CREATOR && window.ZOHO.CREATOR.DATA;
+  if (ready){ _root.render(<App />); return; }
+  if (attempt >= 30){ _root.render(<SdkMissing />); return; }
+  setTimeout(function(){ waitForSdk(attempt + 1); }, 200);
+})(0);
+</script>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+</body>
+</html>

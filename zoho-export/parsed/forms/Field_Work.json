@@ -1,0 +1,497 @@
+{
+  "name": "Field_Work",
+  "label": "Field Work Form",
+  "successMessage": "Data Added Successfully!",
+  "line": 5411,
+  "fields": [
+    {
+      "name": "Field_Portal_Team_Fields",
+      "label": "Field Portal Team Fields",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Status",
+      "label": "Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Pending",
+        "Started",
+        "Reschedule Requested",
+        "Rescheduled",
+        "Archived"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Logistic_Notes",
+      "label": "Logistic Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Package_Order",
+      "label": "Package Order",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "Shipment_Order",
+      "label": "Shipment Order",
+      "type": "upload file",
+      "required": false
+    },
+    {
+      "name": "SubForm",
+      "label": "SubForm",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Attachment_of_Photo",
+          "label": "Attachment of Photo",
+          "type": "image",
+          "required": false
+        },
+        {
+          "name": "Notes",
+          "label": "Notes",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "SO_Details",
+      "label": "SO Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Service_Request",
+      "label": "Service Request#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RMA",
+      "label": "RMA#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Original_SO",
+      "label": "Original SO#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Reason",
+      "label": "Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Subreason",
+      "label": "Sub Reason",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Change of Mind",
+        "Damaged Item",
+        "Demo",
+        "Replacement"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Sales_Order",
+      "label": "Sales Order#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Type_of_Delivery",
+      "label": "Type of Delivery",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Details",
+      "label": "Customer Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Address",
+      "label": "Customer Address",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "City",
+      "label": "City",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Email",
+      "label": "Email",
+      "type": "email",
+      "required": false,
+      "maxchar": "80",
+      "personalData": "true"
+    },
+    {
+      "name": "Contact",
+      "label": "Contact",
+      "type": "phonenumber",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "If_Pull_Out",
+      "label": "If Pull Out",
+      "type": "radiobuttons",
+      "required": false,
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Scheduled_Date_and_Time",
+      "label": "Scheduled Date and Time",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Assigned_to_Installer",
+      "label": "Assigned to (Installer)",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "CJ",
+        "Edmon",
+        "John Dave",
+        "Nherwin",
+        "Norman"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Assigned_to_Dispatcher",
+      "label": "Assigned to (Dispatcher)",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Jhi",
+        "Flor",
+        "Andrea"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Schedule_Start_Date_and_Time",
+      "label": "Schedule Start Date and Time",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Schedule_End_Date_and_Time",
+      "label": "Schedule End Date and Time",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Upload_PDf_of_Initial_Report",
+      "label": "Upload PDf of Initial Report",
+      "type": "upload file",
+      "required": false
+    },
+    {
+      "name": "Item_Details",
+      "label": "Item Details",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "PAC",
+          "label": "PAC",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Quantity",
+          "label": "Quantity",
+          "type": "number",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Customer_Feedback",
+      "label": "Customer Feedback",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Customer_Rating",
+      "label": "Customer Rating",
+      "type": "radiobuttons",
+      "required": false,
+      "options": [
+        "⭐",
+        "⭐⭐",
+        "⭐⭐⭐",
+        "⭐⭐⭐⭐",
+        "⭐⭐⭐⭐⭐"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Receiver_s_Name",
+      "label": "Receiver's Name",
+      "type": "name",
+      "required": false,
+      "personalData": "true",
+      "fields": [
+        {
+          "name": "prefix",
+          "label": "Prefix",
+          "type": "prefix",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "first_name",
+          "label": "First Name",
+          "type": "first_name",
+          "required": false
+        },
+        {
+          "name": "last_name",
+          "label": "Last Name",
+          "type": "last_name",
+          "required": false
+        },
+        {
+          "name": "suffix",
+          "label": "Suffix",
+          "type": "suffix",
+          "required": false,
+          "visibility": "false"
+        }
+      ]
+    },
+    {
+      "name": "Receiver_s_Signature",
+      "label": "Receiver's Signature",
+      "type": "signature",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Assignee_Signature",
+      "label": "Assignee Signature",
+      "type": "signature",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Final_Checking_Bago_Umalis_sa_Site",
+      "label": "Final Checking Bago Umalis sa Site",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Lahat ng ilaw o fixtures ay pantay ang ayos at hitsura.",
+        "Walang tabingi",
+        "Lahat ng ilaw ay naka-align sa layout.",
+        "Na-check gamit ang level bar",
+        "Lahat ng LED/bulb ay gumagana, walang busted.",
+        "Walang flicker o hindi pantay ang liwanag.",
+        "Tinanggal lahat ng kalat (plastic, wire cuttings, screws, etc.).",
+        "Naayos ang mga gamit bago umalis sa site.",
+        "Na-turn over ng maayos sa client o site engineer."
+      ]
+    },
+    {
+      "name": "Installation_Status",
+      "label": "Installation Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Complete",
+        "Incomplete"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Sales_Return_Status",
+      "label": "Sales Return Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "SR Created",
+        "SR Pending"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Image",
+      "label": "Image",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "Video",
+      "label": " Video",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Receiver_s_Signature_Upload",
+      "label": "Receiver's Signature Upload",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "Video_and_Status_of_Installed_Item",
+      "label": "Video and Status of Installed Item",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Image_Upload",
+          "label": "Image Upload",
+          "type": "image",
+          "required": false
+        },
+        {
+          "name": "Video_If_necessary",
+          "label": "Video (If necessary)",
+          "type": "video",
+          "required": false
+        },
+        {
+          "name": "Notes_Remarks",
+          "label": "Notes/Remarks",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Complaint_Record_ID",
+      "label": "Complaint Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Appointment_Record_ID",
+      "label": "Appointment Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section1",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Reschedule_Reason",
+      "label": "Reschedule Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Reschedule_Processed",
+      "label": "Reschedule Processed",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Section2",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Service_Appointment_ID",
+      "label": "Service Appointment ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

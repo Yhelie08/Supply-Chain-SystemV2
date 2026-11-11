@@ -1,0 +1,2 @@
+// schedule: Daily Check Warehouse/Bin Loc  form=null event= on start > on load  [.ds line 47160]
+thisapp.syncWarehouseBins();

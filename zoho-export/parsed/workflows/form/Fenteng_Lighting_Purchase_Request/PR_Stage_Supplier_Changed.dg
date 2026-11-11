@@ -1,0 +1,38 @@
+// form: PR_Stage_Supplier_Changed_Supplier1  form=Fenteng_Lighting_Purchase_Request event=on edit on success  [.ds line 37898]
+    prNo = input.PR_No_Supplier1;
+prRecs = Purchase_Request1[PR_No == prNo];
+for each  pr in prRecs
+{
+    for each  row in pr.Supplier_Selected
+    {
+        /* FIXED 2026-08-07, real bug found via codebase-wide audit (same class as the
+           already-fixed approvePOMain crash, memory `reference-deluge-quirks.md`):
+           row.Suppliers (Purchase_Request1.Supplier_Selected) can be the SHORT name
+           ("Fenteng") or the FULL Suppliers-form name ("Fenteng Lighting") depending
+           on whether this PR was auto-routed or INQ-routed — confirmed live in
+           Production holding both shapes across different PRs. The old strict ==
+           silently skipped the sync whenever a PR hit the full-name shape, meaning
+           the supplier's own price/availability edits never made it back onto
+           Purchase_Request1 for those PRs. */
+        rowSupplierVal1 = row.Suppliers + "";
+        if(rowSupplierVal1 == "Fenteng" || rowSupplierVal1.contains("Fenteng"))
+        {
+            for each  subRow in input.Supplier_Selected_Supplier1
+            {
+                row.Availability=subRow.Availability_Supplier1;
+                row.Initial_Price=subRow.Initial_Price_Supplier1;
+                row.Negotiated=subRow.Negotiated_Supplier1;
+                row.Final_Price=subRow.Final_Price_Supplier1;
+                row.Lead_Time=subRow.Lead_Time_Supplier1;
+                break;
+            }
+            break;
+        }
+    }
+    break;
+}
+if(input.Response_Status != "Selected" && input.Response_Status != "Submit Response")
+{
+    input.edit_counter = 0;
+}
+openUrl("#Report:Fenteng_Lighting_Purchase_Request_Report","same window");

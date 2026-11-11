@@ -1,0 +1,80 @@
+{
+  "name": "Items",
+  "label": "Items",
+  "successMessage": "Item Added Successfully",
+  "line": 7335,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "ID1",
+      "label": "ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Image",
+      "label": "Image",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "item_name",
+      "label": "Item Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SKU",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Item_ref",
+      "label": "Itemref",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Description",
+      "label": "Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Unit",
+      "label": "Unit",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "category",
+      "label": "Category",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Rate",
+      "label": "Rate",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Warehouse",
+      "label": "Warehouse",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Bin_location",
+      "label": "Bin location",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

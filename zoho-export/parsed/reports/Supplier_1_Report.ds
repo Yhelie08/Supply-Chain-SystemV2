@@ -1,0 +1,45 @@
+
+			displayName = "Fenteng Lighting Inquiries"
+			show all rows from Supplier_1    
+			(
+				INQ_No_Supplier as "INQ No."
+				Items_Supplier as "Items"
+				Description_Supplier as "Description"
+				Date_Created_Supplier as "Date Created"
+				SKU_Supplier as "SKU"
+				Quantity_Supplier as "Quantity"
+				Dropdown1 as "Drop Down"
+				Open_to_similar_design_Supplier as "Open to similar design"
+				Target_Date_Supplier as "Target Date"
+				Unit_Supplier as "Unit"
+				Dropdown2 as "Drop Down"
+				Additional_Description_Supplier as "Additional Description"
+				Product_Sample_Supplier as "Product Sample"
+				Technical_Drawing_Supplier as "Technical Drawing"
+				D_Image_Supplier as "3D Image"
+				Similar_Design_Photo_Supplier as "Similar Design Photo"
+				Specification_Supplier as "Specification"
+				Specification_Details_Supplier as "Specification Details"
+				custom action "Submit Response"
+				(
+	  			workflow = Action_Button_Supplier1
+				show action in edit record menu = true
+				column header = "Submit Response"
+				condition = (Response_Status != "Not Selected" && Response_Status != "Completed" && edit_counter == 1)
+				)
+				Response_Status as "Response Status"
+				edit_counter as "Edit Counter"
+				Product_Image_Supplier1_INQ as "Product Image"
+				Supplier_quotes as "Supplier quotes"
+				(
+					field = Supplier_quotes.SupplierName + " " + Supplier_quotes.Availability_Supplier + " " + Supplier_quotes.Final_Price_Supplier + " " + Supplier_quotes.Initial_Price_Supplier + " " + Supplier_quotes.Lead_Time_Supplier + " " + Supplier_quotes.Negotiated_Supplier + " " + Supplier_quotes.Selected_Supplier + " " + Supplier_quotes.Stage_Supplier
+				)
+				Image_from_Inq as "Image from Inq"
+				Dimension_Supplier as "Dimension"
+				Color_Body_Supplier as "Color Body"
+				Color_Temperature_Supplier as "Color Temperature"
+				Type_of_Bulb_Supplier as "Type of Bulb"
+				Voltage_Supplier as "Voltage"
+				Lumens_Supplier as "Lumens"
+			)
+		

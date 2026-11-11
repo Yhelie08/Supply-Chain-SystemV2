@@ -1,0 +1,6 @@
+// form: Shipment_Track_Previous_Status  form=Shipments event=on edit on validate  [.ds line 40947]
+    oldRec = Shipments[ID == input.ID];
+if(oldRec != null && oldRec.Shipment_Status != input.Shipment_Status)
+{
+    input.Previous_Status = oldRec.Shipment_Status;
+}

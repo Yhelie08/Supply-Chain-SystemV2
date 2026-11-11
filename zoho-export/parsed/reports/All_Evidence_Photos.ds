@@ -1,0 +1,12 @@
+
+			displayName = "Evidence_Photos Report"
+			show all rows from Evidence_Photos    
+			(
+				File_Name
+				Source_Form
+				Row_Key
+				Record_ID
+				Photo
+				Uploaded_On
+			)
+		

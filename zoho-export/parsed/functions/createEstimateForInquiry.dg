@@ -1,0 +1,711 @@
+// map createEstimateForInquiry(String inqNo)   [.ds lines 28196-28907]
+response = Map();
+recs = Inquiry_Form[INQ_No == inqNo];
+found = false;
+for each  rec in recs
+{
+    found = true;
+    // =========================================================
+    // 1. Resilient Readiness Checklist Verification
+    //    (Does not get stuck on stale DB flags from API updates)
+    // =========================================================
+    collateralComplete = true;
+    colList = List();
+    colList.add(rec.Product_Sample);
+    colList.add(rec.D_Image);
+    colList.add(rec.Specification);
+    colList.add(rec.Technical_Drawing);
+    for each  cVal in colList
+    {
+        if(cVal != "Completed" && cVal != "N/A")
+        {
+            collateralComplete = false;
+        }
+    }
+    srpApproved = rec.SRP_Approved == true || rec.SRP_Status == "Approved" || (rec.SRP_Approved1 != null && rec.SRP_Approved1 > 0);
+    supplierSelected = rec.Supplier_Selected == true;
+    availability = rec.Availability == true;
+    finalPriceExists = rec.Final_Price_Exists == true || (rec.Select_Final_Cost != null && rec.Select_Final_Cost > 0) || (rec.SRP_Approved1 != null && rec.SRP_Approved1 > 0);
+    isReady = rec.Ready_for_Estimates == true || (supplierSelected && availability && finalPriceExists && collateralComplete && srpApproved);
+    if(!isReady)
+    {
+        response.put("status","error");
+        response.put("message","Inquiry " + inqNo + " is not yet ready for estimate. Please verify readiness checklist.");
+        return response;
+    }
+    // Heal the database flag if it was stale
+    if(rec.Ready_for_Estimates != true)
+    {
+        rec.Ready_for_Estimates=true;
+    }
+    // =========================================================
+    // 2. Project Information & Validation
+    // =========================================================
+    if(rec.Projects == null || rec.Projects == 0)
+    {
+        response.put("status","error");
+        response.put("message","No project assigned. Please assign a project first.");
+        return response;
+    }
+    projRecs = Projects[ID == rec.Projects];
+    projName = "";
+    projEstID = "";
+    projEstNo = "";
+    projCustID = null;
+    for each  p in projRecs
+    {
+        projName = p.Project_Name;
+        projEstID = p.Books_Estimate_ID + "";
+        projEstNo = p.Books_Estimate_No + "";
+        projCustID = p.Customer;
+    }
+    if(projEstID == "null")
+    {
+        projEstID = "";
+    }
+    if(projEstNo == "null")
+    {
+        projEstNo = "";
+    }
+    // =========================================================
+    // 3. Customer Resolution with Project Fallback
+    //    (Fixes empty Customer on inquiry e.g. INQ-00029)
+    // =========================================================
+    custRecs = Customer[ID == rec.Customer];
+    custBookID = "";
+    custNameVal = "";
+    for each  c in custRecs
+    {
+        custBookID = c.ID1 + "";
+        custNameVal = c.customer_name + "";
+    }
+    // Fallback to Project Customer if Inquiry Customer is empty
+    if(custBookID == "" || custBookID == "null" && projCustID != null && projCustID != 0)
+    {
+        pCustRecs = Customer[ID == projCustID];
+        for each  pc in pCustRecs
+        {
+            custBookID = pc.ID1 + "";
+            custNameVal = pc.customer_name + "";
+            rec.Customer=projCustID;
+        }
+    }
+    if(custBookID == "null")
+    {
+        custBookID = "";
+    }
+    if(custNameVal == "null")
+    {
+        custNameVal = "";
+    }
+    // Search Books by name if ID1 is not yet populated
+    if(custBookID == "" && custNameVal != "")
+    {
+        searchUrl = "https://www.zohoapis.com/books/v3/contacts?organization_id=751117756&contact_name=" + zoho.encryption.urlEncode(custNameVal);
+        searchResp = invokeurl
+        [
+            url :searchUrl
+            type :GET
+            connection:"zhbooks3"
+        ];
+        if(searchResp.get("code") == 0 && searchResp.get("contacts") != null)
+        {
+            contactList = searchResp.get("contacts");
+            if(contactList.size() > 0)
+            {
+                firstContact = contactList.get(0);
+                custBookID = firstContact.get("contact_id") + "";
+                if(rec.Customer != null && rec.Customer != 0)
+                {
+                    updCust = Customer[ID == rec.Customer];
+                    for each  uc in updCust
+                    {
+                        uc.ID1=custBookID;
+                    }
+                }
+                else if(projCustID != null && projCustID != 0)
+                {
+                    updCust = Customer[ID == projCustID];
+                    for each  uc in updCust
+                    {
+                        uc.ID1=custBookID;
+                    }
+                }
+            }
+        }
+    }
+    if(custBookID == "")
+    {
+        response.put("status","error");
+        if(custNameVal != "")
+        {
+            response.put("message","Customer '" + custNameVal + "' is not linked to Zoho Books (missing contact ID).");
+        }
+        else
+        {
+            response.put("message","No customer assigned on inquiry or project. Please select a customer.");
+        }
+        return response;
+    }
+    // =========================================================
+    // 4. Validate Existing Estimate in Zoho Books
+    //    (Actively reads real estimate_number)
+    // =========================================================
+    currentItems = List();
+    if(projEstID != null && projEstID != "")
+    {
+        checkUrl = "https://www.zohoapis.com/books/v3/estimates/" + projEstID + "?organization_id=751117756";
+        checkResp = invokeurl
+        [
+            url :checkUrl
+            type :GET
+            connection:"zhbooks3"
+        ];
+        respCode = checkResp.get("code");
+        if(respCode == 0 && checkResp.get("estimate") != null)
+        {
+            currentItems = checkResp.get("estimate").get("line_items");
+            realEstNo = checkResp.get("estimate").get("estimate_number") + "";
+            if(realEstNo != "" && realEstNo != "null")
+            {
+                projEstNo = realEstNo;
+            }
+        }
+        else
+        {
+            // Estimate no longer exists in Books - clear stale IDs
+            projEstID = "";
+            projEstNo = "";
+            staleProjRec = Projects[ID == rec.Projects];
+            for each  sp in staleProjRec
+            {
+                sp.Books_Estimate_ID="";
+                sp.Books_Estimate_No="";
+            }
+        }
+    }
+    // Clean up custom field strings
+    custTypeVal = rec.Customer_Type + "";
+    if(custTypeVal == "Enduser")
+    {
+        custTypeVal = "End User";
+    }
+    if(custTypeVal == "null")
+    {
+        custTypeVal = "";
+    }
+    salesOwnerVal = rec.Sales_Owner + "";
+    if(salesOwnerVal == "null")
+    {
+        salesOwnerVal = "";
+    }
+    designCompanyVal = rec.Design_Company + "";
+    if(designCompanyVal == "null")
+    {
+        designCompanyVal = "";
+    }
+    designerArchVal = rec.Designer_Architect + "";
+    if(designerArchVal == "null")
+    {
+        designerArchVal = "";
+    }
+    designPartnerVal = rec.Design_Partner + "";
+    if(designPartnerVal == "null")
+    {
+        designPartnerVal = "";
+    }
+    commissionVal = rec.Commission + "";
+    if(commissionVal == "null")
+    {
+        commissionVal = "";
+    }
+    orderTypeVal = rec.Order_Type + "";
+    if(orderTypeVal == "null")
+    {
+        orderTypeVal = "";
+    }
+    projectTypeVal = rec.Project_Type + "";
+    if(projectTypeVal == "null")
+    {
+        projectTypeVal = "";
+    }
+    forBiddingVal = rec.For_Bidding + "";
+    if(forBiddingVal == "null")
+    {
+        forBiddingVal = "";
+    }
+    addtlDiscVal = rec.Addtl_Disc_Needed1 + "";
+    if(addtlDiscVal == "null")
+    {
+        addtlDiscVal = "";
+    }
+    targetDateVal = rec.target_date + "";
+    if(targetDateVal == "null")
+    {
+        targetDateVal = "";
+    }
+    // =========================================================
+    // 5. UPDATE vs CREATE Execution
+    // =========================================================
+    if(projEstID != null && projEstID != "")
+    {
+        // UPDATE PATH: Rebuild line items for existing estimate
+        lineItems = List();
+        allINQNos = "";
+        allInq = Inquiry_Form[Projects == rec.Projects || quote_group == rec.quote_group];
+        for each  inq in allInq
+        {
+            sibColComplete = true;
+            sibColList = List();
+            sibColList.add(inq.Product_Sample);
+            sibColList.add(inq.D_Image);
+            sibColList.add(inq.Specification);
+            sibColList.add(inq.Technical_Drawing);
+            for each  scVal in sibColList
+            {
+                if(scVal != "Completed" && scVal != "N/A")
+                {
+                    sibColComplete = false;
+                }
+            }
+            sibSrpApproved = inq.SRP_Approved == true || inq.SRP_Status == "Approved" || (inq.SRP_Approved1 != null && inq.SRP_Approved1 > 0);
+            sibFinalPrice = inq.Final_Price_Exists == true || (inq.Select_Final_Cost != null && inq.Select_Final_Cost > 0) || (inq.SRP_Approved1 != null && inq.SRP_Approved1 > 0);
+            sibReady = inq.Ready_for_Estimates == true || (inq.Supplier_Selected == true && inq.Availability == true && sibFinalPrice && sibColComplete && sibSrpApproved);
+            if(sibReady)
+            {
+                if(allINQNos != "")
+                {
+                    allINQNos = allINQNos + ", ";
+                }
+                allINQNos = allINQNos + inq.INQ_No;
+                sibBookID = "";
+                sibNameVal = "";
+                sibItems = Items[ID == inq.Items];
+                for each  si in sibItems
+                {
+                    sibBookID = si.ID1 + "";
+                    sibNameVal = si.item_name + "";
+                }
+                if(sibBookID == "" || sibBookID == "null")
+                {
+                    sibItemsBySku = Items[SKU == inq.sku];
+                    for each  sis in sibItemsBySku
+                    {
+                        sibBookID = sis.ID1 + "";
+                        sibNameVal = sis.item_name + "";
+                    }
+                }
+                if(sibNameVal == "")
+                {
+                    sibNameVal = inq.sku + "";
+                }
+                if(sibBookID == "null")
+                {
+                    sibBookID = "";
+                }
+                sibQty = inq.quantity;
+                if(sibQty == null || sibQty <= 0)
+                {
+                    sibQty = 1;
+                }
+                sibRate = inq.SRP_Approved1;
+                if(sibRate == null)
+                {
+                    sibRate = 0;
+                }
+                // ADDED 2026-10-19, per user: the Inquiry's six item specifications and its
+                // "Additional Details / Description" are merged into this Books line item's own
+                // description box (the "Add a description to your item" field on the Estimate).
+                // The item's own description stays first so nothing that used to be sent is lost;
+                // every other part is optional and simply left out when blank.
+                descPartsU = List();
+                if(inq.description != null && inq.description + "" != "")
+                {
+                    descPartsU.add(inq.description + "");
+                }
+                if(inq.Dimension != null && inq.Dimension + "" != "")
+                {
+                    descPartsU.add("Dimension: " + inq.Dimension);
+                }
+                if(inq.Color_Body != null && inq.Color_Body + "" != "")
+                {
+                    descPartsU.add("Color Body: " + inq.Color_Body);
+                }
+                if(inq.Color_Temperature != null && inq.Color_Temperature + "" != "")
+                {
+                    descPartsU.add("Color Temperature: " + inq.Color_Temperature);
+                }
+                if(inq.Type_of_Bulb != null && inq.Type_of_Bulb + "" != "")
+                {
+                    descPartsU.add("Type of Bulb: " + inq.Type_of_Bulb);
+                }
+                if(inq.Voltage != null && inq.Voltage + "" != "")
+                {
+                    descPartsU.add("Voltage: " + inq.Voltage);
+                }
+                if(inq.Lumens != null && inq.Lumens + "" != "")
+                {
+                    descPartsU.add("Lumens: " + inq.Lumens);
+                }
+                if(inq.Addtional_Description != null && inq.Addtional_Description + "" != "")
+                {
+                    descPartsU.add(inq.Addtional_Description + "");
+                }
+                descTextU = "";
+                if(descPartsU.size() > 0)
+                {
+                    descTextU = descPartsU.toString("\n");
+                }
+                sibLine = Map();
+                if(sibBookID != "")
+                {
+                    sibLine.put("item_id",sibBookID);
+                }
+                sibLine.put("name",sibNameVal);
+                sibLine.put("description",descTextU);
+                sibLine.put("quantity",sibQty.toLong());
+                sibLine.put("rate",sibRate.toDecimal());
+                existingLIID = "";
+                for each  item in currentItems
+                {
+                    if(sibBookID != "" && item.get("item_id") + "" == sibBookID + "")
+                    {
+                        existingLIID = item.get("line_item_id") + "";
+                    }
+                }
+                if(existingLIID != "" && existingLIID != "null")
+                {
+                    sibLine.put("line_item_id",existingLIID);
+                }
+                lineItems.add(sibLine);
+            }
+        }
+        ucfList = List();
+        ucf1 = Map();
+        ucf1.put("label","Sales Agent");
+        ucf1.put("value",salesOwnerVal);
+        ucfList.add(ucf1);
+        ucf2 = Map();
+        ucf2.put("label","Project Name");
+        ucf2.put("value",projName);
+        ucfList.add(ucf2);
+        ucf3 = Map();
+        ucf3.put("label","Design Company");
+        ucf3.put("value",designCompanyVal);
+        ucfList.add(ucf3);
+        ucf4 = Map();
+        ucf4.put("label","Designer/ Architect");
+        ucf4.put("value",designerArchVal);
+        ucfList.add(ucf4);
+        ucf5 = Map();
+        ucf5.put("label","Design Partner");
+        ucf5.put("value",designPartnerVal);
+        ucfList.add(ucf5);
+        ucf6 = Map();
+        ucf6.put("label","Commission ");
+        ucf6.put("value",commissionVal);
+        ucfList.add(ucf6);
+        ucf7 = Map();
+        ucf7.put("label","Customer Type");
+        ucf7.put("value",custTypeVal);
+        ucfList.add(ucf7);
+        ucf8 = Map();
+        ucf8.put("label","Order Type");
+        ucf8.put("value",orderTypeVal);
+        ucfList.add(ucf8);
+        ucf9 = Map();
+        ucf9.put("label","Project Type:");
+        ucf9.put("value",projectTypeVal);
+        ucfList.add(ucf9);
+        ucf10 = Map();
+        ucf10.put("label","For Bidding? (✓ if yes)");
+        ucf10.put("value",forBiddingVal);
+        ucfList.add(ucf10);
+        ucf11 = Map();
+        ucf11.put("label","Additional discount needed");
+        ucf11.put("value",addtlDiscVal);
+        ucfList.add(ucf11);
+        ucf12 = Map();
+        ucf12.put("label","Target Delivery Date");
+        ucf12.put("value",targetDateVal);
+        ucfList.add(ucf12);
+        ucf13 = Map();
+        ucf13.put("label","INQ No");
+        ucf13.put("value",allINQNos);
+        ucfList.add(ucf13);
+        updateBody = Map();
+        updateBody.put("line_items",lineItems);
+        updateBody.put("custom_fields",ucfList);
+        updateBody.put("expiry_date",targetDateVal);
+        bodyStr = updateBody.toString();
+        putUrl = "https://www.zohoapis.com/books/v3/estimates/" + projEstID + "?organization_id=751117756";
+        updateResp = invokeurl
+        [
+            url :putUrl
+            type :PUT
+            parameters:bodyStr
+            headers:{"Content-Type":"application/json"}
+            connection:"zhbooks3"
+        ];
+        if(updateResp != null && updateResp.get("code") == 0)
+        {
+            updEstNo = updateResp.get("estimate").get("estimate_number") + "";
+            if(updEstNo != "" && updEstNo != "null")
+            {
+                projEstNo = updEstNo;
+            }
+            allInq2 = Inquiry_Form[Projects == rec.Projects || quote_group == rec.quote_group];
+            for each  inq in allInq2
+            {
+                inq.Books_Estimate_ID=projEstID;
+                inq.Books_Estimate_No=projEstNo;
+                inq.Estimate_Created=true;
+                inq.Ready_for_Estimates=true;
+            }
+            projRec = Projects[ID == rec.Projects];
+            for each  p in projRec
+            {
+                p.Books_Estimate_ID=projEstID;
+                p.Books_Estimate_No=projEstNo;
+            }
+            response.put("status","success");
+            response.put("estimateId",projEstID);
+            response.put("estimateNo",projEstNo);
+            response.put("message","Estimate " + projEstNo + " updated in Zoho Books");
+            return response;
+        }
+        else
+        {
+            response.put("status","error");
+            response.put("message","Books UPDATE failed: " + updateResp.get("message") + "");
+            return response;
+        }
+    }
+    else
+    {
+        // CREATE PATH: Create new estimate in Zoho Books
+        lineItems = List();
+        allINQNos = "";
+        allInq = Inquiry_Form[Projects == rec.Projects || quote_group == rec.quote_group];
+        for each  inq in allInq
+        {
+            sibColComplete = true;
+            sibColList = List();
+            sibColList.add(inq.Product_Sample);
+            sibColList.add(inq.D_Image);
+            sibColList.add(inq.Specification);
+            sibColList.add(inq.Technical_Drawing);
+            for each  scVal in sibColList
+            {
+                if(scVal != "Completed" && scVal != "N/A")
+                {
+                    sibColComplete = false;
+                }
+            }
+            sibSrpApproved = inq.SRP_Approved == true || inq.SRP_Status == "Approved" || (inq.SRP_Approved1 != null && inq.SRP_Approved1 > 0);
+            sibFinalPrice = inq.Final_Price_Exists == true || (inq.Select_Final_Cost != null && inq.Select_Final_Cost > 0) || (inq.SRP_Approved1 != null && inq.SRP_Approved1 > 0);
+            sibReady = inq.Ready_for_Estimates == true || (inq.Supplier_Selected == true && inq.Availability == true && sibFinalPrice && sibColComplete && sibSrpApproved);
+            if(sibReady)
+            {
+                if(allINQNos != "")
+                {
+                    allINQNos = allINQNos + ", ";
+                }
+                allINQNos = allINQNos + inq.INQ_No;
+                sibBookID = "";
+                sibNameVal = "";
+                sibItems = Items[ID == inq.Items];
+                for each  si in sibItems
+                {
+                    sibBookID = si.ID1 + "";
+                    sibNameVal = si.item_name + "";
+                }
+                if(sibBookID == "" || sibBookID == "null")
+                {
+                    sibItemsBySku = Items[SKU == inq.sku];
+                    for each  sis in sibItemsBySku
+                    {
+                        sibBookID = sis.ID1 + "";
+                        sibNameVal = sis.item_name + "";
+                    }
+                }
+                if(sibNameVal == "")
+                {
+                    sibNameVal = inq.sku + "";
+                }
+                if(sibBookID == "null")
+                {
+                    sibBookID = "";
+                }
+                sibQty = inq.quantity;
+                if(sibQty == null || sibQty <= 0)
+                {
+                    sibQty = 1;
+                }
+                sibRate = inq.SRP_Approved1;
+                if(sibRate == null)
+                {
+                    sibRate = 0;
+                }
+                // ADDED 2026-10-19, per user: the Inquiry's six item specifications and its
+                // "Additional Details / Description" are merged into this Books line item's own
+                // description box (the "Add a description to your item" field on the Estimate).
+                // The item's own description stays first so nothing that used to be sent is lost;
+                // every other part is optional and simply left out when blank.
+                descPartsC = List();
+                if(inq.description != null && inq.description + "" != "")
+                {
+                    descPartsC.add(inq.description + "");
+                }
+                if(inq.Dimension != null && inq.Dimension + "" != "")
+                {
+                    descPartsC.add("Dimension: " + inq.Dimension);
+                }
+                if(inq.Color_Body != null && inq.Color_Body + "" != "")
+                {
+                    descPartsC.add("Color Body: " + inq.Color_Body);
+                }
+                if(inq.Color_Temperature != null && inq.Color_Temperature + "" != "")
+                {
+                    descPartsC.add("Color Temperature: " + inq.Color_Temperature);
+                }
+                if(inq.Type_of_Bulb != null && inq.Type_of_Bulb + "" != "")
+                {
+                    descPartsC.add("Type of Bulb: " + inq.Type_of_Bulb);
+                }
+                if(inq.Voltage != null && inq.Voltage + "" != "")
+                {
+                    descPartsC.add("Voltage: " + inq.Voltage);
+                }
+                if(inq.Lumens != null && inq.Lumens + "" != "")
+                {
+                    descPartsC.add("Lumens: " + inq.Lumens);
+                }
+                if(inq.Addtional_Description != null && inq.Addtional_Description + "" != "")
+                {
+                    descPartsC.add(inq.Addtional_Description + "");
+                }
+                descTextC = "";
+                if(descPartsC.size() > 0)
+                {
+                    descTextC = descPartsC.toString("\n");
+                }
+                sibLine = Map();
+                if(sibBookID != "")
+                {
+                    sibLine.put("item_id",sibBookID);
+                }
+                sibLine.put("name",sibNameVal);
+                sibLine.put("description",descTextC);
+                sibLine.put("quantity",sibQty.toLong());
+                sibLine.put("rate",sibRate.toDecimal());
+                lineItems.add(sibLine);
+            }
+        }
+        cfList = List();
+        cf1 = Map();
+        cf1.put("label","Sales Agent");
+        cf1.put("value",salesOwnerVal);
+        cfList.add(cf1);
+        cf2 = Map();
+        cf2.put("label","Project Name");
+        cf2.put("value",projName);
+        cfList.add(cf2);
+        cf3 = Map();
+        cf3.put("label","Design Company");
+        cf3.put("value",designCompanyVal);
+        cfList.add(cf3);
+        cf4 = Map();
+        cf4.put("label","Designer/ Architect");
+        cf4.put("value",designerArchVal);
+        cfList.add(cf4);
+        cf5 = Map();
+        cf5.put("label","Design Partner");
+        cf5.put("value",designPartnerVal);
+        cfList.add(cf5);
+        cf6 = Map();
+        cf6.put("label","Commission ");
+        cf6.put("value",commissionVal);
+        cfList.add(cf6);
+        cf7 = Map();
+        cf7.put("label","Customer Type");
+        cf7.put("value",custTypeVal);
+        cfList.add(cf7);
+        cf8 = Map();
+        cf8.put("label","Order Type");
+        cf8.put("value",orderTypeVal);
+        cfList.add(cf8);
+        cf9 = Map();
+        cf9.put("label","Project Type:");
+        cf9.put("value",projectTypeVal);
+        cfList.add(cf9);
+        cf10 = Map();
+        cf10.put("label","For Bidding? (✓ if yes)");
+        cf10.put("value",forBiddingVal);
+        cfList.add(cf10);
+        cf11 = Map();
+        cf11.put("label","Additional discount needed");
+        cf11.put("value",addtlDiscVal);
+        cfList.add(cf11);
+        cf12 = Map();
+        cf12.put("label","Target Delivery Date");
+        cf12.put("value",targetDateVal);
+        cfList.add(cf12);
+        cf13 = Map();
+        cf13.put("label","INQ No");
+        cf13.put("value",allINQNos);
+        cfList.add(cf13);
+        estimateBody = Map();
+        estimateBody.put("customer_id",custBookID);
+        estimateBody.put("line_items",lineItems);
+        estimateBody.put("custom_fields",cfList);
+        estimateBody.put("date",zoho.currentdate.toString("yyyy-MM-dd"));
+        estimateBody.put("expiry_date",targetDateVal);
+        bodyStr = estimateBody.toString();
+        createUrl = "https://www.zohoapis.com/books/v3/estimates?organization_id=751117756";
+        createResp = invokeurl
+        [
+            url :createUrl
+            type :POST
+            parameters:bodyStr
+            headers:{"Content-Type":"application/json"}
+            connection:"zhbooks3"
+        ];
+        if(createResp != null && createResp.get("code") == 0 && createResp.get("estimate") != null)
+        {
+            newEstID = createResp.get("estimate").get("estimate_id") + "";
+            newEstNo = createResp.get("estimate").get("estimate_number") + "";
+            allInq2 = Inquiry_Form[Projects == rec.Projects || quote_group == rec.quote_group];
+            for each  inq in allInq2
+            {
+                inq.Books_Estimate_ID=newEstID;
+                inq.Books_Estimate_No=newEstNo;
+                inq.Estimate_Created=true;
+                inq.Ready_for_Estimates=true;
+            }
+            projRec = Projects[ID == rec.Projects];
+            for each  p in projRec
+            {
+                p.Books_Estimate_ID=newEstID;
+                p.Books_Estimate_No=newEstNo;
+            }
+            response.put("status","success");
+            response.put("estimateId",newEstID);
+            response.put("estimateNo",newEstNo);
+            response.put("message","Estimate " + newEstNo + " created with " + lineItems.size() + " items");
+            return response;
+        }
+        else
+        {
+            response.put("status","error");
+            response.put("message","Books CREATE failed: " + createResp.get("message") + "");
+            return response;
+        }
+    }
+}
+if(!found)
+{
+    response.put("status","error");
+    response.put("message","Inquiry " + inqNo + " not found");
+}
+return response;

@@ -1,0 +1,12 @@
+
+			displayName = "All Dms Schedule Request Messages"
+			show all rows from DMS_Schedule_Request_Messages    
+			(
+				DMS_Schedule_Request_ID
+				Sender_Email
+				Sender_Name
+				Message
+				Sent_On
+				Synced_To_CMS
+			)
+		

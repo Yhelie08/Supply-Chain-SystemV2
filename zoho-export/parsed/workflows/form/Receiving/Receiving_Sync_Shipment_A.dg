@@ -1,0 +1,69 @@
+// form: Receiving_Sync_Shipment_Arrived  form=Receiving event=on add or edit on success  [.ds line 42497]
+    arrMapRA = Map();
+for each  rlRA in input.Receiving_Line_Items
+{
+    if(rlRA.PR_No != null && rlRA.PR_No != "" && rlRA.Expected_Qty != null && rlRA.Expected_Qty > 0)
+    {
+        missingQtyRA = rlRA.Missing_Qty;
+        if(missingQtyRA == null)
+        {
+            missingQtyRA = 0;
+        }
+        if(missingQtyRA == 0)
+        {
+            keyRA = rlRA.PR_No + "" + "|" + rlRA.RR_No + "" + "|" + rlRA.SKU + "";
+            arrMapRA.put(keyRA,true);
+        }
+    }
+}
+if(arrMapRA.size() > 0)
+{
+    /* FIXED 2026-08-05, real bug found live in Production: Shipments.Supplier_Shipment_Details
+       (the subform this used to loop here) does NOT have PR_No/RR_No/SKU/Status columns at
+       all — confirmed via a live API dump, it only ever holds one field, Shipment_ID (see
+       supplier_shipment_sync.txt's own header comment, "appends a row to the PARENT
+       Shipments.Supplier_Shipment_Details, [holding] Shipment_ID"). The old code below dot-read
+       spLineRA.PR_No/.RR_No/.SKU/.Status off that subform — none of those fields exist there,
+       so every key computed was just the garbage string "||" and never matched arrMapRA's real
+       keys (built from Receiving_Line_Items, which DOES have these fields) — this whole block
+       silently did nothing on every run, regardless of Missing_Qty. Confirmed live: both
+       SHP-00001 and SHP-00004's Receiving lines have Missing_Qty=0 (should have auto-flipped),
+       but Tony_Shipment.Supplier2_Shipment_Details.Status stayed "In Transit"/blank on both.
+       FIX: skip the parent Supplier_Shipment_Details subform read entirely (it was never the
+       right place to look) — go straight from arrMapRA (already correctly keyed, built from
+       Receiving's own line data above) to the supplier-side subform, same as before. */
+    shipRecRA = Shipments[ID == input.Shipments];
+    /* FIXED 2026-08-07, real bug found via codebase-wide audit (same class as the
+       already-fixed approvePOMain crash): Shipments.Supplier can be the short name
+       or the full Suppliers-form name (replacement shipments inherit RR_Supplier,
+       which can hold either shape, confirmed live in Production). Old strict ==
+       silently skipped the Arrived auto-flip for any replacement shipment that hit
+       the full-name shape. */
+    shipSupplierValRA = shipRecRA.Supplier + "";
+    if(shipSupplierValRA == "Fenteng" || shipSupplierValRA.contains("Fenteng"))
+    {
+        suppRecRA = Fenteng_Shipment[Parent_Shipment_ID == shipRecRA.ID + ""];
+        for each  rowRA in suppRecRA.Supplier1_Shipment_Details
+        {
+            rowKeyRA = rowRA.PR_No + "" + "|" + rowRA.RR_No + "" + "|" + rowRA.SKU + "";
+            okRA = arrMapRA.get(rowKeyRA);
+            if(okRA == true && rowRA.Status != "Arrived")
+            {
+                rowRA.Status="Arrived";
+            }
+        }
+    }
+    else if(shipSupplierValRA == "Tony" || shipSupplierValRA.contains("Tony"))
+    {
+        suppRecRAT = Tony_Shipment[Parent_Shipment_ID == shipRecRA.ID + ""];
+        for each  rowRAT in suppRecRAT.Supplier2_Shipment_Details
+        {
+            rowKeyRAT = rowRAT.PR_No + "" + "|" + rowRAT.RR_No + "" + "|" + rowRAT.SKU + "";
+            okRAT = arrMapRA.get(rowKeyRAT);
+            if(okRAT == true && rowRAT.Status != "Arrived")
+            {
+                rowRAT.Status="Arrived";
+            }
+        }
+    }
+}

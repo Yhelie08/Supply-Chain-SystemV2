@@ -1,0 +1,207 @@
+---
+title: "preorder_to_readiness_gate"
+source_file: "preorder_to_readiness_gate.txt"
+category: "Fulfillment/Order Readiness/Deluge"
+associated_widget: "[[Fulfillment/Order Readiness/Widget/Sales Order Readiness Gate Widget|Sales Order Readiness Gate Widget]]"
+lines: 167
+tags:
+  - crate
+  - delivery-management
+  - deluge
+  - dms
+  - fulfillment
+  - pack
+  - procurement
+  - purchase-order
+  - purchase-request
+  - readiness-gate
+---
+
+# preorder_to_readiness_gate
+
+> [!INFO] Script & Widget Details
+> - **Associated Widget:** [[Fulfillment/Order Readiness/Widget/Sales Order Readiness Gate Widget|Sales Order Readiness Gate Widget]]
+> - **Category:** `Fulfillment/Order Readiness/Deluge`
+> - **Source File:** `preorder_to_readiness_gate.txt`
+> - **Lines of Code:** 167
+> - **Tags:** `#crate`, `#delivery-management`, `#deluge`, `#dms`, `#fulfillment`, `#pack`, `#procurement`, `#purchase-order`, `#purchase-request`, `#readiness-gate`
+
+---
+
+## ⚡ Role in Widget Architecture
+This script powers the **[[Fulfillment/Order Readiness/Widget/Sales Order Readiness Gate Widget|Sales Order Readiness Gate Widget]]**. Any changes here affect the backend workflows, data calculations, or Zoho Creator / Books sync for this widget.
+
+---
+
+## Deluge Script Code
+
+````deluge
+== Pre_Order_FF -> Sales_Order_Readiness_Gate sync ==
+== First captured/saved 2026-07-28, per user request ("i need this to execute
+   whenever package is created or the package number in Pre Order Report has
+   value") — pasted live by the user (Temp.txt), confirmed both source
+   (Pre_Order_FF) and target (Sales_Order_Readiness_Gate) fields all exist via
+   a live API field-dump audit before saving here. Only field flagged as
+   uncertain (Added_User, absent from a report GET dump) was confirmed real
+   and exposed via a live Configure Fields screenshot. No gaps — ready to paste
+   as-is. ==
+
+====================================================
+WORKFLOW SETUP — PO to Readiness
+  Form: Pre_Order_FF
+  Trigger: Created or Edited > Successful form submission
+====================================================
+
+// ASSUMED TRIGGER: Zoho Creator native "Created or Edited" Workflow attached
+// directly to the Pre_Order_FF form — same native pattern as readiness_gate_sync.txt
+// (both forms live in the same app, no invokeurl/API connection needed anywhere
+// here). Field values below are read directly by their Field Link Name.
+info "Pre_Order_Status: " + input.Pre_Order_Status;
+info "Package_Number: " + input.Package_Number;
+info "SO: " + input.SO;
+packageNumberVal = input.Package_Number + "";
+preOrderStatusVal = input.Pre_Order_Status + "";
+// ===== CONDITION GATE =====
+// Only sync to Sales_Order_Readiness_Gate once the item actually has a Package
+// Number (PAC#) AND has been marked Received — per user request 2026-07-20: a
+// pre-order item isn't ready for the Readiness Gate until both are true.
+if(packageNumberVal == "" || preOrderStatusVal != "Received")
+{
+	info "Pre_Order_FF not ready yet (Package_Number blank or status not Received) — skipping.";
+	return;
+}
+soVal = input.SO + "";
+orderTypeVal = input.Order_Type + "";
+deliveryTypeVal = input.Delivery_Type + "";
+statusVal = input.Status + "";
+prVal = input.PR + "";
+custNameVal = input.Customer_Name + "";
+custTypeVal = input.Customer_Type + "";
+custAddressVal = input.Customer_Address + "";
+itemNameVal = input.Item_Name + "";
+skuVal = input.SKU + "";
+qtyVal = input.Qty + "";
+binVal = input.Bin_Location + "";
+// For_Crate is checkbox-to-checkbox (boolean), no stringify/translation needed.
+forCrateVal = input.For_Crate;
+// Target_Delivery (Pre_Order_FF) -> Target_Delivery_Date (Sales_Order_Readiness_Gate)
+// date-to-date, same as For_Crate: pass through directly, no stringify.
+targetDeliveryVal = input.Target_Delivery;
+// ===== PAYMENT STATUS =====
+// FIXED 2026-08-05, real bug found live (SO-16399 native Readiness Gate report showed
+// payment_status="Paid" instead of Yes/No/Partial) — same stale-translation bug fixed
+// today in so_fulfillment_to_readiness_gate.txt and preorder_create_package.txt (see
+// those files' own NOTES): Sales_Order_Readiness_Gate.payment_status no longer uses
+// Paid/Partially Paid/Pending. This comment's own claim that Pre_Order_FF's Status uses
+// "Partially" (with the extra "ly") is also confirmed WRONG this session — the
+// PreOrderReport widget had a real, separately-found+fixed bug from this exact typo
+// (a "Partially" key that never matched the real "Partial" value, live data confirms
+// "Yes" is the only value ever actually stored so far). Direct passthrough is correct.
+paymentStatusVal = statusVal;
+// ===== RE-FETCH FULL RECORD FOR RR SUBFORM DATA =====
+// Same gotcha as readiness_gate_sync.txt's Item_Details1 fix — the bare
+// Replacement_Request trigger variable doesn't give subform row data, so re-fetch
+// the full record by its own ID and read the subform off that instead. recId stays
+// NUMBER (ID's own type) — stringifying it before the criteria comparison errors.
+recId = input.ID;
+rrRows = List();
+fullList = Pre_Order_FF[ID == recId];
+for each  fullRec in fullList
+{
+	rrRows = fullRec.Replacement_Request;
+}
+rrJoined = "";
+for each  rrRow in rrRows
+{
+	rrVal = rrRow.RR + "";
+	if(rrVal != "" && rrVal != "null" && !rrJoined.contains(rrVal))
+	{
+		if(rrJoined == "")
+		{
+			rrJoined = rrVal;
+		}
+		else
+		{
+			rrJoined = rrJoined + ", " + rrVal;
+		}
+	}
+}
+// ===== UPSERT INTO Sales_Order_Readiness_Gate =====
+// Matched per SO + SKU, same pattern/syntax as readiness_gate_sync.txt: update the
+// existing record in place if found, otherwise insert a new one. Pre_Order_FF is
+// already one record per item (not a subform), so this is a single upsert, not a
+// per-row loop like readiness_gate_sync.txt's Item_Details1 handling.
+matchingGateRecords = Sales_Order_Readiness_Gate[sales_order_number == soVal && SKU == skuVal];
+foundExisting = false;
+for each  gateRec in matchingGateRecords
+{
+	update gateRec
+	[
+		Order_Type=orderTypeVal
+		Package_Order=packageNumberVal
+		Delivery_Type=deliveryTypeVal
+		For_Crate=forCrateVal
+		payment_status=paymentStatusVal
+		customer_name=custNameVal
+		customer_type=custTypeVal
+		customer_address=custAddressVal
+		pr_number=prVal
+		rr_number=rrJoined
+		Item_Name=itemNameVal
+		Quantity=qtyVal
+		Bin_Location=binVal
+		Target_Delivery_Date=targetDeliveryVal
+	];
+	info "Sales_Order_Readiness_Gate record updated, ID: " + gateRec.ID;
+	foundExisting = true;
+}
+if(!foundExisting)
+{
+	newId = insert into Sales_Order_Readiness_Gate
+	[
+		sales_order_number=soVal
+		Order_Type=orderTypeVal
+		Package_Order=packageNumberVal
+		Delivery_Type=deliveryTypeVal
+		For_Crate=forCrateVal
+		payment_status=paymentStatusVal
+		customer_name=custNameVal
+		customer_type=custTypeVal
+		customer_address=custAddressVal
+		pr_number=prVal
+		rr_number=rrJoined
+		Item_Name=itemNameVal
+		SKU=skuVal
+		Quantity=qtyVal
+		Bin_Location=binVal
+		Target_Delivery_Date=targetDeliveryVal
+		Added_User=zoho.loginuser
+	];
+	info "Sales_Order_Readiness_Gate record created, ID: " + newId;
+}
+
+====================================================
+NOTES:
+- Confirmed via a live field audit 2026-07-28 (SyncItemsCust API pull): every field
+  this script reads on Pre_Order_FF (Pre_Order_Status/Package_Number/SO/Order_Type/
+  Delivery_Type/Status/PR/Customer_Name/Customer_Type/Customer_Address/Item_Name/
+  SKU/Qty/Bin_Location/For_Crate/Target_Delivery/Replacement_Request) and every field
+  it writes on Sales_Order_Readiness_Gate (sales_order_number/Order_Type/
+  Package_Order/Delivery_Type/For_Crate/payment_status/customer_name/customer_type/
+  customer_address/pr_number/rr_number/Item_Name/SKU/Quantity/Bin_Location/
+  Target_Delivery_Date) already exist. `Added_User` was the one field absent from a
+  report-level GET dump (every other field showed even when blank) — confirmed real
+  and exposed via a live Configure Fields screenshot before this was saved, so no
+  gap after all.
+- References a sibling script `readiness_gate_sync.txt` (mentioned in this script's
+  own comments, presumably the Sales_Order_Fulfillment -> Sales_Order_Readiness_Gate
+  equivalent for the non-pre-order path) — NOT present anywhere in this repo's
+  DelugeScripts/ folder as of this capture. Flagged, not chased down — ask the user
+  if it needs capturing too.
+- UNTESTED as a freshly-saved file — the user already pasted this live via Temp.txt
+  before this file was written, so it may already be live/working; this save is
+  purely for this repo's own record-keeping (this app's established convention of
+  every native workflow having a matching DelugeScripts/*.txt file).
+====================================================
+
+````

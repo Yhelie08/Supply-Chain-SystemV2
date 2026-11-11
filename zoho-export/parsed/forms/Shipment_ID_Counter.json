@@ -1,0 +1,32 @@
+{
+  "name": "Shipment_ID_Counter",
+  "label": "Shipment ID Counter",
+  "successMessage": "Data Added Successfully!",
+  "line": 15915,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Air_Counter",
+      "label": "Air Counter",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "LCL_Counter",
+      "label": "LCL Counter",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "FCL_Counter",
+      "label": "FCL Counter",
+      "type": "number",
+      "required": false
+    }
+  ]
+}

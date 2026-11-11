@@ -1,0 +1,11 @@
+// form: Selected_Uncheck_Others  form=Inquiry_Form event=on add or edit on user input of Supplier_Quotes.Selected  [.ds line 35598]
+    if(row.Selected == true)
+{
+    for each  sq in input.Supplier_Quotes
+    {
+        if(sq.ID != row.ID)
+        {
+            sq.Selected=false;
+        }
+    }
+}

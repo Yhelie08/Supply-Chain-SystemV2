@@ -1,0 +1,36 @@
+// form: PR_Generate_Number  form=Purchase_Request1 event=on add on validate  [.ds line 35399]
+    // === Generate PR_No ===
+maxNum = 0;
+existingRecords = Purchase_Request1[ID != 0];
+for each  rec in existingRecords
+{
+    try 
+    {
+        currentNum = rec.PR_No.replaceAll("[^0-9]","").toLong();
+        if(currentNum > maxNum)
+        {
+            maxNum = currentNum;
+        }
+    }    catch (e)
+    {
+    }
+}
+newNum = maxNum + 1;
+newNum_str = newNum.toString();
+if(newNum < 10)
+{
+    newNum_str = "0000" + newNum_str;
+}
+else if(newNum < 100)
+{
+    newNum_str = "000" + newNum_str;
+}
+else if(newNum < 1000)
+{
+    newNum_str = "00" + newNum_str;
+}
+else if(newNum < 10000)
+{
+    newNum_str = "0" + newNum_str;
+}
+input.PR_No = "PR-" + newNum_str;

@@ -1,0 +1,9 @@
+// form: Set Release Visibility on Load  form=Sales_Order_Readiness_Gate event=on edit on load  [.ds line 44377]
+    if(Assign_Picker != null && Assign_Picker != "")
+{
+    show Release;
+}
+else
+{
+    hide Release;
+}

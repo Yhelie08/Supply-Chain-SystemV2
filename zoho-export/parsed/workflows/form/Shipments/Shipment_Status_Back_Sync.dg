@@ -1,0 +1,61 @@
+// form: Shipment_Status_Back_Sync  form=Shipments event=on edit on success  [.ds line 42419]
+    /* FIXED 2026-08-05, real bug found live in Production, same root cause as
+   receiving_sync_shipment_arrived.txt's own matching fix (see that file's NOTES for
+   the full writeup) — this used to read input.Supplier_Shipment_Details expecting
+   per-line PR_No/RR_No/SKU/Status columns, but that subform genuinely only has ONE
+   field, Shipment_ID (confirmed live via API dump) — every key computed was the
+   garbage string "||" and this whole workflow silently did nothing since the day it
+   was pasted. The REAL buyer-editable per-line status field is Line_Status on the
+   PO_Shipments subform (confirmed live: choices In Transit/Partial/Arrived/Received,
+   see UI/EndUser/Shipments/app/index.html's own field dump) — switched to read that
+   instead. PO_Shipments has no RR_No column at all, so the match key here drops RR_No
+   (PR_No+SKU only) — a real, accepted precision loss vs the supplier-side subform's
+   own RR_No, but there's no RR_No data available on PO_Shipments to match with in the
+   first place. */
+statusMapBS = Map();
+for each  sr in input.PO_Shipments
+{
+    if(sr.Line_Status != null && sr.Line_Status != "")
+    {
+        keyBS = sr.PR_No + "" + "|" + sr.SKU + "";
+        statusMapBS.put(keyBS,sr.Line_Status);
+    }
+}
+if(statusMapBS.size() > 0)
+{
+    /* FIXED 2026-08-07, real bug found via codebase-wide audit (same class as the
+       already-fixed approvePOMain crash): Shipments.Supplier is the bare short name
+       for a normal PR-approval-created shipment, but a REPLACEMENT shipment (created
+       by clone_shipment_for_replacement.txt via Supplier=r.RR_Supplier) can carry the
+       full Suppliers-form name instead — confirmed live in Production that this whole
+       chain (Product_Context1.Supplier -> RR_Supplier -> Shipments.Supplier) can hold
+       either shape. Old strict == silently skipped the status-sync-back for any
+       replacement shipment that hit the full-name shape. */
+    inputSupplierValBS = input.Supplier + "";
+    if(inputSupplierValBS == "Fenteng" || inputSupplierValBS.contains("Fenteng"))
+    {
+        suppRecBS = Fenteng_Shipment[Parent_Shipment_ID == input.ID + ""];
+        for each  row in suppRecBS.Supplier1_Shipment_Details
+        {
+            rowKeyBS = row.PR_No + "" + "|" + row.SKU + "";
+            newStatusBS = statusMapBS.get(rowKeyBS);
+            if(newStatusBS != null)
+            {
+                row.Status=newStatusBS;
+            }
+        }
+    }
+    else if(inputSupplierValBS == "Tony" || inputSupplierValBS.contains("Tony"))
+    {
+        suppRecBST = Tony_Shipment[Parent_Shipment_ID == input.ID + ""];
+        for each  rowT in suppRecBST.Supplier2_Shipment_Details
+        {
+            rowKeyBST = rowT.PR_No + "" + "|" + rowT.SKU + "";
+            newStatusBST = statusMapBS.get(rowKeyBST);
+            if(newStatusBST != null)
+            {
+                rowT.Status=newStatusBST;
+            }
+        }
+    }
+}

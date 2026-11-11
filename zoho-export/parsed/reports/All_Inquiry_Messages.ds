@@ -1,0 +1,12 @@
+
+			displayName = "Inquiry Messages Report"
+			show all rows from Inquiry_Messages    
+			(
+				INQ_No
+				Supplier
+				Sender_Role
+				Sender_Name
+				Message
+				Sent_On
+			)
+		

@@ -1,0 +1,462 @@
+[
+  {
+    "name": "Purchase_Order1",
+    "params": "",
+    "label": "Purchase Order",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\twebDeviceConfig='{\"layout\":{\"displayType\":\"card\",\"design\":\"fluid\",\"style\":\"padding-right:0px;padding-top:0px;padding-bottom:0px;padding-left:0px;\"}}'\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22097
+  },
+  {
+    "name": "Purchase_Request",
+    "params": "string openPR",
+    "label": "Purchase Request",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22102
+  },
+  {
+    "name": "Inquiry",
+    "params": "",
+    "label": "Inquiry List",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\twebDeviceConfig='{\"layout\":{\"displayType\":\"card\",\"design\":\"fluid\",\"style\":\"padding-right:0px;padding-top:0px;padding-bottom:0px;padding-left:0px;\"}}'\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22107
+  },
+  {
+    "name": "Tony_Fan_Inquiries",
+    "params": "string tonyinquiriesid",
+    "label": "Inquiries",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22112
+  },
+  {
+    "name": "Tony_Fan_PR",
+    "params": "string tonyprid",
+    "label": "Purchase Request",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22117
+  },
+  {
+    "name": "Fenteng_Lighting_Inquiries",
+    "params": "string fentenginquiriesid",
+    "label": "Inquiries",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22122
+  },
+  {
+    "name": "Fenteng_Lighting_PR",
+    "params": "string fentengprid",
+    "label": "Purchase Request",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22127
+  },
+  {
+    "name": "Tony_Fan_PO",
+    "params": "string tonypoid",
+    "label": "Purchase Order",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22132
+  },
+  {
+    "name": "Fenteng_Lighting_PO",
+    "params": "",
+    "label": "Purchase Order",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22137
+  },
+  {
+    "name": "Shipments1",
+    "params": "",
+    "label": "Shipments",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22142
+  },
+  {
+    "name": "Receiving1",
+    "params": "",
+    "label": "Receiving",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22147
+  },
+  {
+    "name": "Replacement_Request1",
+    "params": "string fentengrrid",
+    "label": "Replacement Request",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22152
+  },
+  {
+    "name": "Exceptions1",
+    "params": "",
+    "label": "Exceptions",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22157
+  },
+  {
+    "name": "Replacement_Request_Tony",
+    "params": "string tonyrrid",
+    "label": "Replacement Request",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22162
+  },
+  {
+    "name": "Replacement_Request_Fenteng",
+    "params": "",
+    "label": "Replacement Request",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22167
+  },
+  {
+    "name": "Daily_Team_Availability1",
+    "params": "",
+    "label": "Daily Team Availability",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22172
+  },
+  {
+    "name": "Delivery_Queue",
+    "params": "",
+    "label": "Delivery Queue",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22177
+  },
+  {
+    "name": "DMS_Exception_Queue1",
+    "params": "",
+    "label": "DMS Exception Queue",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22182
+  },
+  {
+    "name": "SOR",
+    "params": "string soRecordId",
+    "label": "Sales Order Report",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22187
+  },
+  {
+    "name": "Pre_Order2",
+    "params": "string preOrderRecordId",
+    "label": "Pre-Order",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22192
+  },
+  {
+    "name": "Delivery_Analytics1",
+    "params": "",
+    "label": "Delivery Analytics",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22197
+  },
+  {
+    "name": "Ongoing_Service1",
+    "params": "",
+    "label": "Ongoing Service",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22202
+  },
+  {
+    "name": "Archived",
+    "params": "",
+    "label": "Archived",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22207
+  },
+  {
+    "name": "Sales_Returns1",
+    "params": "string fromArchiveId",
+    "label": "Sales Returns",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22212
+  },
+  {
+    "name": "Field_Service_Site_Visits1",
+    "params": "",
+    "label": "Field Service Site Visits",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22217
+  },
+  {
+    "name": "Tony_Shipments",
+    "params": "string tonyshipmentid",
+    "label": "Shipments",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22222
+  },
+  {
+    "name": "Fenteng_Shipments",
+    "params": "string fentengshipmentid",
+    "label": "Shipments",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22227
+  },
+  {
+    "name": "Order_Readiness1",
+    "params": "string readinessGateRecordId",
+    "label": "Order Readiness",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22232
+  },
+  {
+    "name": "Pick2",
+    "params": "string pickRecordId",
+    "label": "Pick",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22237
+  },
+  {
+    "name": "Pack1",
+    "params": "string packRecordId",
+    "label": "Pack",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22242
+  },
+  {
+    "name": "Quality_Check",
+    "params": "string qcRecordId",
+    "label": "Pack & QC",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22247
+  },
+  {
+    "name": "Exception_Control2",
+    "params": "string excRecordId",
+    "label": "Exception Control",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22252
+  },
+  {
+    "name": "Crate1",
+    "params": "string crateRecordId",
+    "label": "Crate",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22257
+  },
+  {
+    "name": "Order_Aggregation2",
+    "params": "string orderAggRecordId",
+    "label": "To Ship",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22262
+  },
+  {
+    "name": "KANBAN",
+    "params": "",
+    "label": "KANBAN",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22267
+  },
+  {
+    "name": "Transfer_Item",
+    "params": "",
+    "label": "Transfer Item",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22272
+  },
+  {
+    "name": "Fulfillment_Dashboard",
+    "params": "",
+    "label": "Fulfillment Dashboard",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22277
+  },
+  {
+    "name": "Dashboard",
+    "params": "",
+    "label": "Dashboard",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22282
+  },
+  {
+    "name": "Supply_Chain_Analytic",
+    "params": "",
+    "label": "Supply Chain Analytic",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22287
+  },
+  {
+    "name": "Schedule_Requests",
+    "params": "",
+    "label": "Schedule Requests",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22292
+  },
+  {
+    "name": "Truck_Maintenance",
+    "params": "",
+    "label": "Truck Maintenance",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22297
+  },
+  {
+    "name": "Service_Appointment1",
+    "params": "",
+    "label": "Service Appointment",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22302
+  },
+  {
+    "name": "Initial_Scheduling1",
+    "params": "",
+    "label": "Initial Scheduling",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22307
+  },
+  {
+    "name": "Service_Request2",
+    "params": "",
+    "label": "Service Request",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22312
+  },
+  {
+    "name": "Policy_Setting",
+    "params": "",
+    "label": "Policy Setting",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22317
+  },
+  {
+    "name": "Forecast_Setting",
+    "params": "",
+    "label": "Forecast Setting",
+    "widgets": [
+      "<widgets elementName='Widget' importedTemplate='true'/>"
+    ],
+    "zml": "<zml    \t\t\n\t\t\n\t\t\n\t\t\n\t\t\n>\n\t<layout>\n\t<row>\n\t<column\n   \t\t width='100%'\n   \t>\n\t<widgets elementName='Widget' importedTemplate='true'/>\n</column>\n</row>\n</layout>\n</zml>",
+    "line": 22322
+  }
+]

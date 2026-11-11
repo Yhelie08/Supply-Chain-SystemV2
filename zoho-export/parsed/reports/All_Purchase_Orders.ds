@@ -1,0 +1,38 @@
+
+			displayName = "All Purchase Orders"
+			show all rows from Purchase_Order    
+			(
+				PO_No as "PO No."
+				Sent_On as "Sent On"
+				Acknowledge_On as "Acknowledge On"
+				Completed_On as "Completed On"
+				PO_Date as "PO Date"
+				PO_Status as "PO Status"
+				Total_PO_Value as "Total PO Value"
+				Customer
+				Total_Lines as "Total Lines"
+				Supplier_Load_At_PO as "Supplier Load At PO"
+				Notes
+				Mixed_Shipping as "Mixed Shipping"
+				Is_Locked as "Is Locked"
+				ID
+				SO_No as "SO No."
+				Customer_Type as "Customer Type"
+				Sales_Owner as "Sales Owner"
+				Books_PO_ID as "Books PO ID"
+				Books_PO_No as "Books PO No"
+				SRP_Rate as "SRP (Rate)"
+				RR_Reference_No as "RR Reference No"
+				Missing_SKUs as "Missing SKUs"
+				Damage_SKUs as "Damage SKUs"
+				SO_No.Sales_Order_Number as "Sales Order Number"
+				SO_No.Customer_Name as "Customer Name"
+				SO_No.Shipment_Status as "Shipment Status"
+				SO_No.Sales_Person as "Sales Person"
+				SO_No.Sales_Agent as "Sales Agent"
+				PO_Line_Items as "PO Line Items"
+				(
+					field = PO_Line_Items.PR_No + "-> " + PO_Line_Items.supplier_target_date + "-> " + PO_Line_Items.Item + "-> " + PO_Line_Items.SKU + "-> " + PO_Line_Items.QTY + "-> " + PO_Line_Items.Unit + "-> " + PO_Line_Items.Final_Price + "-> " + PO_Line_Items.Line_Total + "-> " + PO_Line_Items.Shipping_Mode + "-> " + PO_Line_Items.Supplier
+				)
+			)
+		

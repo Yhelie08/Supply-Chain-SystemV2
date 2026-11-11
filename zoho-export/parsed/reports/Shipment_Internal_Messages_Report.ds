@@ -1,0 +1,11 @@
+
+			displayName = "Shipment_Internal_Messages Report"
+			show all rows from Shipment_Internal_Messages    
+			(
+				Shipment_No as "Shipment No"
+				Sender_Email as "Sender Email"
+				Sender_Role as "Sender Role"
+				Message
+				Sent_On as "Sent On"
+			)
+		

@@ -1,0 +1,3 @@
+// form: PR_Deleted  form=Purchase_Request1 event=on delete on success  [.ds line 38415]
+    delete from Fenteng_Lighting_Purchase_Request[PR_No_Supplier1 == input.PR_No];
+delete from Tony_Fan_Purchase_Request[PR_No_Supplier2 == input.PR_No];

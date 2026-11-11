@@ -1,0 +1,32 @@
+
+			displayName = "Order Aggregation Report"
+			show all rows from Order_Aggregation1    
+			(
+				SO as "SO #"
+				PR as "PR #"
+				PAC as "PAC #"
+				DEMO as "DEMO #"
+				ORDER_TYPE as "ORDER TYPE"
+				DELIVERY_TYPE as "DELIVERY TYPE"
+				Target_Date as "Target Delivery Date"
+				Customer_Name as "Customer Name"
+				Customer_Type as "Customer Type"
+				Customer_Address as "Customer Address"
+				For_Crate as "For Crate"
+				Added_Time as "Added Time"
+				Dispatch_Selected as "Dispatch Selected"
+				Archived
+				Item_Details as "Item Details"
+				(
+					field = Item_Details.Bin_Location + " " + Item_Details.Item_Name + " " + Item_Details.QTY + " " + Item_Details.SKU + " " + Item_Details.Added_Time + " " + Item_Details.Dispatched + " " + Item_Details.PAC
+				)
+				City
+				Contact
+				Email
+				ID
+				SO_Created_Date
+				Forecast_Delivery as "Forecast Delivery"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+			)
+		

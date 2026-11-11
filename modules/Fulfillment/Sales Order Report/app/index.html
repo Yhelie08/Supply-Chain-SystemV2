@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Order Report</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  View-only report: reads item-level rows from the "Sales_Order_Fulfillment_Report"
+  report (records synced in from Zoho Books), grouped by Sales Order, latest first.
+
+  1. Zoho Creator → Settings → Widgets → New Widget → "Upload HTML". Zip this file and upload.
+  2. Set CONFIG.APP_NAME below to your app's link name.
+  3. Add the widget to a page.
+  4. Opened directly in a browser (outside Zoho Creator) it shows an empty table
+     and a banner saying so. It never invents sample records -- a screenshot of this
+     widget is always real data. (Sample data removed 2026-11-06, per user.)
+
+  Clicking a row opens a full Sales Order Detail view (progress stepper, stage
+  history, order/item details, Timeline History, Internal Conversation). One piece
+  of that detail view still needs its own Zoho Creator report/form before it'll
+  show real data — until then it renders a friendly "not connected yet" placeholder:
+  - STAGE_HISTORY_CONFIG — points to a stage-change log report (report + field names).
+  Fill in the TODO_-prefixed values further down once that report/form exists.
+  Timeline History (SOF_Timeline) and Internal Conversation (SOF_Internal_Messages)
+  are wired to real forms — see
+  docs/superpowers/specs/2026-08-25-so-widget-internal-conversation-design.md for
+  the exact field schema if those forms ever need to be recreated.
+
+  ASSUMPTIONS (adjust in code if wrong):
+  - "PAC #" column = the Package field.
+  - "Exceptions" stat = line items where Status = "Partial". Change EXCEPTION logic
+    in computeStats() if you have a different definition in mind.
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="notification_component/notification.css">
+<link rel="stylesheet" href="timeline_history_component/timeline-history.css">
+<link rel="stylesheet" href="internal-notes_component/internal-notes.css">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+        boxShadow: { card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)' }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { min-height: 100%; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  @keyframes toast-in { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
+  .toast-in { animation: toast-in .18s ease-out; }
+</style>
+</head>
+<body class="min-h-full bg-slate-100 text-slate-800 antialiased">
+
+  <!-- Shown only when this file is opened outside Zoho Creator, so there is no
+       parent frame to fetch records from. The table below stays empty: this widget
+       has no sample data to fall back on. -->
+  <div id="offlineBanner" class="hidden bg-amber-400/90 text-amber-950 text-xs sm:text-sm font-medium px-4 py-2 flex items-center justify-center gap-2 text-center">
+    <span>Not connected to Zoho Creator — no records can be loaded here. Open this widget inside the app.</span>
+  </div>
+
+  <div id="listView" class="w-full px-4 sm:px-6 py-5 flex flex-col min-h-screen">
+
+    <!-- Sticky header — title/live badge + stat cards stay pinned to the top
+         of the viewport while the report card/table below scrolls underneath.
+         Matches the page's own bg (bg-slate-100) so scrolled content doesn't
+         show through, and sits above the table via z-20. -->
+    <div id="stickyHeader" class="shrink-0 sticky top-0 z-20 bg-slate-100 pb-5 -mt-5 pt-5">
+      <!-- Top header — single line: title + subtitle sit side by side
+           (items-baseline), badges pinned to the right, all in one row. -->
+      <header id="topHeader" class="flex flex-nowrap items-baseline justify-between gap-3 mb-5">
+        <div class="flex items-baseline gap-2 min-w-0">
+          <h1 class="text-xl font-bold text-slate-900 leading-tight shrink-0">Sales Order Report</h1>
+          <p class="text-xs text-slate-500 truncate">
+            Grouped by Sales Order · Latest Added First ·
+            <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+            </span>
+          </p>
+        </div>
+        <div class="flex items-center gap-2 text-xs shrink-0">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span id="activeOrdersCount">0</span> Active orders
+          </span>
+          <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+            <span id="crateCount">0</span> At Crate
+          </span>
+        </div>
+      </header>
+
+      <!-- Stat cards -->
+      <div id="statCards" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3"></div>
+    </div>
+
+    <!-- Tabs (List / Groupings) + shared search/sort — sits above BOTH views so
+         switching tabs doesn't lose the current search text or sort direction.
+         ADDED 2026-08-03, per user request ("let's add a function that
+         ascending and descending based on SO Number. and let's add a tab that
+         has Groupings of records based on their SO number"). -->
+    <div class="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+      <div id="viewTabs" class="flex items-center gap-2">
+        <button id="tabListBtn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 text-white transition">List</button>
+        <button id="tabGroupingsBtn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition">Groupings</button>
+        <!-- ADDED 2026-08-07 — Create Package tab for newly-created (blank Package_Number)
+             Pre_Order_FF rows, incl. RR-driven re-dispatch records from checker_checklist_qc_sync.txt.
+             Markup copied verbatim from tabGroupingsBtn above, same inactive-tab class. -->
+        <button id="tabCreatePackageBtn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition">Create Package</button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="soSortBtn" class="text-xs font-semibold px-3 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition whitespace-nowrap">
+          Sort: <span id="soSortLabel">Latest Activity</span>
+        </button>
+        <div class="relative">
+          <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+          </svg>
+          <input id="searchInput" type="text" placeholder="Search SO#, RR#, customer, SKU…"
+            class="w-56 sm:w-64 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+        </div>
+        <!-- ADDED 2026-08-29, per user request — filter by Fulfillment Stage, same 7
+             stage values already shown in the STAT_DEFS cards above (kept in sync so
+             this dropdown's options never drift from what the stat cards summarize). -->
+        <select id="stageFilterSelect"
+          class="text-xs font-semibold px-3 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 transition">
+          <option value="all">All Stages</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Report card — flex-1 so it stretches to fill whatever vertical space
+         is left under the sticky header instead of sitting at its natural
+         (short) content height with a bare gap of page background below it.
+         Its own table area (not this whole card) is what scrolls internally
+         when there are more rows than fit. -->
+    <div id="reportCard" class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex-1 flex flex-col min-h-0">
+
+      <div id="tableToolbar" class="shrink-0 flex items-center px-5 py-4 border-b border-slate-100">
+        <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase">SO Fulfillment List</h2>
+      </div>
+
+      <div class="overflow-auto flex-1 min-h-0">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
+              <th class="px-5 py-2.5 font-bold">SO Status</th>
+              <th class="px-3 py-2.5 font-bold">Payment Status</th>
+              <th class="px-3 py-2.5 font-bold">Fulfillment Stage</th>
+              <th class="px-3 py-2.5 font-bold">Next Step</th>
+              <th class="px-3 py-2.5 font-bold">PAC #</th>
+              <th class="px-3 py-2.5 font-bold">RR #</th>
+              <th class="px-3 py-2.5 font-bold">Item Name</th>
+              <th class="px-3 py-2.5 font-bold">SKU</th>
+              <th class="px-3 py-2.5 font-bold text-right">Qty</th>
+              <th class="px-3 py-2.5 font-bold">Order Type</th>
+              <th class="px-3 py-2.5 font-bold">SO Date</th>
+              <th class="px-3 py-2.5 font-bold">Target Delivery</th>
+              <th class="px-3 py-2.5 font-bold">Forecast</th>
+              <th class="px-5 py-2.5 font-bold">Added Time</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-50"></tbody>
+        </table>
+      </div>
+
+      <div id="paginationBar" class="shrink-0 flex items-center px-5 py-3 border-t border-slate-100 text-xs text-slate-500">
+        <span>Total Count: <strong id="totalCount" class="text-slate-700">0</strong></span>
+      </div>
+    </div>
+
+    <!-- Groupings view — one card per SO #, each with its own mini-table of
+         records/items. Hidden by default, shown via the Groupings tab.
+         Shares the same search box + sort control as the List tab above. -->
+    <div id="groupingsView" class="hidden flex-1 flex flex-col min-h-0">
+      <div class="shrink-0 flex items-center justify-between px-1 pb-3">
+        <span class="text-xs font-semibold text-slate-500"><span id="groupingsCount">0</span> Sales Order(s)</span>
+      </div>
+      <div id="groupingsBody" class="flex-1 overflow-y-auto space-y-4 pr-1"></div>
+    </div>
+
+    <!-- Create Package view — ADDED 2026-08-07. Lists Pre_Order_FF rows with a blank
+         Package_Number (not-yet-packaged, incl. fresh RR-driven re-dispatch records)
+         and lets an officer trigger the SAME create_package_ff Custom API PreOrderReport
+         FF already uses. Wrapper class matches groupingsView's own pattern verbatim. -->
+    <div id="createPackageView" class="hidden flex-1 flex flex-col min-h-0">
+      <div class="shrink-0 flex items-center justify-between px-1 pb-3">
+        <p class="text-xs font-semibold text-slate-500">Pending items — not yet packaged, ready to become a real Books package.</p>
+        <button id="createPackageActionBtn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>Create Package</button>
+      </div>
+      <div id="createPackageBody" class="flex-1 overflow-y-auto space-y-4 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- Sales Order Detail view -->
+  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+      <div class="flex items-center gap-2 font-semibold text-slate-600">
+        <span>HC Systems</span><span class="text-slate-300">/</span><span>Sales Order Detail</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 shadow-sm transition">
+        ← Back to Sales Order Dashboard
+      </button>
+      <span class="text-slate-300">|</span>
+      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    </div>
+
+    <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+    <div id="nsBanner"></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h2 id="detailSoNo" class="text-xl font-bold text-slate-900"></h2>
+          <p id="detailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+          <p id="detailSubline" class="text-xs text-slate-400 mt-1"></p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📈 Fulfillment Progress</h3>
+          <div id="detailStepper" class="flex items-start overflow-x-auto pb-1"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase">🕒 Stage History</h3>
+            <span class="text-[10px] text-slate-300">Auto-logged · Immutable</span>
+          </div>
+          <div id="detailStageHistory" class="space-y-3"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="detailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div id="detailItems" class="space-y-4"></div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1">
+        <!-- Timeline History + Internal Conversation — merged 2026-08-25, replacing
+             the never-wired "Internal Conversation" stub (COMMENTS_CONFIG was always
+             TODO_-prefixed, COMMENTS_CONFIGURED always false). Threaded per Package
+             (PAC#), not SO_No, since one SO can have 2+ packages/rows in this widget
+             (multi-package redesign, 2026-08-06). Plain mounts, no wrapping card —
+             both components render their own card chrome. -->
+        <div id="tlhcMount"></div>
+        <div id="incMount"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+  <!-- Confirm modal — ADDED 2026-08-07, per user request ("delivery type dialog still
+       ugly. make it look like the one in Pre order FF"). Ported verbatim from
+       UI/FF Widget/PreOrderReport/app/index.html's own showConfirm modal, including its
+       real Delivery_Type option list (same field, same form, Pre_Order_FF) — replaces
+       the plain prompt() this tab used at first. -->
+  <div id="confirmOverlay" class="hidden fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5">
+      <h3 class="text-sm font-bold text-slate-900 mb-1">Create Package?</h3>
+      <p id="confirmMessage" class="text-sm text-slate-600 mb-3"></p>
+      <div class="mb-4">
+        <label for="confirmDeliveryType" class="block text-xs font-semibold text-slate-600 mb-1">Delivery Type <span class="text-rose-500">*</span></label>
+        <select id="confirmDeliveryType" class="w-full text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 px-3 py-2 transition">
+          <option value="">— Select —</option>
+          <option value="Rush Order">Rush Order</option>
+          <option value="Delivery - Metro Manila">Delivery - Metro Manila</option>
+          <option value="Delivery - Provincial Crate">Delivery - Provincial Crate</option>
+          <option value="Delivery - Provincial Non-Crate">Delivery - Provincial Non-Crate</option>
+          <option value="Delivery & Installation - Metro Manila">Delivery & Installation - Metro Manila</option>
+          <option value="Delivery & Installation - Provincial">Delivery & Installation - Provincial</option>
+          <option value="Demo">Demo</option>
+          <option value="Demo - Design Partner">Demo - Design Partner</option>
+          <option value="Pick Up">Pick Up</option>
+          <option value="Repair">Repair</option>
+          <option value="Replacement">Replacement</option>
+          <option value="Service">Service</option>
+        </select>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button id="confirmCancelBtn" class="text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5 transition">Cancel</button>
+        <button id="confirmYesBtn" class="text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-400 rounded-lg px-3 py-1.5 transition">Create Package</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="notifMount"></div>
+
+<script src="notification_component/notification.js"></script>
+<script src="timeline_history_component/timeline-history.js"></script>
+<script src="internal-notes_component/internal-notes.js"></script>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // CONFIG
+  // ---------------------------------------------------------------------
+  const CONFIG = {
+    APP_NAME: "supply-chain-app",                 // Zoho Creator app link name
+    REPORT_NAME: "Sales_Order_Fulfillment_Report",
+    MAX_RECORDS: 1000,                            // JS API v2 single-call ceiling; add cursor pagination if this app ever exceeds it
+    // ADDED 2026-08-07 — reuses the SAME Custom API PreOrderReport FF already calls
+    // (Custom APIs are shared by public key across widgets in this app, same pattern
+    // already used elsewhere) — no new Books logic, this tab is purely a UI surface.
+    // Values confirmed verbatim against UI/FF Widget/PreOrderReport/app/index.html's
+    // own real CONFIG (report is "Pre_Order1_Report", not a guessed "Pre_Order_Report").
+    PRE_ORDER_REPORT_NAME: "Pre_Order1_Report",
+    CUSTOM_API_NAME_CREATE_PACKAGE: "create_package_ff",
+    CUSTOM_API_KEY_CREATE_PACKAGE: "Pjfmdx8ZaDWkrXEYpdBuwbCmg",
+  };
+
+  // Notification bell — deliberately its OWN report (SO_Notifications_Report), NOT the
+  // shared App_Notifications used by the EndUser widget family (PRs/INQs/Shipments).
+  // Per user request (2026-08-03): every FF module gets an independent notification
+  // stream scoped to just that module — Sales Order Report only sees Sales Order Report
+  // notifications, Pre Order Report will later get its own separate report the same way.
+  let CURRENT_USER_EMAIL = "";
+  let ZC_ENV = "development";
+
+  // Not wired up yet — fill this in once the corresponding report/form exists in
+  // Zoho Creator, then the Stage History card will switch on automatically (see
+  // STAGE_HISTORY_CONFIGURED below).
+  const STAGE_HISTORY_CONFIG = {
+    reportName: "TODO_SET_STAGE_HISTORY_REPORT",   // e.g. "Fulfillment_Stage_Log_Report"
+    soLookupField: "TODO_SET_SO_LOOKUP_FIELD",     // field on the log record linking back to the SO
+    actionField: "TODO_SET_ACTION_FIELD",          // e.g. "Action" — "Picker Assigned", etc.
+    timestampField: "TODO_SET_TIMESTAMP_FIELD",    // e.g. "Logged_Time"
+    userField: "TODO_SET_USER_FIELD",              // e.g. "Performed_By"
+  };
+  const STAGE_HISTORY_CONFIGURED = !STAGE_HISTORY_CONFIG.reportName.startsWith("TODO_");
+
+  // Timeline History + Internal Conversation — merged 2026-08-25, per
+  // docs/superpowers/specs/2026-08-25-so-widget-internal-conversation-design.md.
+  // Threaded by Package (PAC#) — see that spec for why not SO_No.
+  var sofTimeline = TimelineHistory.init({
+    mountId: "tlhcMount",
+    appName: () => CONFIG.APP_NAME,
+    formName: "SOF_Timeline",
+    reportName: "SOF_Timeline_Report",
+    parentField: "Package",
+    actor: "FF Officer",
+    title: "Timeline History",
+    sourceLabel: "Sales Order",
+  });
+  var internalNotes = InternalNotes.init({
+    mountId: "incMount",
+    appName: () => CONFIG.APP_NAME,
+    formName: "SOF_Internal_Messages",
+    reportName: "SOF_Internal_Messages_Report",
+    parentField: "Package",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    roleMap: {
+      "hcinvanalyst@gmail.com": "HC Systems",
+      "homecartelff@gmail.com": "HC Pack & Fulfill",
+      "homecartelsales@gmail.com": "HC Sales",
+    },
+    mentionableMap: {
+      "homecartelpacker@gmail.com": "HC Purchasing",
+      "hcdamageofficer@gmail.com": "HC Damage Officer",
+    },
+    title: "Internal Conversation",
+    sourceLabel: "Sales Order",
+  });
+
+  const PALETTE = {
+    amber:   { border: "border-amber-400",   text: "text-amber-600",   badgeBg: "bg-amber-50",   badgeText: "text-amber-700",   badgeBorder: "border-amber-200",   dot: "bg-amber-500" },
+    orange:  { border: "border-orange-400",  text: "text-orange-600",  badgeBg: "bg-orange-50",  badgeText: "text-orange-700",  badgeBorder: "border-orange-200",  dot: "bg-orange-500" },
+    blue:    { border: "border-blue-400",    text: "text-blue-600",    badgeBg: "bg-blue-50",    badgeText: "text-blue-700",    badgeBorder: "border-blue-200",    dot: "bg-blue-500" },
+    indigo:  { border: "border-indigo-400",  text: "text-indigo-600",  badgeBg: "bg-indigo-50",  badgeText: "text-indigo-700",  badgeBorder: "border-indigo-200",  dot: "bg-indigo-500" },
+    violet:  { border: "border-violet-400",  text: "text-violet-600",  badgeBg: "bg-violet-50",  badgeText: "text-violet-700",  badgeBorder: "border-violet-200",  dot: "bg-violet-500" },
+    emerald: { border: "border-emerald-400", text: "text-emerald-600", badgeBg: "bg-emerald-50", badgeText: "text-emerald-700", badgeBorder: "border-emerald-200", dot: "bg-emerald-500" },
+    rose:    { border: "border-rose-400",    text: "text-rose-600",    badgeBg: "bg-rose-50",    badgeText: "text-rose-700",    badgeBorder: "border-rose-200",    dot: "bg-rose-500" },
+    slate:   { border: "border-slate-300",   text: "text-slate-500",   badgeBg: "bg-slate-50",   badgeText: "text-slate-500",   badgeBorder: "border-slate-200",   dot: "bg-slate-400" },
+  };
+
+  // Matches the Fulfillment_Stage picklist values exactly, as defined on the
+  // Sales_Order_Fulfillment form: {"Waiting For Package","Order Readiness",
+  // "Picking","Pack","Quality Checking","Crate","For Delivery"}. Two changes
+  // from the form's previous version: "Waiting For Package" added as the new
+  // first stage, and "To Ship" renamed to "Crate". Keep this list (and
+  // FULFILLMENT_COLOR below) in exact sync with the form's picklist values —
+  // any mismatch means computeStats()/stepperHtml() silently can't match that
+  // stage for any order sitting in it (falls through as unmatched, and the
+  // detail view's stepper renders fully "pending" instead of showing the
+  // actual current step).
+  const STAT_DEFS = [
+    { key: "Waiting For Package", label: "Waiting For Package", caption: "awaiting package",        color: "slate"   },
+    { key: "Order Readiness",     label: "Order Readiness",     caption: "not yet released",         color: "amber"   },
+    { key: "Picking",             label: "Picking",             caption: "being picked",             color: "orange"  },
+    { key: "Pack",                label: "Pack",                caption: "being packed",             color: "blue"    },
+    { key: "Quality Checking",    label: "Quality Checking",    caption: "under quality check",      color: "indigo"  },
+    { key: "Crate",               label: "Crate",               caption: "being crated",             color: "violet"  },
+    { key: "For Delivery",        label: "For Delivery",        caption: "shipped out",              color: "emerald" },
+  ];
+
+  const FULFILLMENT_COLOR = {
+    "Waiting For Package": "slate",
+    "Order Readiness": "amber",
+    "Picking": "orange",
+    "Pack": "blue",
+    "Quality Checking": "indigo",
+    "Crate": "violet",
+    "For Delivery": "emerald",
+  };
+  const SO_STATUS_COLOR = { "Preparing": "amber", "For Delivery": "emerald" };
+  const PAYMENT_STATUS_COLOR = { "Yes": "emerald", "No": "rose", "Partial": "amber" };
+  /* ADDED 2026-08-05, real inconsistency found live: this widget rendered the raw
+     Status value directly ("Yes"/"No"/"Partial") instead of a friendly label — the
+     other 2 FF widgets showing payment status (ReadinessGate, PreOrderReport) both
+     show "Paid"/"Pending"/"Partial". Added the same label map for consistency. */
+  const PAYMENT_STATUS_LABEL = { "Yes": "Paid", "No": "Pending", "Partial": "Partial" };
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  let allRecords = [];
+  let orderedRows = [];   // flattened {so, item} rows, grouped by SO, latest Added_Time first
+  const hydratedItemDetail1Ids = new Set();
+  // ADDED 2026-08-29, per user request — filter the List/Groupings tabs down to one
+  // Fulfillment Stage at a time. 'all' shows every stage (unfiltered, same as before).
+  let stageFilter = "all";
+  // ADDED 2026-08-03, per user request ("add a function that ascending and
+  // descending based on SO Number... add a tab that has Groupings"). 3-state
+  // cycle (not just asc/desc) — 'recent' preserves the widget's original
+  // default (most-recently-active SO group first) so existing behavior isn't
+  // silently replaced, 'asc'/'desc' are the new SO#-based modes.
+  let soSortDir = "recent"; // 'recent' | 'asc' | 'desc'
+  let currentTab = "list"; // 'list' | 'groupings' | 'createPackage'
+
+  const tableBody = document.getElementById("tableBody");
+  const statCards = document.getElementById("statCards");
+  const searchInput = document.getElementById("searchInput");
+  const stageFilterSelect = document.getElementById("stageFilterSelect");
+  STAT_DEFS.forEach((s) => {
+    stageFilterSelect.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(s.key)}">${escapeHtml(s.label)}</option>`);
+  });
+  let deepLinkChecked = false;
+
+  // ---------------------------------------------------------------------
+  // Deep link from a notification click — same ZOHO.CREATOR.UTIL.navigateParentURL
+  // + getQueryParams() pattern already proven in this app (POs -> PRs,
+  // FulfillmentKanban -> QCChecklist). notification_component itself needs NO
+  // changes for this — it already just opens whatever Target_URL a notification
+  // row carries verbatim (see notification.js's _url()/navigateParentURL call);
+  // the record-level part has to be baked into Target_URL AT THE SOURCE, by
+  // whichever future Deluge workflow inserts an SO_Notifications row. Real page
+  // link name confirmed by user 2026-08-03: SOR.
+  //   Target_URL = "https://creatorapp.zoho.com/homecartel/environment/" +
+  //     "<development|production>/supply-chain-app/#Page:SOR" +
+  //     "?soRecordId=" + input.ID
+  // Query string AFTER the hash, not before — confirmed gotcha elsewhere in this
+  // app (a `?param#hash` URL navigates fine but getQueryParams() silently
+  // resolves {} — see CLAUDE.md's own Deluge Gotchas). Still needs a Page
+  // Variable named `soRecordId` registered on the SOR page (Page Builder ->
+  // Variables tab -> Add Variable), same manual step every other deep link in
+  // this app has needed — not yet confirmed done.
+  // ---------------------------------------------------------------------
+  function checkDeepLinkOpenSO() {
+    if (deepLinkChecked) return;
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams !== "function") return;
+    deepLinkChecked = true;
+    ZOHO.CREATOR.UTIL.getQueryParams().then((params) => {
+      const id = params && params.soRecordId;
+      if (id) switchToDetail(id);
+    }).catch(() => {});
+  }
+
+  // ---------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------
+  function displayVal(v) {
+    if (v === null || v === undefined || v === "" || v === "null") return "—";
+    if (typeof v === "object") return v.zc_display_value || v.display_value || v.ID || "—";
+    return String(v);
+  }
+
+  function parseZohoDateTime(str) {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const mon = months[m[2]];
+      if (mon !== undefined) {
+        return new Date(+m[3], mon, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+      }
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  }
+
+  function formatDate(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function formatDateTime(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${datePart} ${timePart}`;
+  }
+
+  function isTrue(v) {
+    return v === true || v === "true";
+  }
+
+  function isOverdue(so) {
+    const d = parseZohoDateTime(so.target_delivery_date);
+    if (!d) return false;
+    const today = new Date(); today.setHours(0,0,0,0);
+    return d < today;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  // ADDED 2026-08-07 — this widget never needed a Custom API call before (it's been
+  // read-only + a not-yet-configured comments form). Same invokeCustomApi shape
+  // already proven working in UI/FF Widget/PreOrderReport/app/index.html: Standard-
+  // response Custom APIs wrap the function's returned Map under "result", not "data"
+  // (see CLAUDE.md Deluge Gotchas) — check data first in case some other response
+  // shape uses it, then result, then raw.
+  function invokeCustomApi(apiName, publicKey, params) {
+    return ZOHO.CREATOR.DATA.invokeCustomApi({
+      app_name: CONFIG.APP_NAME,
+      api_name: apiName,
+      public_key: publicKey,
+      http_method: "POST",
+      payload: params || {},
+    }).then((resp) => (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp);
+  }
+
+  function badgePill(text, colorKey) {
+    const p = PALETTE[colorKey] || PALETTE.slate;
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${p.badgeBg} ${p.badgeText} ${p.badgeBorder}">
+      <span class="h-1.5 w-1.5 rounded-full ${p.dot}"></span>${escapeHtml(text)}
+    </span>`;
+  }
+
+  // ADDED 2026-08-07 — ported verbatim from PreOrderReport FF's own showConfirm, only
+  // ever used by the Create Package tab's action button. onYes is always called with
+  // the chosen Delivery Type as its arg.
+  let _confirmYesHandler = null;
+  function showConfirm(message, onYes) {
+    document.getElementById("confirmMessage").textContent = message;
+    const dtSel = document.getElementById("confirmDeliveryType");
+    dtSel.value = "";
+    dtSel.classList.remove("ring-2", "ring-rose-400");
+    document.getElementById("confirmOverlay").classList.remove("hidden");
+    _confirmYesHandler = onYes;
+  }
+  function closeConfirm() {
+    document.getElementById("confirmOverlay").classList.add("hidden");
+    _confirmYesHandler = null;
+  }
+  document.getElementById("confirmCancelBtn").addEventListener("click", closeConfirm);
+  document.getElementById("confirmYesBtn").addEventListener("click", () => {
+    const dtSel = document.getElementById("confirmDeliveryType");
+    const dtVal = dtSel.value;
+    if (!dtVal) {
+      dtSel.classList.add("ring-2", "ring-rose-400");
+      toast("Pick a Delivery Type first.", "error");
+      return;
+    }
+    const handler = _confirmYesHandler;
+    closeConfirm();
+    if (handler) handler(dtVal);
+  });
+
+  function toast(message, type) {
+    const container = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    const styles = { success: "bg-slate-900 text-white", error: "bg-rose-600 text-white" };
+    el.className = `toast-in px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${styles[type] || styles.success}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  // ---------------------------------------------------------------------
+  // Data shaping: group by SO # first (multiple records — e.g. separate
+  // packages/PACs — can share the same SO_No, same pattern as the Picker
+  // widget), most recently active group first, latest record first within a
+  // group, then flatten each record's Item_Details1 line items. Sorting by
+  // Added_Time alone (without grouping by SO_No first) would scatter a single
+  // SO's records apart whenever another SO's record landed in between them in
+  // time, breaking the "grouped by SO" table display.
+  // ---------------------------------------------------------------------
+  function buildGroups(records) {
+    const groups = new Map();
+    records.forEach((r) => {
+      const key = r.SO_No || `__no_so_${r.ID}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    });
+
+    return Array.from(groups.values()).map((recs) => {
+      recs.sort((a, b) => (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+      const latest = recs.reduce((max, r) => Math.max(max, (parseZohoDateTime(r.Added_Time) || new Date(0)).getTime()), 0);
+      const soNo = displayVal(recs[0].SO_No) === "—" ? "" : String(recs[0].SO_No || "");
+      return { soNo, recs, latest };
+    });
+  }
+
+  // Extracts the numeric portion of an SO # (e.g. "SO-16364" -> 16364) so
+  // sorting is numeric, not lexicographic (lexicographic would put "SO-2"
+  // after "SO-100"). Falls back to a plain string compare if no digits are
+  // found at all (blank/malformed SO #).
+  function soNumericKey(soNo) {
+    const m = String(soNo || "").match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
+  function sortGroups(groupList) {
+    const sorted = groupList.slice();
+    if (soSortDir === "asc" || soSortDir === "desc") {
+      const dir = soSortDir === "asc" ? 1 : -1;
+      sorted.sort((a, b) => {
+        const na = soNumericKey(a.soNo);
+        const nb = soNumericKey(b.soNo);
+        if (na !== null && nb !== null && na !== nb) return (na - nb) * dir;
+        if (na !== null && nb === null) return -1;
+        if (na === null && nb !== null) return 1;
+        return a.soNo.localeCompare(b.soNo) * dir;
+      });
+    } else {
+      sorted.sort((a, b) => b.latest - a.latest);
+    }
+    return sorted;
+  }
+
+  function computeOrderedRows(records) {
+    const groupList = sortGroups(buildGroups(records));
+    const rows = [];
+    groupList.forEach(({ recs }) => recs.forEach((r) => {
+      const items = Array.isArray(r.Item_Details1) && r.Item_Details1.length ? r.Item_Details1 : [{}];
+      items.forEach((it) => rows.push({ so: r, item: it }));
+    }));
+    return rows;
+  }
+
+  // ---------------------------------------------------------------------
+  // Stats
+  // ---------------------------------------------------------------------
+  function computeStats() {
+    const stageCounts = {};
+    STAT_DEFS.forEach((s) => stageCounts[s.key] = 0);
+    let exceptions = 0;
+    const soIdsActive = new Set();
+    const soIdsAll = new Set();
+
+    orderedRows.forEach(({ so }) => {
+      soIdsAll.add(so.ID);
+      if (stageCounts.hasOwnProperty(so.Fulfillment_Stage)) stageCounts[so.Fulfillment_Stage]++;
+      if (so.Status === "Partial") exceptions++;
+      if (so.Fulfillment_Stage !== "For Delivery") soIdsActive.add(so.ID);
+    });
+
+    return { stageCounts, exceptions, activeOrders: soIdsActive.size, totalOrders: soIdsAll.size };
+  }
+
+  // CORRECTED 2026-09-05, per user ("dapat yung mga module talaga hindi yung
+  // stage") — clicking a stat card navigates to that stage's OWN dedicated
+  // module page (same real Zoho page link names this widget's own deep-link
+  // comments already confirm, e.g. checkDeepLinkOpenSO's "Page:SOR" above),
+  // not a same-page stage filter. "Waiting For Package" -> Pre-Order (that's
+  // the stock/backorder-waiting stage), "For Delivery" -> Order Aggregation
+  // (that's where dispatch happens) — neither has its own separate page.
+  const STAT_PAGE = {
+    "Waiting For Package": "Pre_Order2",
+    "Order Readiness":     "Order_Readiness1",
+    "Picking":              "Pick2",
+    "Pack":                 "Pack1",
+    "Quality Checking":     "Quality_Check",
+    "Crate":                "Crate_Checklist",
+    "For Delivery":         "Order_Aggregation2",
+    "__exceptions__":       "Exception_Control2",
+  };
+  function navigateToModule(pageName) {
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.navigateParentURL !== "function") return;
+    // FIXED 2026-09-05, per user ("sa development siya na pupunta dapat sa live
+    // na") — always navigate to the real production URL, no dev/prod branch at
+    // all. Same fix shape as the 2026-08-07 Purchase Request notification bell
+    // fix (Memories/CLAUDE.md): ZC_ENV defaults to "development" and isn't
+    // guaranteed to have resolved to the real environment yet by the time a
+    // user clicks a card, so an isProd() check here is unreliable — this app's
+    // real deployment is production-only in practice anyway.
+    const url = `https://creator.zoho.com/homecartel/supply-chain-app/#Page:${pageName}`;
+    ZOHO.CREATOR.UTIL.navigateParentURL({ action: "open", url: url, window: "same" });
+  }
+
+  function renderStats() {
+    const stats = computeStats();
+    const cardHtml = (label, caption, value, color, key) => {
+      const p = PALETTE[color];
+      return `
+        <div class="bg-white rounded-xl border-t-4 ${p.border} border-x border-b border-slate-200 shadow-card px-4 py-3 cursor-pointer transition hover:shadow-md hover:-translate-y-0.5" data-stat-key="${escapeHtml(key)}">
+          <p class="text-[10px] font-bold tracking-wide text-slate-400 uppercase">${escapeHtml(label)}</p>
+          <p class="text-3xl font-bold ${p.text} mt-1">${value}</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(caption)}</p>
+        </div>`;
+    };
+
+    statCards.innerHTML = STAT_DEFS.map((s) => cardHtml(s.label, s.caption, stats.stageCounts[s.key], s.color, s.key)).join("")
+      + cardHtml("Exceptions", "active issues", stats.exceptions, "rose", "__exceptions__");
+
+    document.getElementById("activeOrdersCount").textContent = stats.activeOrders;
+    document.getElementById("crateCount").textContent = stats.stageCounts["Crate"];
+  }
+
+  statCards.addEventListener("click", (e) => {
+    const card = e.target.closest("[data-stat-key]");
+    if (!card) return;
+    const pageName = STAT_PAGE[card.dataset.statKey];
+    if (pageName) navigateToModule(pageName);
+  });
+
+  // ---------------------------------------------------------------------
+  // Table rendering
+  // ---------------------------------------------------------------------
+  function getFilteredRows() {
+    const q = searchInput.value.trim().toLowerCase();
+    return orderedRows.filter(({ so, item }) => {
+      if (stageFilter !== "all" && so.Fulfillment_Stage !== stageFilter) return false;
+      if (!q) return true;
+      const hay = [so.SO_No, so.Package, so.RR_No, so.Customer, item.Item, item.SKU]
+        .map(displayVal).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  function groupHeaderRow(so) {
+    return `<tr><td colspan="14" class="px-5 pt-4 pb-1 text-xs font-bold text-slate-900">${escapeHtml(displayVal(so.SO_No))}</td></tr>`;
+  }
+
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+  // Fulfillment_Stage holds the stage the item is CURRENTLY in — the pipeline
+  // scripts set it as soon as a record exists at that stage (e.g. a Pick1
+  // record -> "Picking"). "Order Aggregation" is also written by the QC-approved
+  // and Crate-done scripts even though it isn't in STAT_DEFS.
+  const NEXT_STEP_BY_STAGE = {
+    "Waiting For Package": { action: "Create the package in Zoho Inventory", who: "Sales / Inventory", tone: "next" },
+    "Order Readiness":     { action: "Assign a picker, then Release to Pick", who: "Readiness Gate", tone: "next" },
+    "Picking":             { action: "Pick the items", who: "Picker", tone: "next" },
+    "Pack":                { action: "Pack, then Send to QC", who: "Packer", tone: "next" },
+    "Quality Checking":    { action: "Approve or Reject in QC", who: "Checker", tone: "next" },
+    "Crate":               { action: "Crate the item", who: "Crater", tone: "next" },
+    "Order Aggregation":   { action: "Dispatch (payment must be cleared)", who: "Dispatcher", tone: "next" },
+    "For Delivery":        { action: "Handed to Delivery (DMS)", who: "Scheduler", tone: "done" },
+  };
+
+  function nextStepFor(so) {
+    const st = so && so.Fulfillment_Stage;
+    if (!st) return null;
+    const m = NEXT_STEP_BY_STAGE[st];
+    return m ? Object.assign({ here: st }, m) : null;
+  }
+/* ───────── FORECAST (added 2026-11-04) ─────────
+   Read-only. Written by the Forecast_Stamp_Daily schedule onto this form's
+   Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+   displays them.
+
+   The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+   title attribute rather than the cell, so the column stays one line wide. The
+   date shown is the midpoint of that window, never a promise.
+
+   Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+   #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+   separation. Status also carries its own word, so it is never colour-alone.
+
+   fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+   esc there), so this picks whichever exists and carries its own as a last
+   resort - it must never be the reason a row fails to render. */
+var fcEsc = (function () {
+  if (typeof escapeHtml === "function") return escapeHtml;
+  if (typeof esc === "function") return esc;
+  return function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+})();
+
+var FORECAST_TONE = {
+  "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+  "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+  "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+};
+
+/* Creator hands dates back in whichever format the app is set to; this accepts the
+   four shapes seen across this app and returns "" rather than "Invalid Date". */
+function forecastDateText(v) {
+  if (!v) return "";
+  var s = String(v).trim();
+  var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  if (m) return m[2] + " " + m[1] + ", " + m[3];
+  var d = new Date(s.replace(/-/g, "/"));
+  if (isNaN(d.getTime())) return s.split(" ")[0];
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+function forecastCell(r) {
+  r = r || {};
+  var raw = r.Forecast_Delivery;
+  var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+  var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+  var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+  var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+  var tip = fcEsc(win || status || "");
+
+  return (
+    '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+    "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+    "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+    ';flex:none"></span>' + date +
+    (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+    "</span>"
+  );
+}
+
+  function dataRow(so, item) {
+    const overdue = isOverdue(so);
+    const soStatusCell = so.SO_Status ? badgePill(so.SO_Status, SO_STATUS_COLOR[so.SO_Status] || "slate") : `<span class="text-slate-300">—</span>`;
+    const paymentStatusCell = so.Status ? badgePill(PAYMENT_STATUS_LABEL[so.Status] || so.Status, PAYMENT_STATUS_COLOR[so.Status] || "slate") : `<span class="text-slate-300">—</span>`;
+    const stageCell = so.Fulfillment_Stage ? badgePill(so.Fulfillment_Stage, FULFILLMENT_COLOR[so.Fulfillment_Stage] || "slate") : `<span class="text-slate-300">—</span>`;
+
+    return `
+      <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${so.ID}">
+        <td class="px-5 py-2.5">${soStatusCell}</td>
+        <td class="px-3 py-2.5">${paymentStatusCell}</td>
+        <td class="px-3 py-2.5">${stageCell}</td>
+        <td class="px-3 py-2.5">${nextStepPill(nextStepFor(so))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(so.Package))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(so.RR_No))}</td>
+        <td class="px-3 py-2.5 text-slate-800 font-medium max-w-[220px] truncate">${escapeHtml(displayVal(item.Item))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(item.SKU))}</td>
+        <td class="px-3 py-2.5 text-slate-700 text-right">${escapeHtml(displayVal(item.Quantity))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(so.order_type))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(formatDate(so.SO_Created_Date))}</td>
+        <td class="px-3 py-2.5 font-medium ${overdue ? "text-rose-600" : "text-slate-500"}">${escapeHtml(formatDate(so.target_delivery_date))}</td>
+        <td class="px-3 py-2.5">${forecastCell(so)}</td>
+        <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(so.Added_Time))}</td>
+      </tr>`;
+  }
+
+  function renderTable() {
+    const filtered = getFilteredRows();
+    const totalCount = filtered.length;
+
+    let html = "";
+    let lastSoNo = null;
+    if (!filtered.length) {
+      html = `<tr><td colspan="14" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+    } else {
+      filtered.forEach(({ so, item }) => {
+        // Grouped by SO_No (not record ID) — multiple records sharing the
+        // same SO # (e.g. separate packages) render under one shared header
+        // instead of a new header per record.
+        if (so.SO_No !== lastSoNo) { html += groupHeaderRow(so); lastSoNo = so.SO_No; }
+        html += dataRow(so, item);
+      });
+    }
+    tableBody.innerHTML = html;
+
+    tableBody.querySelectorAll(".record-row").forEach((row) => {
+      row.addEventListener("click", () => switchToDetail(row.dataset.id));
+    });
+
+    document.getElementById("totalCount").textContent = totalCount;
+  }
+
+  // ---------------------------------------------------------------------
+  // Groupings tab — one card per SO #, ADDED 2026-08-03 per user request.
+  // Reuses the same sortGroups()/buildGroups() the List tab's own
+  // computeOrderedRows() is built on, so both views always agree on order.
+  // ---------------------------------------------------------------------
+  function getFilteredGroups() {
+    const q = searchInput.value.trim().toLowerCase();
+    const groupList = sortGroups(buildGroups(allRecords));
+    if (!q && stageFilter === "all") return groupList;
+    // A group matches (and shows ALL of its rows) if ANY of its own so/item
+    // fields match — same "keep the whole group visible" convention as this
+    // app's other grouped views (e.g. Shipment Grouping).
+    return groupList.filter(({ recs }) => recs.some((so) => {
+      if (stageFilter !== "all" && so.Fulfillment_Stage !== stageFilter) return false;
+      if (!q) return true;
+      const items = Array.isArray(so.Item_Details1) && so.Item_Details1.length ? so.Item_Details1 : [{}];
+      return items.some((item) => {
+        const hay = [so.SO_No, so.Package, so.Customer, item.Item, item.SKU].map(displayVal).join(" ").toLowerCase();
+        return hay.includes(q);
+      });
+    }));
+  }
+
+  function groupCardHtml(group) {
+    const firstSo = group.recs[0];
+    let totalItems = 0;
+    const rowsHtml = group.recs.map((so) => {
+      const items = Array.isArray(so.Item_Details1) && so.Item_Details1.length ? so.Item_Details1 : [{}];
+      totalItems += items.length;
+      return items.map((item) => `
+        <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${so.ID}">
+          <td class="px-3 py-2 text-slate-500">${escapeHtml(displayVal(so.Package))}</td>
+          <td class="px-3 py-2 text-slate-800 font-medium max-w-[200px] truncate">${escapeHtml(displayVal(item.Item))}</td>
+          <td class="px-3 py-2 text-slate-500">${escapeHtml(displayVal(item.SKU))}</td>
+          <td class="px-3 py-2 text-slate-700 text-right">${escapeHtml(displayVal(item.Quantity))}</td>
+          <td class="px-3 py-2">${so.Fulfillment_Stage ? badgePill(so.Fulfillment_Stage, FULFILLMENT_COLOR[so.Fulfillment_Stage] || "slate") : `<span class="text-slate-300">—</span>`}</td>
+        </tr>`).join("");
+    }).join("");
+
+    return `
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+          <div>
+            <p class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(group.soNo))}</p>
+            <p class="text-xs text-slate-500">${escapeHtml(displayVal(firstSo.Customer))}</p>
+          </div>
+          <span class="text-[11px] font-medium text-slate-500 shrink-0">${totalItems} item${totalItems === 1 ? "" : "s"} · ${group.recs.length} record${group.recs.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="overflow-x-auto">
+          <!-- CHANGED 2026-08-20, per user request ("ayusin mo din to") — same
+               per-group-card table misalignment class already fixed the same day in
+               the sibling Pre Order Report widget's own Groupings tab: each SO's
+               card renders its own separate <table> with plain content-based column
+               sizing, so PAC#/Item/SKU/Qty/Stage landed at different x-positions from
+               one card to the next depending on that card's own longest cell.
+               table-fixed + a shared colgroup forces every card to the same widths. -->
+          <table class="w-full text-xs table-fixed">
+            <colgroup>
+              <col style="width:14%"><col style="width:40%"><col style="width:22%">
+              <col style="width:8%"><col style="width:16%">
+            </colgroup>
+            <thead>
+              <tr class="text-left text-[10px] uppercase tracking-wide text-slate-400 border-b border-slate-100">
+                <th class="px-3 py-2 font-semibold">PAC #</th>
+                <th class="px-3 py-2 font-semibold">Item</th>
+                <th class="px-3 py-2 font-semibold">SKU</th>
+                <th class="px-3 py-2 font-semibold text-right">Qty</th>
+                <th class="px-3 py-2 font-semibold">Stage</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">${rowsHtml}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  function renderGroupings() {
+    const groups = getFilteredGroups();
+    const container = document.getElementById("groupingsBody");
+    container.innerHTML = groups.length
+      ? groups.map(groupCardHtml).join("")
+      : `<p class="text-sm text-slate-400 text-center py-10">No records found</p>`;
+    container.querySelectorAll(".record-row").forEach((row) => {
+      row.addEventListener("click", () => switchToDetail(row.dataset.id));
+    });
+    document.getElementById("groupingsCount").textContent = groups.length;
+  }
+
+  // ADDED 2026-08-07 — new "Create Package" tab. Lists every Pre_Order_FF row with a
+  // blank Package_Number — the exact shape a fresh RR-driven replacement record has,
+  // per checker_checklist_qc_sync.txt's own new insert — plus any other normal
+  // not-yet-packaged pre-order line, same eligibility PreOrderReport FF uses. This
+  // tab is deliberately independent of the shared searchInput/soSortBtn controls
+  // above (own dataset, own report — Pre_Order1_Report, not Sales_Order_Fulfillment_Report).
+  let createPackageRows = [];
+  function loadCreatePackageTab() {
+    document.getElementById("createPackageBody").innerHTML = '<p class="text-sm text-slate-400 text-center py-6">Loading…</p>';
+    ZOHO.CREATOR.DATA.getRecords({
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.PRE_ORDER_REPORT_NAME,
+      criteria: '(Package_Number == "")',
+      max_records: CONFIG.MAX_RECORDS,
+      field_config: "all",
+    }).then((resp) => {
+      createPackageRows = (resp && Array.isArray(resp.data)) ? resp.data : [];
+      renderCreatePackageTab();
+    }).catch((err) => {
+      console.error(err);
+      createPackageRows = [];
+      document.getElementById("createPackageBody").innerHTML = '<p class="text-sm text-rose-500 text-center py-6">Failed to load — see console.</p>';
+    });
+  }
+  function renderCreatePackageTab() {
+    const body = document.getElementById("createPackageBody");
+    const actionBtn = document.getElementById("createPackageActionBtn");
+    if (!createPackageRows.length) {
+      body.innerHTML = '<p class="text-sm text-slate-400 text-center py-10">Nothing pending — every item is already packaged.</p>';
+      actionBtn.disabled = true;
+      return;
+    }
+    // FIXED — was a bare unstyled <table> floating directly on the page background
+    // (no card), unlike every other table in this widget. Wrapped in the same card
+    // shell groupCardHtml() uses (bg-white rounded-2xl border shadow-card), with
+    // matching header/row/hover/divide styling so it doesn't look broken next to
+    // the List/Groupings tabs.
+    // CHANGED 2026-08-20, per user report (screenshot) — same missing-border/
+    // unframed-page bug as the List tab's own #reportCard: this card was sized to
+    // its own content only, so with just 1-2 pending rows it left a tall un-boxed
+    // blank area below it inside #createPackageBody (which itself already correctly
+    // flex-fills the tab). min-h-full makes this card stretch to fill whatever
+    // height #createPackageBody actually has, same fix pattern as everywhere else
+    // fixed today.
+    body.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden min-h-full">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-left text-[10px] uppercase tracking-wide text-slate-400 border-b border-slate-100 bg-slate-50/60">
+            <th class="px-4 py-3 w-10"></th>
+            <th class="px-4 py-3 font-semibold">SO</th>
+            <th class="px-4 py-3 font-semibold">Item</th>
+            <th class="px-4 py-3 font-semibold">SKU</th>
+            <th class="px-4 py-3 font-semibold text-right">Qty</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">${createPackageRows.map((r) => `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="px-4 py-3"><input type="checkbox" class="cp-row-cb w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" data-id="${r.ID}" /></td>
+            <td class="px-4 py-3 text-slate-800 font-medium">${escapeHtml(displayVal(r.SO))}</td>
+            <td class="px-4 py-3 text-slate-700">${escapeHtml(displayVal(r.Item_Name))}</td>
+            <td class="px-4 py-3 text-slate-500">${escapeHtml(displayVal(r.SKU))}</td>
+            <td class="px-4 py-3 text-slate-700 text-right">${escapeHtml(displayVal(r.Qty))}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+    body.querySelectorAll(".cp-row-cb").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const anyChecked = !!body.querySelector(".cp-row-cb:checked");
+        actionBtn.disabled = !anyChecked;
+      });
+    });
+    actionBtn.disabled = true;
+  }
+  document.getElementById("createPackageActionBtn").addEventListener("click", () => {
+    const body = document.getElementById("createPackageBody");
+    const selectedIds = [...body.querySelectorAll(".cp-row-cb:checked")].map((cb) => cb.dataset.id);
+    if (!selectedIds.length) return;
+    // FIXED 2026-08-07, per user request ("delivery type dialog still ugly. make it look
+    // like the one in Pre order FF") — plain prompt() replaced with the ported showConfirm()
+    // dropdown modal (see its definition above).
+    showConfirm(`This creates a real Books package for ${selectedIds.length} selected item(s). Cannot be undone from here. Continue?`, (deliveryType) => {
+      const btn = document.getElementById("createPackageActionBtn");
+      btn.disabled = true;
+      btn.textContent = "Creating…";
+      // FIXED, code review: also disable the row checkboxes during the in-flight request —
+      // otherwise a checkbox `change` event can re-enable btn mid-request (its own listener
+      // only looks at anyChecked, not submission state), letting a 2nd click fire a 2nd
+      // invokeCustomApi call with a possibly different selectedIds — real duplicate-package risk.
+      body.querySelectorAll(".cp-row-cb").forEach((cb) => { cb.disabled = true; });
+      invokeCustomApi(CONFIG.CUSTOM_API_NAME_CREATE_PACKAGE, CONFIG.CUSTOM_API_KEY_CREATE_PACKAGE, { recordIdsCsv: selectedIds.join(","), deliveryType })
+        .then((data) => {
+          const results = (data && data.results) || [];
+          const successCount = results.filter((x) => x.status === "success").length;
+          const errorRows = results.filter((x) => x.status === "error");
+          if (successCount) toast(`${successCount} item(s) packaged.`, "success");
+          if (errorRows.length) {
+            console.warn("Create Package errors:", errorRows);
+            toast(`${errorRows.length} item(s) failed — see console for details.`, "error");
+          }
+          btn.textContent = "Create Package";
+          loadCreatePackageTab();
+        })
+        .catch((err) => {
+          console.error(err);
+          toast("Create Package failed — see console.", "error");
+          btn.disabled = false;
+          btn.textContent = "Create Package";
+          body.querySelectorAll(".cp-row-cb").forEach((cb) => { cb.disabled = false; });
+        });
+    });
+  });
+
+  const TAB_ACTIVE_CLASS = "text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 text-white transition";
+  const TAB_INACTIVE_CLASS = "text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition";
+
+  function switchTab(tab) {
+    currentTab = tab;
+    const reportCard = document.getElementById("reportCard");
+    const groupingsView = document.getElementById("groupingsView");
+    const createPackageView = document.getElementById("createPackageView");
+    const listBtn = document.getElementById("tabListBtn");
+    const groupBtn = document.getElementById("tabGroupingsBtn");
+    const createBtn = document.getElementById("tabCreatePackageBtn");
+    if (tab === "list") {
+      reportCard.classList.remove("hidden");
+      groupingsView.classList.add("hidden");
+      createPackageView.classList.add("hidden");
+      listBtn.className = TAB_ACTIVE_CLASS;
+      groupBtn.className = TAB_INACTIVE_CLASS;
+      createBtn.className = TAB_INACTIVE_CLASS;
+      renderTable();
+    } else if (tab === "groupings") {
+      reportCard.classList.add("hidden");
+      groupingsView.classList.remove("hidden");
+      createPackageView.classList.add("hidden");
+      groupBtn.className = TAB_ACTIVE_CLASS;
+      listBtn.className = TAB_INACTIVE_CLASS;
+      createBtn.className = TAB_INACTIVE_CLASS;
+      renderGroupings();
+    } else {
+      // "createPackage" — ADDED 2026-08-07
+      reportCard.classList.add("hidden");
+      groupingsView.classList.add("hidden");
+      createPackageView.classList.remove("hidden");
+      createBtn.className = TAB_ACTIVE_CLASS;
+      listBtn.className = TAB_INACTIVE_CLASS;
+      groupBtn.className = TAB_INACTIVE_CLASS;
+      loadCreatePackageTab();
+    }
+  }
+  document.getElementById("tabListBtn").addEventListener("click", () => switchTab("list"));
+  document.getElementById("tabGroupingsBtn").addEventListener("click", () => switchTab("groupings"));
+  document.getElementById("tabCreatePackageBtn").addEventListener("click", () => switchTab("createPackage"));
+
+  const SORT_LABELS = { recent: "Latest Activity", asc: "SO # ↑", desc: "SO # ↓" };
+  function cycleSoSort() {
+    soSortDir = soSortDir === "recent" ? "asc" : soSortDir === "asc" ? "desc" : "recent";
+    document.getElementById("soSortLabel").textContent = SORT_LABELS[soSortDir];
+    orderedRows = computeOrderedRows(allRecords);
+    renderAll();
+  }
+  document.getElementById("soSortBtn").addEventListener("click", cycleSoSort);
+
+  function renderAll() {
+    renderStats();
+    if (currentTab === "list") renderTable(); else renderGroupings();
+  }
+
+  // ---------------------------------------------------------------------
+  // Sales Order Detail view
+  // ---------------------------------------------------------------------
+  let currentDetailSo = null;
+
+  function stepperHtml(so) {
+    // Crate is a conditional step — only orders flagged For_Crate actually go
+    // through it, so it's left out of the sequence entirely for orders where
+    // For_Crate is false, rather than showing a step that'll never apply.
+    const stageKeys = STAT_DEFS.map(s => s.key).filter((key) => key !== "Crate" || isTrue(so.For_Crate));
+    // Fulfillment_Stage records the stage that was just COMPLETED, not the
+    // one currently in progress (e.g. a record showing "Pack" means packing
+    // is already done) — so the stepper's highlighted "current" step is one
+    // past that stored value, clamped to the last stage once everything's
+    // done, so staff see where the order is headed next rather than where it
+    // already finished.
+    const completedIndex = stageKeys.indexOf(so.Fulfillment_Stage);
+    const currentIndex = completedIndex < 0 ? -1 : Math.min(completedIndex + 1, stageKeys.length - 1);
+
+    return stageKeys.map((key, i) => {
+      const state = currentIndex < 0 ? "pending" : i < currentIndex ? "done" : i === currentIndex ? "current" : "pending";
+      const circleClasses = state === "done" ? "bg-emerald-500 text-white"
+        : state === "current" ? "bg-slate-900 text-white"
+        : "bg-slate-100 text-slate-400 border border-slate-200";
+      // No per-stage timestamp data exists (no stage-change log connected —
+      // see STAGE_HISTORY_CONFIG), so every reached step (done/current) shows
+      // the same Added_Time as a consistent reference point. Pending steps
+      // (not reached yet) show no date — there's nothing to timestamp for a
+      // stage the order hasn't gotten to.
+      const dateForStage = state === "pending" ? null : formatDateTime(so.Added_Time);
+      const connector = i < stageKeys.length - 1
+        ? `<div class="flex-1 h-0.5 mt-4 mx-1 ${i < currentIndex ? "bg-emerald-400" : "bg-slate-200"}"></div>`
+        : "";
+
+      return `
+        <div class="flex flex-col items-center text-center w-24 shrink-0">
+          <div class="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold ${circleClasses}">
+            ${state === "done" ? "✓" : (i + 1)}
+          </div>
+          <p class="text-[10px] font-bold mt-1.5 uppercase tracking-wide ${state === "pending" ? "text-slate-300" : "text-slate-600"}">${escapeHtml(key)}</p>
+          <p class="text-[10px] text-slate-400">${dateForStage && dateForStage !== "—" ? escapeHtml(dateForStage) : ""}</p>
+        </div>
+        ${connector}`;
+    }).join("");
+  }
+
+  function renderStageHistory(so) {
+    const container = document.getElementById("detailStageHistory");
+    if (!STAGE_HISTORY_CONFIGURED) {
+      container.innerHTML = `<p class="text-xs text-slate-400">Stage history isn't connected yet. Set STAGE_HISTORY_CONFIG in the code once the log report exists in Zoho Creator.</p>`;
+      return;
+    }
+    container.innerHTML = `<p class="text-xs text-slate-400">Loading history…</p>`;
+
+    const cfg = STAGE_HISTORY_CONFIG;
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: cfg.reportName,
+      criteria: `(${cfg.soLookupField} == ${JSON.stringify(String(so.ID))})`,
+    };
+    ZOHO.CREATOR.DATA.getRecords(config).then((response) => {
+      const entries = (response && response.data) || [];
+      if (!entries.length) {
+        container.innerHTML = `<p class="text-xs text-slate-400">No history logged yet.</p>`;
+        return;
+      }
+      container.innerHTML = entries.map((e) => `
+        <div class="flex items-start gap-2.5">
+          <span class="h-4 w-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] mt-0.5 shrink-0">✓</span>
+          <div>
+            <p class="text-sm text-slate-700">${escapeHtml(displayVal(e[cfg.actionField]))}</p>
+            <p class="text-[11px] text-slate-400">${escapeHtml(formatDateTime(e[cfg.timestampField]))} · ${escapeHtml(displayVal(e[cfg.userField]))}</p>
+          </div>
+        </div>`).join("");
+    }).catch((err) => {
+      console.error(err);
+      container.innerHTML = `<p class="text-xs text-rose-500">Couldn't load stage history.</p>`;
+    });
+  }
+
+  function switchToDetail(recordId) {
+    const so = allRecords.find(r => String(r.ID) === String(recordId));
+    if (!so) return;
+    renderNextStepBanner("nsBanner", so.ID, nextStepFor(so));
+    currentDetailSo = so;
+
+    document.getElementById("detailBreadcrumb").textContent = `${displayVal(so.SO_No)}  ${displayVal(so.Customer)}`;
+    document.getElementById("detailSoNo").textContent = displayVal(so.SO_No);
+    document.getElementById("detailCustomer").textContent = displayVal(so.Customer);
+    document.getElementById("detailSubline").textContent = `${displayVal(so.order_type)} · ${displayVal(so.Delivery_Type)}`;
+    document.getElementById("detailStepper").innerHTML = stepperHtml(so);
+
+    const overdue = isOverdue(so);
+    const fieldsHtml = [
+      ["SO #", displayVal(so.SO_No)],
+      ["PR# (if any)", displayVal(so.PR_No)],
+      ["RR# (if any)", displayVal(so.RR_No)],
+      ["PAC #", displayVal(so.Package)],
+      ["Order Type", displayVal(so.order_type)],
+      ["Delivery Type", displayVal(so.Delivery_Type)],
+      ["Target Delivery", `<span class="${overdue ? "text-rose-600" : "text-slate-800"} font-semibold">${escapeHtml(formatDate(so.target_delivery_date))}${overdue ? " ⚠ Overdue" : ""}</span>`, true],
+      ["SO Creation Date", escapeHtml(formatDate(so.SO_Created_Date))],
+      ["SO Status", so.SO_Status ? badgePill(so.SO_Status, SO_STATUS_COLOR[so.SO_Status] || "slate") : "—", true],
+      ["Payment Status", so.Status ? badgePill(PAYMENT_STATUS_LABEL[so.Status] || so.Status, PAYMENT_STATUS_COLOR[so.Status] || "slate") : "—", true],
+      ["Customer", displayVal(so.Customer)],
+      ["Customer Type", displayVal(so.Customer_Type)],
+      ["", ""],
+      ["Address", displayVal(so.Shipping_Address || so.Billing_Address)],
+      ["Contact #", displayVal(so.Contact_No)],
+    ].filter(row => row[0] !== "");
+
+    document.getElementById("detailFields").innerHTML = fieldsHtml.map(([label, val, isHtml]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${isHtml ? val : escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const items = Array.isArray(so.Item_Details1) && so.Item_Details1.length ? so.Item_Details1 : [];
+    document.getElementById("detailItems").innerHTML = items.length
+      ? items.map((it) => `
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-3 border-b border-slate-50 last:border-0 last:pb-0">
+            <div class="col-span-2 sm:col-span-1">
+              <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Item Name</dt>
+              <dd class="text-sm text-slate-800 font-medium mt-0.5">${escapeHtml(displayVal(it.Item))}</dd>
+            </div>
+            <div>
+              <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">SKU</dt>
+              <dd class="text-sm text-slate-600 mt-0.5">${escapeHtml(displayVal(it.SKU))}</dd>
+            </div>
+            <div>
+              <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Qty</dt>
+              <dd class="text-sm text-slate-800 font-semibold mt-0.5">${escapeHtml(displayVal(it.Quantity))}</dd>
+            </div>
+            <div>
+              <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Bin Location</dt>
+              <dd class="mt-0.5">${badgePill(displayVal(it.Bin_Location), "blue")}</dd>
+            </div>
+          </div>`).join("")
+      : `<p class="text-xs text-slate-400">No items on this order.</p>`;
+
+    renderStageHistory(so);
+    // FIXED 2026-08-25, real live bug found via first send attempt — so.Package
+    // (PAC#) is blank for any SO that hasn't reached packaging yet (Order
+    // Readiness/Picking/Packing all precede package assignment), and _send()'s
+    // own blank-parent guard silently no-ops with zero console output when
+    // currentParent is "". Threading by so.ID instead — the row's own real
+    // primary key, always present, and a more precise 1:1 match to "one
+    // Sales_Order_Fulfillment row = one thread" than PAC# ever was. The Creator
+    // field link name stays "Package" (already created); only the VALUE written
+    // into it changed.
+    sofTimeline.open(String(so.ID));
+    internalNotes.open(String(so.ID));
+
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("detailView").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }
+
+  function switchToList() {
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("listView").classList.remove("hidden");
+    currentDetailSo = null;
+    sofTimeline.close();
+    internalNotes.close();
+  }
+  document.getElementById("backToListBtn").addEventListener("click", switchToList);
+
+  // ---------------------------------------------------------------------
+  // Data loading (read-only — Sales_Order_Fulfillment_Report)
+  // ---------------------------------------------------------------------
+  function fetchAllRecords() {
+    // field_config: "all" returns raw form field data instead of the report's
+    // display-column formulas — EXCEPT for Item_Details1 (see
+    // hydrateAllItemDetails1 below).
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+
+  // Bulk getRecords (fetchAllRecords, above) — CONFIRMED against live data
+  // (2026-07-27, same finding as the QC Checklist and Order Aggregation
+  // widgets' subform fields): even with field_config: "all", subform/grid
+  // fields always come back summarized to [{ID, zc_display_value}] per row,
+  // not the real Item/SKU/Quantity/Bin_Location child-field values — the old
+  // comment here claiming otherwise was an untested assumption. Since every
+  // row in this widget's main table IS one item line (computeOrderedRows
+  // flattens each SO's Item_Details1 into its own row), this isn't a rarely-
+  // seen detail section — an unhydrated table would show blank Item/SKU/Qty
+  // for literally every row. So every SO record gets its Item_Details1
+  // hydrated via a separate ZOHO.CREATOR.DATA.getRecordById call (which does
+  // return full child-field data) before the table is flattened/rendered.
+  function fetchFullItemDetails1(id) {
+    if (!(ZOHO.CREATOR.DATA && typeof ZOHO.CREATOR.DATA.getRecordById === "function")) return Promise.resolve(null);
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      id: id,
+      field_config: "all",
+    };
+    return ZOHO.CREATOR.DATA.getRecordById(config).then((response) => {
+      const full = response && response.data;
+      return (full && Array.isArray(full.Item_Details1)) ? full.Item_Details1 : null;
+    }).catch((err) => {
+      console.error("Failed to fetch full Item_Details1 for record " + id + ":", err);
+      return null;
+    });
+  }
+
+  async function hydrateItemDetails1(so) {
+    if (hydratedItemDetail1Ids.has(so.ID)) return false;
+    if (!Array.isArray(so.Item_Details1) || !so.Item_Details1.length) return false;
+    const fullRows = await fetchFullItemDetails1(so.ID);
+    if (!fullRows) return false;
+    so.Item_Details1 = fullRows;
+    hydratedItemDetail1Ids.add(so.ID);
+    return true;
+  }
+
+  // Runs `fn` over `items` with at most `limit` in flight at once — avoids
+  // firing hundreds of simultaneous getRecordById calls (and likely hitting
+  // Zoho API rate limits) when there are many sales orders to hydrate.
+  async function runWithConcurrency(items, limit, fn) {
+    const queue = items.slice();
+    const workers = new Array(Math.min(limit, queue.length)).fill(0).map(async () => {
+      while (queue.length) {
+        await fn(queue.shift());
+      }
+    });
+    await Promise.all(workers);
+  }
+
+  async function hydrateAllItemDetails1(records) {
+    await runWithConcurrency(records, 6, (so) => hydrateItemDetails1(so));
+  }
+
+  function loadLive() {
+    fetchAllRecords().then(async (records) => {
+      allRecords = records;
+      orderedRows = computeOrderedRows(allRecords);
+      renderAll();
+      checkDeepLinkOpenSO();
+      // Fast first paint (Item/SKU/Qty/Bin Location blank until hydrated) —
+      // upgrade to accurate data once every SO's Item_Details1 is hydrated.
+      await hydrateAllItemDetails1(records);
+      orderedRows = computeOrderedRows(allRecords);
+      renderAll();
+    }).catch((err) => {
+      // Logged, then shown as the empty state it is. There is deliberately no
+      // sample-data fallback: a report that is briefly erroring is not the same
+      // as "no orders", but fake rows would be a worse answer than either.
+      console.error(err);
+      allRecords = [];
+      orderedRows = [];
+      renderAll();
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  searchInput.addEventListener("input", () => { if (currentTab === "list") renderTable(); else renderGroupings(); });
+  stageFilterSelect.addEventListener("change", () => {
+    stageFilter = stageFilterSelect.value;
+    if (currentTab === "list") renderTable(); else renderGroupings();
+  });
+
+  // JS API v2 needs no ZOHO.CREATOR.init() call -- but the SDK script still
+  // defines window.ZOHO even when this file is opened outside a Zoho Creator
+  // page, where a data call has no parent frame to talk to and simply hangs.
+  //
+  // 2026-11-06, per user: THIS WIDGET HAS NO SAMPLE DATA ANY MORE. It used to
+  // race the live load against a blind 3-second timer and, on timeout, swap in
+  // a built-in sample set AND mark the load settled -- so the real records were
+  // discarded when they arrived. Inside Creator that showed SO-155xx samples
+  // with a dash in every Forecast cell, and it was reported as a missing-forecast
+  // bug. Both the timer and the sample records are gone. Outside Creator the
+  // table stays empty under the banner above, which is the truth.
+  //
+  // Do not reintroduce a mock fallback here. A screenshot of this widget has to
+  // be trustworthy evidence.
+  const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+  if (sdkReady) {
+    loadLive();
+  } else {
+    document.getElementById("offlineBanner").classList.remove("hidden");
+    renderAll();
+  }
+
+  // ---------------------------------------------------------------------
+  // Notification bell — see notification_component/README.md. Only two accounts
+  // for now per user request (2026-08-03): HC Pack & Fulfill + HC Systems
+  // (full access) — update roleMap/fullAccessRoles later if that changes.
+  // ---------------------------------------------------------------------
+  const notifications = window.NotificationSystem ? NotificationSystem.init({
+    mountId:          "notifMount",
+    appName:          CONFIG.APP_NAME,
+    reportName:       "SO_Notifications_Report",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    environment:      () => ZC_ENV,
+    roleMap:          { "homecartelff@gmail.com": "HC Pack & Fulfill", "hcinvanalyst@gmail.com": "HC Systems" },
+    fullAccessRoles:  ["HC Systems"],
+    title:            "Notifications",
+  }) : { open(){}, close(){}, refresh(){} };
+
+  // Resolve the real logged-in email + dev/prod environment — same 2-path
+  // getInitParams()/ZOHO.CREATOR.init() fallback chain proven in PRsv2/INQsv2/
+  // Shipmentsv2. This widget had no such resolution before (JS API v2 data calls
+  // don't need it), only the notification bell does.
+  if (sdkReady && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams === "function") {
+    ZOHO.CREATOR.UTIL.getInitParams().then((params) => {
+      if (params && (params.environment || params.env)) ZC_ENV = params.environment || params.env;
+      const email = params && (params.loginUser || params.login_user || params.userEmail || params.user_email || params.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); internalNotes.refresh(); }
+    }).catch(() => {});
+  }
+  if (sdkReady && typeof ZOHO.CREATOR.init === "function") {
+    ZOHO.CREATOR.init().then((initData) => {
+      if (initData && (initData.environment || initData.env)) ZC_ENV = initData.environment || initData.env;
+      const email = initData && (initData.loginUser || initData.login_user || initData.userEmail || initData.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr && !CURRENT_USER_EMAIL) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); internalNotes.refresh(); }
+    }).catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

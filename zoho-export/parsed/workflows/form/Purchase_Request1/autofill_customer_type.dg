@@ -1,0 +1,2 @@
+// form: autofill customer type  form=Purchase_Request1 event=on add or edit on user input of Customer  [.ds line 36065]
+input.Customer_Type = input.Customer.Customer_Type;

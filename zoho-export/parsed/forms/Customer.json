@@ -1,0 +1,184 @@
+{
+  "name": "Customer",
+  "label": "Customer",
+  "successMessage": "Customer Added Successfully",
+  "line": 406,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "ID1",
+      "label": "ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "customer_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Dropdown",
+      "label": "Drop Down",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Choice 1",
+        "Choice 2",
+        "Choice 3"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Customer_Type",
+      "label": "Customer Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Email",
+      "label": "Email",
+      "type": "email",
+      "required": false,
+      "maxchar": "80",
+      "personalData": "true"
+    },
+    {
+      "name": "Phone_Number",
+      "label": "Phone",
+      "type": "phonenumber",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Mobile",
+      "label": "Mobile",
+      "type": "phonenumber",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Billing_Address",
+      "label": "Billing Address",
+      "type": "address",
+      "required": false,
+      "personalData": "true",
+      "fields": [
+        {
+          "name": "address_line_1",
+          "label": "Address Line 1",
+          "type": "address_line_1",
+          "required": false
+        },
+        {
+          "name": "address_line_2",
+          "label": "Address Line 2",
+          "type": "address_line_2",
+          "required": false
+        },
+        {
+          "name": "district_city",
+          "label": "City / District",
+          "type": "district_city",
+          "required": false
+        },
+        {
+          "name": "state_province",
+          "label": "State / Province",
+          "type": "state_province",
+          "required": false
+        },
+        {
+          "name": "postal_Code",
+          "label": "Postal Code",
+          "type": "postal_Code",
+          "required": false
+        },
+        {
+          "name": "country",
+          "label": "Country",
+          "type": "country",
+          "required": false
+        },
+        {
+          "name": "latitude",
+          "label": "latitude",
+          "type": "latitude",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "longitude",
+          "label": "longitude",
+          "type": "longitude",
+          "required": false,
+          "visibility": "false"
+        }
+      ]
+    },
+    {
+      "name": "Shipping_Address",
+      "label": "Shipping Address",
+      "type": "address",
+      "required": false,
+      "personalData": "true",
+      "fields": [
+        {
+          "name": "address_line_1",
+          "label": "Address Line 1",
+          "type": "address_line_1",
+          "required": false
+        },
+        {
+          "name": "address_line_2",
+          "label": "Address Line 2",
+          "type": "address_line_2",
+          "required": false
+        },
+        {
+          "name": "district_city",
+          "label": "City / District",
+          "type": "district_city",
+          "required": false
+        },
+        {
+          "name": "state_province",
+          "label": "State / Province",
+          "type": "state_province",
+          "required": false
+        },
+        {
+          "name": "postal_Code",
+          "label": "Postal Code",
+          "type": "postal_Code",
+          "required": false
+        },
+        {
+          "name": "country",
+          "label": "Country",
+          "type": "country",
+          "required": false
+        },
+        {
+          "name": "latitude",
+          "label": "latitude",
+          "type": "latitude",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "longitude",
+          "label": "longitude",
+          "type": "longitude",
+          "required": false,
+          "visibility": "false"
+        }
+      ]
+    }
+  ]
+}

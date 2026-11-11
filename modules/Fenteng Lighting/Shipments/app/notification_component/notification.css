@@ -1,0 +1,43 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   FENTENG NOTIFICATION COMPONENT — styles
+   Orange accent (var(--orange,#EA580C)/--orange-light/--orange-mid), matching Fenteng's
+   own brand palette already used throughout Fenteng-PR/Fenteng-Inquiries (page title,
+   .btn-orange, .supplier-avatar) — deliberately different from the internal
+   notification_component's blue, so Fenteng's own bell reads as visually distinct from
+   the internal HC Purchasing/Systems one if ever seen side by side.
+   bottom:90px / panel bottom:150px — same clearance-above-toast fix the internal
+   component needed after a live overlap test; applied here from the start since
+   Fenteng-PR/Fenteng-Inquiries both have the same .toast{bottom:24px;right:24px}.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.fnn-bell{position:fixed;bottom:90px;right:20px;width:50px;height:50px;border-radius:50%;background:rgba(234,88,12,.55);border:none;color:var(--white,#fff);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);cursor:pointer;transition:background 150ms ease,transform 150ms ease;z-index:5000}
+.fnn-bell:hover{background:var(--orange,#EA580C);transform:translateY(-1px)}
+.fnn-bell svg{width:22px;height:22px}
+.fnn-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--red,#DC2626);color:var(--white,#fff);font-size:10.5px;font-weight:700;display:none;align-items:center;justify-content:center;border:2px solid var(--white,#fff);line-height:1}
+.fnn-badge.show{display:flex}
+
+.fnn-panel{position:fixed;bottom:150px;right:20px;width:336px;max-height:440px;background:var(--white,#fff);border-radius:12px;box-shadow:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);border:1px solid var(--gray-200,#E2E8F0);display:none;flex-direction:column;overflow:hidden;z-index:5000;font-family:'Inter',system-ui,sans-serif}
+.fnn-panel.open{display:flex}
+.fnn-hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:1px solid var(--gray-100,#F1F5F9)}
+.fnn-title{font-size:14px;font-weight:700;color:var(--gray-800,#1E293B)}
+.fnn-hdr-actions{display:flex;align-items:center;gap:10px}
+.fnn-refresh-btn{background:none;border:none;color:var(--gray-400,#94A3B8);cursor:pointer;padding:2px;display:flex;align-items:center;justify-content:center;transition:color 150ms ease}
+.fnn-refresh-btn:hover{color:var(--orange,#EA580C)}
+.fnn-refresh-btn svg{width:14px;height:14px}
+.fnn-refresh-btn.spinning svg{animation:fnn-spin .6s linear infinite}
+@keyframes fnn-spin{to{transform:rotate(360deg)}}
+.fnn-mark-all{background:none;border:none;color:var(--orange,#EA580C);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:2px}
+.fnn-mark-all:hover{color:#C2410C;text-decoration:underline}
+.fnn-mark-all:disabled{color:var(--gray-300,#CBD5E1);cursor:default;text-decoration:none}
+.fnn-list{overflow-y:auto;flex:1;max-height:395px}
+.fnn-item{display:flex;gap:9px;padding:11px 14px;border-bottom:1px solid var(--gray-100,#F1F5F9);cursor:pointer;transition:background 150ms ease}
+.fnn-item:hover{background:var(--orange-light,#FFF7ED)}
+.fnn-item:last-child{border-bottom:none}
+.fnn-dot{flex-shrink:0;width:8px;height:8px;border-radius:50%;background:var(--orange,#EA580C);margin-top:5px}
+.fnn-item.read .fnn-dot{background:transparent}
+.fnn-body{min-width:0;flex:1}
+.fnn-type{font-size:12.5px;font-weight:600;color:var(--gray-800,#1E293B)}
+.fnn-item.read .fnn-type{color:var(--gray-500,#64748B);font-weight:500}
+.fnn-msg{font-size:12px;color:var(--gray-600,#475569);margin-top:2px;line-height:1.4}
+.fnn-time{font-size:10.5px;color:var(--gray-400,#94A3B8);margin-top:4px}
+.fnn-empty{padding:36px 20px;text-align:center;color:var(--gray-400,#94A3B8);font-size:12.5px}

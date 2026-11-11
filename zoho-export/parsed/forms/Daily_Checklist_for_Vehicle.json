@@ -1,0 +1,132 @@
+{
+  "name": "Daily_Checklist_for_Vehicle",
+  "label": "Daily Checklist for Vehicle",
+  "successMessage": "Data Added Successfully!",
+  "line": 609,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Tracking_Number",
+      "label": "Tracking Number",
+      "type": "autonumber",
+      "required": false
+    },
+    {
+      "name": "Date_Time",
+      "label": "Date-Time",
+      "type": "datetime",
+      "required": true,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Vehicle_Name",
+      "label": "Vehicle Name",
+      "type": "picklist",
+      "required": true,
+      "options": [
+        "Traviz (NIB-3823)",
+        "Hino (NBX-1446)",
+        "Choice 3"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "ODO_Number",
+      "label": "ODO Number",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "Gas_Number",
+      "label": "Gas Number",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Vehicle_Checker",
+      "label": "Vehicle Checker",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Zaldy",
+        "Rash",
+        "Norman",
+        "Marlon",
+        "Judy"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Vehicle_Driver",
+      "label": "Vehicle Driver",
+      "type": "picklist",
+      "required": true,
+      "options": [
+        "Zaldy",
+        "Marlon",
+        "Rash",
+        "Judy"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Vehicle_Checklist",
+      "label": "Vehicle Checklist",
+      "type": "checkboxes",
+      "required": true,
+      "options": [
+        "Engine Temp",
+        "Coolant Level",
+        "Tires",
+        "Brakes",
+        "Aircon",
+        "Battery",
+        "Horn",
+        "Fuel Gauge",
+        "Lights (Head, Turn, Parking)",
+        "Oil & Filter",
+        "Engine",
+        "Plate Number",
+        "Belt",
+        "Steering",
+        "Vehicle Sound"
+      ]
+    },
+    {
+      "name": "Issue_Found",
+      "label": "Issue Found?",
+      "type": "picklist",
+      "required": true,
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Issue_Description",
+      "label": "Issue Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Odometer_Photo_Upload",
+      "label": "Odometer Photo Upload",
+      "type": "image",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Checker_s_Signature",
+      "label": "Checker's Signature",
+      "type": "signature",
+      "required": false,
+      "personalData": "true"
+    }
+  ]
+}

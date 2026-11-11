@@ -1,0 +1,46 @@
+// form: Shipment_Autofill_From_PO  form=Shipments event=on add or edit on validate  [.ds line 38435]
+    // === Shipment_Autofill_From_PO (DEBUG VERSION) ===
+// Form: Shipments | Event: Created | Validations on form submission
+if(input.PO_No != null)
+{
+    info "PO_No raw value: " + input.PO_No;
+    info "PO_No.ID: " + input.PO_No.ID;
+    poRecord = Purchase_Order[ID == input.PO_No.ID];
+    info "poRecord found: " + poRecord;
+    if(poRecord != null)
+    {
+        info "poRecord.SO_No: " + poRecord.SO_No;
+        info "poRecord.Customer: " + poRecord.Customer;
+        input.Sales_Order = poRecord.SO_No.Sales_Order_Number;
+        input.Customer = poRecord.Customer;
+        lineItemsList = List();
+        suppliers = List();
+        lineCount = 0;
+        for each  line in poRecord.PO_Line_Items
+        {
+            lineCount = lineCount + 1;
+            lineMap = Map();
+            lineMap.put("PR_No",line.PR_No);
+            lineMap.put("SKU",line.SKU);
+            lineMap.put("Item_Name",line.Item);
+            lineMap.put("Ordered_QTY",line.QTY);
+            lineMap.put("Shipment_QTY",0);
+            lineMap.put("Remaining_QTY",line.QTY);
+            lineItemsList.add(lineMap);
+            if(!suppliers.contains(line.Supplier))
+            {
+                suppliers.add(line.Supplier);
+            }
+        }
+        info "Line items processed: " + lineCount;
+        Shipment_Line_Items = lineItemsList;
+        if(suppliers.size() == 1)
+        {
+            input.Supplier = suppliers.get(0);
+        }
+    }
+}
+else
+{
+    info "input.PO_No is NULL — dropdown value was not received";
+}

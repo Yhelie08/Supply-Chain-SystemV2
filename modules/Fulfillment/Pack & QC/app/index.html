@@ -1,0 +1,2990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QC Report</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  Reads item-level rows from the "All_Qc_Reports1" report (form: Checker_Checklist),
+  latest activity first. The report has no "group by" clause, so this list is flat,
+  not grouped by SO #.
+
+  1. Zoho Creator → Settings → Widgets → New Widget → "Upload HTML". Zip this file and upload.
+  2. CONFIG.APP_NAME below is already set to "supply-chain-app" to match the other
+     widgets in this app. Change it if this ever moves to a different app.
+  3. Add the widget to a page.
+  4. This widget always attempts to load live data — there's no standalone preview
+     mode. Opening this file outside Zoho Creator will just show a "must be opened
+     inside Zoho Creator" toast.
+
+  Uses JS API v2 (ZOHO.CREATOR.DATA.getRecords/updateRecords, field_config: "all")
+  — same approach as the other widgets in this app.
+
+  LIST BEHAVIOR: once QC_Status is saved as "Approved" or "Rejected" (via the
+  edit form's QC Status radio group), that row disappears from the list
+  entirely (isActiveRow()/getFilteredRows()) — this widget's job for that item
+  is done at that point, same as the one-way action buttons in the Picker/
+  Pick/Pack widgets. Stat cards still count it (they read from the unfiltered
+  orderedRows), so "Approved"/"Rejected" stay running totals even though those
+  rows are no longer visible in the table.
+
+  EDITING: list → detail → edit are three views inside this one file (no separate
+  page/file, no external navigation to Zoho's own edit form — that path kept hitting
+  popup blocking and "No components found" routing errors). The edit view covers all
+  structured fields (text, date, picklists, checkbox groups, the Spare_part_type
+  subform) plus Signature, Images, and Video — file bytes can't ride in the Data API
+  payload used for the rest of the fields, so each of those is its own
+  ZOHO.CREATOR.FILE.uploadFile call after the main updateRecords succeeds:
+  - Signature: captured on a canvas, converted to a PNG File, uploaded once.
+  - Images (Image_Upload_max_10_JPG_JPEG_PNG): multi-file input, uploaded one at a time —
+    ASSUMPTION: each uploadFile call ADDS to the field's existing files rather than
+    replacing them, since the field allows up to 10. Not yet confirmed against live
+    data — verify this behaves as expected, since it's the one part of this file
+    that wasn't debugged against a real response the way the subform issue was.
+  - Video (Video_Upload_max_3_min_30_sec1): single-file input, uploaded once —
+    assumed to REPLACE any existing video (single-file field).
+
+  FIXED 2026-07-27, real bug found live ("saved but failed to upload photos and
+  video") — every image/video upload/read/preview call in this file used the
+  field names Image_max_10_JPG_JPEG_PNG/Video_Upload_max_3_min_30_sec, but a
+  live schema dump the same day confirmed the REAL current field names are
+  Image_Upload_max_10_JPG_JPEG_PNG/Video_Upload_max_3_min_30_sec1 (renamed at
+  some point after this widget was originally built, same class of drift
+  already hit once in DelugeScripts/checker_checklist_qc_sync.txt's own
+  cross-form field mapping). All 9/8 occurrences replaced globally.
+
+  VIEWING: the Documentation card (Edit mode's own preview, and the now-unreachable
+  read-only detail view) renders image thumbnails and the signature image via
+  ZOHO.CREATOR.UTIL.setImageData(imgEl, url, callback) — see applyCreatorImage().
+  Approach ported from a sibling widget (Procurement/Inquiry INQs.html) that
+  already fought through the readFile()-based approach failing (see git history /
+  earlier comments here for that dead end).
+
+  CONFIRMED against live data: Image_Upload_max_10_JPG_JPEG_PNG and Signature field
+  values are plain strings holding a Zoho REST v2.1 *relative* download path —
+  e.g. "/api/v2.1/homecartel/supply-chain-app/report/All_Qc_Reports1/<id>/
+  Signature/download?filepath=<file>" — not an absolute http(s) URL, not an
+  object. setImageData resolves that relative path itself, so it's passed
+  through as-is (see imgUrlFromRawValue()) rather than requiring an "http"
+  prefix, which is what broke the first pass at this fix.
+
+  VIDEO — SOLVED. setImageData(imgEl, url, callback) turned out to work for
+  ANY file type, not just images — it does an authenticated fetch internally
+  and resolves the target <img>'s .src to a data:/blob: URL, regardless of
+  the actual file's mime type. The <img> itself can't render non-image bytes
+  (shows broken-image icon), but the resolved src string is still valid and
+  playable when reassigned to a <video> element instead. So video preview
+  reuses the exact same bridge as Images/Signature: call setImageData on an
+  off-DOM <img>, then in its callback copy hiddenImg.src over to the real
+  <video>'s src (see the `if (rawVideo)` block in renderDocumentation()).
+  Six earlier approaches were tried and failed before landing on this one:
+  plain <video src="relative-path">, ZOHO.CREATOR.FILE.readFile() (got very
+  close — correct byte count and valid MP4 header, but the video element
+  still errored, likely a subtly incomplete transfer over the SDK's
+  messaging bridge for a file this size), and four link-out URL guesses
+  (creatorapp.zoho.com and creatorexport.zoho.com, as both a download link
+  and a direct <video src>) that either redirected to Zoho's marketing
+  homepage or refused to connect.
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="notification_component/notification.css">
+<link rel="stylesheet" href="timeline_history_component/timeline-history.css">
+<link rel="stylesheet" href="internal-notes_component/internal-notes.css">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+        boxShadow: { card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)' }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { height: 100%; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  .field-input {
+    width: 100%; font-size: 0.875rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;
+    background: #f8fafc; padding: 0.5rem 0.75rem; transition: all .15s ease;
+  }
+  .field-input:focus { outline: none; background: white; box-shadow: 0 0 0 2px #cbd5e1; }
+  /* ADDED 2026-09-03, per user ("bawal na dapat iedit ito") — Sales Order/
+     Customer/Item Details are pass-through reference data (SO#, PAC#, Customer
+     info, Item Name, SKU, Quantity, Bin Location); a Quality Checker was able
+     to freely retype and save over them. Now plain `readonly` inputs (keeps
+     text selectable/copyable, unlike `disabled`) with a visibly locked look so
+     it reads as "reference, not editable" at a glance — QC Details/QC
+     Checklist below are unaffected, still fully editable. */
+  .field-input[readonly] { background: #f1f5f9; color: #64748b; cursor: default; }
+  .field-input[readonly]:focus { outline: none; background: #f1f5f9; box-shadow: none; }
+  .checkbox-row { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8125rem; color: #334155; padding: 0.25rem 0; }
+  /* ADDED 2026-09-03, per user ("mandatory ito... di siya napapansin... pag nag
+     submit dapat maging red") — Date Checked/Location are required but had no
+     visual cue at all. .field-required-mark is a permanent red asterisk on the
+     label (noticeable before you even try to save); .field-input-error is the
+     on-submit red highlight applied when Save is clicked with either still
+     blank (see saveEditForm()'s validation + the input/change listeners that
+     clear it again once filled in). */
+  .field-required-mark { color: #ef4444; margin-left: 2px; }
+  .field-input-error { border-color: #ef4444 !important; background: #fef2f2 !important; }
+
+  /* EN/TL language switch — ADDED 2026-11-05. Plain CSS, not Tailwind classes,
+     so it survives this app's precompiled-CSS widgets too. */
+  .lang-switch {
+    display: inline-flex; align-items: center; gap: 2px; padding: 2px;
+    border: 1px solid #e2e8f0; background: #fff; border-radius: 9999px;
+  }
+  .lang-seg {
+    font-size: 11px; font-weight: 700; letter-spacing: .02em;
+    padding: 3px 10px; border-radius: 9999px; color: #64748b;
+    background: transparent; border: 0; cursor: pointer; transition: all .15s ease;
+  }
+  .lang-seg:hover { color: #0f172a; }
+  .lang-seg-on { background: #0f172a; color: #fff; }
+  .lang-seg-on:hover { color: #fff; }
+</style>
+</head>
+<body class="min-h-full bg-slate-100 text-slate-800 antialiased">
+
+  <!-- CHANGED 2026-08-20, per user report ("same din dito") — same missing-border/
+       unframed-page fix already applied same day across several Procurement widgets
+       and Pre Order Report / Sales Order Readiness Gate. #reportCard already had a
+       real border — it just wasn't stretching to fill the remaining page height. -->
+  <div id="listView" class="w-full px-4 sm:px-6 py-5 min-h-screen flex flex-col">
+
+    <!-- Top header -->
+    <header id="topHeader" class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5 shrink-0">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">QC Report</h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Latest Activity First ·
+          <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+          </span>
+        </p>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+          <span id="pendingCount">0</span> Pending
+        </span>
+        <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+          <span id="rejectedCount">0</span> Rejected
+        </span>
+        <div class="lang-switch" data-i18n-skip>
+          <button type="button" data-lang-btn="en" class="lang-seg">EN</button>
+          <button type="button" data-lang-btn="tl" class="lang-seg">TL</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Stat cards -->
+    <div id="statCards" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 shrink-0"></div>
+
+    <!-- Report card -->
+    <div id="reportCard" class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex-1 min-h-0 flex flex-col">
+
+      <div id="tableToolbar" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+        <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase">QC Report List</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- ADDED 2026-07-28, per user ("add filter for those RR records") — toggle
+               pill, same on/off convention as this whole app's other filter pills,
+               scoped down to just this one dimension since it's the only filter this
+               widget has ever needed so far. -->
+          <button id="rrRecheckFilterBtn" type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-purple-200 bg-white text-purple-700 hover:bg-purple-50 transition">
+            🔁 Recheck Only
+          </button>
+          <div class="relative">
+            <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+            </svg>
+            <input id="searchInput" type="text" placeholder="Search SO#, PAC#, checker, SKU…"
+              class="w-56 sm:w-64 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-auto flex-1 min-h-0">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
+              <th class="px-5 py-2.5 font-bold">QC Status</th>
+              <th class="px-3 py-2.5 font-bold">Next Step</th>
+              <th class="px-3 py-2.5 font-bold">SO #</th>
+              <th class="px-3 py-2.5 font-bold">PAC #</th>
+              <th class="px-3 py-2.5 font-bold">Item Name</th>
+              <th class="px-3 py-2.5 font-bold">SKU</th>
+              <th class="px-3 py-2.5 font-bold text-right">Qty</th>
+              <th class="px-3 py-2.5 font-bold">Packer / Checker</th>
+              <th class="px-3 py-2.5 font-bold">Date Checked</th>
+              <th class="px-3 py-2.5 font-bold">Order Type</th>
+              <th class="px-3 py-2.5 font-bold">Forecast</th>
+              <th class="px-5 py-2.5 font-bold">Added Time</th>
+              <th class="px-5 py-2.5 font-bold text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-50"></tbody>
+        </table>
+      </div>
+
+      <div id="paginationBar" class="flex items-center px-5 py-3 border-t border-slate-100 text-xs text-slate-500 shrink-0">
+        <span>Total Count: <strong id="totalCount" class="text-slate-700">0</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- QC Detail view -->
+  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+      <div class="flex items-center gap-2 font-semibold text-slate-600">
+        <span>HC Systems</span><span class="text-slate-300">/</span><span>QC Report Detail</span>
+      </div>
+      <div class="lang-switch" data-i18n-skip>
+          <button type="button" data-lang-btn="en" class="lang-seg">EN</button>
+          <button type="button" data-lang-btn="tl" class="lang-seg">TL</button>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
+        ← Back to QC Dashboard
+      </button>
+      <span class="text-slate-300">|</span>
+      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    </div>
+
+    <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+    <div id="nsBanner"></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="detailSoNo" class="text-xl font-bold text-slate-900"></h2>
+            <p id="detailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+            <p id="detailSubline" class="text-xs text-slate-400 mt-1"></p>
+          </div>
+          <button id="editRecordBtn" class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">
+            ✏️ Edit
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="detailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div id="detailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div id="detailItemFields" class="grid grid-cols-1 sm:grid-cols-4 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">✅ QC Checklist</h3>
+          <div id="detailChecklists" class="space-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">💡 Bulb &amp; Color Specs</h3>
+          <div id="detailBulbSpecs" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🛠️ Damage Assessment</h3>
+          <div id="detailDamageFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 mb-3"></div>
+          <div id="detailSpareParts" class="space-y-2"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📎 Documentation</h3>
+          <div id="detailDocumentation" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4 flex items-center gap-1.5">🔍 QC Summary</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">QC Status</span>
+              <span id="detailQcStatus"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Quality Checker</span>
+              <span id="detailQualityChecker" class="text-sm text-slate-800 font-medium"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Date Checked</span>
+              <span id="detailDateChecked" class="text-sm text-slate-800 font-medium"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Location</span>
+              <span id="detailLocation" class="text-sm text-slate-800 font-medium"></span>
+            </div>
+          </div>
+          <div class="border-t border-slate-100 mt-4 pt-4">
+            <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Remarks</p>
+            <p id="detailRemarks" class="text-sm text-slate-700 whitespace-pre-wrap"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QC Edit view -->
+  <div id="editView" class="hidden w-full px-4 sm:px-6 py-5">
+
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+      <div class="flex items-center gap-2 font-semibold text-slate-600">
+        <span>HC Systems</span><span class="text-slate-300">/</span><span>Edit QC Report</span>
+      </div>
+      <div class="lang-switch" data-i18n-skip>
+          <button type="button" data-lang-btn="en" class="lang-seg">EN</button>
+          <button type="button" data-lang-btn="tl" class="lang-seg">TL</button>
+        </div>
+    </div>
+
+    <!-- CHANGED 2026-08-26, per user report (screenshot) — form sat left-aligned
+         inside the full page width instead of centered, and Timeline History/
+         Internal Conversation were stacked full-width at the very bottom instead
+         of living in a sidebar like SO/PreOrderReport/ReadinessGate's own detail
+         views. Widened to max-w-6xl (was max-w-4xl, too narrow to also host a
+         sidebar) + mx-auto to center, and split into the same
+         lg:grid-cols-3 (col-span-2 form / col-span-1 sidebar) layout those 3
+         widgets already use. -->
+    <div class="max-w-6xl mx-auto">
+      <div class="flex items-center justify-between mb-4">
+        <button id="cancelEditBtn" class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">
+          ← Cancel
+        </button>
+        <button id="saveEditBtn" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">
+          Save Changes
+        </button>
+      </div>
+
+      <h2 id="editTitle" class="text-lg font-bold text-slate-900 mb-4"></h2>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">SO #<input id="f_SO" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">PAC #<input id="f_PAC" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">PR #<input id="f_PR" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">RR #<input id="f_RR" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Demo #<input id="f_Demo" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Order Type<input id="f_Order_Type" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Delivery Type<input id="f_Delivery_Type" class="field-input mt-1" readonly></label>
+          </div>
+        </div>
+
+        <!-- HIDDEN 2026-10-29, per user ("hide mo lang ito", pointing at this card in
+             the Edit QC Report form) — the Customer Details card is no longer shown to
+             the quality checker. The three inputs are deliberately KEPT IN THE DOM (just
+             hidden) rather than deleted, because populateEditForm() fills them and
+             saveEditForm() reads them straight back into the updateRecords payload — so
+             the record's existing Customer Name/Type/Address round-trip untouched on
+             every save. Removing the inputs would make those reads throw. They were
+             already `readonly` since 2026-09-03 ("bawal na dapat iedit ito"), so nothing
+             here was editable to begin with. -->
+        <div class="hidden bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">Customer Name<input id="f_Customer_Name" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Customer Type<input id="f_Customer_Type" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Customer Address<input id="f_Customer_Address" class="field-input mt-1" readonly></label>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <label class="text-xs text-slate-500">Item Name<input id="f_Item_Name" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">SKU<input id="f_SKU" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Quantity<input id="f_Quantity" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Bin Location<input id="f_Bin_Location" class="field-input mt-1" readonly></label>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🔍 QC Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">Date Checked<span class="field-required-mark">*</span><input id="f_Date_Checked" type="date" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Quality Checker<input id="f_Quality_Checker" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Location<span class="field-required-mark">*</span>
+              <select id="f_Location" class="field-input mt-1">
+                <option value="">— Select —</option>
+                <option value="WH Banawe">WH Banawe</option>
+                <option value="WH Baesa">WH Baesa</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">✅ QC Checklist</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Fixture Body Checklist</p>
+              <div id="g_Fixture_Body_Checklist"></div>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Checklist</p>
+              <div id="g_LED_Checklist"></div>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Uniformity</p>
+              <div id="g_Uniformity"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">💡 Bulb &amp; Color Specs</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Type of Bulb</p>
+              <div id="g_Type_of_Bulb" class="max-h-40 overflow-y-auto pr-1"></div>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Color Temperature</p>
+              <div id="g_Color_Temperature" class="max-h-40 overflow-y-auto pr-1"></div>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Lighting Feature</p>
+              <div id="g_Lighting_Feature" class="max-h-40 overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🛠️ Damage Assessment</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <label class="text-xs text-slate-500">Item to Replace
+              <select id="f_Item_to_Replace" class="field-input mt-1">
+                <option value="">— Select —</option>
+                <option value="Whole Fixture">Whole Fixture</option>
+                <option value="Spare Parts">Spare Parts</option>
+                <option value="No damage">No damage</option>
+              </select>
+            </label>
+            <label class="text-xs text-slate-500">Quantity of Damage Items<input id="f_Quantity_of_Damage_Items" class="field-input mt-1"></label>
+          </div>
+
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Spare Part Type</p>
+            <button id="addSparePartBtn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition">+ Add row</button>
+          </div>
+          <div id="sparePartsRows" class="space-y-2"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📎 Documentation</h3>
+          <!-- ADDED 2026-08-03, per user ("yes" to porting the rich preview into Edit
+               mode) — same renderDocumentation() the old read-only detail view used,
+               now callable against any container (see that function's own updated
+               signature). Shows what's ALREADY attached before the user picks new
+               files below; click-to-enlarge/fullscreen all work identically. -->
+          <div id="editDocumentationPreview" class="mb-4"></div>
+          <label class="text-xs text-slate-500 block mb-4">Remarks
+            <textarea id="f_Remarks" rows="4" class="field-input mt-1 resize-none"></textarea>
+          </label>
+
+          <div class="mb-4">
+            <p class="text-xs text-slate-500 mb-1">Images (JPG, JPEG, PNG · max 10MB each)</p>
+            <p id="imageStatusNote" class="text-[11px] text-slate-400 mb-1.5"></p>
+            <input id="f_Images" type="file" accept="image/jpeg,image/png" multiple class="field-input text-xs">
+            <p class="text-[11px] text-slate-400 mt-1">Selected files are added to the existing images — they don't replace them.</p>
+          </div>
+
+          <div>
+            <p class="text-xs text-slate-500 mb-1">Video (max 50MB)</p>
+            <p id="videoStatusNote" class="text-[11px] text-slate-400 mb-1.5"></p>
+            <input id="f_Video" type="file" accept="video/*" class="field-input text-xs">
+            <p class="text-[11px] text-slate-400 mt-1">Uploading a new video replaces the existing one.</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-2">✍️ Signature</h3>
+          <p id="signatureStatusNote" class="text-xs text-slate-400 mb-2"></p>
+          <div class="border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+            <canvas id="signatureCanvas" class="w-full touch-none cursor-crosshair block" height="160"></canvas>
+          </div>
+          <div class="flex items-center justify-between mt-2">
+            <p class="text-[11px] text-slate-400">Draw a new signature to replace the existing one. Leave blank to keep it unchanged.</p>
+            <button id="clearSignatureBtn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition">Clear</button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🔍 QC Status</h3>
+          <div class="flex items-center gap-6">
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input type="radio" name="qcStatus" id="f_QC_Status_Approved" value="Approved"> Approved
+            </label>
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input type="radio" name="qcStatus" id="f_QC_Status_Rejected" value="Rejected"> Rejected
+            </label>
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input type="radio" name="qcStatus" id="f_QC_Status_None" value=""> Pending
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Timeline History + Internal Conversation — added 2026-08-26, same
+           shared SOF_Timeline/SOF_Internal_Messages forms as SO/PreOrderReport/
+           ReadinessGate, sourceLabel-tagged "QC Checklist". Threaded by this
+           record's own Creator ID (Checker_Checklist row), same reasoning as
+           the other 3 widgets: SO/PAC/PR can repeat or be blank, record ID
+           never is. Moved into this right-side column 2026-08-26 (was stacked
+           full-width at the bottom) to match those widgets' own sidebar
+           layout — own card chrome, no wrapping div, not sticky (unlike
+           SO/ReadinessGate's sidebar, there's no summary card above it here
+           to anchor a sticky position to). -->
+      <!-- data-i18n-skip: Timeline History and Internal Conversation hold
+           staff-typed text. The EN/TL walker must never rewrite a note that
+           happens to read "Approved". -->
+      <div class="lg:col-span-1 space-y-4" data-i18n-skip>
+        <div id="tlhcMount"></div>
+        <div id="incMount"></div>
+      </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pb-8 mt-4">
+        <button id="cancelEditBtn2" class="text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-4 py-2 transition">Cancel</button>
+        <button id="saveEditBtn2" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+  <!-- Image lightbox — click a thumbnail/signature to zoom, with a download button -->
+  <div id="lightboxOverlay" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-8 bg-slate-900/85">
+    <button id="lightboxDownloadBtn" class="absolute top-4 right-16 h-9 px-4 rounded-full bg-white/15 hover:bg-white/25 text-white text-sm font-medium flex items-center gap-1.5 transition">⬇ Download</button>
+    <button id="lightboxCloseBtn" class="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-lg transition">✕</button>
+    <img id="lightboxImg" class="max-w-full max-h-full rounded-lg shadow-lg bg-white p-2" alt="">
+  </div>
+
+  <!-- Video lightbox — ported 2026-07-27 from UI/FF Widget/ExceptionControl, per
+       user request. Real browser Fullscreen API (video.requestFullscreen()) is
+       blocked in this widget's iframe (Permissions Policy — confirmed via MDN's
+       own docs, the PARENT page's <iframe> needs an allow="fullscreen" attribute
+       or a Permissions-Policy header, which is Zoho's own embedding, not
+       something a widget can request). This reuses the SAME position:fixed
+       full-viewport overlay mechanism the image lightbox above already uses
+       successfully, instead of the OS-level API — reparents the real <video>
+       element into the overlay on open (no reload) and back on close. -->
+  <div id="videoLightboxOverlay" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-8 bg-slate-900/85">
+    <button id="videoLightboxCloseBtn" class="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-lg transition">✕</button>
+    <div id="videoLightboxSlot" class="max-w-full max-h-full"></div>
+  </div>
+
+  <!-- Split Approve/Reject qty modal — 2026-07-29, per user: when a line's Quantity
+       is more than 1, ask how many of the qty are approved vs rejected before saving,
+       instead of blindly sending the whole qty down whichever single branch the radio
+       picked. Qty==1 skips this entirely (handled in saveEditForm). -->
+  <div id="splitQtyModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+      <h3 class="text-sm font-bold text-slate-800 mb-1">Split this item's quantity?</h3>
+      <!-- Each sentence sits in its own <span> so the EN/TL walker sees it as a
+           whole text node — "… Quantity of 5. Enter how many …" as one node would
+           never match a dictionary key. -->
+      <p class="text-xs text-slate-500 mb-4"><span>This line has a Quantity of</span> <span id="splitQtyTotal" class="font-semibold text-slate-700">0</span>. <span>Enter how many units are Approved and how many are Rejected.</span></p>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="text-xs text-slate-500">Approved Qty
+          <input id="splitApprovedQty" type="number" min="0" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
+        </label>
+        <label class="text-xs text-slate-500">Rejected Qty
+          <input id="splitRejectedQty" type="number" min="0" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+        </label>
+      </div>
+      <p id="splitQtyError" class="hidden text-xs text-rose-600 mt-2"></p>
+      <div class="flex items-center justify-end gap-2 mt-5">
+        <button id="splitQtyCancelBtn" class="text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-4 py-2 transition">Cancel</button>
+        <button id="splitQtyConfirmBtn" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">OK</button>
+      </div>
+    </div>
+  </div>
+
+<div id="notifMount"></div>
+<script src="notification_component/notification.js"></script>
+<script src="timeline_history_component/timeline-history.js"></script>
+<script src="internal-notes_component/internal-notes.js"></script>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // CONFIG
+  // ---------------------------------------------------------------------
+  const CONFIG = {
+    APP_NAME: "supply-chain-app",
+    REPORT_NAME: "All_Qc_Reports1",
+    MAX_RECORDS: 1000,   // JS API v2 single-call ceiling; add cursor pagination if this app ever exceeds it
+    // ADDED 2026-10-29, per user ("tanggalin na natin yung pack... sa qc dun na
+    // mamimili ng packer") — the Pack stage is gone from the pipeline; Pick1
+    // "Marked" now creates this QC record directly (pick1_to_qc_sync.txt), with
+    // Quality_Checker deliberately left blank. The packer is chosen HERE, in the
+    // list, and that choice is what unlocks the QC button on each row. Same name
+    // list as the retired Pack widget's Assign_Packer picklist, kept in sync with
+    // the old Pack form's "others option = true" behavior via the "Other…" entry.
+    PACKER_OPTIONS: ["Kurt", "Pual", "Edmon", "Petz", "Jonrey", "Rio", "Jayvon", "Jonard", "Jazz", "Hendell"],
+    // ADDED 2026-07-27, per user ("can we just use Exception_Control_Media") —
+    // Photos/Video no longer travel to Exception_Control1 via native Deluge field
+    // copy (checker_checklist_qc_sync.txt's Rejected branch had that removed same
+    // day — update-task can't take a file-field value, and it would've only ever
+    // populated on first-insert anyway). Instead this widget uploads directly into
+    // this separate plain form, one record per file, correlated by an "SO|SKU|PAC"
+    // composite string stored in that form's own Record_ID field (not a real
+    // record ID — repurposed). MEDIA_REPORT is an educated guess following this
+    // app's own `<FormName>_Report` convention, NOT independently confirmed —
+    // check Design → Exception_Control_Media → its report's Link Name if uploads
+    // silently fail.
+    MEDIA_FORM: "Exception_Control_Media",
+    MEDIA_REPORT: "Exception_Control_Media_Report",
+  };
+
+  // Notification bell — same pattern as UI/FF Widget/SO/PreOrderReport/
+  // ReadinessGate, its own isolated report (QC_Notifications_Report). Real page
+  // link name confirmed by user 2026-08-03: Quality_Check — same page
+  // checkDeepLinkOpenQc() already deep-links into via the existing `qcRecordId`
+  // query param, no new param/page needed here, just the bell itself.
+  let CURRENT_USER_EMAIL = "";
+  let ZC_ENV = "development";
+
+  const PALETTE = {
+    amber:   { border: "border-amber-400",   text: "text-amber-600",   badgeBg: "bg-amber-50",   badgeText: "text-amber-700",   badgeBorder: "border-amber-200",   dot: "bg-amber-500" },
+    emerald: { border: "border-emerald-400", text: "text-emerald-600", badgeBg: "bg-emerald-50", badgeText: "text-emerald-700", badgeBorder: "border-emerald-200", dot: "bg-emerald-500" },
+    blue:    { border: "border-blue-400",    text: "text-blue-600",    badgeBg: "bg-blue-50",    badgeText: "text-blue-700",    badgeBorder: "border-blue-200",    dot: "bg-blue-500" },
+    rose:    { border: "border-rose-400",    text: "text-rose-600",    badgeBg: "bg-rose-50",    badgeText: "text-rose-700",    badgeBorder: "border-rose-200",    dot: "bg-rose-500" },
+    slate:   { border: "border-slate-300",   text: "text-slate-500",   badgeBg: "bg-slate-50",   badgeText: "text-slate-500",   badgeBorder: "border-slate-200",   dot: "bg-slate-400" },
+  };
+
+  const QC_STATUS_COLOR = { "Approved": "emerald", "Rejected": "rose" };
+
+  /* REVERTED 2026-07-27 — a same-day widget-JS build of QC_Status=Approved/
+     Rejected routing (Order Aggregation / Crate / Exception Control hand-off)
+     was fully removed here after discovering a real, ALREADY-EXISTING native
+     Deluge workflow on Checker_Checklist ("Quality Check", Created or Edited >
+     Successful form submission) that does this exact job — and does it more
+     completely (matches by Sales_Order+SKU+PAC rather than the Exception_
+     Number link this widget's own version invented, and also handles a branch
+     this version never built at all: Approved+For_Crate -> Crate_Checklist,
+     vs Approved+not-For_Crate -> Order_Aggregation1). Confirmed live: a stray
+     Exception_Control1 record turned up stamped Source_Module="Checker_
+     Checklist (QC Rejected)" — a value this widget's own JS never wrote —
+     proving the native workflow was firing independently and racing with this
+     code (native form-event workflows DO fire on API-driven saves, unlike a
+     cross-form Deluge `insert into`, which is why it fired at all even though
+     changes only ever came through this widget's own updateRecords calls).
+     Per user's explicit choice, the NATIVE workflow stays enabled and is now
+     the sole source of truth for Approved/Rejected routing — this widget goes
+     back to being pure view/edit of the checklist itself, no side-effect
+     writes to other forms. The `Exception_Number` field added to Checker_
+     Checklist for this now-removed logic is unused going forward (left in
+     place, matches this app's own convention — the native workflow never
+     references it, it matches by SO+SKU+PAC instead). */
+
+  /* =====================================================================
+     LANGUAGE TOGGLE (EN / TL) — ADDED 2026-11-05, per user ("pwede mong
+     lagyan ng Toggle na tagalog and english? dito sa QC. pero ang tagalog
+     wag masyadong malalim").
+
+     HOW IT WORKS, and why it is built this way:
+
+     This widget's chrome was authored in English; its QC checklist VALUES
+     were authored in Tagalog (they are the real option strings stored on
+     Checker_Checklist's LED_Checklist / Uniformity / Fixture_Body_Checklist
+     fields). So translation has to run in BOTH directions depending on which
+     string you are looking at. I18N_PAIRS is therefore a flat [en, tl] list
+     and both maps are built from it:
+
+         TO_TL[en] = tl     TO_EN[tl] = en
+
+     and t() just picks the map for the active language. A string already in
+     the target language simply misses its map and passes through unchanged,
+     so the same t() is correct for an English-authored label AND for a
+     Tagalog-authored checklist item.
+
+     NOTHING HERE TOUCHES SAVED DATA. The checkbox <input value=""> keeps the
+     canonical Tagalog string; only the <span> label beside it is swapped. The
+     payload readCheckboxGroup() sends is byte-identical in either language.
+
+     Instead of tagging ~200 elements with data-i18n, applyI18n() walks the
+     live text nodes and remembers each node's FIRST-SEEN text as its baseline
+     (I18N_BASE). Every later pass translates from that baseline, never from
+     the current text — so toggling back and forth can't compound. A
+     MutationObserver re-runs it after every render (table rows, detail panes,
+     spare-part rows, toasts), which is why none of the render functions had
+     to learn about language at all.
+
+     Deliberately NOT translated:
+       - #tlhcMount / #incMount (Timeline History + Internal Conversation).
+         Those hold staff-typed message text; a note that happens to read
+         "Approved" must not be rewritten. Marked data-i18n-skip.
+       - Forecast pill statuses ("On Track", "At Risk", …). They are rendered
+         as "<date> · <status>" inside ONE text node, so a whole-node key
+         can't match, and they mirror a stored Forecast_Status value anyway.
+       - Data: names, SO/PAC/SKU, customer text.
+     ===================================================================== */
+  const I18N_PAIRS = [
+    // ---- list view ----
+    ["Latest Activity First", "Pinakabago Muna"],
+    ["Pending", "Hindi pa Check"],
+    ["Approved", "Pasado"],
+    ["Rejected", "Bagsak"],
+    ["With Damage", "May Sira"],
+    ["not yet reviewed", "hindi pa na-check"],
+    ["passed QC", "pasado sa QC"],
+    ["failed QC", "bagsak sa QC"],
+    ["flagged for replacement", "papalitan"],
+    ["QC Report List", "Listahan ng QC Report"],
+    ["🔁 Recheck Only", "🔁 Recheck Lang"],
+    ["Search SO#, PAC#, checker, SKU…", "Hanapin ang SO#, PAC#, checker, SKU…"],
+    ["Next Step", "Susunod na Gagawin"],
+    ["Item Name", "Pangalan ng Item"],
+    ["Qty", "Dami"],
+    ["Date Checked", "Petsa ng Check"],
+    ["Order Type", "Uri ng Order"],
+    ["Added Time", "Petsa Nadagdag"],
+    ["Action", "Aksyon"],
+    ["Total Count:", "Kabuuang Bilang:"],
+    ["No records found", "Walang nakitang record"],
+    ["— Unassigned —", "— Walang Nakatalaga —"],
+    ["Other…", "Iba pa…"],
+    ["Type a name…", "Mag-type ng pangalan…"],
+    ["Assign a packer first", "Pumili muna ng packer"],
+    ["Open the Quality Check form", "Buksan ang Quality Check form"],
+    ["Assign a packer first.", "Pumili muna ng packer."],
+
+    // ---- detail view ----
+    ["QC Report Detail", "Detalye ng QC Report"],
+    ["← Back to QC Dashboard", "← Balik sa QC Dashboard"],
+    ["✏️ Edit", "✏️ I-edit"],
+    ["📄 Sales Order Details", "📄 Detalye ng Sales Order"],
+    ["👤 Customer Details", "👤 Detalye ng Customer"],
+    ["🧾 Item Details", "🧾 Detalye ng Item"],
+    ["💡 Bulb & Color Specs", "💡 Bulb at Kulay"],
+    ["🛠️ Damage Assessment", "🛠️ Tingin sa Sira"],
+    ["📎 Documentation", "📎 Mga Dokumento"],
+    ["🔍 QC Summary", "🔍 Buod ng QC"],
+    ["🔍 QC Details", "🔍 Detalye ng QC"],
+    ["✍️ Signature", "✍️ Pirma"],
+    ["Location", "Lokasyon"],
+    ["Loading…", "Naglo-load…"],
+    ["Customer Name", "Pangalan ng Customer"],
+    ["Customer Type", "Uri ng Customer"],
+    ["Customer Address", "Address ng Customer"],
+    ["Delivery Type", "Uri ng Delivery"],
+    ["Split", "Hati"],
+    ["Fixture Body Checklist", "Checklist ng Katawan"],
+    ["Uniformity", "Pagkakapareho"],
+    ["No checklist items recorded.", "Walang naitalang checklist."],
+    ["Type of Bulb", "Uri ng Bulb"],
+    ["Color Temperature", "Kulay ng Ilaw"],
+    // Tri-color lives here, not under Color Temperature — it is a lighting
+    // feature, not a temperature. The option value "Tri-color" itself stays
+    // as-is in both languages; only the group label is translated.
+    ["Lighting Feature", "Feature ng Ilaw"],
+    ["Item to Replace", "Papalitang Item"],
+    ["Quantity of Damage Items", "Dami ng Sirang Item"],
+    ["No spare parts logged.", "Walang naitalang spare parts."],
+    ["Images", "Mga Larawan"],
+    ["Signature", "Pirma"],
+    ["Not signed", "Walang pirma"],
+    ["Preview unavailable", "Walang preview"],
+    ["Preview unavailable.", "Walang preview."],
+    ["Loading preview…", "Nilo-load ang preview…"],
+    ["⬇ Download", "⬇ I-download"],
+    ["1 attached", "1 naka-attach"],
+    ["Recheck", "Recheck"],
+    ["was", "dati"],
+
+    // ---- edit view ----
+    ["Edit QC Report", "I-edit ang QC Report"],
+    ["← Cancel", "← Kanselahin"],
+    ["Cancel", "Kanselahin"],
+    ["Save Changes", "I-save"],
+    ["Quantity", "Dami"],
+    ["— Select —", "— Pumili —"],
+    ["Whole Fixture", "Buong Fixture"],
+    ["No damage", "Walang sira"],
+    ["Spare Part Type", "Uri ng Spare Part"],
+    ["+ Add row", "+ Dagdag"],
+    ["Remove", "Alisin"],
+    ["Specify part", "Anong parte"],
+    ["Others", "Iba pa"],
+    ["Images (JPG, JPEG, PNG · max 10MB each)", "Mga Larawan (JPG, JPEG, PNG · max 10MB bawat isa)"],
+    ["Selected files are added to the existing images — they don't replace them.",
+     "Idadagdag lang ang mga napiling file sa mga lumang larawan — hindi papalitan."],
+    ["Uploading a new video replaces the existing one.", "Papalitan ng bagong video ang luma."],
+    ["Draw a new signature to replace the existing one. Leave blank to keep it unchanged.",
+     "Gumuhit ng bagong pirma para palitan ang luma. Iwanang blangko kung walang babaguhin."],
+    ["Clear", "Burahin"],
+
+    // ---- split-qty modal ----
+    ["Split this item's quantity?", "Hatiin ang dami ng item na ito?"],
+    ["This line has a Quantity of", "Ang item na ito ay may dami na"],
+    ["Enter how many units are Approved and how many are Rejected.",
+     "Ilagay kung ilan ang pasado at ilan ang bagsak."],
+    ["Approved Qty", "Dami ng Pasado"],
+    ["Rejected Qty", "Dami ng Bagsak"],
+
+    // ---- Next Step ----
+    ["Next:", "Susunod:"],
+    ["Waiting on:", "Hinihintay:"],
+    ["You are here", "Nandito ka"],
+    ["Next step", "Susunod na gagawin"],
+    ["Waiting on", "Hinihintay"],
+    ["QC Approved", "Pasado sa QC"],
+    ["QC Rejected", "Bagsak sa QC"],
+    ["Moved to Crate / Order Aggregation", "Pumunta na sa Crate / Order Aggregation"],
+    ["Sent to Exception Control", "Ipinadala sa Exception Control"],
+    ["Assign a packer", "Pumili ng packer"],
+    ["Pack the item, then open QC and Approve or Reject",
+     "I-pack ang item, tapos buksan ang QC at i-Approve o i-Reject"],
+
+    // ---- toasts ----
+    ["Date Checked and Location are required.", "Kailangan ang Petsa ng Check at Lokasyon."],
+    ["QC report saved.", "Na-save ang QC report."],
+    ["Couldn't save changes.", "Hindi na-save ang mga pagbabago."],
+    ["Couldn't update packer.", "Hindi na-update ang packer."],
+    ["Packer cleared.", "Nabura ang packer."],
+    ["Downloaded.", "Na-download."],
+    ["Couldn't download.", "Hindi na-download."],
+    ["Failed to load records from Zoho Creator.", "Hindi na-load ang mga record mula sa Zoho Creator."],
+    ["This widget must be opened inside Zoho Creator to load data.",
+     "Kailangang buksan ang widget na ito sa loob ng Zoho Creator para mag-load ng data."],
+    ["Assigned to {name}.", "Naitalaga kay {name}."],
+    ["Saved, but failed to upload: {list}.", "Na-save, pero hindi na-upload: {list}."],
+    ["Quantity of Damage Items can't exceed the record's Quantity ({n}).",
+     "Hindi pwedeng lumampas ang Dami ng Sirang Item sa Dami ng record ({n})."],
+    ["Approved + Rejected can't exceed {n}.", "Hindi pwedeng lumampas sa {n} ang Pasado + Bagsak."],
+    ["Quantity ({a}) cannot exceed the record's original Quantity ({b}).",
+     "Hindi pwedeng lumampas ang Dami ({a}) sa orihinal na Dami ng record ({b})."],
+
+    // ---- QC checklist option values (Tagalog is the STORED string; English
+    //      here is display-only, see the note at the top of this block) ----
+    ["Glass is clear, no bubbles or stains", "Ang glass ay malinaw, walang bubbles o mantsa"],
+    ["Color and paint are correct", "Ang kulay at pintura ay tama"],
+    ["Screws, base and other light parts are complete (assembled)",
+     "Kompleto ang mga turnilyo, base at iba pang parte ng ilaw (buuhin)"],
+    ["No dents, scratches, cracks or breaks", "Walang yupi, gasgas, bitak o basag"],
+    ["Lights do not flicker and are not grounded",
+     "Hindi kumukurap at hindi grounded ang mga ilaw"],
+    ["Bulb does not overheat", "Hindi sobrang mainit ang bulb"],
+    ["Wire has no damage or cuts", "Walang sira o hiwa ang wire"],
+    ["With multiple lights, the light and wire colour must match",
+     "Kapag marami ang ilaw dapat pare-parehas ang kulay ng ilaw at wire"],
+    ["With multiple lights, the shape must match",
+     "Kapag marami ang ilaw dapat pare-parehas ang hugis"],
+    ["With multiple lights, the size must match",
+     "Kapag marami ang ilaw dapat pare-parehas ang sukat"],
+  ];
+
+  const TO_TL = Object.create(null);
+  const TO_EN = Object.create(null);
+  I18N_PAIRS.forEach(([en, tl]) => {
+    if (en === tl) return;
+    if (!(en in TO_TL)) TO_TL[en] = tl;
+    if (!(tl in TO_EN)) TO_EN[tl] = en;
+  });
+
+  const I18N_LANG_KEY = "qcChecklistLang";
+  let QC_LANG = "en";
+  try {
+    const stored = localStorage.getItem(I18N_LANG_KEY);
+    if (stored === "en" || stored === "tl") QC_LANG = stored;
+  } catch (e) { /* private mode / blocked storage — stay on the default */ }
+
+  // Translate one whole string. Safe in either direction: a string already in
+  // the active language misses its map and comes back untouched.
+  function t(s) {
+    const key = String(s == null ? "" : s);
+    const hit = (QC_LANG === "tl" ? TO_TL : TO_EN)[key];
+    return hit === undefined ? key : hit;
+  }
+
+  const I18N_BASE = new WeakMap();
+  let i18nApplying = false;
+  let i18nQueued = false;
+
+  function i18nCollectTextNodes() {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        const tag = parent.nodeName;
+        if (tag === "SCRIPT" || tag === "STYLE" || tag === "TEXTAREA") return NodeFilter.FILTER_REJECT;
+        if (parent.closest("[data-i18n-skip]")) return NodeFilter.FILTER_REJECT;
+        return (node.nodeValue && node.nodeValue.trim()) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      },
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    return nodes;
+  }
+
+  function i18nAttr(el, attr) {
+    const store = el.__i18nAttrBase || (el.__i18nAttrBase = Object.create(null));
+    if (!(attr in store)) store[attr] = el.getAttribute(attr) || "";
+    const base = store[attr];
+    if (!base) return;
+    const next = t(base);
+    if (el.getAttribute(attr) !== next) el.setAttribute(attr, next);
+  }
+
+  function applyI18n() {
+    if (i18nApplying) return;
+    i18nApplying = true;
+    try {
+      i18nCollectTextNodes().forEach((node) => {
+        let base = I18N_BASE.get(node);
+        if (base === undefined) { base = node.nodeValue; I18N_BASE.set(node, base); }
+        const key = base.trim();
+        const hit = t(key);
+        // Rebuild from the BASELINE, keeping its original surrounding
+        // whitespace — markup like "<span>0</span> Pending" must stay spaced.
+        const next = (hit === key) ? base : base.replace(key, hit);
+        if (node.nodeValue !== next) node.nodeValue = next;
+      });
+
+      document.querySelectorAll("[placeholder]").forEach((el) => i18nAttr(el, "placeholder"));
+      document.querySelectorAll("[title]").forEach((el) => {
+        if (el.closest("[data-i18n-skip]")) return;
+        i18nAttr(el, "title");
+      });
+
+      document.documentElement.lang = (QC_LANG === "tl") ? "fil" : "en";
+      document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+        const on = btn.getAttribute("data-lang-btn") === QC_LANG;
+        btn.className = on ? "lang-seg lang-seg-on" : "lang-seg";
+      });
+    } finally {
+      i18nApplying = false;
+    }
+  }
+
+  function scheduleI18n() {
+    if (i18nApplying || i18nQueued) return;
+    i18nQueued = true;
+    // setTimeout, not requestAnimationFrame: a Creator widget iframe can be
+    // throttled or offscreen, and rAF simply never fires there.
+    setTimeout(() => { i18nQueued = false; applyI18n(); }, 0);
+  }
+
+  // Every render in this widget is an innerHTML swap, so one observer covers
+  // the table, the detail pane, the edit form, spare-part rows and toasts
+  // without any render function needing to know about language.
+  new MutationObserver(scheduleI18n).observe(document.body, {
+    childList: true, subtree: true, characterData: true,
+  });
+
+  document.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-lang-btn]");
+    if (!btn) return;
+    const next = btn.getAttribute("data-lang-btn");
+    if (next === QC_LANG) return;
+    QC_LANG = next;
+    try { localStorage.setItem(I18N_LANG_KEY, QC_LANG); } catch (e) { /* ignore */ }
+    applyI18n();
+  });
+
+  applyI18n();
+
+  // Edit-form option lists — mirror the form's picklist/checkbox values exactly.
+  const FIXTURE_BODY_OPTIONS = [
+    "Ang glass ay malinaw, walang bubbles o mantsa",
+    "Ang kulay at pintura ay tama",
+    "Kompleto ang mga turnilyo, base at iba pang parte ng ilaw (buuhin)",
+    "Walang yupi, gasgas, bitak o basag",
+  ];
+  const LED_OPTIONS = [
+    "Hindi kumukurap at hindi grounded ang mga ilaw",
+    "Hindi sobrang mainit ang bulb",
+    "Walang sira o hiwa ang wire",
+  ];
+  const UNIFORMITY_OPTIONS = [
+    "Kapag marami ang ilaw dapat pare-parehas ang kulay ng ilaw at wire",
+    "Kapag marami ang ilaw dapat pare-parehas ang hugis",
+    "Kapag marami ang ilaw dapat pare-parehas ang sukat",
+  ];
+  const BULB_TYPE_OPTIONS = [
+    "A60 - E27","LED Strip","A60 - E27 Dimmable","c35 - L E14","c35 - L E14 Dimmable",
+    "Corn type E14","Corn type E14 Dimmable","Corn type E27","Corn type E27 Dimmable",
+    "E14-Candle","G4","G4 Dimmable","G4 Jelly","G9","G-95","G9 Dimmable","G45 - E27",
+    "G45 - E27 Dimmable","G80 - E27","G125 - E27","GU10","GU10 Dimmable","ST64",
+  ];
+  const KELVIN_OPTIONS = ["2700K","3000K","3500K","4000K","4500K","5000K","6000K","6500K"];
+  const COLOR_TEMP_OPTIONS = [
+    "Warm (2700K)",
+    "Warm (3000K)",
+    "Neutral (3500K)",
+    "Neutral (4000K)",
+    "Daylight (4500K)",
+    "Daylight (5000K)",
+    "Cool (6000K)",
+    "Cool (6500K)",
+  ];
+  const LIGHTING_FEATURE_OPTIONS = ["Tri-color"];
+  const SPARE_PART_TYPE_OPTIONS = ["Shade","Base","Glass","Others"];
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  let allRecords = [];
+  let orderedRows = [];
+  let currentEditRecord = null;
+  let sparePartRowCount = 0;
+  let signatureDirty = false;
+  let signatureDrawing = false;
+  let signatureLastPoint = null;
+  // ADDED 2026-09-03 — clickable stat cards (see renderStats()/matchesStat()
+  // below): which card, if any, the list is currently filtered to. null = no filter.
+  let statFilter = null;
+
+  const tableBody = document.getElementById("tableBody");
+  const statCards = document.getElementById("statCards");
+  const searchInput = document.getElementById("searchInput");
+
+  // ---------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------
+  function displayVal(v) {
+    if (v === null || v === undefined || v === "" || v === "null") return "—";
+    if (typeof v === "object" && !Array.isArray(v)) return v.zc_display_value || v.display_value || v.ID || "—";
+    return String(v);
+  }
+
+  function isBlank(v) {
+    return v === null || v === undefined || v === "" || v === "null" || (Array.isArray(v) && v.length === 0);
+  }
+
+  // Checkbox-group / multi-select "list" fields can come back as an array,
+  // a comma-separated string, or a single string depending on field type —
+  // normalize to an array of non-empty strings either way.
+  function toArray(v) {
+    if (v === null || v === undefined || v === "") return [];
+    if (Array.isArray(v)) return v.map((x) => (typeof x === "object" ? displayVal(x) : String(x))).filter(Boolean);
+    if (typeof v === "string") return v.split(",").map((s) => s.trim()).filter(Boolean);
+    return [String(v)];
+  }
+
+  function parseZohoDateTime(str) {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const mon = months[m[2]];
+      if (mon !== undefined) {
+        return new Date(+m[3], mon, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+      }
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  }
+
+  function formatDate(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function formatDateTime(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${datePart} ${timePart}`;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  function badgePill(text, colorKey) {
+    const p = PALETTE[colorKey] || PALETTE.slate;
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${p.badgeBg} ${p.badgeText} ${p.badgeBorder}">
+      <span class="h-1.5 w-1.5 rounded-full ${p.dot}"></span>${escapeHtml(text)}
+    </span>`;
+  }
+
+  // Messages arrive here already in the active language when the call site
+  // interpolates a value (it calls t() itself to get the right template); this
+  // second t() covers every plain literal call and is a no-op on the rest.
+  function toast(message, type) {
+    message = t(message);
+    const container = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    const styles = { success: "bg-slate-900 text-white", error: "bg-rose-600 text-white" };
+    el.className = `px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${styles[type] || styles.success}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  // ---------------------------------------------------------------------
+  // Edit-form helpers
+  // ---------------------------------------------------------------------
+  function textVal(v) {
+    if (v === null || v === undefined || v === "null") return "";
+    return String(v);
+  }
+
+  // Zoho date fields come back as "YYYY-MM-DD" (v2.1) or "DD-MMM-YYYY" (older) — <input type="date"> needs YYYY-MM-DD.
+  function toDateInputValue(str) {
+    if (!str) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const m = String(str).match(/^(\d{2})-(\w{3})-(\d{4})/);
+    if (m) {
+      const months = { Jan:"01",Feb:"02",Mar:"03",Apr:"04",May:"05",Jun:"06",Jul:"07",Aug:"08",Sep:"09",Oct:"10",Nov:"11",Dec:"12" };
+      const mon = months[m[2]];
+      if (mon) return `${m[3]}-${mon}-${m[1]}`;
+    }
+    return "";
+  }
+
+  function renderCheckboxGroup(containerId, options, checkedValues) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = options.map((opt) => `
+      <label class="checkbox-row">
+        <input type="checkbox" class="mt-0.5" value="${escapeHtml(opt)}" ${checkedValues.includes(opt) ? "checked" : ""}>
+        <span>${escapeHtml(opt)}</span>
+      </label>`).join("");
+  }
+
+  function readCheckboxGroup(containerId) {
+    return Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)).map((el) => el.value);
+  }
+
+  function sparePartRowHtml(rowIndex, selectedTypes, qty, otherText) {
+    // CHANGED 2026-07-27, per user ("make sparepart type can only check one per
+    // row") — matches the native Spare_Part_Type field itself being converted
+    // from a multi-select list to a single-choose dropdown. Radio group (one
+    // per row, name scoped to rowIndex for mutual exclusion) instead of
+    // independent checkboxes. readSpareParts() below needs no change — it
+    // already just collects whatever's :checked, which is naturally 0-or-1 now.
+    // CHANGED 2026-08-08e, per user request ("QC FF doesn't have that Others
+    // option, implement there too") — "Others" reveals a manual-entry textbox,
+    // same pattern as UI/EndUser/Receiving's own toggleSparePartOpt(). All
+    // radios (not just Others) wire onchange, since switching AWAY from Others
+    // to another option must hide+clear the box too.
+    const isOthers = selectedTypes.includes("Others");
+    const checkboxes = SPARE_PART_TYPE_OPTIONS.map((opt) => `
+      <label class="inline-flex items-center gap-1 text-xs text-slate-600 mr-3">
+        <input type="radio" name="spare-part-type-${rowIndex}" class="spare-part-type-cb" value="${escapeHtml(opt)}" ${selectedTypes.includes(opt) ? "checked" : ""}>
+        ${escapeHtml(opt)}
+      </label>`).join("");
+    return `
+      <div class="spare-part-row flex flex-col sm:flex-row sm:items-center gap-2 bg-slate-50 rounded-lg px-3 py-2" data-row="${rowIndex}">
+        <div class="flex-1">${checkboxes}</div>
+        <input type="text" class="spare-part-other-input field-input sm:w-40" placeholder="Specify part" value="${escapeHtml(otherText || "")}" style="display:${isOthers ? "" : "none"}">
+        <input type="text" class="spare-part-qty field-input sm:w-40" placeholder="Quantity" value="${escapeHtml(qty || "")}">
+        <button type="button" class="remove-spare-part-btn text-xs text-rose-600 hover:text-rose-800 shrink-0">Remove</button>
+      </div>`;
+  }
+
+  // ADDED 2026-08-08e — shows/hides + clears this row's own "Specify part"
+  // textbox based on whether its Others radio is the one currently checked.
+  function toggleQcSparePartOther(rowIndex) {
+    const rowEl = document.querySelector(`.spare-part-row[data-row="${rowIndex}"]`);
+    if (!rowEl) return;
+    const otherInput = rowEl.querySelector(".spare-part-other-input");
+    const isOthers = rowEl.querySelector(".spare-part-type-cb:checked")?.value === "Others";
+    otherInput.style.display = isOthers ? "" : "none";
+    if (!isOthers) otherInput.value = "";
+  }
+
+  function addSparePartRow(selectedTypes, qty, otherText) {
+    const rowIndex = sparePartRowCount++;
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = sparePartRowHtml(rowIndex, selectedTypes || [], qty || "", otherText || "");
+    const rowEl = wrapper.firstElementChild;
+    document.getElementById("sparePartsRows").appendChild(rowEl);
+    rowEl.querySelector(".remove-spare-part-btn").addEventListener("click", () => rowEl.remove());
+    // CHANGED 2026-08-08f — was an inline onchange="" attribute, which executes in
+    // GLOBAL scope and can't see this IIFE-local function ("not defined" at runtime,
+    // confirmed live). This widget's own established convention is addEventListener
+    // for every handler, no exceptions — matching it here.
+    rowEl.querySelectorAll(".spare-part-type-cb").forEach((cb) => {
+      cb.addEventListener("change", () => toggleQcSparePartOther(rowIndex));
+    });
+  }
+  document.getElementById("addSparePartBtn").addEventListener("click", () => addSparePartRow([], ""));
+
+  function readSpareParts() {
+    return Array.from(document.querySelectorAll("#sparePartsRows .spare-part-row")).map((rowEl) => {
+      const types = Array.from(rowEl.querySelectorAll(".spare-part-type-cb:checked")).map((el) => el.value);
+      const qty = rowEl.querySelector(".spare-part-qty").value.trim();
+      const otherText = rowEl.querySelector(".spare-part-other-input").value.trim();
+      return { Spare_Part_Type: types, Quantity_of_damage_spare_s: qty, Spare_Part_Type_Other: otherText };
+    }).filter((row) => row.Spare_Part_Type.length || row.Quantity_of_damage_spare_s);
+  }
+
+  // ADDED 2026-08-08f, per user request ("when Item to Replace -> Spare Parts AND
+  // user input qty (not exceeding original qty) - automatically add line item row
+  // of Spare Part Type depending on Quantity of Damage Items") — same "one row per
+  // unit" auto-split convention already established in UI/EndUser/Receiving's own
+  // Damage_Qty handling. Only fires when Item_to_Replace=="Spare Parts"; caps
+  // against the record's own header Quantity field, clamping the input in place
+  // if the officer types over it. Rebuilds sparePartsRows to exactly that many
+  // blank rows (existing picks in those rows are lost — confirmed with the user,
+  // same behavior as Receiving's own auto-split). Wired to onchange (not oninput)
+  // on the qty field specifically so it fires once on blur/Enter, not on every
+  // keystroke — an oninput rebuild would wipe in-progress row picks mid-typing.
+  function onDamageAssessmentChanged() {
+    const itemToReplace = document.getElementById("f_Item_to_Replace").value;
+    if (itemToReplace !== "Spare Parts") return;
+
+    const qtyInput = document.getElementById("f_Quantity_of_Damage_Items");
+    const cap = parseInt(document.getElementById("f_Quantity").value, 10) || 0;
+    let qty = parseInt(qtyInput.value, 10) || 0;
+    if (qty < 0) qty = 0;
+    if (cap > 0 && qty > cap) {
+      qty = cap;
+      qtyInput.value = String(cap);
+      toast(t("Quantity of Damage Items can't exceed the record's Quantity ({n}).").replace("{n}", cap), "error");
+    }
+    if (qty <= 0) return;
+
+    document.getElementById("sparePartsRows").innerHTML = "";
+    sparePartRowCount = 0;
+    for (let i = 0; i < qty; i++) addSparePartRow([], "");
+  }
+  // CHANGED 2026-08-08f — was inline onchange="" attributes on both fields
+  // (global scope, can't see this IIFE-local function — confirmed live "not
+  // defined" error). addEventListener matches this widget's own convention.
+  document.getElementById("f_Item_to_Replace").addEventListener("change", onDamageAssessmentChanged);
+  document.getElementById("f_Quantity_of_Damage_Items").addEventListener("change", onDamageAssessmentChanged);
+
+  // ---------------------------------------------------------------------
+  // Signature pad — draws to a canvas, converted to a File and uploaded via
+  // ZOHO.CREATOR.FILE.uploadFile (separate call from updateRecords; Data API
+  // payloads can't carry file/signature bytes). Only uploads if the user
+  // actually drew something (signatureDirty) — leaves the existing signature
+  // untouched otherwise.
+  // ---------------------------------------------------------------------
+  const signatureCanvas = document.getElementById("signatureCanvas");
+  const signatureCtx = signatureCanvas.getContext("2d");
+
+  function sizeSignatureCanvas() {
+    const rect = signatureCanvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    signatureCanvas.width = rect.width * ratio;
+    signatureCanvas.height = 160 * ratio;
+    signatureCtx.scale(ratio, ratio);
+    signatureCtx.lineWidth = 2;
+    signatureCtx.lineCap = "round";
+    signatureCtx.strokeStyle = "#1e293b";
+  }
+
+  function signaturePoint(ev) {
+    const rect = signatureCanvas.getBoundingClientRect();
+    const touch = ev.touches && ev.touches[0];
+    const clientX = touch ? touch.clientX : ev.clientX;
+    const clientY = touch ? touch.clientY : ev.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  function signatureStart(ev) {
+    ev.preventDefault();
+    signatureDrawing = true;
+    signatureLastPoint = signaturePoint(ev);
+  }
+  function signatureMove(ev) {
+    if (!signatureDrawing) return;
+    ev.preventDefault();
+    const p = signaturePoint(ev);
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(signatureLastPoint.x, signatureLastPoint.y);
+    signatureCtx.lineTo(p.x, p.y);
+    signatureCtx.stroke();
+    signatureLastPoint = p;
+    signatureDirty = true;
+  }
+  function signatureEnd() {
+    signatureDrawing = false;
+    signatureLastPoint = null;
+  }
+
+  signatureCanvas.addEventListener("mousedown", signatureStart);
+  signatureCanvas.addEventListener("mousemove", signatureMove);
+  window.addEventListener("mouseup", signatureEnd);
+  signatureCanvas.addEventListener("touchstart", signatureStart, { passive: false });
+  signatureCanvas.addEventListener("touchmove", signatureMove, { passive: false });
+  signatureCanvas.addEventListener("touchend", signatureEnd);
+
+  function clearSignatureCanvas() {
+    sizeSignatureCanvas();
+    signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    signatureDirty = false;
+  }
+  document.getElementById("clearSignatureBtn").addEventListener("click", clearSignatureCanvas);
+
+  function isSignatureCanvasBlank() {
+    const blank = document.createElement("canvas");
+    blank.width = signatureCanvas.width;
+    blank.height = signatureCanvas.height;
+    return signatureCanvas.toDataURL() === blank.toDataURL();
+  }
+
+  function signatureCanvasToFile() {
+    return new Promise((resolve) => {
+      signatureCanvas.toBlob((blob) => {
+        resolve(blob ? new File([blob], "signature.png", { type: "image/png" }) : null);
+      }, "image/png");
+    });
+  }
+
+  function populateEditForm(r) {
+    document.getElementById("editTitle").textContent = !isBlank(r.SO) ? `Edit QC Report — SO ${r.SO}` : "Edit QC Report";
+
+    document.getElementById("f_SO").value = textVal(r.SO);
+    document.getElementById("f_PAC").value = textVal(r.PAC);
+    document.getElementById("f_PR").value = textVal(r.PR);
+    document.getElementById("f_RR").value = textVal(r.RR);
+    document.getElementById("f_Demo").value = textVal(r.Demo);
+    document.getElementById("f_Order_Type").value = textVal(r.Order_Type);
+    document.getElementById("f_Delivery_Type").value = textVal(r.Delivery_Type);
+
+    document.getElementById("f_Customer_Name").value = textVal(r.Customer_Name);
+    document.getElementById("f_Customer_Type").value = textVal(r.Customer_Type);
+    document.getElementById("f_Customer_Address").value = textVal(r.Customer_Address);
+
+    document.getElementById("f_Item_Name").value = textVal(r.Item_Name);
+    document.getElementById("f_SKU").value = textVal(r.SKU);
+    document.getElementById("f_Quantity").value = textVal(r.Quantity);
+    document.getElementById("f_Bin_Location").value = textVal(r.Bin_Location);
+
+    document.getElementById("f_Date_Checked").value = toDateInputValue(r.Date_Checked);
+    document.getElementById("f_Quality_Checker").value = textVal(r.Quality_Checker);
+    document.getElementById("f_Location").value = textVal(r.Location);
+
+    renderCheckboxGroup("g_Fixture_Body_Checklist", FIXTURE_BODY_OPTIONS, toArray(r.Fixture_Body_Checklist));
+    renderCheckboxGroup("g_LED_Checklist", LED_OPTIONS, toArray(r.LED_Checklist));
+    renderCheckboxGroup("g_Uniformity", UNIFORMITY_OPTIONS, toArray(r.Uniformity));
+    renderCheckboxGroup("g_Type_of_Bulb", BULB_TYPE_OPTIONS, toArray(r.Type_of_Bulb));
+
+    const savedCT = toArray(r.Color_Temperature);
+    const savedK = toArray(r.Kelvin);
+    let resolvedCT = [];
+    COLOR_TEMP_OPTIONS.forEach((opt) => {
+      if (savedCT.includes(opt)) resolvedCT.push(opt);
+    });
+    if (resolvedCT.length === 0) {
+      savedK.forEach((k) => {
+        savedCT.forEach((c) => {
+          if (c === "Tri-color") return;
+          const combo = `${c} (${k})`;
+          if (COLOR_TEMP_OPTIONS.includes(combo) && !resolvedCT.includes(combo)) {
+            resolvedCT.push(combo);
+          }
+        });
+        if (resolvedCT.length === 0) {
+          COLOR_TEMP_OPTIONS.forEach((opt) => {
+            if (opt.includes(`(${k})`) && !resolvedCT.includes(opt)) {
+              resolvedCT.push(opt);
+            }
+          });
+        }
+      });
+    }
+    renderCheckboxGroup("g_Color_Temperature", COLOR_TEMP_OPTIONS, resolvedCT);
+
+    const lightingFeatures = toArray(r.Lighting_Feature);
+    if (!lightingFeatures.length && toArray(r.Color_Temperature).includes("Tri-color")) {
+      lightingFeatures.push("Tri-color");
+    }
+    renderCheckboxGroup("g_Lighting_Feature", LIGHTING_FEATURE_OPTIONS, lightingFeatures);
+
+    document.getElementById("f_Item_to_Replace").value = textVal(r.Item_to_Replace);
+    document.getElementById("f_Quantity_of_Damage_Items").value = textVal(r.Quantity_of_Damage_Items);
+
+    document.getElementById("sparePartsRows").innerHTML = "";
+    sparePartRowCount = 0;
+    const spareParts = Array.isArray(r.Spare_part_type) ? r.Spare_part_type : [];
+    spareParts.forEach((sp) => addSparePartRow(toArray(sp.Spare_Part_Type), textVal(sp.Quantity_of_damage_spare_s), textVal(sp.Spare_Part_Type_Other)));
+
+    document.getElementById("f_Remarks").value = textVal(r.Remarks);
+
+    const status = textVal(r.QC_Status);
+    document.getElementById("f_QC_Status_Approved").checked = status === "Approved";
+    document.getElementById("f_QC_Status_Rejected").checked = status === "Rejected";
+    document.getElementById("f_QC_Status_None").checked = status !== "Approved" && status !== "Rejected";
+
+    document.getElementById("signatureStatusNote").textContent = !isBlank(r.Signature)
+      ? "Existing signature on file. Draw below to replace it."
+      : "No signature on file yet.";
+    clearSignatureCanvas();
+
+    const imageCount = toArray(r.Image_Upload_max_10_JPG_JPEG_PNG).length;
+    document.getElementById("imageStatusNote").textContent = imageCount ? `${imageCount} currently attached.` : "None attached yet.";
+    document.getElementById("f_Images").value = "";
+
+    const videoCount = toArray(r.Video_Upload_max_3_min_30_sec1).length;
+    document.getElementById("videoStatusNote").textContent = videoCount ? "A video is currently attached." : "None attached yet.";
+    document.getElementById("f_Video").value = "";
+
+    // Rich preview (thumbnails/video playback/click-to-enlarge) alongside the
+    // plain status-note text above — added 2026-08-03, see renderDocumentation()'s
+    // own updated comment for why this is now safe to call from two views.
+    renderDocumentation(r, "editDocumentationPreview");
+  }
+
+  function collectEditFormData() {
+    const statusEl = document.querySelector('input[name="qcStatus"]:checked');
+    return {
+      SO: document.getElementById("f_SO").value.trim(),
+      PAC: document.getElementById("f_PAC").value.trim(),
+      PR: document.getElementById("f_PR").value.trim(),
+      RR: document.getElementById("f_RR").value.trim(),
+      Demo: document.getElementById("f_Demo").value.trim(),
+      Order_Type: document.getElementById("f_Order_Type").value.trim(),
+      Delivery_Type: document.getElementById("f_Delivery_Type").value.trim(),
+      Customer_Name: document.getElementById("f_Customer_Name").value.trim(),
+      Customer_Type: document.getElementById("f_Customer_Type").value.trim(),
+      Customer_Address: document.getElementById("f_Customer_Address").value.trim(),
+      Item_Name: document.getElementById("f_Item_Name").value.trim(),
+      SKU: document.getElementById("f_SKU").value.trim(),
+      Quantity: document.getElementById("f_Quantity").value.trim(),
+      Bin_Location: document.getElementById("f_Bin_Location").value.trim(),
+      Date_Checked: document.getElementById("f_Date_Checked").value,
+      Quality_Checker: document.getElementById("f_Quality_Checker").value.trim(),
+      Location: document.getElementById("f_Location").value,
+      Fixture_Body_Checklist: readCheckboxGroup("g_Fixture_Body_Checklist"),
+      LED_Checklist: readCheckboxGroup("g_LED_Checklist"),
+      Uniformity: readCheckboxGroup("g_Uniformity"),
+      Type_of_Bulb: readCheckboxGroup("g_Type_of_Bulb"),
+      Color_Temperature: readCheckboxGroup("g_Color_Temperature"),
+      Kelvin: Array.from(new Set(readCheckboxGroup("g_Color_Temperature").flatMap((s) => s.match(/\d+K/g) || []))),
+      Lighting_Feature: readCheckboxGroup("g_Lighting_Feature"),
+      Item_to_Replace: document.getElementById("f_Item_to_Replace").value,
+      Quantity_of_Damage_Items: document.getElementById("f_Quantity_of_Damage_Items").value.trim(),
+      Spare_part_type: readSpareParts(),
+      Remarks: document.getElementById("f_Remarks").value,
+      QC_Status: statusEl ? statusEl.value : "",
+    };
+  }
+
+  function uploadFileToField(recordId, fieldName, file) {
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      id: recordId,
+      field_name: fieldName,
+      file: file,
+    };
+    console.log("[QC UPLOAD] calling uploadFile with fieldName:", fieldName, "fileName:", file && file.name, "fileSize:", file && file.size, "fileType:", file && file.type, "recordId:", recordId);
+    return ZOHO.CREATOR.FILE.uploadFile(config).then((response) => {
+      console.log("[QC UPLOAD] response for", fieldName, ":", JSON.stringify(response));
+      return response;
+    }).catch((err) => {
+      console.error("[QC UPLOAD] threw for", fieldName, ":", err);
+      throw err;
+    });
+  }
+
+  // Sequential, not parallel — uploading several files to the same
+  // multi-file field at once risks races on whichever internal list Zoho
+  // appends to. One at a time is slower but predictable.
+  async function uploadFilesSequentially(recordId, fieldName, files) {
+    let failures = 0;
+    for (const file of files) {
+      try {
+        const response = await uploadFileToField(recordId, fieldName, file);
+        if (!response || response.code !== 3000) failures++;
+      } catch (err) {
+        console.error(err);
+        failures++;
+      }
+    }
+    return failures;
+  }
+
+  function fmtNowForCreator() {
+    // ISO "YYYY-MM-DD HH:mm:ss" — the write API wants this, not a display format
+    // (already-documented Deluge Gotcha, this app hit it once before on a
+    // DD-MMM-YYYY mixup for a plain Date field, same principle for Date-Time).
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+
+  // One Exception_Control_Media record PER FILE — same proven one-record-per-
+  // photo pattern as Evidence_Photos elsewhere in this app (Receiving/Exception/
+  // OngoingService), sidesteps every file-field-in-a-workflow limitation entirely
+  // since it's a plain insert, never an update of an existing file field.
+  async function uploadMediaToExceptionControl(soVal, skuVal, pacVal, files, fileType) {
+    const rowKey = `${soVal || ""}|${skuVal || ""}|${pacVal || ""}`;
+    let failures = 0;
+    for (const file of files) {
+      try {
+        const addResp = await ZOHO.CREATOR.DATA.addRecords({
+          app_name: CONFIG.APP_NAME,
+          form_name: CONFIG.MEDIA_FORM,
+          payload: {
+            data: {
+              Record_ID: rowKey,
+              File_Type: fileType,
+              File_Name: file.name,
+              Uploaded_On: fmtNowForCreator(),
+            },
+          },
+        });
+        const newId = addResp && addResp.data && addResp.data.ID;
+        if (!newId) { failures++; console.error("[QC MEDIA] addRecords failed:", JSON.stringify(addResp)); continue; }
+        const upResp = await ZOHO.CREATOR.FILE.uploadFile({
+          app_name: CONFIG.APP_NAME,
+          report_name: CONFIG.MEDIA_REPORT,
+          id: newId,
+          field_name: "Media",
+          file: file,
+        });
+        if (!upResp || upResp.code !== 3000) { failures++; console.error("[QC MEDIA] uploadFile failed:", JSON.stringify(upResp)); }
+      } catch (err) {
+        console.error("[QC MEDIA] threw:", err);
+        failures++;
+      }
+    }
+    return failures;
+  }
+
+  // Resolves { approvedQty, rejectedQty } (summing to qtyTotal) on Confirm,
+  // or null on Cancel. One listener attach/detach per open — no leaks across
+  // repeat opens since both are removed in cleanup() before resolving.
+  // CHANGED 2026-08-06, per user ("can you do it like how you block receiving's") —
+  // was block-only-on-Confirm-click (type anything, get an error message after the
+  // fact). Now mirrors Receiving/app/index.html's own onLineInput() live-cap pattern
+  // exactly: clamps the field you're actively typing into down to the remaining
+  // headroom (qtyTotal minus the OTHER field's current value) on every keystroke, so
+  // Approved+Rejected can never even momentarily exceed qtyTotal, with the same
+  // toast-on-clamp feedback Receiving uses. Confirm's own exact-match check stays as
+  // a backstop (e.g. both fields left below qtyTotal, never actually clamped).
+  function openSplitQtyModal(qtyTotal, defaultApproved, defaultRejected) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById("splitQtyModal");
+      const apEl = document.getElementById("splitApprovedQty");
+      const rjEl = document.getElementById("splitRejectedQty");
+      const errEl = document.getElementById("splitQtyError");
+      const confirmBtn = document.getElementById("splitQtyConfirmBtn");
+      const cancelBtn = document.getElementById("splitQtyCancelBtn");
+
+      document.getElementById("splitQtyTotal").textContent = qtyTotal;
+      apEl.value = defaultApproved;
+      rjEl.value = defaultRejected;
+      apEl.max = qtyTotal;
+      rjEl.max = qtyTotal;
+      errEl.classList.add("hidden");
+      modal.classList.remove("hidden");
+
+      function clampField(editedEl, otherEl) {
+        const otherVal = otherEl.value === "" ? 0 : parseInt(otherEl.value, 10) || 0;
+        const headroom = Math.max(0, qtyTotal - otherVal);
+        let val = editedEl.value === "" ? 0 : parseInt(editedEl.value, 10) || 0;
+        if (val < 0) val = 0;
+        if (val > headroom) {
+          val = headroom;
+          editedEl.value = val;
+          toast(t("Approved + Rejected can't exceed {n}.").replace("{n}", qtyTotal), "error");
+        }
+        errEl.classList.add("hidden");
+      }
+      function onApInput() { clampField(apEl, rjEl); }
+      function onRjInput() { clampField(rjEl, apEl); }
+
+      function cleanup(result) {
+        modal.classList.add("hidden");
+        confirmBtn.removeEventListener("click", onConfirm);
+        cancelBtn.removeEventListener("click", onCancel);
+        apEl.removeEventListener("input", onApInput);
+        rjEl.removeEventListener("input", onRjInput);
+        resolve(result);
+      }
+      function onConfirm() {
+        const ap = parseInt(apEl.value, 10) || 0;
+        const rj = parseInt(rjEl.value, 10) || 0;
+        if (ap < 0 || rj < 0 || ap + rj !== qtyTotal) {
+          errEl.textContent = `Approved + Rejected must add up to ${qtyTotal}.`;
+          errEl.classList.remove("hidden");
+          return;
+        }
+        cleanup({ approvedQty: ap, rejectedQty: rj });
+      }
+      function onCancel() { cleanup(null); }
+
+      apEl.addEventListener("input", onApInput);
+      rjEl.addEventListener("input", onRjInput);
+      confirmBtn.addEventListener("click", onConfirm);
+      cancelBtn.addEventListener("click", onCancel);
+    });
+  }
+
+  // ADDED 2026-09-03, per user request — Date Checked/Location are mandatory
+  // but had no enforcement at all. Highlights both red + toasts on Save if
+  // either is still blank, aborting the save entirely. Called from
+  // saveEditForm() below; also wired directly on both fields' own input/
+  // change events so the red highlight clears the moment the checker fills
+  // one in, rather than staying red until the next Save attempt.
+  function validateQcRequiredFields() {
+    const dateEl = document.getElementById("f_Date_Checked");
+    const locEl = document.getElementById("f_Location");
+    let ok = true;
+    if (!dateEl.value) { dateEl.classList.add("field-input-error"); ok = false; } else { dateEl.classList.remove("field-input-error"); }
+    if (!locEl.value) { locEl.classList.add("field-input-error"); ok = false; } else { locEl.classList.remove("field-input-error"); }
+    return ok;
+  }
+  document.getElementById("f_Date_Checked").addEventListener("input", () => {
+    if (document.getElementById("f_Date_Checked").value) document.getElementById("f_Date_Checked").classList.remove("field-input-error");
+  });
+  document.getElementById("f_Location").addEventListener("change", () => {
+    if (document.getElementById("f_Location").value) document.getElementById("f_Location").classList.remove("field-input-error");
+  });
+
+  async function saveEditForm() {
+    if (!currentEditRecord) return;
+    if (!validateQcRequiredFields()) {
+      toast("Date Checked and Location are required.", "error");
+      return;
+    }
+    const data = collectEditFormData();
+    const recordId = currentEditRecord.ID;
+
+    // ADDED 2026-08-05, per user request — QC Qty (Approved/Rejected, and the
+    // Quantity field itself) must never exceed the record's own real/original
+    // Quantity. f_Quantity is a plain free-text input (no max bound at all), and
+    // the split modal below only validates that Approved+Rejected sum EXACTLY to
+    // whatever's currently in that field — if a checker edits f_Quantity itself
+    // up past the true original amount first, the split check would happily
+    // validate against that inflated total instead of catching it. Compare
+    // against currentEditRecord.Quantity — the record's own value as originally
+    // fetched from Creator, untouched by anything typed into f_Quantity since.
+    const originalQtyVal = parseInt(currentEditRecord.Quantity, 10) || 0;
+    const enteredQtyVal = parseInt(data.Quantity, 10) || 0;
+    if (enteredQtyVal > originalQtyVal) {
+      toast(t("Quantity ({a}) cannot exceed the record's original Quantity ({b}).")
+        .replace("{a}", enteredQtyVal).replace("{b}", originalQtyVal), "error");
+      return;
+    }
+
+    // ADDED 2026-07-29, per user request — a line with Quantity > 1 being
+    // Approved/Rejected now asks how many units go each way instead of
+    // blindly sending the WHOLE qty down one branch. Qty<=1 (or status left
+    // blank/None) skips this entirely — immediate save, same as before.
+    // Reuses the SAME single-branch native routing (checker_checklist_qc_sync.txt)
+    // twice in a row for a real split rather than changing that script at all —
+    // one updateRecords with QC_Status=Rejected+Quantity=rejectedQty (creates/
+    // updates Exception_Control1), then one with QC_Status=Approved+
+    // Quantity=approvedQty (appends to Order_Aggregation1) — both branches are
+    // already idempotent/UPDATE-or-CREATE keyed by SO+SKU(+PAC), so running
+    // both from the same record is safe. Final saved state of THIS record ends
+    // up as whichever write ran last (Approved, when it's a real split) with
+    // Split_Rejected_Qty/Split_Original_Qty recording the breakdown for display.
+    let writes = [data];
+    let wasRejectedForMedia = data.QC_Status === "Rejected";
+    const qtyTotalForSplit = parseInt(data.Quantity, 10) || 0;
+
+    if ((data.QC_Status === "Approved" || data.QC_Status === "Rejected") && qtyTotalForSplit > 1) {
+      const defAp = data.QC_Status === "Approved" ? qtyTotalForSplit : 0;
+      const defRj = data.QC_Status === "Rejected" ? qtyTotalForSplit : 0;
+      const choice = await openSplitQtyModal(qtyTotalForSplit, defAp, defRj);
+      if (!choice) return; // cancelled — abort the whole save, nothing sent
+      const { approvedQty, rejectedQty } = choice;
+
+      if (approvedQty > 0 && rejectedQty > 0) {
+        writes = [
+          { ...data, QC_Status: "Rejected", Quantity: String(rejectedQty) },
+          { ...data, QC_Status: "Approved", Quantity: String(approvedQty), Split_Rejected_Qty: String(rejectedQty), Split_Original_Qty: String(qtyTotalForSplit) },
+        ];
+        wasRejectedForMedia = true;
+      } else if (rejectedQty > 0) {
+        writes = [{ ...data, QC_Status: "Rejected", Quantity: String(rejectedQty) }];
+        wasRejectedForMedia = true;
+      } else {
+        writes = [{ ...data, QC_Status: "Approved", Quantity: String(approvedQty) }];
+        wasRejectedForMedia = false;
+      }
+    }
+
+    const saveBtns = [document.getElementById("saveEditBtn"), document.getElementById("saveEditBtn2")];
+    saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
+
+    const shouldUploadSignature = signatureDirty && !isSignatureCanvasBlank();
+    const imageFiles = Array.from(document.getElementById("f_Images").files || []);
+    const videoFiles = Array.from(document.getElementById("f_Video").files || []);
+
+    try {
+      let lastResponse = null;
+      for (const writeData of writes) {
+        const config = {
+          app_name: CONFIG.APP_NAME,
+          report_name: CONFIG.REPORT_NAME,
+          payload: {
+            criteria: `(ID == ${recordId})`,
+            data: writeData,
+          },
+        };
+        // ADDED 2026-07-27, per user ("add it in console so i can see for real") —
+        // Deluge runs server-side, no browser console can ever show it directly;
+        // this instead confirms exactly what the widget itself sends on save
+        // (record ID, criteria, QC_Status/SO/SKU/PAC values) so a data-shape
+        // mismatch on our own side can be ruled out (or found) before assuming
+        // the native workflow itself is at fault.
+        console.log("[QC SAVE] recordId:", recordId);
+        console.log("[QC SAVE] config:", JSON.stringify(config));
+        console.log("[QC SAVE] key fields — QC_Status:", JSON.stringify(writeData.QC_Status), "Quantity:", JSON.stringify(writeData.Quantity), "SO:", JSON.stringify(writeData.SO), "SKU:", JSON.stringify(writeData.SKU), "PAC:", JSON.stringify(writeData.PAC));
+        lastResponse = await ZOHO.CREATOR.DATA.updateRecords(config);
+        console.log("[QC SAVE] updateRecords response:", JSON.stringify(lastResponse));
+        if (!lastResponse || lastResponse.code !== 3000) throw new Error("update-failed");
+      }
+      Object.assign(currentEditRecord, writes[writes.length - 1]);
+
+      const failures = [];
+
+      // File bytes can't ride in the Data API payload above — each of these
+      // is a separate ZOHO.CREATOR.FILE.uploadFile call.
+      if (shouldUploadSignature) {
+        const file = await signatureCanvasToFile();
+        const resp = file && await uploadFileToField(recordId, "Signature", file);
+        if (!resp || resp.code !== 3000) failures.push("signature"); else currentEditRecord.Signature = "uploaded";
+      }
+      if (imageFiles.length) {
+        const failCount = await uploadFilesSequentially(recordId, "Image_Upload_max_10_JPG_JPEG_PNG", imageFiles);
+        if (failCount) failures.push(`${failCount} image${failCount === 1 ? "" : "s"}`);
+        else currentEditRecord.Image_Upload_max_10_JPG_JPEG_PNG = "uploaded";
+      }
+      if (videoFiles.length) {
+        const resp = await uploadFileToField(recordId, "Video_Upload_max_3_min_30_sec1", videoFiles[0]);
+        if (!resp || resp.code !== 3000) failures.push("video"); else currentEditRecord.Video_Upload_max_3_min_30_sec1 = "uploaded";
+      }
+
+      // ADDED 2026-07-27 — mirror the same Image/Video files into
+      // Exception_Control_Media so the Exception Control widget can show them,
+      // only relevant once this record is actually Rejected (that's the only
+      // path that touches Exception_Control1 at all).
+      if (wasRejectedForMedia && (imageFiles.length || videoFiles.length)) {
+        if (imageFiles.length) {
+          const mediaFailCount = await uploadMediaToExceptionControl(data.SO, data.SKU, data.PAC, imageFiles, "Image");
+          if (mediaFailCount) failures.push(`${mediaFailCount} image${mediaFailCount === 1 ? "" : "s"} (Exception Control copy)`);
+        }
+        if (videoFiles.length) {
+          const mediaFailCount = await uploadMediaToExceptionControl(data.SO, data.SKU, data.PAC, videoFiles, "Video");
+          if (mediaFailCount) failures.push("video (Exception Control copy)");
+        }
+      }
+
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast(failures.length
+        ? t("Saved, but failed to upload: {list}.").replace("{list}", failures.join(", "))
+        : "QC report saved.", failures.length ? "error" : "success");
+      orderedRows = computeOrderedRows(allRecords);
+      renderAll();
+      switchToList();
+    } catch (err) {
+      console.error(err);
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast("Couldn't save changes.", "error");
+    }
+  }
+
+  function switchToEdit(r) {
+    currentEditRecord = r;
+    closeVideoLightbox();
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("editView").classList.remove("hidden");
+    // Populate after unhiding — the signature canvas measures its own
+    // rendered width via getBoundingClientRect(), which is 0 while its
+    // container is display:none.
+    populateEditForm(r);
+    qcTimeline.open(String(r.ID));
+    internalNotes.open(String(r.ID));
+    window.scrollTo(0, 0);
+  }
+
+  function cancelEdit() {
+    document.getElementById("editView").classList.add("hidden");
+    switchToList();
+  }
+  document.getElementById("cancelEditBtn").addEventListener("click", cancelEdit);
+  document.getElementById("cancelEditBtn2").addEventListener("click", cancelEdit);
+  document.getElementById("saveEditBtn").addEventListener("click", saveEditForm);
+  document.getElementById("saveEditBtn2").addEventListener("click", saveEditForm);
+
+  // ---------------------------------------------------------------------
+  // Ordering (latest Added_Time first) — flat list, no grouping (the report
+  // has no "group by" clause).
+  // ---------------------------------------------------------------------
+  function isEmptyRecord(r) {
+    return isBlank(r.SO) && isBlank(r.PR) && isBlank(r.RR)
+      && isBlank(r.Customer_Name) && isBlank(r.Item_Name) && isBlank(r.SKU);
+  }
+
+  function computeOrderedRows(records) {
+    return records.filter((r) => !isEmptyRecord(r)).slice().sort((a, b) =>
+      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+  }
+
+  // ---------------------------------------------------------------------
+  // Stats
+  // ---------------------------------------------------------------------
+  function computeStats() {
+    let approved = 0, rejected = 0, pending = 0, withDamage = 0;
+    orderedRows.forEach((r) => {
+      if (r.QC_Status === "Approved") approved++;
+      else if (r.QC_Status === "Rejected") rejected++;
+      else pending++;
+      if (!isBlank(r.Item_to_Replace) && r.Item_to_Replace !== "No damage") withDamage++;
+    });
+    return { approved, rejected, pending, withDamage };
+  }
+
+  // Shared by computeStats() (totals, always across ALL rows — including
+  // already-Approved/Rejected ones, which the table itself normally hides,
+  // see isActiveRow() below) and getFilteredRows() (applies whichever stat is
+  // currently selected). "approved"/"rejected"/"withDamage" deliberately need
+  // to see PAST the table's own default Approved/Rejected-row hiding —
+  // handled in getFilteredRows(), since a damaged item can independently
+  // already be Approved or Rejected too.
+  function matchesStat(r, key) {
+    switch (key) {
+      case "pending": return r.QC_Status !== "Approved" && r.QC_Status !== "Rejected";
+      case "approved": return r.QC_Status === "Approved";
+      case "rejected": return r.QC_Status === "Rejected";
+      case "withDamage": return !isBlank(r.Item_to_Replace) && r.Item_to_Replace !== "No damage";
+      default: return true;
+    }
+  }
+
+  // Stat cards are clickable — ADDED 2026-09-03, per user request: clicking a
+  // card filters the QC list below to just that card's rows. Click the same
+  // card again to clear. Wired via delegation on #statCards since the cards
+  // are rebuilt on every renderStats() call.
+  function renderStats() {
+    const stats = computeStats();
+    const cardHtml = (label, caption, value, color, statKey) => {
+      const p = PALETTE[color];
+      const active = statFilter === statKey;
+      return `
+        <div class="stat-card cursor-pointer select-none bg-white rounded-xl border-t-4 ${p.border} border-x border-b border-slate-200 shadow-card px-4 py-3 transition hover:shadow-md ${active ? "ring-2 ring-offset-1 ring-slate-400" : ""}" data-stat="${statKey}">
+          <p class="text-[10px] font-bold tracking-wide text-slate-400 uppercase">${escapeHtml(label)}</p>
+          <p class="text-3xl font-bold ${p.text} mt-1">${value}</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(caption)}</p>
+        </div>`;
+    };
+
+    statCards.innerHTML = [
+      cardHtml("Pending", "not yet reviewed", stats.pending, "amber", "pending"),
+      cardHtml("Approved", "passed QC", stats.approved, "emerald", "approved"),
+      cardHtml("Rejected", "failed QC", stats.rejected, "rose", "rejected"),
+      cardHtml("With Damage", "flagged for replacement", stats.withDamage, "blue", "withDamage"),
+    ].join("");
+
+    document.getElementById("pendingCount").textContent = stats.pending;
+    document.getElementById("rejectedCount").textContent = stats.rejected;
+  }
+
+  statCards.addEventListener("click", (ev) => {
+    const card = ev.target.closest(".stat-card");
+    if (!card) return;
+    const key = card.dataset.stat;
+    statFilter = (statFilter === key) ? null : key;
+    renderAll();
+  });
+
+  // ---------------------------------------------------------------------
+  // Table rendering
+  // ---------------------------------------------------------------------
+  // Once QC_Status is set to Approved or Rejected, that item's review is
+  // done — it drops out of this list entirely rather than sitting here as a
+  // completed row (same pattern as the Picker/Pick/Pack widgets' one-way
+  // action buttons). Stat cards still count it (they read from the
+  // unfiltered orderedRows), so Approved/Rejected stay running totals even
+  // though those rows are no longer visible in the table.
+  function isActiveRow(r) {
+    return r.QC_Status !== "Approved" && r.QC_Status !== "Rejected";
+  }
+
+  let rrRecheckFilterOn = false;
+
+  function getFilteredRows() {
+    // Normally only active (still-Pending) rows are ever shown, per this
+    // widget's own long-standing design — but "Approved"/"Rejected"/
+    // "With Damage" are stat filters that deliberately need to look PAST
+    // that default, so they start from every row instead of the usual
+    // active-only set.
+    const base = (statFilter === "approved" || statFilter === "rejected" || statFilter === "withDamage")
+      ? orderedRows
+      : orderedRows.filter(isActiveRow);
+    let rows = statFilter ? base.filter((r) => matchesStat(r, statFilter)) : base;
+    if (rrRecheckFilterOn) rows = rows.filter((r) => !isBlank(r.RR));
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => {
+      const hay = [r.SO, r.PAC, r.Quality_Checker, r.Item_Name, r.SKU]
+        .map(displayVal).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  function qcStatusHtml(r) {
+    return !isBlank(r.QC_Status) ? badgePill(r.QC_Status, QC_STATUS_COLOR[r.QC_Status] || "slate") : badgePill("Pending", "amber");
+  }
+
+  /* ADDED 2026-07-28, per user ("no indication that this record has been RR
+     again or replaced or something") — a QC record auto-created by the
+     Fulfillment-EXC recycle loop (receiving_create_bin_receiving.txt's
+     early-return branch, once a replacement's Create Receive closes the
+     loop) carries a real RR link (r.RR) but nothing in this widget ever
+     surfaced it — indistinguishable from a first-time review. Real gap:
+     this is a RECHECK of an already-replaced item, an officer needs to
+     know that at a glance. */
+  function rrRecheckBadgeHtml(r) {
+    if (isBlank(r.RR)) return "";
+    return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 ml-1.5">🔁 <span>Recheck</span> — ${escapeHtml(displayVal(r.RR))}</span>`;
+  }
+
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    // The lead word, the action and the role each get their own text node so
+    // the EN/TL walker can translate them independently (see the i18n block).
+    const who = ns.who ? ` <span class="ns-who">— <span>${nsEsc(ns.who)}</span></span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}"><span>${lead}</span> <span>${nsEsc(ns.action)}</span>${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(<span>${nsEsc(ns.who)}</span>)</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+  function nextStepFor(r) {
+    if (r.QC_Status === "Approved") return { here: "QC Approved", action: "Moved to Crate / Order Aggregation", who: "Crater / Dispatcher", tone: "done" };
+    if (r.QC_Status === "Rejected") return { here: "QC Rejected", action: "Sent to Exception Control", who: "Warehouse", tone: "done" };
+    if (isBlank(r.Quality_Checker)) return { here: "Quality Checking", action: "Assign a packer", who: "Warehouse", tone: "next" };
+    return { here: "Quality Checking", action: "Pack the item, then open QC and Approve or Reject", who: "Packer / Checker", tone: "next" };
+  }
+
+  // ---------------------------------------------------------------------
+  // Packer picker + QC button — ADDED 2026-10-29, per user ("tanggalin na
+  // natin yung pack... bali nasa Viewlist nalang ng Qc yung pag pick ng
+  // packer. tapos ma oopen yung button na QC sa mismon form").
+  //
+  // The Pack stage is gone: Pick1 "Marked" now writes this QC record
+  // directly (pick1_to_qc_sync.txt) with Quality_Checker deliberately blank.
+  // The dropdown below is the retired Pack widget's own Assign Packer
+  // control, ported verbatim (auto-saves on change, "Other…" swaps to an
+  // inline text input for a name not in the picklist) — it just writes
+  // Quality_Checker instead of Assign_Packer, which matches the rule the old
+  // Pack->QC sync already enforced ("kung sino ang nag-pack, siya rin ang
+  // mag-che-check"), so no new Creator field is needed.
+  //
+  // Until a packer is picked, the row's QC button is disabled and clicking
+  // the row itself won't open the QC form either — that gate is the whole
+  // point of moving the picker here.
+  //
+  // Both controls live inside a ".packer-cell" wrapper so a save can repaint
+  // just that cell in place instead of re-rendering the whole table (keeps
+  // scroll position, search text and every other row untouched).
+  // ---------------------------------------------------------------------
+  const OTHER_PACKER_VALUE = "__other__";
+
+  function packerSelectMarkup(r) {
+    const current = r.Quality_Checker || "";
+    const isCustom = current !== "" && !CONFIG.PACKER_OPTIONS.includes(current);
+    const optionValues = ["", ...CONFIG.PACKER_OPTIONS];
+    if (isCustom) optionValues.push(current);
+    optionValues.push(OTHER_PACKER_VALUE);
+
+    const options = optionValues.map((opt) => {
+      const label = opt === "" ? "— Unassigned —" : opt === OTHER_PACKER_VALUE ? "Other…" : opt;
+      return `<option value="${escapeHtml(opt)}" ${opt === current ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    }).join("");
+
+    return `<select class="assign-packer-select text-xs rounded-md border border-slate-200 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-slate-300 transition-colors" data-id="${r.ID}">${options}</select>`;
+  }
+
+  function packerCellHtml(r) {
+    return `<span class="packer-cell inline-block" data-id="${r.ID}">${packerSelectMarkup(r)}</span>`;
+  }
+
+  function renderPackerCell(container, r) {
+    container.innerHTML = packerSelectMarkup(r);
+    wirePackerSelect(container.querySelector(".assign-packer-select"));
+  }
+
+  function wirePackerSelect(selectEl) {
+    if (!selectEl) return;
+    selectEl.addEventListener("click", (ev) => ev.stopPropagation());
+    selectEl.addEventListener("change", (ev) => {
+      ev.stopPropagation();
+      const r = allRecords.find((rec) => String(rec.ID) === String(selectEl.dataset.id));
+      if (!r) return;
+      if (selectEl.value === OTHER_PACKER_VALUE) {
+        showCustomPackerInput(selectEl, r);
+      } else {
+        updateAssignPacker(r, selectEl.value, selectEl);
+      }
+    });
+  }
+
+  // Swaps the <select> for a small text input right in place so typing a
+  // custom packer name doesn't feel like a separate dialog/step.
+  function showCustomPackerInput(selectEl, r) {
+    const container = selectEl.closest(".packer-cell");
+    if (!container) return;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Type a name…";
+    input.className = "text-xs rounded-md border border-slate-300 bg-white px-2 py-1 w-28 focus:outline-none focus:ring-2 focus:ring-slate-300 transition-colors";
+    container.innerHTML = "";
+    container.appendChild(input);
+    input.focus();
+
+    let settled = false;
+    const commit = () => {
+      if (settled) return;
+      const val = input.value.trim();
+      if (!val) { settled = true; renderPackerCell(container, r); return; }
+      settled = true;
+      updateAssignPacker(r, val, input);
+    };
+    const cancel = () => {
+      if (settled) return;
+      settled = true;
+      renderPackerCell(container, r);
+    };
+    input.addEventListener("click", (ev) => ev.stopPropagation());
+    input.addEventListener("keydown", (ev) => {
+      ev.stopPropagation();
+      if (ev.key === "Enter") { ev.preventDefault(); commit(); }
+      if (ev.key === "Escape") { ev.preventDefault(); cancel(); }
+    });
+    input.addEventListener("blur", commit);
+  }
+
+  function qcOpenBtnHtml(r) {
+    const noPacker = isBlank(r.Quality_Checker);
+    const title = noPacker ? ` title="Assign a packer first"` : ` title="Open the Quality Check form"`;
+    return `<button class="open-qc-btn whitespace-nowrap text-[11px] font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-full px-3 py-1 transition disabled:opacity-40 disabled:cursor-not-allowed" data-id="${r.ID}"${noPacker ? " disabled" : ""}${title}>Quality Check</button>`;
+  }
+
+  function wireQcOpenBtn(btnEl) {
+    if (!btnEl) return;
+    btnEl.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openRecordForEdit(btnEl.dataset.id);
+    });
+  }
+
+  // Repaints one row's QC button in place after a packer change, so its
+  // enabled state stays correct without touching the rest of the table.
+  function refreshQcOpenBtn(r) {
+    const row = Array.from(tableBody.querySelectorAll(".record-row")).find((tr) => tr.dataset.id === String(r.ID));
+    if (!row) return;
+    const td = row.lastElementChild;
+    td.innerHTML = qcOpenBtnHtml(r);
+    wireQcOpenBtn(td.querySelector(".open-qc-btn"));
+  }
+
+  function updateRecordField(r, data) {
+    return ZOHO.CREATOR.DATA.updateRecords({
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      payload: { criteria: `(ID == ${r.ID})`, data: data },
+    });
+  }
+
+  // controlEl is whichever element triggered the save — the <select>, or the
+  // inline text input shown for a custom "Other…" name.
+  function updateAssignPacker(r, newValue, controlEl) {
+    const container = controlEl.closest(".packer-cell");
+    controlEl.disabled = true;
+    updateRecordField(r, { Quality_Checker: newValue }).then((response) => {
+      if (response && response.code === 3000) {
+        r.Quality_Checker = newValue;
+        refreshNextStep(r.ID, nextStepFor(r));
+        toast(newValue ? t("Assigned to {name}.").replace("{name}", newValue) : "Packer cleared.", "success");
+      } else {
+        toast("Couldn't update packer.", "error");
+      }
+      if (container) renderPackerCell(container, r);
+      refreshQcOpenBtn(r);
+    }).catch((err) => {
+      console.error(err);
+      toast("Couldn't update packer.", "error");
+      if (container) renderPackerCell(container, r);
+      refreshQcOpenBtn(r);
+    });
+  }
+
+/* ───────── FORECAST (added 2026-11-04) ─────────
+   Read-only. Written by the Forecast_Stamp_Daily schedule onto this form's
+   Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+   displays them.
+
+   The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+   title attribute rather than the cell, so the column stays one line wide. The
+   date shown is the midpoint of that window, never a promise.
+
+   Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+   #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+   separation. Status also carries its own word, so it is never colour-alone.
+
+   fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+   esc there), so this picks whichever exists and carries its own as a last
+   resort - it must never be the reason a row fails to render. */
+var fcEsc = (function () {
+  if (typeof escapeHtml === "function") return escapeHtml;
+  if (typeof esc === "function") return esc;
+  return function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+})();
+
+var FORECAST_TONE = {
+  "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+  "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+  "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+};
+
+/* Creator hands dates back in whichever format the app is set to; this accepts the
+   four shapes seen across this app and returns "" rather than "Invalid Date". */
+function forecastDateText(v) {
+  if (!v) return "";
+  var s = String(v).trim();
+  var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  if (m) return m[2] + " " + m[1] + ", " + m[3];
+  var d = new Date(s.replace(/-/g, "/"));
+  if (isNaN(d.getTime())) return s.split(" ")[0];
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+function forecastCell(r) {
+  r = r || {};
+  var raw = r.Forecast_Delivery;
+  var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+  var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+  var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+  var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+  var tip = fcEsc(win || status || "");
+
+  return (
+    '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+    "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+    "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+    ';flex:none"></span>' + date +
+    (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+    "</span>"
+  );
+}
+
+  function dataRow(r) {
+    return `
+      <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}">
+        <td class="px-5 py-2.5">${qcStatusHtml(r)}${rrRecheckBadgeHtml(r)}</td>
+        <td class="px-3 py-2.5">${nextStepCell(r.ID, nextStepFor(r))}</td>
+        <td class="px-3 py-2.5 text-slate-700 font-medium">${escapeHtml(displayVal(r.SO))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.PAC))}</td>
+        <td class="px-3 py-2.5 text-slate-800 font-medium max-w-[220px] truncate">${escapeHtml(displayVal(r.Item_Name))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.SKU))}</td>
+        <td class="px-3 py-2.5 text-slate-700 text-right">${escapeHtml(displayVal(r.Quantity))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${packerCellHtml(r)}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(formatDate(r.Date_Checked))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Order_Type))}</td>
+        <td class="px-3 py-2.5">${forecastCell(r)}</td>
+        <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
+        <td class="px-5 py-2.5 text-right">${qcOpenBtnHtml(r)}</td>
+      </tr>`;
+  }
+
+  function renderTable() {
+    const filtered = getFilteredRows();
+    const totalCount = filtered.length;
+
+    tableBody.innerHTML = filtered.length
+      ? filtered.map(dataRow).join("")
+      : `<tr><td colspan="13" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+
+    // Clicking anywhere on the row is still a shortcut into the QC form, but
+    // it now respects the same packer gate the QC button does — otherwise the
+    // button's disabled state would be trivially bypassable.
+    tableBody.querySelectorAll(".record-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        const r = allRecords.find((rec) => String(rec.ID) === String(row.dataset.id));
+        if (r && isBlank(r.Quality_Checker)) { toast("Assign a packer first.", "error"); return; }
+        openRecordForEdit(row.dataset.id);
+      });
+    });
+    tableBody.querySelectorAll(".assign-packer-select").forEach(wirePackerSelect);
+    tableBody.querySelectorAll(".open-qc-btn").forEach(wireQcOpenBtn);
+
+    document.getElementById("totalCount").textContent = totalCount;
+  }
+
+  function renderAll() {
+    renderStats();
+    renderTable();
+  }
+
+  // ---------------------------------------------------------------------
+  // QC detail view
+  // ---------------------------------------------------------------------
+  function checklistGroupHtml(title, items) {
+    if (!items.length) return "";
+    return `
+      <div>
+        <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">${escapeHtml(title)}</p>
+        <div class="space-y-1.5">
+          ${items.map((item) => `
+            <div class="flex items-start gap-2 text-sm text-slate-700">
+              <span class="h-4 w-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] mt-0.5 shrink-0">✓</span>
+              <span>${escapeHtml(item)}</span>
+            </div>`).join("")}
+        </div>
+      </div>`;
+  }
+
+  function tagListHtml(items, color) {
+    if (!items.length) return `<span class="text-slate-300 text-sm">—</span>`;
+    return items.map((item) => badgePill(item, color)).join(" ");
+  }
+
+  // Ported from a sibling widget (Procurement/Inquiry INQs.html) that already
+  // solved this exact problem: ZOHO.CREATOR.UTIL.setImageData(imgEl, url, cb)
+  // is a confirmed-working SDK bridge for loading a Creator file field's
+  // image directly into an <img> — no CORS failure, no manual readFile/btoa
+  // decoding (that approach kept returning "Preview unavailable" here).
+  // It only works for images, not video — see docVideoBox below.
+  // Confirmed against live data: image/signature field values here are plain
+  // strings holding a Zoho REST v2.1 relative download path (e.g.
+  // "/api/v2.1/homecartel/supply-chain-app/report/All_Qc_Reports1/<id>/Signature/
+  // download?filepath=..."), not an absolute http(s) URL and not an object.
+  // setImageData resolves that relative path itself (it's the SDK bridge, not
+  // a raw fetch), so it's passed through as-is instead of requiring "http".
+  function imgUrlFromRawValue(v) {
+    if (v == null || v === "") return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "object") {
+      const candidates = [v.url, v.download_url, v.href, v.display_value, v.zc_display_value, v.value];
+      for (const c of candidates) {
+        if (c && typeof c === "string") return c;
+      }
+    }
+    return "";
+  }
+
+  function applyCreatorImage(imgEl, rawValue) {
+    if (!imgEl || rawValue == null || rawValue === "") return;
+    const url = imgUrlFromRawValue(rawValue);
+    if (!url) { imgEl.dispatchEvent(new Event("error")); return; }
+    if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData) {
+      ZOHO.CREATOR.UTIL.setImageData(imgEl, url, function () {});
+    } else {
+      imgEl.src = url;
+    }
+  }
+
+  function filenameFromRawValue(v, fallback) {
+    if (typeof v !== "string") return fallback;
+    const m = v.match(/[?&]filepath=([^&]+)/);
+    return m ? decodeURIComponent(m[1]) : fallback;
+  }
+
+  // ---------------------------------------------------------------------
+  // Lightbox (zoom) + download — same setImageData bridge as previews, ported
+  // from the sibling INQ widget. Downloading works by loading the image into
+  // an off-DOM <img> via setImageData, then reading its resolved src back out
+  // as a Blob — reading an already-loaded <img>'s src is local/same-document,
+  // not a new cross-origin request, which is why this works where a raw
+  // fetch() to the file's own URL is CORS-blocked.
+  // ---------------------------------------------------------------------
+  let lightboxRawValue = null;
+  let lightboxFilename = "image";
+
+  function openLightbox(rawValue, filename) {
+    lightboxRawValue = rawValue;
+    lightboxFilename = filename || "image";
+    document.getElementById("lightboxOverlay").classList.remove("hidden");
+    applyCreatorImage(document.getElementById("lightboxImg"), rawValue);
+  }
+  function closeLightbox() {
+    document.getElementById("lightboxOverlay").classList.add("hidden");
+    lightboxRawValue = null;
+  }
+  document.getElementById("lightboxCloseBtn").addEventListener("click", closeLightbox);
+  document.getElementById("lightboxOverlay").addEventListener("click", (ev) => {
+    if (ev.target.id === "lightboxOverlay") closeLightbox();
+  });
+
+  // Video lightbox — reparents the real <video> element in/out of the overlay
+  // instead of using the OS Fullscreen API (blocked, see markup's own NOTES).
+  // VIDEO_LIGHTBOX_HOME remembers where to put it back on close.
+  let VIDEO_LIGHTBOX_HOME = null;
+  function openVideoLightbox(videoEl, homeParent) {
+    VIDEO_LIGHTBOX_HOME = homeParent;
+    // FIXED 2026-07-27, real bug found live ("why it is so small") — the
+    // <video> keeps its inline preview's hardcoded width="320" height="240"
+    // attributes even after reparenting into the full-viewport overlay, since
+    // nothing ever overrode them. Stash the originals, clear them + apply real
+    // viewport-relative sizing while in the lightbox, restore on close so the
+    // small inline preview goes back to its normal size.
+    videoEl.dataset.origWidth = videoEl.getAttribute("width") || "";
+    videoEl.dataset.origHeight = videoEl.getAttribute("height") || "";
+    videoEl.removeAttribute("width");
+    videoEl.removeAttribute("height");
+    videoEl.style.width = "auto";
+    videoEl.style.height = "auto";
+    videoEl.style.maxWidth = "90vw";
+    videoEl.style.maxHeight = "85vh";
+    document.getElementById("videoLightboxSlot").appendChild(videoEl);
+    document.getElementById("videoLightboxOverlay").classList.remove("hidden");
+  }
+  function closeVideoLightbox() {
+    const overlay = document.getElementById("videoLightboxOverlay");
+    if (overlay.classList.contains("hidden")) return;
+    overlay.classList.add("hidden");
+    const slot = document.getElementById("videoLightboxSlot");
+    const videoEl = slot.firstElementChild;
+    if (videoEl && VIDEO_LIGHTBOX_HOME) {
+      videoEl.pause();
+      if (videoEl.dataset.origWidth) videoEl.setAttribute("width", videoEl.dataset.origWidth);
+      if (videoEl.dataset.origHeight) videoEl.setAttribute("height", videoEl.dataset.origHeight);
+      videoEl.style.width = "";
+      videoEl.style.height = "";
+      videoEl.style.maxWidth = "";
+      videoEl.style.maxHeight = "";
+      VIDEO_LIGHTBOX_HOME.insertBefore(videoEl, VIDEO_LIGHTBOX_HOME.firstChild);
+    }
+    VIDEO_LIGHTBOX_HOME = null;
+  }
+  document.getElementById("videoLightboxCloseBtn").addEventListener("click", closeVideoLightbox);
+  document.getElementById("videoLightboxOverlay").addEventListener("click", (ev) => {
+    if (ev.target.id === "videoLightboxOverlay") closeVideoLightbox();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !document.getElementById("videoLightboxOverlay").classList.contains("hidden")) {
+      closeVideoLightbox();
+    }
+  });
+
+  function base64ToBlob(b64, mime) {
+    try {
+      const byteChars = atob(b64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      return new Blob([bytes], { type: mime || "application/octet-stream" });
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Backs the image/signature Download button — loads rawValue through the
+  // setImageData bridge into an off-DOM <img>, then reads the resolved src
+  // back out as a Blob. Reading an already-loaded element's src is
+  // local/same-document, not a new cross-origin request, which is why this
+  // works where a raw fetch() to the file's own URL is CORS-blocked. Doesn't
+  // work for video (browsers refuse to decode non-image bytes through an
+  // Image element) — see the Video section in renderDocumentation() for how
+  // that's handled instead (plain link-out, not embedded playback).
+  function getBlobViaImageBridge(rawValue) {
+    return new Promise((resolve) => {
+      if (!(typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData)) { resolve(null); return; }
+      const img = new Image();
+      let done = false;
+      const finish = (blob) => { if (done) return; done = true; resolve(blob); };
+      const timer = setTimeout(() => finish(null), 15000);
+      img.onload = () => {
+        clearTimeout(timer);
+        try {
+          const src = img.src;
+          if (src.indexOf("data:") === 0) {
+            const commaIdx = src.indexOf(",");
+            const meta = src.slice(5, commaIdx);
+            const mime = meta.split(";")[0] || "application/octet-stream";
+            const payload = src.slice(commaIdx + 1);
+            finish(meta.indexOf("base64") !== -1 ? base64ToBlob(payload, mime) : new Blob([decodeURIComponent(payload)], { type: mime }));
+          } else {
+            finish(null);
+          }
+        } catch (e) {
+          finish(null);
+        }
+      };
+      img.onerror = () => { clearTimeout(timer); finish(null); };
+      ZOHO.CREATOR.UTIL.setImageData(img, rawValue, function () {});
+    });
+  }
+
+  function downloadViaImageBridge(rawValue, filename) {
+    return getBlobViaImageBridge(rawValue).then((blob) => {
+      if (!blob) return false;
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl; a.download = filename || "download";
+      document.body.appendChild(a); a.click();
+      URL.revokeObjectURL(dlUrl); a.remove();
+      return true;
+    });
+  }
+
+  document.getElementById("lightboxDownloadBtn").addEventListener("click", async () => {
+    if (!lightboxRawValue) return;
+    const btn = document.getElementById("lightboxDownloadBtn");
+    btn.disabled = true;
+    btn.textContent = "Downloading…";
+    const ok = await downloadViaImageBridge(lightboxRawValue, lightboxFilename);
+    btn.disabled = false;
+    btn.innerHTML = "⬇ Download";
+    toast(ok ? "Downloaded." : "Couldn't download.", ok ? "success" : "error");
+  });
+
+  // containerId defaults to the (now-unreachable-but-left-in-place) read-only
+  // detail view's own mount, but is also called against editDocumentationPreview
+  // (Edit mode, see populateEditForm()) — parameterized 2026-08-03 so both can
+  // coexist in the DOM without colliding: every element this function creates is
+  // looked up via a container-scoped querySelector, never a bare global
+  // getElementById on a fixed id, so two simultaneous renders (one hidden) never
+  // fight over the same id.
+  function renderDocumentation(r, containerId) {
+    containerId = containerId || "detailDocumentation";
+    const mount = document.getElementById(containerId);
+    if (!mount) return;
+
+    const rawImages = Array.isArray(r.Image_Upload_max_10_JPG_JPEG_PNG) ? r.Image_Upload_max_10_JPG_JPEG_PNG
+      : (isBlank(r.Image_Upload_max_10_JPG_JPEG_PNG) ? [] : [r.Image_Upload_max_10_JPG_JPEG_PNG]);
+    const rawVideo = Array.isArray(r.Video_Upload_max_3_min_30_sec1) ? r.Video_Upload_max_3_min_30_sec1[0]
+      : (isBlank(r.Video_Upload_max_3_min_30_sec1) ? null : r.Video_Upload_max_3_min_30_sec1);
+    const hasSignature = !isBlank(r.Signature);
+
+    mount.innerHTML = `
+      <div>
+        <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2"><span>Images</span> ${rawImages.length ? `(${rawImages.length})` : ""}</p>
+        <div class="doc-images-grid flex flex-wrap gap-2">${rawImages.length ? "" : `<span class="text-slate-300 text-sm">—</span>`}</div>
+      </div>
+      <div class="mt-4">
+        <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Video</p>
+        <div class="doc-video-box">${rawVideo ? "" : `<span class="text-slate-300 text-sm">—</span>`}</div>
+      </div>
+      <div class="mt-4">
+        <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Signature</p>
+        <div class="doc-signature-box">${hasSignature ? "" : `<span class="text-slate-300 text-sm">Not signed</span>`}</div>
+      </div>
+    `;
+
+    if (rawImages.length) {
+      const grid = mount.querySelector(".doc-images-grid");
+      rawImages.forEach((rawVal, i) => {
+        const filename = filenameFromRawValue(rawVal, `image-${i + 1}.png`);
+        const wrap = document.createElement("div");
+        wrap.className = "w-20 h-20 rounded-lg border border-slate-200 bg-slate-100 overflow-hidden cursor-zoom-in";
+        const img = document.createElement("img");
+        img.className = "w-full h-full object-cover";
+        img.addEventListener("error", () => {
+          wrap.innerHTML = `<div class="w-full h-full flex items-center justify-center text-[9px] text-slate-400 text-center px-1">Preview unavailable</div>`;
+        });
+        wrap.addEventListener("click", () => openLightbox(rawVal, filename));
+        wrap.appendChild(img);
+        grid.appendChild(wrap);
+        applyCreatorImage(img, rawVal);
+      });
+    }
+    if (rawVideo) {
+      // Video preview reuses the same ZOHO.CREATOR.UTIL.setImageData bridge
+      // that Images/Signature use (it resolves relative Creator file paths
+      // into a same-origin data:/blob: URL via an authenticated internal
+      // call). It's built for <img> elements, but the resolved URL doesn't
+      // care what it was originally requested for — an off-DOM <img> is used
+      // just to trigger the bridge, then its resolved src is handed to the
+      // real <video> element.
+      const box = mount.querySelector(".doc-video-box");
+      // ADDED 2026-07-27, per user ("no spinner when loading like in exception") —
+      // ported the same visible loading indicator ExceptionControl already has,
+      // this widget never had one at all (video just silently sat blank/still
+      // controls-less until the bridge resolved, no visual cue either way).
+      // No id= on the loading indicator/button anymore (2026-08-03) — this whole
+      // block is now scoped via box.querySelector so it works identically
+      // whichever container (detail or edit) called renderDocumentation().
+      box.innerHTML = `<video width="320" height="240" controls preload="metadata" class="doc-video-el hidden">Preview unavailable.</video>` +
+        `<span class="doc-video-loading flex items-center gap-1.5 text-[11px] text-slate-400"><span class="inline-block w-3 h-3 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin"></span>Loading preview…</span>` +
+        `<button type="button" class="doc-video-fullscreen-btn hidden items-center gap-1 mt-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>Fullscreen</button>`;
+      const videoEl = box.querySelector(".doc-video-el");
+      const fullscreenBtn = box.querySelector(".doc-video-fullscreen-btn");
+      // FIXED 2026-07-27, per user ("add the same fullscreen" — ported from
+      // UI/FF Widget/ExceptionControl) — the real Fullscreen API is blocked by
+      // this iframe's Permissions Policy (Zoho's own embedding, not fixable
+      // from widget code); reparent into #videoLightboxOverlay instead, same
+      // proven position:fixed mechanism the image lightbox above already uses.
+      fullscreenBtn.addEventListener("click", () => {
+        openVideoLightbox(videoEl, box);
+      });
+      if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData) {
+        const hiddenImg = new Image();
+        ZOHO.CREATOR.UTIL.setImageData(hiddenImg, imgUrlFromRawValue(rawVideo), function () {
+          const loadingEl = box.querySelector(".doc-video-loading");
+          if (loadingEl) loadingEl.remove();
+          const resolvedSrc = hiddenImg.src || "";
+          if (resolvedSrc && (resolvedSrc.startsWith("blob:") || resolvedSrc.startsWith("data:"))) {
+            videoEl.src = resolvedSrc;
+            videoEl.classList.remove("hidden");
+            fullscreenBtn.classList.remove("hidden");
+            fullscreenBtn.classList.add("flex");
+          } else {
+            box.innerHTML = `<span class="text-slate-800 text-sm font-medium">1 attached</span><p class="text-[11px] text-slate-400 mt-1">Preview unavailable.</p>`;
+          }
+        });
+      }
+    }
+    if (hasSignature) {
+      const box = mount.querySelector(".doc-signature-box");
+      const filename = filenameFromRawValue(r.Signature, "signature.png");
+      const img = document.createElement("img");
+      img.className = "max-w-[200px] border border-slate-200 rounded-lg bg-white p-2 cursor-zoom-in";
+      img.addEventListener("error", () => {
+        box.innerHTML = `<p class="text-xs text-slate-400">Preview unavailable.</p>`;
+      });
+      img.addEventListener("click", () => openLightbox(r.Signature, filename));
+      box.appendChild(img);
+      applyCreatorImage(img, r.Signature);
+    }
+  }
+
+  /* ADDED 2026-07-28, per user request ("where can i see the supplier in
+     widget? both QC and Exception Control") — Checker_Checklist has no
+     Supplier field of its own (same gap fixed on the Deluge side in
+     checker_checklist_qc_sync.txt, see that file's own row), so this is a
+     display-only live lookup, same PR-No trace-back the native fix uses:
+     Purchase_Request1[PR_No==...].Selected_Supplier. Single lookup per
+     detail-view open, not batched across the list (would be N lookups). */
+  function resolveSupplierForPR(prNo, cb) {
+    if (!prNo || typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA) { cb(""); return; }
+    ZOHO.CREATOR.DATA.getRecords({
+      report_name: "All_Purchase_Request",
+      criteria: "(PR_No == " + JSON.stringify(String(prNo)) + ")",
+      field_config: "all",
+      max_records: 200,
+    }).then((resp) => {
+      const rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+      cb(rows.length ? (rows[0].Selected_Supplier || "") : "");
+    }).catch(() => cb(""));
+  }
+
+  // Per user request (2026-08-03): opening a record (row click or a deep link)
+  // now lands straight in Edit mode — the read-only detail view is skipped as
+  // an intermediate stop. switchToDetail()/detailView itself are left in place,
+  // unused for now, rather than deleted (same "don't delete, leave unused"
+  // convention as everywhere else in this app) in case a future flow still
+  // wants the read-only view. Real, flagged tradeoff: renderDocumentation()'s
+  // rich photo/video preview + lightbox is only ever built for detailView —
+  // Edit mode's own Documentation section only shows a plain "N currently
+  // attached" text note (see populateEditForm()), not thumbnails/playback.
+  function openRecordForEdit(recordId) {
+    const r = allRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r) return;
+    switchToEdit(r);
+  }
+
+  function switchToDetail(recordId) {
+    const r = allRecords.find(rec => String(rec.ID) === String(recordId));
+    if (!r) return;
+    renderNextStepBanner("nsBanner", r.ID, nextStepFor(r));
+    closeVideoLightbox();
+
+    document.getElementById("editRecordBtn").onclick = () => switchToEdit(r);
+
+    document.getElementById("detailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
+    document.getElementById("detailSoNo").textContent = displayVal(r.SO) !== "—" ? displayVal(r.SO) : "QC Report";
+    document.getElementById("detailCustomer").textContent = displayVal(r.Customer_Name);
+    document.getElementById("detailSubline").innerHTML =
+      `${escapeHtml(displayVal(r.Order_Type))} · ${escapeHtml(displayVal(r.Delivery_Type))}` +
+      (isBlank(r.RR) ? "" : ` · 🔁 <span>Recheck</span> (<span>was</span> ${escapeHtml(displayVal(r.RR))})`);
+
+    const fieldsHtml = [
+      ["SO #", displayVal(r.SO)],
+      ["PAC #", displayVal(r.PAC)],
+      ["PR #", displayVal(r.PR)],
+      ["RR #", displayVal(r.RR)],
+      ["Demo #", displayVal(r.Demo)],
+      ["Order Type", displayVal(r.Order_Type)],
+      ["Delivery Type", displayVal(r.Delivery_Type)],
+      ["Added Time", escapeHtml(formatDateTime(r.Added_Time))],
+    ];
+    document.getElementById("detailFields").innerHTML = fieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("") + `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Supplier</dt>
+        <dd class="text-sm text-slate-800 mt-0.5" id="detailSupplierVal">Loading…</dd>
+      </div>`;
+    resolveSupplierForPR(r.PR, (sup) => {
+      const el = document.getElementById("detailSupplierVal");
+      if (el) el.textContent = sup || "—";
+    });
+
+    const customerFieldsHtml = [
+      ["Customer Name", displayVal(r.Customer_Name)],
+      ["Customer Type", displayVal(r.Customer_Type)],
+      ["Customer Address", displayVal(r.Customer_Address)],
+    ];
+    document.getElementById("detailCustomerFields").innerHTML = customerFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const itemFieldsHtml = [
+      ["Item Name", displayVal(r.Item_Name)],
+      ["SKU", displayVal(r.SKU)],
+      ["Qty", displayVal(r.Quantity)],
+      ["Bin Location", displayVal(r.Bin_Location)],
+    ];
+    // ADDED 2026-07-29 — split-qty save leaves the record's own Quantity showing
+    // only the Approved slice; this makes the original breakdown visible again.
+    const splitOrigQty = parseInt(r.Split_Original_Qty, 10) || 0;
+    if (splitOrigQty > 0) {
+      const splitRejQty = parseInt(r.Split_Rejected_Qty, 10) || 0;
+      const splitApQty = splitOrigQty - splitRejQty;
+      itemFieldsHtml.push(["Split", `${splitApQty} Approved / ${splitRejQty} Rejected (of ${splitOrigQty})`]);
+    }
+    document.getElementById("detailItemFields").innerHTML = itemFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 font-medium mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    // QC Checklist — Fixture Body / LED / Uniformity are multi-select
+    // checkbox groups; show whichever were checked as a checked list.
+    const checklistGroups = [
+      checklistGroupHtml("Fixture Body Checklist", toArray(r.Fixture_Body_Checklist)),
+      checklistGroupHtml("Checklist", toArray(r.LED_Checklist)),
+      checklistGroupHtml("Uniformity", toArray(r.Uniformity)),
+    ].filter(Boolean).join("");
+    document.getElementById("detailChecklists").innerHTML = checklistGroups
+      || `<p class="text-xs text-slate-400">No checklist items recorded.</p>`;
+
+    // Bulb & Color Specs — Type of Bulb / Kelvin / Color Temperature are
+    // multi-select list fields.
+    const detailSavedCT = toArray(r.Color_Temperature).filter((c) => c !== "Tri-color");
+    const detailSavedK = toArray(r.Kelvin);
+    let detailDisplayCT = detailSavedCT.filter((c) => COLOR_TEMP_OPTIONS.includes(c));
+    if (!detailDisplayCT.length) {
+      detailSavedK.forEach((k) => {
+        detailSavedCT.forEach((c) => {
+          const combo = `${c} (${k})`;
+          if (COLOR_TEMP_OPTIONS.includes(combo) && !detailDisplayCT.includes(combo)) detailDisplayCT.push(combo);
+        });
+        if (!detailDisplayCT.length) {
+          COLOR_TEMP_OPTIONS.forEach((opt) => {
+            if (opt.includes(`(${k})`) && !detailDisplayCT.includes(opt)) detailDisplayCT.push(opt);
+          });
+        }
+      });
+      if (!detailDisplayCT.length) detailDisplayCT = detailSavedCT.length ? detailSavedCT : detailSavedK;
+    }
+
+    const bulbSpecsHtml = [
+      ["Type of Bulb", toArray(r.Type_of_Bulb)],
+      ["Color Temperature", detailDisplayCT],
+      ["Lighting Feature", toArray(r.Lighting_Feature).concat(toArray(r.Color_Temperature).includes("Tri-color") && !toArray(r.Lighting_Feature).includes("Tri-color") ? ["Tri-color"] : [])],
+    ];
+    document.getElementById("detailBulbSpecs").innerHTML = bulbSpecsHtml.map(([label, items]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1.5">${escapeHtml(label)}</dt>
+        <dd class="flex flex-wrap gap-1.5">${tagListHtml(items, "blue")}</dd>
+      </div>`).join("");
+
+    // Damage Assessment
+    const damageFieldsHtml = [
+      ["Item to Replace", displayVal(r.Item_to_Replace)],
+      ["Quantity of Damage Items", displayVal(r.Quantity_of_Damage_Items)],
+    ];
+    document.getElementById("detailDamageFields").innerHTML = damageFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const spareParts = Array.isArray(r.Spare_part_type) ? r.Spare_part_type : [];
+    // CHANGED 2026-08-08e — resolve "Others" to the officer's own typed
+    // Spare_Part_Type_Other text, same as the RR-facing fields already do.
+    document.getElementById("detailSpareParts").innerHTML = spareParts.length
+      ? spareParts.map((sp) => {
+          const otherText = textVal(sp.Spare_Part_Type_Other);
+          const types = toArray(sp.Spare_Part_Type).map((t) => (t === "Others" && otherText) ? otherText : t);
+          return `
+          <div class="flex items-center justify-between text-sm bg-slate-50 rounded-lg px-3 py-2">
+            <span class="text-slate-700">${escapeHtml(types.join(", ") || "—")}</span>
+            <span class="text-slate-500"><span>Qty</span>: ${escapeHtml(displayVal(sp.Quantity_of_damage_spare_s))}</span>
+          </div>`;
+        }).join("")
+      : `<p class="text-xs text-slate-400">No spare parts logged.</p>`;
+
+    renderDocumentation(r);
+
+    document.getElementById("detailQcStatus").innerHTML = qcStatusHtml(r);
+    document.getElementById("detailQualityChecker").textContent = displayVal(r.Quality_Checker);
+    document.getElementById("detailDateChecked").textContent = formatDate(r.Date_Checked);
+    document.getElementById("detailLocation").textContent = displayVal(r.Location);
+    document.getElementById("detailRemarks").textContent = !isBlank(r.Remarks) ? r.Remarks : "—";
+
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("editView").classList.add("hidden");
+    document.getElementById("detailView").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }
+
+  function switchToList() {
+    closeVideoLightbox();
+    qcTimeline.close();
+    internalNotes.close();
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("editView").classList.add("hidden");
+    document.getElementById("listView").classList.remove("hidden");
+  }
+  document.getElementById("backToListBtn").addEventListener("click", switchToList);
+
+  // ---------------------------------------------------------------------
+  // Data loading (All_Qc_Reports1)
+  // ---------------------------------------------------------------------
+  function fetchAllRecords() {
+    // field_config: "all" returns raw form field data instead of whatever the
+    // report's display columns would otherwise collapse fields to.
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+
+  function loadLive() {
+    fetchAllRecords().then((records) => {
+      allRecords = records;
+      orderedRows = computeOrderedRows(allRecords);
+      renderAll();
+      checkDeepLinkOpenQc();
+    }).catch((err) => {
+      console.error(err);
+      toast("Failed to load records from Zoho Creator.", "error");
+    });
+  }
+
+  // ADDED 2026-07-31, per user ("can we just directly use QC's detailed view
+  // instead of hardcoding another QC inside this kanban html") — lets
+  // UI/FF Widget/FulfillmentKanban (2)'s QC/Rework columns deep-link straight
+  // into this widget's own real detail view instead of duplicating it. Same
+  // proven pattern as UI/EndUser/POs/app/PO.html's navigateToPR()/
+  // checkDeepLinkOpenPR() — query string AFTER the page hash
+  // (#Page:Quality_Check?qcRecordId=X), read via getQueryParams(). Needs a
+  // Page Variable named `qcRecordId` registered on the Quality_Check page
+  // (Page Builder -> Variables tab) or getQueryParams() silently returns {}.
+  function checkDeepLinkOpenQc() {
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams !== "function") return;
+    ZOHO.CREATOR.UTIL.getQueryParams().then((params) => {
+      const qcId = params && params.qcRecordId;
+      if (!qcId) return;
+      openRecordForEdit(qcId);
+    }).catch((err) => console.warn("[QCChecklist] getQueryParams failed:", err));
+  }
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  searchInput.addEventListener("input", () => { renderTable(); });
+  document.getElementById("rrRecheckFilterBtn").addEventListener("click", () => {
+    rrRecheckFilterOn = !rrRecheckFilterOn;
+    const btn = document.getElementById("rrRecheckFilterBtn");
+    btn.className = rrRecheckFilterOn
+      ? "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-purple-600 bg-purple-600 text-white transition"
+      : "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-purple-200 bg-white text-purple-700 hover:bg-purple-50 transition";
+    renderTable();
+  });
+
+  const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+  if (sdkReady) {
+    loadLive();
+  } else {
+    toast("This widget must be opened inside Zoho Creator to load data.", "error");
+  }
+
+  // ---------------------------------------------------------------------
+  // Notification bell — see notification_component/README.md. Same 2 accounts
+  // as the other FF widgets for now, per user (2026-08-03): "for now that two
+  // only. we will update this some other time if have some changes."
+  // ---------------------------------------------------------------------
+  // Timeline History + Internal Conversation — added 2026-08-26, per user
+  // ("next this QC"), same shared SOF_Timeline/SOF_Internal_Messages forms as
+  // SO/PreOrderReport/ReadinessGate. Threaded by this record's own Creator ID
+  // (Checker_Checklist row).
+  var qcTimeline = TimelineHistory.init({
+    mountId: "tlhcMount",
+    appName: () => CONFIG.APP_NAME,
+    formName: "SOF_Timeline",
+    reportName: "SOF_Timeline_Report",
+    parentField: "Package",
+    actor: "FF Officer",
+    title: "Timeline History",
+    sourceLabel: "QC Checklist",
+  });
+  var internalNotes = InternalNotes.init({
+    mountId: "incMount",
+    appName: () => CONFIG.APP_NAME,
+    formName: "SOF_Internal_Messages",
+    reportName: "SOF_Internal_Messages_Report",
+    parentField: "Package",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    roleMap: {
+      "hcinvanalyst@gmail.com": "HC Systems",
+      "homecartelff@gmail.com": "HC Pack & Fulfill",
+      "homecartelsales@gmail.com": "HC Sales",
+    },
+    mentionableMap: {
+      "homecartelpacker@gmail.com": "HC Purchasing",
+      "hcdamageofficer@gmail.com": "HC Damage Officer",
+    },
+    title: "Internal Conversation",
+    sourceLabel: "QC Checklist",
+  });
+
+  const notifications = window.NotificationSystem ? NotificationSystem.init({
+    mountId:          "notifMount",
+    appName:          CONFIG.APP_NAME,
+    reportName:       "QC_Notifications_Report",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    environment:      () => ZC_ENV,
+    roleMap:          { "homecartelff@gmail.com": "HC Pack & Fulfill", "hcinvanalyst@gmail.com": "HC Systems" },
+    fullAccessRoles:  ["HC Systems"],
+    title:            "Notifications",
+  }) : { open(){}, close(){}, refresh(){} };
+
+  // Resolve the real logged-in email + dev/prod environment — same 2-path
+  // getInitParams()/ZOHO.CREATOR.init() fallback chain proven in SO/PreOrderReport/
+  // ReadinessGate/PRsv2/INQsv2/Shipmentsv2. This widget had no such resolution
+  // before.
+  if (sdkReady && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams === "function") {
+    ZOHO.CREATOR.UTIL.getInitParams().then((params) => {
+      if (params && (params.environment || params.env)) ZC_ENV = params.environment || params.env;
+      const email = params && (params.loginUser || params.login_user || params.userEmail || params.user_email || params.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); internalNotes.refresh(); }
+    }).catch(() => {});
+  }
+  if (sdkReady && typeof ZOHO.CREATOR.init === "function") {
+    ZOHO.CREATOR.init().then((initData) => {
+      if (initData && (initData.environment || initData.env)) ZC_ENV = initData.environment || initData.env;
+      const email = initData && (initData.loginUser || initData.login_user || initData.userEmail || initData.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr && !CURRENT_USER_EMAIL) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); internalNotes.refresh(); }
+    }).catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

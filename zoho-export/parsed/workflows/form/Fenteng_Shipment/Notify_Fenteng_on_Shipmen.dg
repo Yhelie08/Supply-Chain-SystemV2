@@ -1,0 +1,14 @@
+// form: Notify Fenteng on Shipment Added  form=Fenteng_Shipment event=on add on success  [.ds line 45268]
+    targetUrl = "https://creator.zoho.com/homecartel/supply-chain-app/#Page:Fenteng_Shipments?fentengshipmentid=" + input.Shipment_No;
+insert into Fenteng_Notifications
+[
+    Recipient_Email="admin@Fentenglighting.com"
+    Notification_Type="Shipment added"
+    Message="New shipment " + input.Shipment_No + " has been added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=targetUrl
+    Source_Record_No=input.Shipment_No
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]

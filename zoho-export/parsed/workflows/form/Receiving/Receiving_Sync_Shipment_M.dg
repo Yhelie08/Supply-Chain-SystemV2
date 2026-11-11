@@ -1,0 +1,24 @@
+// form: Receiving_Sync_Shipment_Mode  form=Receiving event=on add or edit on success  [.ds line 41234]
+    modeMap = Map();
+for each  rl in input.Receiving_Line_Items
+{
+    if(rl.PR_No != null && rl.PR_No != "" && rl.Shipment_Mode_When_Received != null && rl.Shipment_Mode_When_Received != "")
+    {
+        modeMap.put(rl.PR_No,rl.Shipment_Mode_When_Received);
+    }
+}
+if(modeMap.size() > 0)
+{
+    shipRecSM = Shipments[ID == input.Shipments];
+    if(shipRecSM != null)
+    {
+        for each  shipLine in shipRecSM.PO_Shipments
+        {
+            modeVal = modeMap.get(shipLine.PR_No);
+            if(modeVal != null)
+            {
+                shipLine.Shipment_Mode_When_Received=modeVal;
+            }
+        }
+    }
+}

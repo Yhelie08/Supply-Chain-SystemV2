@@ -1,0 +1,67 @@
+// schedule: Backfill_PreOrder_Forecast  form=null event= on start > on load  [.ds line 48934]
+/* 1. ISANG pasada sa Purchase_Request1 — tinitipon ang forecast ng bawat PR.
+                   Map muna, hindi paisa-isang hanap kada Pre-Order row: kung hahanapin ang PR
+                   kada row, 592 na magkakahiwalay na query ito sa isang takbo. Dalawang pasada
+                   lang ito. */
+                fcDateByPr = Map();
+                fcWinByPr = Map();
+                fcStatByPr = Map();
+                prSeen = 0;
+                for each  pr in Purchase_Request1[ID != 0]
+                {
+                    prNo = pr.PR_No + "";
+                    /* Ang walang petsa ay hindi isinasama: wala itong maibibigay, at ang
+                       pagsulat ng blangko ay magbubura ng dating laman ng Pre-Order row. */
+                    if(prNo != "" && pr.Forecast_Delivery != null)
+                    {
+                        fcDateByPr.put(prNo,pr.Forecast_Delivery);
+                        fcWinByPr.put(prNo,pr.Forecast_Window + "");
+                        fcStatByPr.put(prNo,pr.Forecast_Status + "");
+                        prSeen = prSeen + 1;
+                    }
+                }
+                /* 2. ISANG pasada sa Pre_Order_FF — kinokopya ang forecast ng PR ng bawat row.
+                   Ang `PR` sa row na ito ay PER ITEM (syncpackagetofulfillment.txt linya 886),
+                   kaya kusang tama ang (Partly) Pre Order: bawat item, sariling PR, sariling
+                   petsa. Walang espesyal na ginagawa para doon. */
+                filled = 0;
+                noPr = 0;
+                noForecast = 0;
+                /* Nagsisimula sa PETSA, hindi sa null: ang null-initialised na variable ay
+                   walang type sa Deluge at hindi na maipapasok sa date field. Gotcha #27. */
+                d = zoho.currentdate;
+                for each  po in Pre_Order_FF[ID != 0]
+                {
+                    prNo = po.PR + "";
+                    if(prNo == "")
+                    {
+                        noPr = noPr + 1;
+                    }
+                    else if(!fcDateByPr.containKey(prNo))
+                    {
+                        /* `containKey`, hindi `containsKey`. */
+                        noForecast = noForecast + 1;
+                    }
+                    else
+                    {
+                        d = fcDateByPr.get(prNo);
+                        w = fcWinByPr.get(prNo) + "";
+                        s = fcStatByPr.get(prNo) + "";
+                        /* `!=` guard: ang write ang mabigat, hindi ang read. Sa pangalawang
+                           takbo bukas, karamihan ay walang magbabago at walang isusulat. */
+                        if(po.Forecast_Delivery != d)
+                        {
+                            po.Forecast_Delivery=d;
+                        }
+                        if(po.Forecast_Window != w)
+                        {
+                            po.Forecast_Window=w;
+                        }
+                        if(po.Forecast_Status != s)
+                        {
+                            po.Forecast_Status=s;
+                        }
+                        filled = filled + 1;
+                    }
+                }
+                info "FORECAST PRE-ORDER BACKFILL — " + prSeen + " PR na may forecast | " + filled + " pre-order row na natatakan | " + noPr + " walang PR | " + noForecast + " walang forecast ang PR nito";

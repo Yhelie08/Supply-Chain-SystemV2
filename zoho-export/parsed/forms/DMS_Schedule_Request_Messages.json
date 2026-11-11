@@ -1,0 +1,52 @@
+{
+  "name": "DMS_Schedule_Request_Messages",
+  "label": "DMS Schedule Request Messages",
+  "successMessage": "Dms Schedule Request Message Added Successfully",
+  "line": 1789,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "DMS_Schedule_Request_ID",
+      "label": "DMS Schedule Request ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sender_Email",
+      "label": "Sender Email",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sender_Name",
+      "label": "Sender Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Message",
+      "label": "Message",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Sent_On",
+      "label": "Sent On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Synced_To_CMS",
+      "label": "Synced To CMS",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    }
+  ]
+}

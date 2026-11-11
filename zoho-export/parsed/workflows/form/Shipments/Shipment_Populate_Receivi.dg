@@ -1,0 +1,49 @@
+// form: Shipment_Populate_Receiving  form=Shipments event=on add on success  [.ds line 46130]
+    /* CHANGED 2026-07-20, per user — "same RCV" replacement cycle. A 2nd (or Nth)
+   Shipment created for a PO_No that ALREADY has a Receiving record (the cloned
+   "replacement shipment", see the Clone Shipment mechanism) must NOT spawn a
+   second RCV — it routes into the SAME existing Receiving record instead.
+   Deliberately does NOT touch Receiving_Line_Items/Expected_Qty at all: the
+   replacement unit(s) aren't a NEW quantity on top of the original order, they
+   REPLACE the damaged/missing units on the SAME line — Expected_Qty must stay
+   as-is or the Accepted+Damage+Missing=Expected invariant (Receiving_Validate_Qty)
+   breaks once the officer re-inspects. Only re-points Receiving.Shipments at the
+   new Shipment (so the officer's next open + the Shipment_Mode_When_Received
+   reverse-sync both target the shipment actually in flight now). */
+existingRecvForPO = Receiving[PO_No == input.PO_No.PO_No];
+if(existingRecvForPO.count() > 0)
+{
+    for each  existingRecvRoute in existingRecvForPO
+    {
+        update existingRecvRoute
+        [
+            Shipments=input.ID
+        ];
+    }
+    selfRecRoute = Shipments[ID == input.ID];
+    selfRecRoute.Receiving_Record_Created=true;
+    input.Receiving_Record_Created = true;
+    return;
+}
+newRecvID = insert into Receiving
+[
+    Shipments=input.ID
+    SO_No=input.Sales_Order
+    PO_No=input.PO_No.PO_No
+    Customer_Name=input.Customer
+    Supplier=input.Supplier
+    Added_User=zoho.loginuser
+];
+newRecv = Receiving[ID == newRecvID];
+for each  li in input.PO_Shipments
+{
+    row = Receiving.Receiving_Line_Items();
+    row.PR_No=li.PR_No;
+    row.SKU=li.SKU;
+    row.Item_Name=li.Item_Name;
+    row.Expected_Qty=li.Shipment_QTY;
+    newRecv.Receiving_Line_Items.insert(row);
+}
+selfRec = Shipments[ID == input.ID];
+selfRec.Receiving_Record_Created=true;
+input.Receiving_Record_Created = true;

@@ -1,0 +1,17 @@
+
+			displayName = "All Dms Schedule Requests"
+			show all rows from DMS_Schedule_Request    
+			(
+				CMS_Schedule_Request_ID
+				Sales_Order_Number
+				Customer_Name
+				Requested_Date
+				Requested_Time
+				Requested_By
+				Notes
+				Status
+				Service_Appointment_Record_ID
+				Books_Sales_Order_ID
+				Type_of_Delivery
+			)
+		

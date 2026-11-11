@@ -1,0 +1,23 @@
+// form: SA_Scheduling_Override_Validate  form=Service_Appointment_Form event=on add or edit on validate  [.ds line 41813]
+    if(input.Type_of_Delivery == "Pick Up")
+{
+    return;
+}
+if(input.Fleet_Decision == "3rd Party")
+{
+    return;
+}
+mismatchDetected = input.Confirmed_Schedule_Date != null && input.Suggested_Schedule_Date == null || input.Confirmed_Schedule_Date != input.Suggested_Schedule_Date || input.Confirmed_Time_Slot != input.Suggested_Time_Slot;
+if(mismatchDetected && input.Calendar_Entry_Created != true)
+{
+    if(input.Override_By == null || input.Override_By == "")
+    {
+        alert "Override By is required when confirming a schedule that differs from the system suggestion.";
+        cancel submit;
+    }
+    if(input.Override_Reason == null || input.Override_Reason == "")
+    {
+        alert "Override Reason is required when confirming a schedule that differs from the system suggestion.";
+        cancel submit;
+    }
+}

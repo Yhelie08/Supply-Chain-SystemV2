@@ -1,0 +1,20 @@
+// form: Disable_Supplier_Quotes_LastEdited  form=Inquiry_Form event=on add or edit on load  [.ds line 36556]
+    disable Supplier_Quotes_Last_Edited.Suppliers_Last_Edited;
+disable Supplier_Quotes_Last_Edited.Availability_Last_Edited;
+disable Supplier_Quotes_Last_Edited.Initial_Price_Last_Edited;
+disable Supplier_Quotes_Last_Edited.Negotiated_Last_Edited;
+disable Supplier_Quotes_Last_Edited.Final_Price_Last_Edited;
+disable Supplier_Quotes_Last_Edited.Lead_Time_Last_Edited;
+disable INQ_No;
+disable quote_group;
+disable sku;
+disable description;
+disable unit;
+disable SRP_Approved1;
+disable Books_Estimate_No;
+disable Books_Estimate_ID;
+disable Estimate_Created;
+disable created_date;
+disable Product_Image;
+disable Project_Name;
+disable Customer_Type;

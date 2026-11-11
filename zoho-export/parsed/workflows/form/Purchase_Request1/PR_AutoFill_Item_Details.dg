@@ -1,0 +1,5 @@
+// form: PR_AutoFill_Item_Details  form=Purchase_Request1 event=on add or edit on user input of Items  [.ds line 35452]
+    input.sku = input.Items.SKU;
+input.Description1 = input.Items.Description;
+input.unit = input.Items.Unit;
+input.category = input.Items.category;

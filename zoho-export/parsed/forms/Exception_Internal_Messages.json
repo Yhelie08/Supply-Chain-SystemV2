@@ -1,0 +1,53 @@
+{
+  "name": "Exception_Internal_Messages",
+  "label": "Exception Internal Messages",
+  "successMessage": "Data Added Successfully!",
+  "line": 2543,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Exception_No",
+      "label": "Exception No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sender_Email",
+      "label": "Sender Email",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sender_Role",
+      "label": "Sender Role",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "HC Purchasing",
+        "HC Sales",
+        "HC Damage Officer",
+        "HC Systems",
+        "HC Pack & Fulfill"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Message",
+      "label": "Message",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Sent_On",
+      "label": "Sent On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

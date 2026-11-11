@@ -1,0 +1,224 @@
+// form: INQ_Check_Readiness  form=Inquiry_Form event=on add or edit on validate  [.ds line 40195]
+    // === Step 0 (added 2026-07-14, per user): backfill quote_group if blank ===
+if(input.quote_group == null || input.quote_group == "" && input.Projects != null)
+{
+    input.quote_group = input.Projects.Project_Code;
+}
+// === Step A: build list of selected supplier names + IDs (+ match keys) ===
+selectedPairs = List();
+selectedSupplierNames = List();
+selectedSupplierIds = List();
+for each  sup in input.Suppliers
+{
+    supRecord = Suppliers[ID == sup];
+    supName = supRecord.Supplier_Name.first_name;
+    supNameRaw = supName + "";
+    supNameKey = "";
+    if(supNameRaw != "null")
+    {
+        supNameKey = supNameRaw.trim().toLowerCase();
+    }
+    supIdRaw = sup + "";
+    supIdKey = supIdRaw.removeFirstOccurence("[").removeLastOccurence("]").trim();
+    pairMap = Map();
+    pairMap.put("name",supName);
+    pairMap.put("id",sup);
+    pairMap.put("namekey",supNameKey);
+    pairMap.put("idkey",supIdKey);
+    selectedPairs.add(pairMap);
+    selectedSupplierNames.add(supNameKey);
+    if(supIdKey != "" && supIdKey != "null")
+    {
+        selectedSupplierIds.add(supIdKey);
+    }
+}
+// === Step B: mark removed supplier tags as "Declined" (matched by ID or clean name) ===
+existingSupplierNames = List();
+existingSupplierIds = List();
+for each  qr in input.Supplier_Quotes
+{
+    rowNameRaw = qr.Suppliers + "";
+    rowNameKey = "";
+    if(rowNameRaw != "null")
+    {
+        rowNameKey = rowNameRaw.trim().toLowerCase();
+    }
+    rowIdRaw = qr.Supplier_ID + "";
+    rowIdKey = rowIdRaw.removeFirstOccurence("[").removeLastOccurence("]").trim();
+    if(rowIdKey == "null")
+    {
+        rowIdKey = "";
+    }
+    existingSupplierNames.add(rowNameKey);
+    if(rowIdKey != "")
+    {
+        existingSupplierIds.add(rowIdKey);
+    }
+    stillTagged = false;
+    if(rowIdKey != "" && selectedSupplierIds.contains(rowIdKey))
+    {
+        stillTagged = true;
+    }
+    if(selectedSupplierNames.contains(rowNameKey))
+    {
+        stillTagged = true;
+    }
+    if(stillTagged == false)
+    {
+        qr.Stage="Declined";
+    }
+}
+// === Step C: add a row for any NEW supplier tag not yet present (ID first, name second) ===
+for each  pair in selectedPairs
+{
+    pairIdKey = pair.get("idkey");
+    pairNameKey = pair.get("namekey");
+    alreadyThere = false;
+    if(pairIdKey != "" && existingSupplierIds.contains(pairIdKey))
+    {
+        alreadyThere = true;
+    }
+    if(existingSupplierNames.contains(pairNameKey))
+    {
+        alreadyThere = true;
+    }
+    if(alreadyThere == false)
+    {
+        newRow = Inquiry_Form.Supplier_Quotes();
+        newRow.Suppliers=pair.get("name");
+        newRow.Supplier_ID=pair.get("id");
+        newRow.Stage="Not Selected";
+        input.Supplier_Quotes.insert(newRow);
+        if(pairIdKey != "")
+        {
+            existingSupplierIds.add(pairIdKey);
+        }
+        existingSupplierNames.add(pairNameKey);
+    }
+}
+// === Step D: "Selected" winner logic + Final Cost copy ===
+selectedSupplierWinner = "";
+hasWinner = false;
+winnerFinalPrice = 0;
+winnerAvailability = "";
+for each  qr in input.Supplier_Quotes
+{
+    if(qr.Selected)
+    {
+        selectedSupplierWinner = qr.Suppliers;
+        hasWinner = true;
+        winnerFinalPrice = qr.Final_Price;
+        winnerAvailability = qr.Availability;
+    }
+}
+if(hasWinner)
+{
+    for each  qr in input.Supplier_Quotes
+    {
+        if(qr.Suppliers == selectedSupplierWinner)
+        {
+            if(qr.Stage == "Declined" && qr.Prev_Stage != null && qr.Prev_Stage != "")
+            {
+                qr.Stage=qr.Prev_Stage;
+                qr.Prev_Stage="";
+            }
+        }
+        else
+        {
+            if(qr.Stage != "Declined")
+            {
+                qr.Prev_Stage=qr.Stage;
+            }
+            qr.Stage="Declined";
+            qr.Selected=false;
+        }
+    }
+    input.Select_Final_Cost = winnerFinalPrice;
+}
+else
+{
+    for each  qr in input.Supplier_Quotes
+    {
+        if(qr.Stage == "Declined" && qr.Prev_Stage != null && qr.Prev_Stage != "")
+        {
+            qr.Stage=qr.Prev_Stage;
+            qr.Prev_Stage="";
+        }
+    }
+    input.Select_Final_Cost = 0;
+}
+// === Step E: Readiness Checklist auto-check ===
+input.Supplier_Selected = hasWinner;
+if(hasWinner && winnerAvailability != null && winnerAvailability != "")
+{
+    input.Availability = true;
+}
+else
+{
+    input.Availability = false;
+}
+if(input.Select_Final_Cost > 0 || input.SRP_Approved1 > 0)
+{
+    input.Final_Price_Exists = true;
+}
+else
+{
+    input.Final_Price_Exists = false;
+}
+if(input.SRP_Status == "Approved")
+{
+    input.SRP_Approved = true;
+}
+else
+{
+    input.SRP_Approved = false;
+}
+// === Step F: Margin computation ===
+if(input.SRP_Approved1 > 0)
+{
+    input.Margin = (input.SRP_Approved1 - input.Select_Final_Cost) / input.SRP_Approved1 * 100;
+}
+else
+{
+    input.Margin = 0;
+}
+// === Step G: Ready for Estimate ===
+if(input.Supplier_Selected && input.Availability && input.Final_Price_Exists && input.SRP_Approved && input.Collateral_Comple_NA)
+{
+    input.Ready_for_Estimates = true;
+}
+else
+{
+    input.Ready_for_Estimates = false;
+}
+// === Step H: Collateral Comple/NA auto-check ===
+collateralFields = List();
+collateralFields.add(input.Product_Sample);
+collateralFields.add(input.D_Image);
+collateralFields.add(input.Specification);
+collateralFields.add(input.Technical_Drawing);
+allComplete = true;
+for each  val in collateralFields
+{
+    if(val != "Completed" && val != "N/A")
+    {
+        allComplete = false;
+    }
+}
+input.Collateral_Comple_NA = allComplete;
+// === Step H (2nd, same name in live script): check if ALL Inquiries in the same
+// Project are SRP_Approved, roll up onto Projects.All_SRP_Approved ===
+if(input.Projects != null)
+{
+    allApproved = true;
+    relatedInquiries = Inquiry_Form[Projects == input.Projects];
+    for each  relInq in relatedInquiries
+    {
+        if(relInq.SRP_Status != "Approved")
+        {
+            allApproved = false;
+        }
+    }
+    projRec = Projects[ID == input.Projects];
+    projRec.All_SRP_Approved=allApproved;
+}

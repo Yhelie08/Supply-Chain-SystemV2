@@ -1,0 +1,18 @@
+
+			displayName = "Transfer Warehouse Report"
+			show all rows from Transfer_Warehouse    
+			(
+				Initiated_By as "Initiated By:"
+				From_Warehouse as "From Warehouse"
+				To_Warehouse as "To Warehouse"
+				Added_Time as "Added Time"
+				Item_to_transfer as "Item to transfer"
+				(
+					field = Item_to_transfer.Items + " " + Item_to_transfer.SKU + " " + Item_to_transfer.Quantity + " " + Item_to_transfer.PAC_Optional
+				)
+				Dispatch
+				Initiated_At1 as "Initiated At:"
+				Received
+				SO_Optional as "SO # (Optional)"
+			)
+		

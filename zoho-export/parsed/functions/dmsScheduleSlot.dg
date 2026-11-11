@@ -1,0 +1,521 @@
+// map dmsScheduleSlot(String recordId, bool isRerun)   [.ds lines 32080-32601]
+resp = Map();
+saId = recordId.toLong();
+rec = Service_Appointment_Form[ID == saId];
+if(rec == null)
+{
+    resp.put("status","error");
+    resp.put("message","Record not found.");
+    return resp;
+}
+// ---------- GUARD 1: tapos na ang job ----------
+if(rec.Appointment_Status == "Completed" || rec.Appointment_Status == "Failed")
+{
+    resp.put("status","blocked");
+    resp.put("message","Hindi na maaaring i-schedule - tapos na ang delivery na ito.");
+    return resp;
+}
+// ---------- GUARD 2: Pick Up, walang team na kailangan ----------
+if(rec.Type_of_Delivery == "Pick Up")
+{
+    resp.put("status","skipped");
+    resp.put("message","Pick Up - i-set na lang diretso ang Confirmed Date at Time.");
+    return resp;
+}
+// ---------- GUARD 3: naka-Flagged na Exception ----------
+// Sa automatic na takbo (isRerun = false) hindi tumutuloy kapag Flagged.
+// Sa manual na Re-Schedule (isRerun = true) sinasadya ng officer, kaya
+// Resolved na ito - parehong behavior gaya ng live ngayon.
+if(rec.Exception_Status == "Flagged")
+{
+    if(isRerun)
+    {
+        rec.Exception_Status="Resolved";
+    }
+    else
+    {
+        resp.put("status","blocked");
+        resp.put("message","Naka-Flagged pa ang Exception - i-resolve muna.");
+        return resp;
+    }
+}
+// ---------- FIX 1: normalize ang delivery type ----------
+// Ang Delivery_Scheduling (Initial Scheduling) ay may sariling spelling:
+// "Delivery and Installation" at "Pull Out". Ang Service Appointment ay
+// "With Installation" at "Pullout". Dalawa ang tinatanggap dito para
+// hindi na tahimik na sumablay ang lahat ng check sa ibaba.
+dTypeRaw = rec.Type_of_Delivery;
+if(dTypeRaw == null)
+{
+    dTypeRaw = "";
+}
+dType = dTypeRaw;
+if(dTypeRaw == "Delivery and Installation")
+{
+    dType = "With Installation";
+}
+if(dTypeRaw == "Pull Out")
+{
+    dType = "Pullout";
+}
+// ---------- Multi-Day Install: manual planning talaga ----------
+if(dType == "Multi-Day Install")
+{
+    rec.Exception_Status="Flagged";
+    rec.Exception_Reason="Requires Manual Planning";
+    custNameMD = "";
+    if(rec.Customer_Name != null)
+    {
+        fnMD = rec.Customer_Name.first_name;
+        lnMD = rec.Customer_Name.last_name;
+        if(fnMD == null)
+        {
+            fnMD = "";
+        }
+        if(lnMD == null)
+        {
+            lnMD = "";
+        }
+        custNameMD = (fnMD + " " + lnMD).trim();
+    }
+    // FIX 5: dedup - huwag nang mag-insert kung may OPEN na kapareho
+    dupMD = DMS_Exception_Queue[Sales_Order_Reference == rec.ID && Exception_Reason == "Requires Manual Planning" && Status == "Open"];
+    dupCountMD = 0;
+    if(dupMD != null)
+    {
+        for each  dm in dupMD
+        {
+            dupCountMD = dupCountMD + 1;
+        }
+    }
+    if(dupCountMD == 0)
+    {
+        insert into DMS_Exception_Queue
+        [
+            Sales_Order_Reference=rec.ID
+            Customer_Name=custNameMD
+            Exception_Stage="Scheduling"
+            Exception_Reason="Requires Manual Planning"
+            Severity="Medium"
+            Raised_By="System"
+            Date_Raised=zoho.currenttime
+            Status="Open"
+            Added_User=zoho.loginuser
+        ]
+    }
+    resp.put("status","flagged");
+    resp.put("message","Multi-Day Install - kailangan ng manual planning.");
+    return resp;
+}
+isFullDay = dType == "Full-Day Install";
+fleetAssignment = "Own Fleet";
+// ---------- FIX 2: may default na ang LAHAT ng type ----------
+estDuration = rec.Estimated_Duration;
+if(estDuration == null || estDuration == 0)
+{
+    estDuration = 2;
+    if(dType == "With Installation")
+    {
+        estDuration = 4;
+    }
+    if(dType == "Full-Day Install")
+    {
+        estDuration = 8;
+    }
+    if(dType == "Site Visit")
+    {
+        estDuration = 1;
+    }
+    // Replacement at Pullout = 2 oras, same sa Delivery Only.
+    // Isinusulat pabalik sa record para hindi na blangko para sa ibang
+    // report o widget na nagbabasa rin dito.
+    rec.Estimated_Duration=estDuration;
+}
+bufferPct = 15;
+pBuf = Policy_Settings[Policy_Key == "traffic_buffer_percent"];
+if(pBuf != null && pBuf.Value != null && pBuf.Value != "")
+{
+    bufferPct = pBuf.Value.toLong();
+}
+bufferedDuration = estDuration * (1 + bufferPct / 100.0);
+if(isFullDay)
+{
+    bufferedDuration = 8;
+}
+maxWindow = 14;
+pWin = Policy_Settings[Policy_Key == "max_days_scheduling_window"];
+if(pWin != null && pWin.Value != null && pWin.Value != "")
+{
+    maxWindow = pWin.Value.toLong();
+}
+// Global na haba ng araw - fallback na lang ito ngayon (tignan FIX 4)
+workdayHours = 9;
+pStartWD = Policy_Settings[Policy_Key == "workday_start_time"];
+pEndWD = Policy_Settings[Policy_Key == "workday_end_time"];
+if(pStartWD != null && pStartWD.Value != null && pStartWD.Value != "" && pEndWD != null && pEndWD.Value != null && pEndWD.Value != "")
+{
+    sParts = pStartWD.Value.toList(" ");
+    eParts = pEndWD.Value.toList(" ");
+    if(sParts.size() == 2 && eParts.size() == 2)
+    {
+        sHr = sParts.get(0).toList(":").get(0).toLong();
+        eHr = eParts.get(0).toList(":").get(0).toLong();
+        if(sParts.get(1).toUpperCase() == "PM" && sHr != 12)
+        {
+            sHr = sHr + 12;
+        }
+        if(eParts.get(1).toUpperCase() == "PM" && eHr != 12)
+        {
+            eHr = eHr + 12;
+        }
+        if(sParts.get(1).toUpperCase() == "AM" && sHr == 12)
+        {
+            sHr = 0;
+        }
+        if(eParts.get(1).toUpperCase() == "AM" && eHr == 12)
+        {
+            eHr = 0;
+        }
+        if(eHr > sHr)
+        {
+            workdayHours = eHr - sHr;
+        }
+    }
+}
+// ---------- SLOT SEARCH ----------
+// Araw-araw, mula sa ANCHOR DATE hanggang +13 (maxWindow). Walang while loop sa
+// Deluge, kaya fixed-length list + sariling counter; ang guard na
+// if(foundInstaller == null) ang pumapalit sa break.
+// HUWAG mag-hold ng Daily_Team_Availability RECORD palabas ng loop -
+// string at number lang ang dinadala (dokumentadong gotcha sa app na ito).
+//
+// FIX 10 (2026-10-27, Step 4 ng DMS chain): Kung may Requested_Delivery_Date
+// na galing sa Initial Scheduling at hindi pa nakalipas, doon magsisimula ang
+// paghahanap sa halip na laging sa "ngayon".
+searchStartDate = zoho.currentdate;
+if(rec.Requested_Delivery_Date != null && rec.Requested_Delivery_Date >= zoho.currentdate)
+{
+    searchStartDate = rec.Requested_Delivery_Date;
+}
+foundInstaller = null;
+foundDriver = null;
+foundDate = null;
+foundUsed = 0;
+foundVehicle = null;
+foundStart = "";
+foundCap = 0;
+dayCounter = 0;
+searchDays = "".leftpad(maxWindow).toList("");
+for each  dayMarker in searchDays
+{
+    dayCounter = dayCounter + 1;
+    if(foundInstaller == null)
+    {
+        candidateDate = searchStartDate.addDay(dayCounter - 1);
+        teams = Daily_Team_Availability[Availability_Date == candidateDate && Availability_Status != "Not Available"];
+        bestInstaller = null;
+        bestDriver = null;
+        bestRemaining = -1;
+        bestUsed = 0;
+        bestVehicle = null;
+        bestSoCount = 999999;
+        bestStart = "";
+        bestCap = 0;
+        if(teams != null)
+        {
+            for each  t in teams
+            {
+                tInstaller = t.Installer;
+                tDriver = t.Driver;
+                tVehicle = t.Vehicle;
+                tStart = "";
+                if(t.Start_Time1 != null)
+                {
+                    tStart = t.Start_Time1.toString();
+                }
+                // ---------- FIX 4: blangkong cap = huwag invisible ----------
+                cap = t.Max_Capacity_Hours;
+                if(cap == null)
+                {
+                    cap = 0;
+                }
+                if(cap <= 0)
+                {
+                    cap = workdayHours;
+                }
+                // ---------- FIX 3: Suggested + Confirmed na ang binibilang ----------
+                // Isang query lang na humahawak ng DALAWANG bilang: oras at
+                // bilang ng SO. Dati, Confirmed lang ang oras kaya ang team
+                // na may 3 Suggested job ay mukhang 0 hrs used pa rin.
+                // ID != saId: huwag bilangin ang sarili (mahalaga sa Re-Schedule).
+                usedRecs = Service_Appointment_Form[Installer == tInstaller && Confirmed_Schedule_Date == candidateDate || Suggested_Schedule_Date == candidateDate && Appointment_Status != "Failed" && ID != saId];
+                used = 0;
+                soCountToday = 0;
+                if(usedRecs != null)
+                {
+                    for each  u in usedRecs
+                    {
+                        soCountToday = soCountToday + 1;
+                        ud = u.Estimated_Duration;
+                        if(ud == null)
+                        {
+                            ud = 0;
+                        }
+                        uBuf = ud * (1 + bufferPct / 100.0);
+                        if(u.Type_of_Delivery == "Full-Day Install")
+                        {
+                            uBuf = 8;
+                        }
+                        used = used + uBuf;
+                    }
+                }
+                remaining = cap - used;
+                // Cap by BILANG ng SO, hiwalay sa oras
+                maxSO = t.Max_SO_Capacity;
+                soCapOk = true;
+                if(maxSO != null && maxSO > 0 && soCountToday >= maxSO)
+                {
+                    soCapOk = false;
+                }
+                // Panalo: pinakamalaking natitirang oras. Kapag patas, yung
+                // may mas kaunting job sa araw na iyon (load balancing).
+                if(soCapOk && bufferedDuration <= remaining && remaining > bestRemaining || (remaining == bestRemaining && soCountToday < bestSoCount))
+                {
+                    bestInstaller = tInstaller;
+                    bestDriver = tDriver;
+                    bestRemaining = remaining;
+                    bestUsed = used;
+                    bestVehicle = tVehicle;
+                    bestSoCount = soCountToday;
+                    bestStart = tStart;
+                    bestCap = cap;
+                }
+            }
+        }
+        if(bestInstaller != null)
+        {
+            foundInstaller = bestInstaller;
+            foundDriver = bestDriver;
+            foundDate = candidateDate;
+            foundUsed = bestUsed;
+            foundVehicle = bestVehicle;
+            foundStart = bestStart;
+            foundCap = bestCap;
+        }
+    }
+}
+// ---------- WALANG NAHANAP: Calendar Full o Overtime ----------
+failReason = "";
+if(foundInstaller == null)
+{
+    failReason = "Calendar Full";
+}
+else
+{
+    projectedTotal = foundUsed + bufferedDuration;
+    if(projectedTotal > workdayHours && fleetAssignment == "Own Fleet")
+    {
+        failReason = "Slot Pushed — Overtime Declined";
+    }
+}
+if(failReason != "")
+{
+    rec.Exception_Status="Flagged";
+    rec.Exception_Reason=failReason;
+    // Linisin ang LUMANG suggestion - kung hindi, may makikitang petsa
+    // pa rin ang widget at kaya pang i-Approve kahit walang team.
+    rec.Suggested_Schedule_Date=null;
+    rec.Suggested_Time_Slot=null;
+    rec.Installer=null;
+    rec.Assigned_to_Driver=null;
+    rec.Fleet_Assignment=null;
+    custNameF = "";
+    if(rec.Customer_Name != null)
+    {
+        fnF = rec.Customer_Name.first_name;
+        lnF = rec.Customer_Name.last_name;
+        if(fnF == null)
+        {
+            fnF = "";
+        }
+        if(lnF == null)
+        {
+            lnF = "";
+        }
+        custNameF = (fnF + " " + lnF).trim();
+    }
+    // FIX 5: dedup
+    dupF = DMS_Exception_Queue[Sales_Order_Reference == rec.ID && Exception_Reason == failReason && Status == "Open"];
+    dupCountF = 0;
+    if(dupF != null)
+    {
+        for each  df in dupF
+        {
+            dupCountF = dupCountF + 1;
+        }
+    }
+    if(dupCountF == 0)
+    {
+        insert into DMS_Exception_Queue
+        [
+            Sales_Order_Reference=rec.ID
+            Customer_Name=custNameF
+            Exception_Stage="Scheduling"
+            Exception_Reason=failReason
+            Severity="Medium"
+            Raised_By="System"
+            Date_Raised=zoho.currenttime
+            Status="Open"
+            Added_User=zoho.loginuser
+        ]
+    }
+    resp.put("status","flagged");
+    resp.put("message",failReason + " - walang available na team sa loob ng " + maxWindow + " araw.");
+    return resp;
+}
+// ---------- ORAS NG SUGGESTION ----------
+// Start_Time1 ng NANALONG team (hindi global Policy Setting) + ang oras
+// na nakaubos na niya sa araw na iyon, kaya dumidiretso agad ang susunod
+// na stop pagkatapos ng nauna - walang patay na oras.
+workdayStartStr = "8:00 AM";
+if(foundStart != null && foundStart != "")
+{
+    workdayStartStr = foundStart;
+}
+computedTimeSlot = workdayStartStr;
+ctsParts = workdayStartStr.toList(" ");
+if(ctsParts.size() == 2)
+{
+    ctsHM = ctsParts.get(0).toList(":");
+    if(ctsHM.size() >= 2)
+    {
+        ctsHr = ctsHM.get(0).toLong();
+        ctsMin = ctsHM.get(1).toLong();
+        ctsAmPm = ctsParts.get(1).toUpperCase();
+        if(ctsAmPm == "PM" && ctsHr != 12)
+        {
+            ctsHr = ctsHr + 12;
+        }
+        if(ctsAmPm == "AM" && ctsHr == 12)
+        {
+            ctsHr = 0;
+        }
+        ctsTotalMin = ctsHr * 60 + ctsMin + (foundUsed * 60).toLong();
+        ctsHr24 = ctsTotalMin / 60;
+        ctsMinRem = ctsTotalMin - ctsHr24 * 60;
+        ctsDispHr = ctsHr24;
+        if(ctsHr24 == 0)
+        {
+            ctsDispHr = 12;
+        }
+        if(ctsHr24 > 12)
+        {
+            ctsDispHr = ctsHr24 - 12;
+        }
+        ctsDispAmPm = "AM";
+        if(ctsHr24 >= 12)
+        {
+            ctsDispAmPm = "PM";
+        }
+        ctsMinStr = ctsMinRem + "";
+        if(ctsMinRem < 10)
+        {
+            ctsMinStr = "0" + ctsMinRem;
+        }
+        computedTimeSlot = ctsDispHr + ":" + ctsMinStr + " " + ctsDispAmPm;
+    }
+}
+// ---------- ISULAT ANG SUGGESTION ----------
+rec.Suggested_Schedule_Date=foundDate;
+rec.Suggested_Time_Slot=computedTimeSlot;
+fleetDisplay = fleetAssignment;
+if(foundVehicle != null && foundVehicle != "")
+{
+    fleetDisplay = foundVehicle;
+}
+rec.Fleet_Assignment=fleetDisplay;
+rec.Installation_Required=dType == "With Installation" || dType == "Full-Day Install";
+rec.Calendar_Entry_Created=false;
+rec.Appointment_Status="Queued";
+rec.Installer=foundInstaller;
+rec.Assigned_to_Driver=foundDriver;
+rec.Original_System_Suggestion="System suggested: " + foundInstaller + " / " + foundDriver + " on " + foundDate + " (" + fleetDisplay + ")";
+// ---------- PRIORITY: sarili na ang nag-confirm ----------
+// Hindi na hinihintay ang officer. Inilagay na rin ang calendar write
+// dito dahil HINDI tumatakbo ang Action 2 sa parehong save na ito.
+if(rec.Priority == true)
+{
+    otherConfirmedP = Service_Appointment_Form[Installer == foundInstaller && Confirmed_Schedule_Date == foundDate && Calendar_Entry_Created == true && ID != saId];
+    otherHoursP = 0;
+    if(otherConfirmedP != null)
+    {
+        for each  op in otherConfirmedP
+        {
+            odP = op.Estimated_Duration;
+            if(odP == null)
+            {
+                odP = 0;
+            }
+            oBufferedP = odP * (1 + bufferPct / 100.0);
+            if(op.Type_of_Delivery == "Full-Day Install")
+            {
+                oBufferedP = 8;
+            }
+            otherHoursP = otherHoursP + oBufferedP;
+        }
+    }
+    if(otherHoursP + bufferedDuration <= foundCap)
+    {
+        rec.Confirmed_Schedule_Date=foundDate;
+        rec.Confirmed_Time_Slot=computedTimeSlot;
+        custNameP = "";
+        if(rec.Customer_Name != null)
+        {
+            fnP = rec.Customer_Name.first_name;
+            lnP = rec.Customer_Name.last_name;
+            if(fnP == null)
+            {
+                fnP = "";
+            }
+            if(lnP == null)
+            {
+                lnP = "";
+            }
+            custNameP = (fnP + " " + lnP).trim();
+        }
+        typeP = dTypeRaw;
+        if(typeP == null || typeP == "")
+        {
+            typeP = "-";
+        }
+        locationP = rec.Customer_Address;
+        if(locationP == null)
+        {
+            locationP = "";
+        }
+        if(rec.City != null && rec.City != "")
+        {
+            locationP = locationP + ", " + rec.City;
+        }
+        rec.Calendar_Event_Summary="Title: " + rec.Sales_Order + " - " + custNameP + " | Date: " + foundDate + " | Time: " + computedTimeSlot + " (" + bufferedDuration + " hrs) | Team: " + foundInstaller + " / " + foundDriver + " | Fleet: " + fleetDisplay + " | Type: " + typeP + " | Location: " + locationP + " | Notes: Auto-confirmed (Priority)";
+        rec.Calendar_Entry_Created=true;
+        rec.Appointment_Status="Scheduled";
+        resp.put("status","success");
+    }
+    else
+    {
+        // May nakaunang kumuha sa parehong team/araw sa pagitan ng dalawa -
+        // hayaan na lang itong maging ordinaryong suggestion, i-confirm ng
+        // officer manu-mano. Walang 2nd exception na ginagawa dito.
+        resp.put("status","success");
+    }
+}
+else
+{
+    resp.put("status","success");
+}
+resp.put("message","Suggested: " + foundInstaller + " / " + foundDriver + " - " + foundDate + " " + computedTimeSlot);
+resp.put("date",foundDate.toString());
+resp.put("time",computedTimeSlot);
+resp.put("installer",foundInstaller);
+return resp;

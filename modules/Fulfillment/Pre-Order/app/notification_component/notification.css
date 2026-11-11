@@ -1,0 +1,52 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   NOTIFICATION SYSTEM COMPONENT — styles
+   Drop-in bottom-right notification bell for any widget in this app family.
+   See README.md for integration steps and why this has to be embedded per-widget
+   (rather than uploaded/placed as its own separate Zoho Creator widget) to get a
+   true fixed-position overlay instead of its own boxed page section.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* bottom:90px (was 20px, then 36px — still overlapped a real toast live) — clears above
+   host widgets' own bottom-right toast notifications (e.g. PRs' .toast{bottom:24px;
+   right:24px}, which can run 2 lines / ~40-60px tall), which the bell was sitting on
+   top of/getting overcast by. Idle state is semi-transparent (rgba background, not the
+   `opacity` property, so the icon/unread badge stay fully legible rather than dimming
+   with it) — goes fully opaque on hover so it reads as present but unobtrusive when
+   just sitting in the corner. */
+.nsys-bell{position:fixed;bottom:90px;right:20px;width:50px;height:50px;border-radius:50%;background:rgba(37,99,235,.55);border:none;color:var(--white,#fff);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-lg,0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04));cursor:grab;transition:background 150ms ease,transform 150ms ease;z-index:5000;touch-action:none}
+.nsys-bell:hover{background:var(--blue-dark,#1D4ED8);transform:translateY(-1px)}
+/* ADDED 2026-09-03 — draggable bell (see notification.js's _wireDrag()). While
+   actively being dragged: no hover lift/transition lag, and a grabbing cursor. */
+.nsys-bell.nsys-dragging{cursor:grabbing;transition:none;transform:none}
+.nsys-bell svg{width:22px;height:22px}
+.nsys-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--red,#DC2626);color:var(--white,#fff);font-size:10.5px;font-weight:700;display:none;align-items:center;justify-content:center;border:2px solid var(--white,#fff);line-height:1}
+.nsys-badge.show{display:flex}
+
+.nsys-panel{position:fixed;bottom:150px;right:20px;width:336px;max-height:440px;background:var(--white,#fff);border-radius:var(--radius-lg,12px);box-shadow:var(--shadow-lg,0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04));border:1px solid var(--gray-200,#E2E8F0);display:none;flex-direction:column;overflow:hidden;z-index:5000;font-family:'Inter',system-ui,sans-serif}
+.nsys-panel.open{display:flex}
+.nsys-hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:1px solid var(--gray-100,#F1F5F9)}
+.nsys-title{font-size:14px;font-weight:700;color:var(--gray-800,#1E293B)}
+.nsys-hdr-actions{display:flex;align-items:center;gap:10px}
+.nsys-refresh-btn{background:none;border:none;color:var(--gray-400,#94A3B8);cursor:pointer;padding:2px;display:flex;align-items:center;justify-content:center;transition:color 150ms ease}
+.nsys-refresh-btn:hover{color:var(--blue,#2563EB)}
+.nsys-refresh-btn svg{width:14px;height:14px}
+.nsys-refresh-btn.spinning svg{animation:nsys-spin .6s linear infinite}
+@keyframes nsys-spin{to{transform:rotate(360deg)}}
+.nsys-mark-all{background:none;border:none;color:var(--blue,#2563EB);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:2px}
+.nsys-mark-all:hover{color:var(--blue-dark,#1D4ED8);text-decoration:underline}
+.nsys-mark-all:disabled{color:var(--gray-300,#CBD5E1);cursor:default;text-decoration:none}
+/* max-height ~= 5 typical items (each ~79px: 22px padding + type/msg/time lines) — a 6th
+   notification scrolls instead of growing the panel further. Approximate, not exact,
+   since item height varies with message length. */
+.nsys-list{overflow-y:auto;flex:1;max-height:395px}
+.nsys-item{display:flex;gap:9px;padding:11px 14px;border-bottom:1px solid var(--gray-100,#F1F5F9);cursor:pointer;transition:background 150ms ease}
+.nsys-item:hover{background:var(--gray-50,#F8FAFC)}
+.nsys-item:last-child{border-bottom:none}
+.nsys-dot{flex-shrink:0;width:8px;height:8px;border-radius:50%;background:var(--blue,#2563EB);margin-top:5px}
+.nsys-item.read .nsys-dot{background:transparent}
+.nsys-body{min-width:0;flex:1}
+.nsys-type{font-size:12.5px;font-weight:600;color:var(--gray-800,#1E293B)}
+.nsys-item.read .nsys-type{color:var(--gray-500,#64748B);font-weight:500}
+.nsys-msg{font-size:12px;color:var(--gray-600,#475569);margin-top:2px;line-height:1.4}
+.nsys-time{font-size:10.5px;color:var(--gray-400,#94A3B8);margin-top:4px}
+.nsys-empty{padding:36px 20px;text-align:center;color:var(--gray-400,#94A3B8);font-size:12.5px}

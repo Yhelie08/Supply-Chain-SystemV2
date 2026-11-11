@@ -1,0 +1,12 @@
+
+			displayName = "Exception Control Media Report"
+			show all rows from Exception_Control_Media    
+			(
+				Exception_Number
+				File_Type
+				File_Name
+				Record_ID
+				Media
+				Uploaded_On
+			)
+		

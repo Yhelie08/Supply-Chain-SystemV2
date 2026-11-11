@@ -1,0 +1,12 @@
+
+			displayName = "DelQ_Timeline Report"
+			show all rows from DelQ_Timeline    
+			(
+				DelQ_ID
+				Action_Title as "Action"
+				Action_Type as "Action Type"
+				Changes
+				Actor
+				Logged_On as "Logged On"
+			)
+		

@@ -1,0 +1,333 @@
+{
+  "name": "Delivery_Scheduling",
+  "label": "Delivery Scheduling Form",
+  "successMessage": "Data Added Successfully!",
+  "line": 885,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Date_field",
+      "label": "Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Time",
+      "label": "Time",
+      "type": "time",
+      "required": false
+    },
+    {
+      "name": "SO",
+      "label": "SO#",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Demo",
+      "label": "Demo #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Order_Aggregation_ID",
+      "label": "Order Aggregation ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Type_of_Delivery",
+      "label": "Type of Delivery",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Delivery Only",
+        "Delivery and Installation",
+        "Full-Day Install",
+        "Multi-Day Install",
+        "Replacement",
+        "Site Visit",
+        "Pull Out",
+        "Pick Up",
+        "With Installation",
+        "Pullout"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Service_Request_ID",
+      "label": "Service Request ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Item_Detail",
+      "label": "Item Detail",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Type",
+      "label": "Customer Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Address",
+      "label": "Customer Address",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Delivery_City",
+      "label": "Delivery City",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Email",
+      "label": "Email",
+      "type": "email",
+      "required": false,
+      "maxchar": "80",
+      "personalData": "true"
+    },
+    {
+      "name": "Contact",
+      "label": "Contact",
+      "type": "phonenumber",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Target_Delivery_Date",
+      "label": "Target Delivery Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Order_Date",
+      "label": "Order Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Schedule_Status",
+      "label": "Schedule Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "New",
+        "Handed Off",
+        "Cancelled"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "For_Crate",
+      "label": "For Crate",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Qty",
+      "label": "Qty",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Item_Details",
+      "label": "Item Details",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "PAC",
+          "label": "PAC",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Qty",
+          "label": "Qty",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Section1",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "City",
+      "label": "City",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Batangas",
+        "Bulacan",
+        "Caloocan",
+        "Cavite",
+        "Laguna",
+        "Las Piñas",
+        "Makati",
+        "Malabon",
+        "Mandaluyong",
+        "Manila",
+        "Marikina",
+        "Muntinlupa",
+        "Navotas",
+        "Pampanga",
+        "Pangasinan",
+        "Parañaque",
+        "Pasay",
+        "Pasig",
+        "Quezon City",
+        "Rizal",
+        "San Juan",
+        "Taguig",
+        "Tarlac",
+        "Valenzuela",
+        "Zambales",
+        "Other"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Installer",
+      "label": "Installer",
+      "type": "list",
+      "required": false,
+      "options": [
+        "Jonrey",
+        "Janchyl",
+        "Clark",
+        "Cinco",
+        "Edmon",
+        "Norman",
+        "Jayvon",
+        "Nherwin"
+      ]
+    },
+    {
+      "name": "Vehicle_Name",
+      "label": "Vehicle Name",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Traviz (NIB-3823)",
+        "Hino (NBX-1446)",
+        "Traviz (NKI-4969)",
+        "Innova (WOQ386)",
+        "Nissan",
+        "Rav4"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Driver",
+      "label": "Driver",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "All",
+        "Judy",
+        "Norman",
+        "Petz",
+        "Zaldy",
+        "Other"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Notes",
+      "label": "Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Completed",
+      "label": "Completed",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Yes",
+        "Not Yet"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Rescheduled",
+      "label": "Rescheduled",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

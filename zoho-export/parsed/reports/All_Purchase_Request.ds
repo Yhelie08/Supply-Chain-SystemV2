@@ -1,0 +1,83 @@
+
+			displayName = "All Purchase Request"
+			show all rows from Purchase_Request1    
+			(
+				sku as "SKU"
+				quantity as "Quantity"
+				unit as "Unit"
+				description as "Description"
+				supplier_target_date as "Supplier  Target Date"
+				Sales_Owner as "Sales Owner"
+				Items
+				Selcted_Final_Cost as "Selected Final Cost"
+				Followed_Recommendation as "Followed Recommendation"
+				Similar_Item as "Similar Item"
+				Attachments
+				Target_Delivery as "Target  Delivery"
+				Remaining_Days as "Remaining Days"
+				Required_Days_Lead as "Lead Time (days)"
+				Delay_Status as "Delay Status"
+				PR_No as "PR No"
+				PR_Date as "PR Date"
+				Selected_Supplier as "Selected Supplier"
+				Priority
+				Customer_Type as "Customer Type"
+				Description1 as "Description"
+				Customer
+				category as "Category"
+				Additional_Details as "Additional Details"
+				Shipment_Mode as "Shipment Mode"
+				Selected_Supplier1 as "Selected Supplier"
+				Final_price_confirmed as "Final price confirmed"
+				Shipping_mode_selected as "Shipping mode selected"
+				Target_date_exists as "Target date exists"
+				PR_READY_FOR_PO as "PR READY FOR PO"
+				PR_Approved as "PR Approved"
+				PR_Status as "PR Status"
+				Link_PO_No as "Link PO No"
+				Sales_Order as "Sales Order"
+				Order_Type as "Order Type"
+				Source
+				Production_Date as "Production Date"
+				inquiry_reference as "Inquiry Reference"
+				Override_Reason as "Override Reason"
+				Shipment_Days
+				Last_Update as "Last Update"
+				Order_Value as "Order Value"
+				Aging
+				Priority_Score as "Priority Score"
+				SRP_Rate_PR as "SRP (Rate)"
+				Product_Image_PR as "Product Image"
+				Supplier_Selected as "Supplier Selected"
+				(
+					field = Supplier_Selected.Supplier_ID + " " + Supplier_Selected.Final_Price + " " + Supplier_Selected.Initial_Price + " " + Supplier_Selected.Suppliers + " " + Supplier_Selected.Availability + " " + Supplier_Selected.Lead_Time + " " + Supplier_Selected.Negotiated + " " + Supplier_Selected.Selected + " " + Supplier_Selected.Status
+				)
+				SRP_Approved_PR as "SRP Approved PR"
+				Supplier_Load_Balancing as "Supplier Load Balancing"
+				(
+					field = Supplier_Load_Balancing.Suppliers + " " + Supplier_Load_Balancing.Active_POs + " " + Supplier_Load_Balancing.Eligible_Supplier + " " + Supplier_Load_Balancing.Load_Status + " " + Supplier_Load_Balancing.Match_Category + " " + Supplier_Load_Balancing.Percent
+				)
+				Customer.Added_Time as "Added Time"
+				Dedup_Key
+				Sourcing_Type as "Sourcing Type"
+				Hold_Status
+				Hold_Reason
+				Hold_Notes
+				Hold_Date
+				Held_By
+				Hold_Follow_Up_Date
+				Dimension
+				Color_Body as "Color Body"
+				Color_Temperature as "Color Temperature"
+				Type_of_Bulb as "Type of Bulb"
+				Lumens
+				Voltage
+				Forecast_Delivery as "Forecast Delivery"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+			)
+			sort by
+			(
+				PR_Date descending
+			)
+		

@@ -1,0 +1,13 @@
+
+			displayName = "Shipment Report"
+			show all rows from Fenteng_Shipment    
+			(
+				Shipment_No as "Shipment No."
+				Added_User1 as "Added_User"
+				Supplier1_Shipment_Details
+				(
+					field = Supplier1_Shipment_Details.Date_Shipped + " " + Supplier1_Shipment_Details.Item_Name + " " + Supplier1_Shipment_Details.SKU + " " + Supplier1_Shipment_Details.Shipment_Mode + " " + Supplier1_Shipment_Details.PR_No + " " + Supplier1_Shipment_Details.RR_No + " " + Supplier1_Shipment_Details.Added_User + " " + Supplier1_Shipment_Details.Select_To_Ship + " " + Supplier1_Shipment_Details.Status + " " + Supplier1_Shipment_Details.Synced
+				)
+				Parent_Shipment_ID
+			)
+		

@@ -1,0 +1,14 @@
+
+			displayName = "QC Notifications Report"
+			show all rows from QC_Notifications    
+			(
+				Recipient_Email
+				Notification_Type
+				Message
+				Created_On
+				Read
+				Source_Record_ID
+				Source_Record_No
+				Target_URL
+			)
+		

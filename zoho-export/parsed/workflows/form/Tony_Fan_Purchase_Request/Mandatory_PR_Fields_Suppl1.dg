@@ -1,0 +1,50 @@
+// form: Mandatory_PR_Fields_Supplier2  form=Tony_Fan_Purchase_Request event=on edit on validate  [.ds line 38348]
+    if(input.edit_counter == 0)
+{
+    alert "Editing is locked. Wait for Purchase Request update.";
+    cancel submit;
+}
+hasEmpty = false;
+msg = "";
+for each  subRow in input.Supplier_Selected_Supplier2
+{
+    if(subRow.Availability_Supplier2 == null || subRow.Availability_Supplier2 == "")
+    {
+        hasEmpty = true;
+        msg = msg + "Availability, ";
+    }
+    hasSRPRate2 = input.SRP_Rate_PR_Supplier2 != null && input.SRP_Rate_PR_Supplier2 != 0;
+    /* FIXED 2026-08-25, same bug/fix as Mandatory_PR_Fields_Supplier1 above (real live
+       bug, PR-00007) — "Unavailable" was never exempted here, only "Cannot Produce",
+       even though the widget's own client-side JS (Tony-PR app/index.html's
+       onAvailChange/submitResponse) always treated the two the same. */
+    if(subRow.Availability_Supplier2 != "Cannot Produce" && subRow.Availability_Supplier2 != "Unavailable" && subRow.Availability_Supplier2 != "Confirmed" && hasSRPRate2 == false)
+    {
+        if(subRow.Initial_Price_Supplier2 == null || subRow.Initial_Price_Supplier2 == 0)
+        {
+            hasEmpty = true;
+            msg = msg + "Initial Price, ";
+        }
+        if(subRow.Final_Price_Supplier2 == null || subRow.Final_Price_Supplier2 == 0)
+        {
+            hasEmpty = true;
+            msg = msg + "Final Price, ";
+        }
+    }
+    if(subRow.Availability_Supplier2 != "Cannot Produce" && subRow.Availability_Supplier2 != "Unavailable")
+    {
+        if(subRow.Availability_Supplier2 != "Confirmed")
+        {
+            if(subRow.Lead_Time_Supplier2 == null || subRow.Lead_Time_Supplier2 == 0)
+            {
+                hasEmpty = true;
+                msg = msg + "Lead Time, ";
+            }
+        }
+    }
+}
+if(hasEmpty == true)
+{
+    alert "Required fields missing: " + msg.removeLastOccurence(", ");
+    cancel submit;
+}

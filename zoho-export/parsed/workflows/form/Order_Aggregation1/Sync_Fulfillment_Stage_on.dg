@@ -1,0 +1,35 @@
+// form: Sync Fulfillment Stage on Dispatch  form=Order_Aggregation1 event=on add or edit on success  [.ds line 46055]
+    // UPDATE 2026-07-29, per user: "For Delivery" na LAGI ang stage, kahit hindi pa naka-
+// check ang Dispatch Selected — tinanggal na ang "To Ship" na value, kaya wala nang
+// dahilan para mag-iba ang Fulfillment_Stage batay sa Dispatch_Selected.
+soValStage = input.SO + "";
+newStageForRows = "For Delivery";
+for each  aggRow in input.Item_Details
+{
+    itemNameForSOF = aggRow.Item_Name + "";
+    skuValStage = aggRow.SKU + "";
+    sofMatches = Sales_Order_Fulfillment[SO_No == soValStage];
+    for each  sofRec in sofMatches
+    {
+        sofFullList = Sales_Order_Fulfillment[ID == sofRec.ID];
+        for each  sofFull in sofFullList
+        {
+            sofFound = false;
+            for each  sofRow in sofFull.Item_Details1
+            {
+                if(sofRow.Item + "" == itemNameForSOF && sofRow.SKU + "" == skuValStage)
+                {
+                    sofFound = true;
+                }
+            }
+            if(sofFound == true && sofFull.Fulfillment_Stage != newStageForRows)
+            {
+                update sofFull
+                [
+                    Fulfillment_Stage=newStageForRows
+                ];
+                info "Fulfillment_Stage updated to " + newStageForRows + " for SO " + soValStage + " / SKU " + skuValStage;
+            }
+        }
+    }
+}

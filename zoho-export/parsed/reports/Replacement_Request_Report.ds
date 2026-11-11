@@ -1,0 +1,37 @@
+
+			displayName = "Replacement  Request Report"
+			show all rows from Replacement_Request    
+			(
+				RR_No as "RR No."
+				RR_Date as "RR Date"
+				Source_Type as "Source Type"
+				Source_Exception_No as "Source Exception No."
+				RR_Status as "RR Status"
+				Supplier_Acknowledgement1 as "Supplier Acknowledgement"
+				Supplier_Acknowledge_Date as "Supplier Acknowledge Date"
+				Expected_Ship_Date as "Expected Ship Date"
+				Actual_Ship as "Actual Ship"
+				ETA
+				Last_Updated as "Last Updated"
+				Closed_At as "Closed At"
+				Closure_Notes as "Closure Notes"
+				RR_Reason
+				Replacement_Summary as "Replacement Summary"
+				(
+					field = Replacement_Summary.Supplier + " " + Replacement_Summary.Delay_Status + " " + Replacement_Summary.Item + " " + Replacement_Summary.Original_PO_No + " " + Replacement_Summary.PR_No + " " + Replacement_Summary.Priority + " " + Replacement_Summary.RR_Qty + " " + Replacement_Summary.RR_Reason + " " + Replacement_Summary.SKU + " " + Replacement_Summary.SO_No
+				)
+				RR_Supplier as "RR Supplier"
+				RR_SKU as "RR SKU"
+				RR_Item_Name as "RR Item Name"
+				RR_Qty_Value as "RR Qty Value"
+				Cloned_Shipment_No
+				RR_PR_No
+				Source_Module as "Source Module"
+				RR_SO
+				RR_PAC
+				RR_Item_to_Replace
+				RR_Damage_Qty
+				RR_Spare_Parts
+				RR_Remarks
+			)
+		

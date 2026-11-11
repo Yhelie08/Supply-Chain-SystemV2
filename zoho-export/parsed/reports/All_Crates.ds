@@ -1,0 +1,30 @@
+
+			displayName = "All Crates"
+			show all rows from Crate_Checklist    
+			(
+				Assign_Crater as "Assign Crater"
+				Package_Order as "PACK #"
+				PR_if_any as "PR # (if any)"
+				RR_if_any as "RR # (if any)"
+				Order_Type as "Order Type"
+				Delivery_Type as "Delivery Type"
+				Customer_Name as "Customer Name"
+				Customer_Type as "Customer Type"
+				Customer_Address as "Customer Address"
+				Item_Name as "Item Name"
+				SKU
+				Quantity
+				Crating_Checklist as "Crating Checklist"
+				Photo_Documentation as "Photo Documentation"
+				Video_Documentation as "Video Documentation"
+				Crating_Status1 as "Crating Status"
+				Assigned_Checker as "Assigned Checker"
+				SO as "SO #"
+				Added_Time as "Added Time"
+				Target_Delivery_Date as "Target Delivery Date"
+				Dem_if_any as "Dem # (if any)"
+				Forecast_Delivery as "Forecast Delivery"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+			)
+		

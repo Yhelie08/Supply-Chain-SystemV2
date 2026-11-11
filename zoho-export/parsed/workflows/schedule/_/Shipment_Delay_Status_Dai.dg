@@ -1,0 +1,46 @@
+// schedule: Shipment_Delay_Status_Daily  form=null event= on start > on load  [.ds line 47312]
+todayVal = zoho.currentdate;
+                usingOverride = false;
+                settingsRec = Schedule_Test_Settings[ID != 0];
+                for each  s in settingsRec
+                {
+                    if(s.Test_Current_Date != null)
+                    {
+                        todayVal = s.Test_Current_Date;
+                        usingOverride = true;
+                    }
+                }
+                delayedCount = 0;
+                arrivingCount = 0;
+                skippedDelivered = 0;
+                checkedCount = 0;
+                allShips = Shipments[ID != 0];
+                for each  sh in allShips
+                {
+                    if(sh.Shipment_Status == "Delivered")
+                    {
+                        skippedDelivered = skippedDelivered + 1;
+                    }
+                    else if(sh.Estimated_Warehouse_Arrival != null)
+                    {
+                        checkedCount = checkedCount + 1;
+                        diffMs = (sh.Estimated_Warehouse_Arrival - todayVal);
+                        diffDays = (diffMs / 86400000).round(0);
+                        if(diffDays < 0)
+                        {
+                            if(sh.Shipment_Status != "Delayed")
+                            {
+                                sh.Shipment_Status="Delayed";
+                            }
+                            delayedCount = delayedCount + 1;
+                        }
+                        else if(diffDays <= 7)
+                        {
+                            if(sh.Shipment_Status != "Arriving in 1 Week")
+                            {
+                                sh.Shipment_Status="Arriving in 1 Week";
+                            }
+                            arrivingCount = arrivingCount + 1;
+                        }
+                    }
+                }

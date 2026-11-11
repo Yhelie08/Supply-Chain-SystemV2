@@ -1,0 +1,752 @@
+{
+  "name": "Purchase_Request1",
+  "label": "Purchase Request",
+  "successMessage": "Item Detail Added Successfully",
+  "line": 10232,
+  "fields": [
+    {
+      "name": "PR_Details",
+      "label": "PR Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "PR_No",
+      "label": "PR No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer",
+      "label": "Customer",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Customer",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[customer_name]"
+    },
+    {
+      "name": "Items",
+      "label": "Items",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Items",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[item_name]"
+    },
+    {
+      "name": "Description1",
+      "label": "Description",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "inquiry_reference",
+      "label": "Inquiry Reference",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "PR_Status",
+      "label": "PR Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Open",
+        "Converted to PO"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "SRP_Approved_PR",
+      "label": "SRP Approved PR",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "PR_Date",
+      "label": "PR Date",
+      "type": "date",
+      "required": false,
+      "initialValue": "${zoho.currentdate}",
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Customer_Type",
+      "label": "Customer Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "sku",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "unit",
+      "label": "Unit",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Target_Delivery",
+      "label": "Target  Delivery",
+      "type": "date",
+      "required": true,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Link_PO_No",
+      "label": "Link PO No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Product_Image_PR",
+      "label": "Product Image",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "Sales_Order",
+      "label": "Sales Order",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Owner",
+      "label": "Sales Owner",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "HC Sales 1",
+        "HC Sales 2",
+        "HC Sales 3",
+        "HC Sales 4",
+        "HC Sales 5",
+        "HC Sales 6",
+        "HC Sales 7",
+        "HC Sales 8",
+        "HC Sales 9",
+        "HC Sales Coordinator"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "quantity",
+      "label": "Quantity",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "category",
+      "label": "Category",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "description",
+      "label": "Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Order_Type",
+      "label": "Order Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Priority_Flags",
+      "label": "Priority & Flags",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Priority",
+      "label": "Priority",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Priority_Score",
+      "label": "Priority Score",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Order_Value",
+      "label": "Order Value",
+      "type": "PHP",
+      "required": false,
+      "format": "commadotwestern"
+    },
+    {
+      "name": "Aging",
+      "label": "Aging",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Additional_Details",
+      "label": "Additional Details",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Similar_Item",
+      "label": "Similar Item",
+      "type": "checkbox",
+      "required": false,
+      "helpText": "Customer accepts equivalent alternatives if exact item is unavailable",
+      "initialValue": "false"
+    },
+    {
+      "name": "Attachments",
+      "label": "Attachments",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Supplier_Load_Balancing",
+      "label": "Supplier Load Balancing",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Recommended",
+        "Available (Higher load)",
+        "Removed"
+      ],
+      "fields": [
+        {
+          "name": "Suppliers",
+          "label": "Suppliers",
+          "type": "picklist",
+          "required": false,
+          "lookup": {
+            "form": "Suppliers",
+            "criteria": null,
+            "field": "ID"
+          },
+          "displayformat": "[Supplier_Name.first_name]"
+        },
+        {
+          "name": "Match_Category",
+          "label": "Match Category",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Match",
+            "Not Match"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Active_POs",
+          "label": "Active POs",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Percent",
+          "label": "Percent",
+          "type": "percentage",
+          "required": false
+        },
+        {
+          "name": "Load_Status",
+          "label": "Load Status",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Normal",
+            "Near Capacity",
+            "Overloaded"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Eligible_Supplier",
+          "label": "Eligible Supplier",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Recommended",
+            "Available (Higher load)",
+            "Removed"
+          ],
+          "maxchar": "100"
+        }
+      ]
+    },
+    {
+      "name": "Supplier_Selected",
+      "label": "Supplier Selected",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Active",
+        "Removed"
+      ],
+      "helpText": "If the item is in stock",
+      "fields": [
+        {
+          "name": "Supplier_ID",
+          "label": "Supplier ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Suppliers",
+          "label": "Suppliers",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Availability",
+          "label": "Availability (if On stock)",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Confirmed",
+            "Pending",
+            "Unavailable",
+            "Cannot Produce"
+          ],
+          "helpText": "If the item is in stock",
+          "maxchar": "100"
+        },
+        {
+          "name": "Initial_Price",
+          "label": "Initial Price",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Negotiated",
+          "label": "Negotiated",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Final_Price",
+          "label": "Final Price",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Lead_Time",
+          "label": "Lead Time (days)",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Status",
+          "label": "Status",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Active",
+            "Removed"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Selected",
+          "label": "Selected",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "PR_Selected_Supplier1",
+      "label": "Selected Supplier",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Selected_Supplier",
+      "label": "Selected Supplier",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Selcted_Final_Cost",
+      "label": "Selected Final Cost",
+      "type": "CNY",
+      "required": false,
+      "format": "commadotwestern"
+    },
+    {
+      "name": "SRP_Rate_PR",
+      "label": "SRP (Rate)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Followed_Recommendation",
+      "label": "Followed Recommendation",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Override_Reason",
+      "label": "Override Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "plain",
+      "label": "plain",
+      "type": "plaintext",
+      "required": false
+    },
+    {
+      "name": "Shipment_Mode",
+      "label": "Shipment Mode",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Airfreight",
+        "LCL",
+        "FCL"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Shipment_Days",
+      "label": "Shipment Days",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Required_Days_Lead",
+      "label": "Lead Time (days)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Production_Date",
+      "label": "Production Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "supplier_target_date",
+      "label": "Supplier  Target Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Remaining_Days",
+      "label": "Remaining Days",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Delay_Status",
+      "label": "Delay Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "On Track",
+        "At Risk",
+        "Delayed"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Readiness_Checklist",
+      "label": "Readiness Checklist",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Selected_Supplier1",
+      "label": "Selected Supplier",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Final_price_confirmed",
+      "label": "Final price confirmed",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Shipping_mode_selected",
+      "label": "Shipping mode selected",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Target_date_exists",
+      "label": "Target date exists",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "PR_READY_FOR_PO",
+      "label": "PR READY FOR PO",
+      "type": "checkbox",
+      "required": false,
+      "helpText": "All 4 conditions passed",
+      "initialValue": "false"
+    },
+    {
+      "name": "PR_Approved",
+      "label": "PR Approved",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Last_Update",
+      "label": "Last Update",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Source",
+      "label": "Source",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section1",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Dedup_Key",
+      "label": "Dedup Key",
+      "type": "text",
+      "required": false,
+      "unique": true
+    },
+    {
+      "name": "Section2",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Sourcing_Type",
+      "label": "Sourcing Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Import",
+        "Local"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "On_Hold_Status",
+      "label": "On Hold Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Hold_Status",
+      "label": "Hold Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Active",
+        "On Hold",
+        "Cancelled"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Hold_Reason",
+      "label": "Hold Reason",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Client stopped order",
+        "Client payment issue",
+        "Client changing specs",
+        "Client confirmed cancel,"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Hold_Notes",
+      "label": "Hold Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Hold_Date",
+      "label": "Hold Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Held_By",
+      "label": "Held By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Hold_Follow_Up_Date",
+      "label": "Hold Follow Up Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Specification",
+      "label": "Specification",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Dimension",
+      "label": "Dimension",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Color_Body",
+      "label": "Color Body",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Color_Temperature",
+      "label": "Color Temperature",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "2700K",
+        "3000K",
+        "3500K",
+        "4000K",
+        "4500K",
+        "5000K"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Type_of_Bulb",
+      "label": "Type of Bulb",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "A60 - E27",
+        "LED Strip",
+        "A60 - E27 Dimmable",
+        "c35 - L E14",
+        "c35 - L E14 Dimmable",
+        "Corn type E14",
+        "Corn type E14 Dimmable",
+        "Corn type E27",
+        "Corn type E27 Dimmable",
+        "E14-Candle",
+        "G4",
+        "G4 Dimmable",
+        "G4 Jelly",
+        "G9",
+        "G-95",
+        "G9 Dimmable",
+        "G45 - E27",
+        "G45 - E27 Dimmable",
+        "G80 - E27",
+        "G125 - E27",
+        "GU10",
+        "GU10 Dimmable",
+        "ST64"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Lumens",
+      "label": "Lumens",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Voltage",
+      "label": "Voltage",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forcaste",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

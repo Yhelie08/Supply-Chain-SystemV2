@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Order Readiness Gate</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  Reads item-level rows from the "Sales_Order_Readiness_Gate_Report" report
+  (form: Sales_Order_Readiness_Gate), grouped by Sales Order Number (descending),
+  latest activity first.
+
+  1. Zoho Creator → Settings → Widgets → New Widget → "Upload HTML". Zip this file and upload.
+  2. CONFIG.APP_NAME below is already set to "supply-chain-app" to match the other
+     widgets in this app. Change it if this ever moves to a different app.
+  3. Add the widget to a page.
+  4. This widget always attempts to load live data — there's no standalone preview
+     mode. Opening this file outside Zoho Creator (or before the widget is on a
+     page) will just show a "must be opened inside Zoho Creator" toast.
+
+  Uses JS API v2 (ZOHO.CREATOR.DATA.getRecords / updateRecords) — same approach as
+  the other widgets in this app.
+
+  The "Release" checkbox is exposed as an action button in the detail view (not just
+  a status display): clicking it calls ZOHO.CREATOR.DATA.updateRecords to set
+  Release = true on that record, optionally appending a note to Release_Log. This
+  makes the widget no longer purely view-only for that one field.
+
+  ASSIGN PICKER: the standalone Picker widget is being retired, so picker
+  assignment (Assign_Picker — same editable dropdown pattern, "Other…" for a
+  custom name, matching the form's "others option = true" picklist) now lives
+  here instead. Release is gated on it — the Release button/action stays
+  disabled until a picker is assigned, so a record can't clear the gate before
+  someone's lined up to pick it.
+
+  FIELDS (confirmed 2026-07-29 against the current form export): the form no
+  longer has separate PR/RR fields — pr_number/rr_number are the only source
+  for "PR #"/"RR #" now (an earlier version of this file also read now-removed
+  PR/RR fields as a "which one is authoritative" hedge; that's gone). There's
+  no separate PAC field either — "PAC #" (as labeled everywhere else in this
+  app, e.g. Picker/Pack) is this form's Package_Order field ("Package Order
+  Number"); an earlier pass at this file incorrectly read a non-existent r.PAC
+  instead, which the user caught. payment_status's picklist values also
+  changed from {"Paid","Partially Paid","Pending"} to {"Yes","No","Partial"}
+  — see PAYMENT_STATUS_COLOR and computeStats().
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="notification_component/notification.css">
+<link rel="stylesheet" href="timeline_history_component/timeline-history.css">
+<link rel="stylesheet" href="internal-notes_component/internal-notes.css">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+        boxShadow: { card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)' }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { height: 100%; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  @keyframes toast-in { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
+  .toast-in { animation: toast-in .18s ease-out; }
+
+  /* ADDED 2026-08-06 — Order Readiness Dispatch Override feature (top tab bar).
+     Compound selector (.tab-btn.tab-active) deliberately used instead of a bare
+     .tab-active, so its specificity (0,2,0) reliably beats the Tailwind CDN's
+     dynamically-injected utility classes (bg-white/text-slate-600, each 0,1,0)
+     regardless of which <style> tag lands later in <head> at runtime. */
+  .tab-btn.tab-active { background: #1e293b; color: #fff; }
+
+  /* ADDED 2026-08-06 — Approve Dispatch override confirm modal. Ported from
+     UI/DMS WIDGET/Archived/app/tailwind.css's compiled .modal-overlay/.show
+     rules (that widget builds Tailwind from source; this one uses the CDN
+     build, so the equivalent rules are written out literally here instead). */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);align-items:center;justify-content:center;z-index:100;padding:16px}
+  .modal-overlay.show{display:flex}
+  .modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 25px -5px rgba(0,0,0,.15);width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+</style>
+</head>
+<body class="min-h-full bg-slate-100 text-slate-800 antialiased">
+
+  <!-- CHANGED 2026-08-20, per user report ("ayusin mo din to") — same missing-
+       border/unframed-page fix already applied same day across several Procurement
+       widgets and Pre Order Report, ported to this widget's Tailwind layout. Both
+       #reportCard (Dashboard tab) and the Approve Dispatch tab's own card already
+       had a real border — neither was stretching to fill the remaining page height,
+       so each card's border stopped right after its own content and everything
+       below sat unboxed. min-h-screen + flex flex-col here, paired with flex-1/
+       min-h-0 on the tab-view wrappers and their cards below, makes whichever tab
+       is active fill the page instead. -->
+  <div id="listView" class="w-full px-4 sm:px-6 py-5 min-h-screen flex flex-col">
+
+    <!-- Top header -->
+    <header id="topHeader" class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5 shrink-0">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Sales Order Readiness Gate</h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Grouped by Sales Order Number · Latest Activity First ·
+          <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+          </span>
+        </p>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+          <span id="notReleasedCount">0</span> Not Released
+        </span>
+        <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
+          <span id="releasedCount">0</span> Released
+        </span>
+      </div>
+    </header>
+
+    <!-- ADDED 2026-08-06 — Approve Dispatch tab, hidden by default, only
+         shown to CONFIG.APPROVE_DISPATCH_ALLOWED_EMAIL (see renderTabVisibility()
+         in the script below). -->
+    <div class="flex gap-1.5 mb-5 shrink-0" id="topTabs">
+      <button class="tab-btn tab-active px-4 py-2 rounded-lg text-[13px] font-semibold border border-slate-200 bg-white text-slate-600" id="dashboardTabBtn" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn hidden px-4 py-2 rounded-lg text-[13px] font-semibold border border-slate-200 bg-white text-slate-600" id="approveDispatchTabBtn" data-tab="approve">Approve Dispatch</button>
+    </div>
+
+    <div id="dashboardTabView" class="flex-1 min-h-0 flex flex-col">
+
+    <!-- Stat cards -->
+    <div id="statCards" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 shrink-0"></div>
+
+    <!-- Report card -->
+    <div id="reportCard" class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex-1 min-h-0 flex flex-col">
+
+      <div id="tableToolbar" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+        <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase">Readiness Gate List</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative">
+            <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+            </svg>
+            <input id="searchInput" type="text" placeholder="Search SO#, PAC#, PR#, customer, SKU…"
+              class="w-56 sm:w-64 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-auto flex-1 min-h-0">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100 whitespace-nowrap">
+              <th class="px-5 py-2.5 font-bold">Payment Status</th>
+              <th class="px-3 py-2.5 font-bold">Next Step</th>
+              <th class="px-3 py-2.5 font-bold">Priority</th>
+              <th class="px-3 py-2.5 font-bold">PAC #</th>
+              <th class="px-3 py-2.5 font-bold">PR #</th>
+              <th class="px-3 py-2.5 font-bold">RR #</th>
+              <th class="px-3 py-2.5 font-bold">Customer Name</th>
+              <th class="px-3 py-2.5 font-bold">Item Name</th>
+              <th class="px-3 py-2.5 font-bold">SKU</th>
+              <th class="px-3 py-2.5 font-bold text-right">Qty</th>
+              <th class="px-3 py-2.5 font-bold">Order Type</th>
+              <th class="px-3 py-2.5 font-bold">Forecast</th>
+              <th class="px-3 py-2.5 font-bold">Added Time</th>
+              <th class="px-3 py-2.5 font-bold">Assign Picker</th>
+              <th class="px-5 py-2.5 font-bold">Release</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-50"></tbody>
+        </table>
+      </div>
+
+      <div id="paginationBar" class="flex items-center px-5 py-3 border-t border-slate-100 text-xs text-slate-500 shrink-0">
+        <span>Total Count: <strong id="totalCount" class="text-slate-700">0</strong></span>
+      </div>
+    </div>
+
+    </div>
+
+    <!-- ADDED 2026-08-06 — Approve Dispatch tab content (Order Readiness Dispatch
+         Override feature). Filter pills reuse the SAME .tab-btn/.tab-active
+         pattern as the top-level Dashboard/Approve Dispatch tabs above (static
+         bg-white/text-slate-600 "inactive" classes + a tab-btn marker class,
+         with tab-active toggled via JS — the compound .tab-btn.tab-active CSS
+         selector's higher specificity overrides bg-white when present), instead
+         of a one-off hardcoded bg-slate-800 toggle, for consistency. -->
+    <div id="approveTabView" class="hidden flex-1 min-h-0 flex flex-col">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+          <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase">Blocked Items — Approve Dispatch Override</h2>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex gap-1.5" id="approveFilterPills">
+              <button class="tab-btn tab-active px-3 py-1.5 rounded-full text-[12px] font-semibold border border-slate-200 bg-white text-slate-600" id="approveFilterAll" data-filter="all">All</button>
+              <button class="tab-btn px-3 py-1.5 rounded-full text-[12px] font-semibold border border-slate-200 bg-white text-slate-600" id="approveFilterPayment" data-filter="payment">Payment</button>
+              <button class="tab-btn px-3 py-1.5 rounded-full text-[12px] font-semibold border border-slate-200 bg-white text-slate-600" id="approveFilterException" data-filter="exception">Exception</button>
+            </div>
+            <div class="relative">
+              <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+              </svg>
+              <input id="approveSearchInput" type="text" placeholder="Search SO#, customer, SKU…" oninput="renderApproveQueue()"
+                class="w-56 sm:w-64 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+            </div>
+          </div>
+        </div>
+        <div class="overflow-auto flex-1 min-h-0">
+          <table class="w-full border-collapse min-w-[860px]">
+            <thead>
+              <tr class="bg-slate-50 border-b-2 border-slate-200">
+                <th class="px-3.5 py-2.5 text-left text-[10.5px] font-bold text-slate-900 uppercase tracking-wider whitespace-nowrap">SO#</th>
+                <th class="px-3.5 py-2.5 text-left text-[10.5px] font-bold text-slate-900 uppercase tracking-wider whitespace-nowrap">Customer</th>
+                <th class="px-3.5 py-2.5 text-left text-[10.5px] font-bold text-slate-900 uppercase tracking-wider whitespace-nowrap">Item / SKU</th>
+                <th class="px-3.5 py-2.5 text-left text-[10.5px] font-bold text-slate-900 uppercase tracking-wider whitespace-nowrap">Block Type</th>
+                <th class="px-3.5 py-2.5 text-left text-[10.5px] font-bold text-slate-900 uppercase tracking-wider whitespace-nowrap">Detail</th>
+                <th class="px-3.5 py-2.5 text-left text-[10.5px] font-bold text-slate-900 uppercase tracking-wider whitespace-nowrap"></th>
+              </tr>
+            </thead>
+            <tbody id="approveQueueBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Readiness Gate Detail view -->
+  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+      <div class="flex items-center gap-2 font-semibold text-slate-600">
+        <span>HC Systems</span><span class="text-slate-300">/</span><span>Readiness Gate Detail</span>
+      </div>
+      <button id="checkPaymentBtn" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 hover:border-slate-300 transition">
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Check Payment Status
+      </button>
+    </div>
+
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
+        ← Back to Readiness Gate Dashboard
+      </button>
+      <span class="text-slate-300">|</span>
+      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    </div>
+
+    <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+    <div id="nsBanner"></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h2 id="detailSoNo" class="text-xl font-bold text-slate-900"></h2>
+          <p id="detailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+          <p id="detailSubline" class="text-xs text-slate-400 mt-1"></p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="detailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div id="detailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div id="detailItemFields" class="grid grid-cols-1 sm:grid-cols-4 gap-x-6 gap-y-4"></div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4 flex items-center gap-1.5">🔐 Readiness Gate</h3>
+
+          <div class="space-y-3 mb-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Payment Status</span>
+              <span id="gatePaymentStatus"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Priority</span>
+              <span id="gatePriority" class="priority-cell inline-block"></span>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-100 pt-4 pb-4">
+            <span class="text-xs text-slate-500 block mb-1.5">Assign Picker</span>
+            <div id="detailAssignPicker"></div>
+          </div>
+
+          <div class="border-t border-slate-100 pt-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs text-slate-500">Release Status</span>
+              <span id="releaseStatus"></span>
+            </div>
+            <button id="releaseBtn" class="w-full text-sm font-semibold bg-slate-900 text-white rounded-lg px-3 py-2.5 hover:bg-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed">
+              Mark as Released
+            </button>
+            <p id="releaseGateNote" class="text-xs text-amber-600 mt-2"></p>
+            <p id="releaseLogDisplay" class="text-xs text-slate-400 mt-3 whitespace-pre-wrap"></p>
+          </div>
+        </div>
+
+        <!-- Timeline History + Internal Conversation — added 2026-08-26, same
+             recipe as SO/PreOrderReport. Threaded by this record's own Creator ID
+             (Sales_Order_Readiness_Gate row), not PAC#/SO#, same reasoning as
+             those 2 widgets: a business-field key can be blank/shared, record ID
+             never is. Shares the same SOF_Timeline/SOF_Internal_Messages forms,
+             tagged via sourceLabel so a human browsing the report natively can
+             tell which widget wrote each row. Plain mounts below the sticky gate
+             card, own space-y-4 wrapper (not inside the sticky div itself — a
+             sticky element with growing conversation content below would misbehave). -->
+        <div id="tlhcMount"></div>
+        <div id="incMount"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+  <!-- Release confirm modal — replaces the native confirm() so it doesn't show the
+       raw embedded-iframe origin (zappsusercontent.com) in the dialog chrome. -->
+  <div id="releaseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+      <h3 class="text-sm font-bold text-slate-900 mb-1">Release this order?</h3>
+      <p class="text-xs text-slate-500 mb-4">This marks the item as cleared for fulfillment.</p>
+      <div class="flex items-center justify-end gap-2">
+        <button id="releaseModalCancelBtn" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 transition">No</button>
+        <button id="releaseModalConfirmBtn" class="text-xs font-semibold bg-slate-900 text-white rounded-lg px-3 py-2 hover:bg-slate-800 transition">Yes, Release</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Check Payment Status confirm modal — same replaces-native-confirm() rationale
+       as releaseModal above. -->
+  <div id="paymentCheckModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+      <h3 class="text-sm font-bold text-slate-900 mb-1">Check payment status?</h3>
+      <p class="text-xs text-slate-500 mb-4">Looks up the linked invoice(s) for this order in Zoho Books and updates Payment Status here to match.</p>
+      <div class="flex items-center justify-end gap-2">
+        <button id="paymentCheckModalCancelBtn" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 transition">No</button>
+        <button id="paymentCheckModalConfirmBtn" class="text-xs font-semibold bg-slate-900 text-white rounded-lg px-3 py-2 hover:bg-slate-800 transition">Yes, Check</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADDED 2026-08-06 — Approve Dispatch override confirm modal. -->
+  <div class="modal-overlay" id="approveModal">
+    <div class="modal-box">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900">Approve Dispatch Override</h3>
+        <button class="text-slate-400 hover:text-slate-600 text-xl leading-none" id="amCloseBtn">&times;</button>
+      </div>
+      <div class="p-5 flex flex-col gap-3 text-[13px]">
+        <p class="text-[12px] text-slate-500">Approving lets Dispatch bypass this specific block for <span id="amItem" class="font-semibold text-slate-700">—</span> on SO <span id="amSO" class="font-semibold text-slate-700">—</span>. Current: <span id="amDetail" class="font-semibold text-slate-700">—</span>.</p>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Approved By <span class="text-rose-600">*</span></label>
+          <input type="text" id="amApprovedBy" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Reason (optional)</label>
+          <textarea id="amReason" rows="2" class="px-2.5 py-2 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600"></textarea>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4">
+        <button class="h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-[13px] font-medium hover:bg-slate-50" id="amCancelBtn">Cancel</button>
+        <button class="h-9 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[13px] font-semibold disabled:bg-slate-300 disabled:cursor-not-allowed" id="amConfirmBtn" disabled>Approve</button>
+      </div>
+    </div>
+  </div>
+
+<div id="notifMount"></div>
+<script src="notification_component/notification.js"></script>
+<script src="timeline_history_component/timeline-history.js"></script>
+<script src="internal-notes_component/internal-notes.js"></script>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // CONFIG
+  // ---------------------------------------------------------------------
+  const CONFIG = {
+    APP_NAME: "supply-chain-app",
+    REPORT_NAME: "Sales_Order_Readiness_Gate_Report",
+    // ADDED 2026-08-06 — Order Readiness Dispatch Override feature (see
+    // docs/superpowers/specs/2026-08-06-order-readiness-dispatch-override-
+    // design.md). Client-side hide ONLY, deliberately — this app's Custom
+    // APIs use PublicKey auth (no real per-caller identity available
+    // server-side), so this is "hide from casual use," not real security.
+    // Confirmed acceptable by the user given that trade-off.
+    APPROVE_DISPATCH_ALLOWED_EMAIL: "hcinvanalyst@gmail.com",
+    EXCEPTION_CONTROL_REPORT: "Exception_Control_Report",
+    // ADDED 2026-09-03 — Auto Priority feature (see Priority section below).
+    // Same report/field names confirmed live elsewhere in this app (Purchase Request
+    // widget, Exception Control's own PR1_REPORT) — PR_No (text) + Shipment_Mode
+    // (picklist: "Airfreight"/"LCL"/"FCL", set by Purchase_Request1's own
+    // PR_Set_Shipment_Mode action).
+    PR_REPORT: "All_Purchase_Request",
+    MAX_RECORDS: 1000,   // JS API v2 single-call ceiling; add cursor pagination if this app ever exceeds it
+    PICKER_OPTIONS: ["Hendel", "Jayvon", "Jazz", "Edwin"],   // matches the form's Assign_Picker picklist values
+    // "Check Payment Status" — see DelugeScripts/readiness_gate_check_payment_status.txt.
+    // Placeholder key, wire in the real one once the Custom API is created live in Creator.
+    CUSTOM_API_CHECK_PAYMENT: "check_payment_status",
+    CUSTOM_API_CHECK_PAYMENT_KEY: "1v0bgwBVb3bD8h4pDB8rOkqQB",
+  };
+
+  // Notification bell — same pattern as UI/FF Widget/SO/PreOrderReport, deliberately
+  // its OWN isolated report (ReadinessGate_Notifications_Report), not shared with
+  // any other FF module's own notification stream.
+  let CURRENT_USER_EMAIL = "";
+  let ZC_ENV = "development";
+
+  const PALETTE = {
+    amber:   { border: "border-amber-400",   text: "text-amber-600",   badgeBg: "bg-amber-50",   badgeText: "text-amber-700",   badgeBorder: "border-amber-200",   dot: "bg-amber-500" },
+    emerald: { border: "border-emerald-400", text: "text-emerald-600", badgeBg: "bg-emerald-50", badgeText: "text-emerald-700", badgeBorder: "border-emerald-200", dot: "bg-emerald-500" },
+    blue:    { border: "border-blue-400",    text: "text-blue-600",    badgeBg: "bg-blue-50",    badgeText: "text-blue-700",    badgeBorder: "border-blue-200",    dot: "bg-blue-500" },
+    rose:    { border: "border-rose-400",    text: "text-rose-600",    badgeBg: "bg-rose-50",    badgeText: "text-rose-700",    badgeBorder: "border-rose-200",    dot: "bg-rose-500" },
+    slate:   { border: "border-slate-300",   text: "text-slate-500",   badgeBg: "bg-slate-50",   badgeText: "text-slate-500",   badgeBorder: "border-slate-200",   dot: "bg-slate-400" },
+  };
+
+  const PAYMENT_STATUS_COLOR = { "Yes": "emerald", "Partial": "amber", "No": "rose" };
+  // Stored/dropdown value stays Yes/No/Partial (matches the native form's own
+  // picklist and Books' cf_paid choices, unchanged) — this only maps what's shown
+  // to the user. 2026-07-31, per user ("this is what it should like in creator
+  // (Yes = Paid, No = Pending, Partial = Partial)").
+  const PAYMENT_STATUS_LABEL = { "Yes": "Paid", "No": "Pending", "Partial": "Partial" };
+  const PRIORITY_COLOR = { "Air": "blue", "Complaint": "rose", "Normal": "slate" };
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  let allRecords = [];
+  let orderedRows = [];
+  let currentDetailRecord = null;
+  // ADDED 2026-09-03 — clickable stat cards (see renderStats()/getFilteredRows()
+  // below): which card, if any, the list is currently filtered to. null = no filter.
+  let statFilter = null;
+
+  // ADDED 2026-08-06 — Order Readiness Dispatch Override feature.
+  let approveQueueRows = [];
+  let approveFilter = "all";
+
+  const tableBody = document.getElementById("tableBody");
+  const statCards = document.getElementById("statCards");
+  const searchInput = document.getElementById("searchInput");
+
+  // ---------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------
+  function displayVal(v) {
+    if (v === null || v === undefined || v === "" || v === "null") return "—";
+    if (typeof v === "object") return v.zc_display_value || v.display_value || v.ID || "—";
+    return String(v);
+  }
+
+  function isTrue(v) {
+    return v === true || v === "true";
+  }
+
+  // ADDED 2026-08-06 — local-time "now" string for Creator datetime writes
+  // (e.g. Override_Timestamp below). Deliberately NOT .toISOString() — that
+  // produces UTC with no indication anywhere it's UTC, which is wrong for an
+  // audit-trail field. Matches the local-Date-components convention used by
+  // every other REAL (non-demo-data) "now" timestamp write in this codebase
+  // (see UI/EndUser/INQs/app/index.html's fmtDateTime, UI/EndUser/PRs/app/index.html's
+  // chatFmtDateTime).
+  function nowForCreator() {
+    var d = new Date();
+    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  }
+
+  function parseZohoDateTime(str) {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const mon = months[m[2]];
+      if (mon !== undefined) {
+        return new Date(+m[3], mon, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+      }
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  }
+
+  function formatDate(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function formatDateTime(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${datePart} ${timePart}`;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  function badgePill(text, colorKey) {
+    const p = PALETTE[colorKey] || PALETTE.slate;
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${p.badgeBg} ${p.badgeText} ${p.badgeBorder}">
+      <span class="h-1.5 w-1.5 rounded-full ${p.dot}"></span>${escapeHtml(text)}
+    </span>`;
+  }
+
+  // ---------------------------------------------------------------------
+  // Assign Picker — editable dropdown (auto-saves on change, "Other…" for a
+  // custom name matching the form's "others option = true" picklist setting),
+  // ported from the standalone Picker widget now that this gate is where
+  // picker assignment happens. Both the table cell and the detail sidebar use
+  // the same ".picker-cell" wrapper pattern so an update can swap just that
+  // wrapper's contents in place instead of a full re-render.
+  // ---------------------------------------------------------------------
+  const OTHER_PICKER_VALUE = "__other__";
+
+  function pickerSelectMarkup(r) {
+    const current = r.Assign_Picker || "";
+
+    if (isTrue(r.Release)) {
+      // Locked once released — no <select> at all, so there's nothing for
+      // wirePickerSelect to attach to and no way to change the assignment.
+      return `<span class="text-xs text-slate-600 font-medium" title="Locked — order already released">${escapeHtml(current || "—")}</span>`;
+    }
+
+    const isCustom = current !== "" && !CONFIG.PICKER_OPTIONS.includes(current);
+    const optionValues = ["", ...CONFIG.PICKER_OPTIONS];
+    if (isCustom) optionValues.push(current);
+    optionValues.push(OTHER_PICKER_VALUE);
+
+    const options = optionValues.map((opt) => {
+      const label = opt === "" ? "— Unassigned —" : opt === OTHER_PICKER_VALUE ? "Other…" : opt;
+      return `<option value="${escapeHtml(opt)}" ${opt === current ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    }).join("");
+
+    return `<select class="assign-picker-select text-xs rounded-md border border-slate-200 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-slate-300 transition-colors" data-id="${r.ID}">${options}</select>`;
+  }
+
+  function pickerCellHtml(r) {
+    return `<span class="picker-cell inline-block" data-id="${r.ID}">${pickerSelectMarkup(r)}</span>`;
+  }
+
+  function renderPickerCell(container, r) {
+    container.innerHTML = pickerSelectMarkup(r);
+    wirePickerSelect(container.querySelector(".assign-picker-select"));
+  }
+
+  function wirePickerSelect(selectEl) {
+    if (!selectEl) return;
+    selectEl.addEventListener("click", (ev) => ev.stopPropagation());
+    selectEl.addEventListener("change", (ev) => {
+      ev.stopPropagation();
+      const recordId = selectEl.dataset.id;
+      const r = allRecords.find(rec => String(rec.ID) === String(recordId));
+      if (!r) return;
+      if (selectEl.value === OTHER_PICKER_VALUE) {
+        showCustomPickerInput(selectEl, r);
+      } else {
+        updateAssignPicker(r, selectEl.value, selectEl);
+      }
+    });
+  }
+
+  function showCustomPickerInput(selectEl, r) {
+    const container = selectEl.closest(".picker-cell");
+    if (!container) return;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Type a name…";
+    input.className = "text-xs rounded-md border border-slate-300 bg-white px-2 py-1 w-28 focus:outline-none focus:ring-2 focus:ring-slate-300 transition-colors";
+    container.innerHTML = "";
+    container.appendChild(input);
+    input.focus();
+
+    let settled = false;
+    const commit = () => {
+      if (settled) return;
+      const val = input.value.trim();
+      if (!val) { settled = true; renderPickerCell(container, r); return; }
+      settled = true;
+      updateAssignPicker(r, val, input);
+    };
+    const cancel = () => {
+      if (settled) return;
+      settled = true;
+      renderPickerCell(container, r);
+    };
+    input.addEventListener("click", (ev) => ev.stopPropagation());
+    input.addEventListener("keydown", (ev) => {
+      ev.stopPropagation();
+      if (ev.key === "Enter") { ev.preventDefault(); commit(); }
+      if (ev.key === "Escape") { ev.preventDefault(); cancel(); }
+    });
+    input.addEventListener("blur", commit);
+  }
+
+  // controlEl is whichever element triggered the save — the <select>, or the
+  // inline text input shown for a custom "Other…" name. On settle, repaints
+  // just that one .picker-cell wrapper and refreshes the Release button's
+  // gated state (disabled until a picker is assigned).
+  function updateAssignPicker(r, newValue, controlEl) {
+    const container = controlEl.closest(".picker-cell");
+    controlEl.disabled = true;
+    updateRecordField(r, { Assign_Picker: newValue }).then((response) => {
+      if (response && response.code === 3000) {
+        r.Assign_Picker = newValue;
+        refreshNextStep(r.ID, nextStepFor(r));
+        toast(newValue ? `Assigned to ${newValue}.` : "Picker cleared.", "success");
+      } else {
+        toast("Couldn't update picker.", "error");
+      }
+      if (container) renderPickerCell(container, r);
+      refreshReleaseGating(r);
+    }).catch((err) => {
+      console.error(err);
+      toast("Couldn't update picker.", "error");
+      if (container) renderPickerCell(container, r);
+    });
+  }
+
+  function updateRecordField(r, data) {
+    return ZOHO.CREATOR.DATA.updateRecords({
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      payload: { criteria: `(ID == ${r.ID})`, data: data },
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Priority — READ-ONLY display. Was an editable dropdown (auto-saves on
+  // change); locked down 2026-09-03 per user request ("ngayun hindi na siya
+  // dapat naeedit") now that Priority is fully computed by Auto Priority
+  // below (RR -> Complaint / PR Air Freight -> Air / Order Type Normal ->
+  // Normal) — no more manual override, so staff can no longer silently
+  // change it out from under that logic. Same badge styling/color mapping
+  // (PRIORITY_COLOR) as every other read-only badge column in this table.
+  // ---------------------------------------------------------------------
+  function priorityBadgeHtml(r) {
+    const current = r.priority || "";
+    return current ? badgePill(current, PRIORITY_COLOR[current] || "slate") : `<span class="text-slate-300">—</span>`;
+  }
+
+  function priorityCellHtml(r) {
+    return `<span class="priority-cell inline-block" data-id="${r.ID}">${priorityBadgeHtml(r)}</span>`;
+  }
+
+  // ---------------------------------------------------------------------
+  // Auto Priority — ADDED 2026-09-03, per user request: a row with no
+  // Priority picked yet should auto-fill on load, not sit on "— None —"
+  // waiting for someone to notice it. 3 rules, checked in this order:
+  //   1. If the row has an RR # (rr_number non-blank) -> Priority =
+  //      "Complaint". rr_number is ONLY ever populated on a Gate row when it
+  //      was synced from a Pre_Order_FF/Sales_Order_Fulfillment record whose
+  //      own Replacement_Request subform has a real RR row (confirmed in
+  //      preorder_to_readiness_gate.txt/so_fulfillment_to_readiness_gate.txt
+  //      — starts blank, only ever set from that subform) — and an RR only
+  //      ever gets created from Exception Control's own "+ Create RR" action
+  //      (Widget\Fulfillment\Exception Control), so a non-blank RR # reliably
+  //      means this item came from an Exception. Checked first — an
+  //      Exception-driven replacement outranks the other 2 signals.
+  //   2. Else if the row's PR (pr_number) has Shipment_Mode "Airfreight" on
+  //      Purchase_Request1 -> Priority = "Air".
+  //   3. Else if the row's own Order_Type is "Normal" -> Priority = "Normal".
+  // Anything else (no RR, no PR, non-Normal Order_Type) is left blank for
+  // manual choice, same as before this feature — this only ever fills a
+  // genuinely blank Priority, never overwrites an existing pick, and never
+  // touches an already-Released (locked) row.
+  // ---------------------------------------------------------------------
+  function autoPriorityValue(r, prShipModeMap) {
+    const rrNo = (r.rr_number || "").trim();
+    if (rrNo) return "Complaint";
+
+    const prNo = (r.pr_number || "").trim();
+    if (prNo && prShipModeMap[prNo]) {
+      const sm = String(prShipModeMap[prNo]).toLowerCase();
+      if (sm.indexOf("air") >= 0) return "Air";
+    }
+    if (r.Order_Type === "Normal") return "Normal";
+    return "";
+  }
+
+  function applyAutoPriority(records) {
+    const targets = records.filter((r) => !isTrue(r.Release) && !r.priority);
+    if (targets.length === 0) return Promise.resolve();
+
+    const needsPrLookup = targets.some((r) => (r.pr_number || "").trim());
+    const fetchPr = needsPrLookup
+      ? ZOHO.CREATOR.DATA.getRecords({ app_name: CONFIG.APP_NAME, report_name: CONFIG.PR_REPORT, max_records: CONFIG.MAX_RECORDS })
+          .then((resp) => (resp && resp.data) || [])
+          .catch((err) => { console.error(err); return []; })
+      : Promise.resolve([]);
+
+    return fetchPr.then((prRecords) => {
+      const shipModeMap = {};
+      prRecords.forEach((p) => { if (p.PR_No) shipModeMap[p.PR_No] = p.Shipment_Mode; });
+
+      const updates = targets.map((r) => {
+        const val = autoPriorityValue(r, shipModeMap);
+        if (!val) return Promise.resolve();
+        return updateRecordField(r, { priority: val }).then((response) => {
+          if (response && response.code === 3000) r.priority = val;
+        }).catch((err) => console.error(err));
+      });
+      return Promise.all(updates);
+    });
+  }
+
+  // Standard-response Custom APIs wrap the function's returned Map under "result",
+  // not "data" — confirmed gotcha in this app (see CLAUDE.md Deluge Gotchas). Check
+  // data first in case some other response shape uses it, then result, then raw.
+  // Ported verbatim from UI/FF Widget/PreOrderReport/app/index.html's own proven copy.
+  function invokeCustomApi(apiName, publicKey, params) {
+    return ZOHO.CREATOR.DATA.invokeCustomApi({
+      app_name: CONFIG.APP_NAME,
+      api_name: apiName,
+      public_key: publicKey,
+      http_method: "POST",
+      payload: params || {},
+    }).then((resp) => (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp);
+  }
+
+  // Repaints just the Release button/cell(s) for one record after its picker
+  // assignment changes — table row button, and the detail sidebar if that's
+  // the record currently open.
+  function refreshReleaseGating(r) {
+    const row = Array.from(tableBody.querySelectorAll(".record-row")).find(tr => tr.dataset.id === String(r.ID));
+    if (row) {
+      const releaseTd = row.children[row.children.length - 1];
+      releaseTd.innerHTML = releaseCellHtml(r);
+      wireReleaseBtn(releaseTd.querySelector(".release-btn"));
+    }
+    if (currentDetailRecord && String(currentDetailRecord.ID) === String(r.ID)) {
+      renderReleaseGate(r);
+    }
+  }
+
+  function toast(message, type) {
+    const container = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    const styles = { success: "bg-slate-900 text-white", error: "bg-rose-600 text-white" };
+    el.className = `toast-in px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${styles[type] || styles.success}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  // ---------------------------------------------------------------------
+  // Grouping: multiple records can share the same sales_order_number (each
+  // record is one item line, not a subform) — group by that field, most
+  // recently active group first, latest record first within a group.
+  // ---------------------------------------------------------------------
+  // A record with no SO#, PR/RR, customer, or item info is treated as blank
+  // (e.g. an accidental empty test record) and hidden from the list entirely.
+  function isBlank(v) {
+    return v === null || v === undefined || v === "" || v === "null";
+  }
+  function isEmptyRecord(r) {
+    return isBlank(r.sales_order_number) && isBlank(r.Package_Order) && isBlank(r.pr_number) && isBlank(r.rr_number)
+      && isBlank(r.customer_name) && isBlank(r.Item_Name) && isBlank(r.SKU);
+  }
+
+  function computeOrderedRows(records) {
+    const groups = new Map();
+    records.filter((r) => !isEmptyRecord(r)).forEach((r) => {
+      const key = r.sales_order_number || `__no_so_${r.ID}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    });
+
+    const groupList = Array.from(groups.values()).map((recs) => {
+      recs.sort((a, b) => (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+      const latest = recs.reduce((max, r) => Math.max(max, (parseZohoDateTime(r.Added_Time) || new Date(0)).getTime()), 0);
+      return { recs, latest };
+    });
+    groupList.sort((a, b) => b.latest - a.latest);
+
+    const rows = [];
+    groupList.forEach(({ recs }) => recs.forEach((r) => rows.push(r)));
+    return rows;
+  }
+
+  // ---------------------------------------------------------------------
+  // Stats
+  // ---------------------------------------------------------------------
+  // Shared by computeStats() (totals, always across ALL rows) and
+  // getFilteredRows() (applies whichever one is currently selected, if any) —
+  // one predicate per stat card, keyed the same as statFilter/data-stat.
+  function matchesStat(r, key) {
+    switch (key) {
+      case "pendingPayment": return r.payment_status === "No";
+      case "notReleased": return !isTrue(r.Release);
+      case "released": return isTrue(r.Release);
+      case "complaints": return r.priority === "Complaint";
+      default: return true;
+    }
+  }
+
+  function computeStats() {
+    let pendingPayment = 0, notReleased = 0, released = 0, complaints = 0;
+    orderedRows.forEach((r) => {
+      if (r.payment_status === "No") pendingPayment++;
+      if (isTrue(r.Release)) released++; else notReleased++;
+      if (r.priority === "Complaint") complaints++;
+    });
+    return { pendingPayment, notReleased, released, complaints };
+  }
+
+  // Stat cards are clickable — ADDED 2026-09-03, per user request: clicking a
+  // card filters the Readiness Gate List below to just that card's rows
+  // (e.g. click "Complaints" -> list shows only priority=Complaint rows).
+  // Click the same card again to clear the filter. Wired via delegation on
+  // #statCards (see the addEventListener below, near the other top-level
+  // listeners) since the cards are rebuilt on every renderStats() call.
+  function renderStats() {
+    const stats = computeStats();
+    const cardHtml = (label, caption, value, color, statKey) => {
+      const p = PALETTE[color];
+      const active = statFilter === statKey;
+      return `
+        <div class="stat-card cursor-pointer select-none bg-white rounded-xl border-t-4 ${p.border} border-x border-b border-slate-200 shadow-card px-4 py-3 transition hover:shadow-md ${active ? "ring-2 ring-offset-1 ring-slate-400" : ""}" data-stat="${statKey}">
+          <p class="text-[10px] font-bold tracking-wide text-slate-400 uppercase">${escapeHtml(label)}</p>
+          <p class="text-3xl font-bold ${p.text} mt-1">${value}</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(caption)}</p>
+        </div>`;
+    };
+
+    statCards.innerHTML = [
+      cardHtml("Pending Payment", "gating on payment", stats.pendingPayment, "rose", "pendingPayment"),
+      cardHtml("Not Released", "blocked at the gate", stats.notReleased, "amber", "notReleased"),
+      cardHtml("Released", "cleared the gate", stats.released, "emerald", "released"),
+      cardHtml("Complaints", "priority: complaint", stats.complaints, "blue", "complaints"),
+    ].join("");
+
+    document.getElementById("notReleasedCount").textContent = stats.notReleased;
+    document.getElementById("releasedCount").textContent = stats.released;
+  }
+
+  statCards.addEventListener("click", (ev) => {
+    const card = ev.target.closest(".stat-card");
+    if (!card) return;
+    const key = card.dataset.stat;
+    statFilter = (statFilter === key) ? null : key;
+    renderAll();
+  });
+
+  // ---------------------------------------------------------------------
+  // Table rendering
+  // ---------------------------------------------------------------------
+  function getFilteredRows() {
+    let rows = statFilter ? orderedRows.filter((r) => matchesStat(r, statFilter)) : orderedRows;
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => {
+      const hay = [r.sales_order_number, r.Package_Order, r.pr_number, r.rr_number, r.customer_name, r.Item_Name, r.SKU]
+        .map(displayVal).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  function groupHeaderRow(r) {
+    return `<tr><td colspan="15" class="px-5 pt-4 pb-1 text-xs font-bold text-slate-900">${escapeHtml(displayVal(r.sales_order_number))}</td></tr>`;
+  }
+
+  // Release is gated on a picker being assigned first — same pattern as
+  // Pick/Pack's own one-way actions being gated on an assignee. Shared by the
+  // table cell and the detail sidebar button.
+  function releaseCellHtml(r) {
+    if (isTrue(r.Release)) return badgePill("Released", "emerald");
+    const noPicker = isBlank(r.Assign_Picker);
+    const title = noPicker ? `title="Assign a picker first"` : "";
+    return `<button class="release-btn text-[11px] font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-full px-2.5 py-1 transition disabled:opacity-40 disabled:cursor-not-allowed" data-id="${r.ID}" ${noPicker ? "disabled" : ""} ${title}>Release</button>`;
+  }
+
+  function wireReleaseBtn(btnEl) {
+    if (!btnEl) return;
+    btnEl.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      releaseFromTable(btnEl.dataset.id, btnEl);
+    });
+  }
+
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+  function nextStepFor(r) {
+    if (isTrue(r.Release)) return { here: "Released", action: "Moved to Picking", who: "Picker", tone: "done" };
+    if (isBlank(r.Assign_Picker)) return { here: "Order Readiness", action: "Assign a picker, then Release", who: "Readiness Gate", tone: "next" };
+    return { here: "Order Readiness", action: "Release to Pick", who: "Readiness Gate", tone: "next" };
+  }
+/* ───────── FORECAST (added 2026-11-04) ─────────
+   Read-only. Written by the Forecast_Stamp_Daily schedule onto this form's
+   Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+   displays them.
+
+   The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+   title attribute rather than the cell, so the column stays one line wide. The
+   date shown is the midpoint of that window, never a promise.
+
+   Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+   #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+   separation. Status also carries its own word, so it is never colour-alone.
+
+   fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+   esc there), so this picks whichever exists and carries its own as a last
+   resort - it must never be the reason a row fails to render. */
+var fcEsc = (function () {
+  if (typeof escapeHtml === "function") return escapeHtml;
+  if (typeof esc === "function") return esc;
+  return function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+})();
+
+var FORECAST_TONE = {
+  "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+  "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+  "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+};
+
+/* Creator hands dates back in whichever format the app is set to; this accepts the
+   four shapes seen across this app and returns "" rather than "Invalid Date". */
+function forecastDateText(v) {
+  if (!v) return "";
+  var s = String(v).trim();
+  var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  if (m) return m[2] + " " + m[1] + ", " + m[3];
+  var d = new Date(s.replace(/-/g, "/"));
+  if (isNaN(d.getTime())) return s.split(" ")[0];
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+function forecastCell(r) {
+  r = r || {};
+  var raw = r.Forecast_Delivery;
+  var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+  var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+  var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+  var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+  var tip = fcEsc(win || status || "");
+
+  return (
+    '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+    "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+    "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+    ';flex:none"></span>' + date +
+    (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+    "</span>"
+  );
+}
+
+  function dataRow(r) {
+    const paymentCell = r.payment_status ? badgePill(PAYMENT_STATUS_LABEL[r.payment_status] || r.payment_status, PAYMENT_STATUS_COLOR[r.payment_status] || "slate") : `<span class="text-slate-300">—</span>`;
+
+    return `
+      <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}">
+        <td class="px-5 py-2.5">${paymentCell}</td>
+        <td class="px-3 py-2.5">${nextStepCell(r.ID, nextStepFor(r))}</td>
+        <td class="px-3 py-2.5">${priorityCellHtml(r)}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Package_Order))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.pr_number))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.rr_number))}</td>
+        <td class="px-3 py-2.5 text-slate-700">${escapeHtml(displayVal(r.customer_name))}</td>
+        <td class="px-3 py-2.5 text-slate-800 font-medium max-w-[220px] truncate">${escapeHtml(displayVal(r.Item_Name))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.SKU))}</td>
+        <td class="px-3 py-2.5 text-slate-700 text-right">${escapeHtml(displayVal(r.Quantity))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Order_Type))}</td>
+        <td class="px-3 py-2.5">${forecastCell(r)}</td>
+        <td class="px-3 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
+        <td class="px-3 py-2.5">${pickerCellHtml(r)}</td>
+        <td class="px-5 py-2.5">${releaseCellHtml(r)}</td>
+      </tr>`;
+  }
+
+  function renderTable() {
+    const filtered = getFilteredRows();
+    const totalCount = filtered.length;
+
+    let html = "";
+    let lastSoNumber = null;
+    if (!filtered.length) {
+      html = `<tr><td colspan="15" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+    } else {
+      filtered.forEach((r) => {
+        if (r.sales_order_number !== lastSoNumber) { html += groupHeaderRow(r); lastSoNumber = r.sales_order_number; }
+        html += dataRow(r);
+      });
+    }
+    tableBody.innerHTML = html;
+
+    tableBody.querySelectorAll(".record-row").forEach((row) => {
+      row.addEventListener("click", () => switchToDetail(row.dataset.id));
+    });
+
+    tableBody.querySelectorAll(".assign-picker-select").forEach(wirePickerSelect);
+    tableBody.querySelectorAll(".release-btn").forEach(wireReleaseBtn);
+
+    document.getElementById("totalCount").textContent = totalCount;
+  }
+
+  function renderAll() {
+    renderStats();
+    renderTable();
+  }
+
+  // ---------------------------------------------------------------------
+  // Readiness Gate detail view
+  // ---------------------------------------------------------------------
+  function renderReleaseGate(r) {
+    document.getElementById("gatePaymentStatus").innerHTML = r.payment_status ? badgePill(PAYMENT_STATUS_LABEL[r.payment_status] || r.payment_status, PAYMENT_STATUS_COLOR[r.payment_status] || "slate") : "—";
+    document.getElementById("gatePriority").innerHTML = priorityBadgeHtml(r);
+
+    const pickerContainer = document.getElementById("detailAssignPicker");
+    pickerContainer.classList.add("picker-cell");
+    pickerContainer.dataset.id = r.ID;
+    renderPickerCell(pickerContainer, r);
+
+    const released = isTrue(r.Release);
+    const noPicker = isBlank(r.Assign_Picker);
+    document.getElementById("releaseStatus").innerHTML = released ? badgePill("Released", "emerald") : badgePill("Not Released", "amber");
+
+    const btn = document.getElementById("releaseBtn");
+    btn.textContent = released ? "Released" : "Mark as Released";
+    btn.disabled = released || noPicker;
+
+    document.getElementById("releaseGateNote").textContent = !released && noPicker ? "Assign a picker first." : "";
+
+    const logEl = document.getElementById("releaseLogDisplay");
+    logEl.textContent = r.Release_Log ? `Log: ${r.Release_Log}` : "";
+  }
+
+  // Custom modal replacing native confirm() — inside a Zoho Creator widget
+  // iframe, prompt()/confirm() show the raw embedded-page origin
+  // (*.zappsusercontent.com) in the dialog chrome, which looks broken.
+  let releaseModalResolver = null;
+  const releaseModal = document.getElementById("releaseModal");
+
+  function askReleaseConfirm() {
+    return new Promise((resolve) => {
+      releaseModalResolver = resolve;
+      releaseModal.classList.remove("hidden");
+    });
+  }
+
+  function closeReleaseModal(result) {
+    releaseModal.classList.add("hidden");
+    if (releaseModalResolver) {
+      releaseModalResolver(result);
+      releaseModalResolver = null;
+    }
+  }
+  document.getElementById("releaseModalCancelBtn").addEventListener("click", () => closeReleaseModal(false));
+  document.getElementById("releaseModalConfirmBtn").addEventListener("click", () => closeReleaseModal(true));
+
+  // ---------------------------------------------------------------------
+  // Check Payment Status — 2026-07-31, per user request. Calls
+  // DelugeScripts/readiness_gate_check_payment_status.txt's checkPaymentStatus
+  // Custom Function: looks up the Books invoice(s) linked to this record's own
+  // Sales Order Number, determines Yes/No/Partial from real balance/total math,
+  // writes it back onto payment_status server-side, and returns the same value +
+  // a human-readable summary for the toast here. Always syncs the real result
+  // (not just a one-way "only write when Paid") — confirmed via AskUserQuestion.
+  // ---------------------------------------------------------------------
+  let paymentCheckModalResolver = null;
+  const paymentCheckModal = document.getElementById("paymentCheckModal");
+
+  function askPaymentCheckConfirm() {
+    return new Promise((resolve) => {
+      paymentCheckModalResolver = resolve;
+      paymentCheckModal.classList.remove("hidden");
+    });
+  }
+  function closePaymentCheckModal(result) {
+    paymentCheckModal.classList.add("hidden");
+    if (paymentCheckModalResolver) {
+      paymentCheckModalResolver(result);
+      paymentCheckModalResolver = null;
+    }
+  }
+  document.getElementById("paymentCheckModalCancelBtn").addEventListener("click", () => closePaymentCheckModal(false));
+  document.getElementById("paymentCheckModalConfirmBtn").addEventListener("click", () => closePaymentCheckModal(true));
+
+  function checkPaymentStatus() {
+    if (!currentDetailRecord) return;
+    const r = currentDetailRecord;
+    askPaymentCheckConfirm().then((confirmed) => {
+      if (!confirmed) return;
+      const btn = document.getElementById("checkPaymentBtn");
+      btn.disabled = true;
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = "Checking…";
+
+      invokeCustomApi(CONFIG.CUSTOM_API_CHECK_PAYMENT, CONFIG.CUSTOM_API_CHECK_PAYMENT_KEY, { recordId: String(r.ID) })
+        .then((result) => {
+          if (result && result.status === "success") {
+            r.payment_status = result.paymentStatus;
+            renderReleaseGate(r);
+            renderTable();
+            renderStats();
+            toast(result.message || `Payment Status: ${result.paymentStatus}`, "success");
+          } else {
+            toast((result && result.message) || "Couldn't check payment status.", "error");
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          toast("Couldn't check payment status — see console.", "error");
+        })
+        .finally(() => {
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+        });
+    });
+  }
+  document.getElementById("checkPaymentBtn").addEventListener("click", checkPaymentStatus);
+
+  // Shared by the detail-view button and the table row buttons — confirms
+  // intent, sets Release = true on that one record via updateRecords, then
+  // hands control back to the caller to refresh its UI.
+  function performRelease(r, { onStart, onSuccess, onError } = {}) {
+    askReleaseConfirm().then((confirmed) => {
+      if (!confirmed) return;
+
+      if (onStart) onStart();
+
+      const config = {
+        app_name: CONFIG.APP_NAME,
+        report_name: CONFIG.REPORT_NAME,
+        payload: {
+          criteria: `(ID == ${r.ID})`,
+          data: { Release: true },
+        },
+      };
+      ZOHO.CREATOR.DATA.updateRecords(config).then((response) => {
+        if (response && response.code === 3000) {
+          r.Release = true;
+          refreshNextStep(r.ID, nextStepFor(r));
+          toast("Order marked as released.", "success");
+          if (onSuccess) onSuccess();
+        } else {
+          toast("Couldn't release order.", "error");
+          if (onError) onError();
+        }
+      }).catch((err) => {
+        console.error(err);
+        toast("Couldn't release order.", "error");
+        if (onError) onError();
+      });
+    });
+  }
+
+  function releaseRecord() {
+    if (!currentDetailRecord || isTrue(currentDetailRecord.Release)) return;
+    const r = currentDetailRecord;
+    if (isBlank(r.Assign_Picker)) { toast("Assign a picker first.", "error"); return; }
+    const btn = document.getElementById("releaseBtn");
+    performRelease(r, {
+      onStart: () => { btn.disabled = true; btn.textContent = "Releasing…"; },
+      onSuccess: () => { renderReleaseGate(r); renderTable(); renderStats(); },
+      onError: () => { btn.disabled = false; btn.textContent = "Mark as Released"; },
+    });
+  }
+  document.getElementById("releaseBtn").addEventListener("click", releaseRecord);
+
+  function releaseFromTable(recordId, btnEl) {
+    const r = allRecords.find(rec => String(rec.ID) === String(recordId));
+    if (!r || isTrue(r.Release)) return;
+    if (isBlank(r.Assign_Picker)) { toast("Assign a picker first.", "error"); return; }
+    performRelease(r, {
+      onStart: () => { btnEl.disabled = true; btnEl.textContent = "…"; },
+      onSuccess: () => {
+        renderTable();
+        renderStats();
+        if (currentDetailRecord && String(currentDetailRecord.ID) === String(r.ID)) renderReleaseGate(r);
+      },
+      onError: () => { btnEl.disabled = false; btnEl.textContent = "Release"; },
+    });
+  }
+
+  function switchToDetail(recordId) {
+    const r = allRecords.find(rec => String(rec.ID) === String(recordId));
+    if (!r) return;
+    renderNextStepBanner("nsBanner", r.ID, nextStepFor(r));
+    currentDetailRecord = r;
+
+    document.getElementById("detailBreadcrumb").textContent = `${displayVal(r.sales_order_number)} · ${displayVal(r.customer_name)}`;
+    document.getElementById("detailSoNo").textContent = displayVal(r.sales_order_number) !== "—" ? displayVal(r.sales_order_number) : "Readiness Gate Record";
+    document.getElementById("detailCustomer").textContent = displayVal(r.customer_name);
+    document.getElementById("detailSubline").textContent = `${displayVal(r.Order_Type)} · ${displayVal(r.Delivery_Type)}`;
+
+    const fieldsHtml = [
+      ["Sales Order Number", displayVal(r.sales_order_number)],
+      ["PAC #", displayVal(r.Package_Order)],
+      ["PR #", displayVal(r.pr_number)],
+      ["RR #", displayVal(r.rr_number)],
+      ["Demo #", displayVal(r.Demo)],
+      ["Order Type", displayVal(r.Order_Type)],
+      ["Delivery Type", displayVal(r.Delivery_Type)],
+      ["For Crate", isTrue(r.For_Crate) ? badgePill("Yes", "blue") : "—", true],
+      ["Added Time", escapeHtml(formatDateTime(r.Added_Time))],
+    ];
+
+    document.getElementById("detailFields").innerHTML = fieldsHtml.map(([label, val, isHtml]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${isHtml ? val : escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const customerFieldsHtml = [
+      ["Customer Name", displayVal(r.customer_name)],
+      ["Customer Type", displayVal(r.customer_type)],
+      ["Customer Address", displayVal(r.customer_address)],
+    ];
+    document.getElementById("detailCustomerFields").innerHTML = customerFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const itemFieldsHtml = [
+      ["Item Name", displayVal(r.Item_Name)],
+      ["SKU", displayVal(r.SKU)],
+      ["Qty", displayVal(r.Quantity)],
+      ["Bin Location", displayVal(r.Bin_Location)],
+    ];
+    document.getElementById("detailItemFields").innerHTML = itemFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 font-medium mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    renderReleaseGate(r);
+
+    rgTimeline.open(String(r.ID));
+    internalNotes.open(String(r.ID));
+
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("detailView").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }
+
+  function switchToList() {
+    rgTimeline.close();
+    internalNotes.close();
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("listView").classList.remove("hidden");
+    currentDetailRecord = null;
+  }
+  document.getElementById("backToListBtn").addEventListener("click", switchToList);
+
+  // ---------------------------------------------------------------------
+  // Data loading (Sales_Order_Readiness_Gate_Report — Release action writes
+  // back to the same report via updateRecords)
+  // ---------------------------------------------------------------------
+  function fetchAllRecords() {
+    // field_config: "all" returns raw form field data instead of whatever the
+    // report's display columns would otherwise collapse fields to.
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+
+  function loadLive() {
+    fetchAllRecords().then((records) => {
+      allRecords = records;
+      return applyAutoPriority(allRecords);
+    }).then(() => {
+      orderedRows = computeOrderedRows(allRecords);
+      renderAll();
+      checkDeepLinkOpenReadinessGate();
+    }).catch((err) => {
+      console.error(err);
+      toast("Failed to load records from Zoho Creator.", "error");
+    });
+  }
+
+  // Deep link from a notification click — same pattern as UI/FF Widget/SO's own
+  // checkDeepLinkOpenSO(). This widget has no separate edit mode, so it opens
+  // straight into switchToDetail() (its only "record view" concept). Real page
+  // link name confirmed by user 2026-08-03: Order_Readiness1.
+  //   Target_URL = "https://creatorapp.zoho.com/homecartel/environment/" +
+  //     "<development|production>/supply-chain-app/#Page:Order_Readiness1" +
+  //     "?readinessGateRecordId=" + input.ID
+  // Query string AFTER the hash, not before — confirmed gotcha elsewhere in this
+  // app. Still needs a Page Variable named `readinessGateRecordId` registered on
+  // the Order_Readiness1 page (Page Builder -> Variables tab -> Add Variable) —
+  // not yet confirmed done.
+  let deepLinkChecked = false;
+  function checkDeepLinkOpenReadinessGate() {
+    if (deepLinkChecked) return;
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams !== "function") return;
+    deepLinkChecked = true;
+    ZOHO.CREATOR.UTIL.getQueryParams().then((params) => {
+      const id = params && params.readinessGateRecordId;
+      if (id) switchToDetail(id);
+    }).catch(() => {});
+  }
+
+  // ADDED 2026-08-06 — Order Readiness Dispatch Override feature. Shows/hides
+  // the Approve Dispatch tab based on CURRENT_USER_EMAIL, which resolves
+  // asynchronously — called once here at initial (unresolved, so hidden)
+  // state implicitly via the tab button's own "hidden" class already in the
+  // HTML, and again from both CURRENT_USER_EMAIL resolution callbacks below
+  // once a real value comes in. Fails closed: if the email never resolves
+  // (network hiccup, SDK not ready), the tab simply never shows — safer
+  // default than accidentally showing it.
+  function renderTabVisibility() {
+    const btn = document.getElementById("approveDispatchTabBtn");
+    if (!btn) return;
+    const allowed = CURRENT_USER_EMAIL && CURRENT_USER_EMAIL === CONFIG.APPROVE_DISPATCH_ALLOWED_EMAIL.toLowerCase();
+    btn.classList.toggle("hidden", !allowed);
+  }
+
+  function switchTopTab(tab) {
+    document.querySelectorAll("#topTabs .tab-btn").forEach((b) => {
+      b.classList.toggle("tab-active", b.dataset.tab === tab);
+    });
+    document.getElementById("dashboardTabView").classList.toggle("hidden", tab !== "dashboard");
+    document.getElementById("approveTabView").classList.toggle("hidden", tab !== "approve");
+    if (tab === "approve" && typeof loadApproveQueue === "function") loadApproveQueue();
+  }
+
+  // ---------------------------------------------------------------------
+  // Approve Dispatch queue — ADDED 2026-08-06, Order Readiness Dispatch
+  // Override feature. Bulk-fetches BOTH source reports, filters to
+  // currently-blocked-and-not-validly-overridden rows, merges into one flat
+  // list. Same cheap-bulk-fetch convention already used throughout this app.
+  // ---------------------------------------------------------------------
+  // Response-normalizer shared by both getRecords calls below — dedupe of the
+  // repeated code===3000/Array.isArray(data) check.
+  function extractRows(resp) {
+    return (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+  }
+
+  function loadApproveQueue() {
+    document.getElementById("approveQueueBody").innerHTML = '<tr><td colspan="6" class="p-10 text-center text-slate-400 text-[13px]">Loading…</td></tr>';
+    const gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+    Promise.all([
+      gr({ app_name: CONFIG.APP_NAME, report_name: CONFIG.REPORT_NAME, field_config: "all", max_records: CONFIG.MAX_RECORDS })
+        .then(extractRows)
+        .catch(() => []),
+      gr({ app_name: CONFIG.APP_NAME, report_name: CONFIG.EXCEPTION_CONTROL_REPORT, field_config: "all", max_records: CONFIG.MAX_RECORDS })
+        .then(extractRows)
+        .catch(() => []),
+    ]).then(([paymentRows, exceptionRows]) => {
+      const rows = [];
+      paymentRows.forEach((row) => {
+        if (!row.payment_status || row.payment_status === "Yes") return;
+        // ADDED 2026-09-03, per direct user instruction — an invoice with real credit
+        // Terms (Net 15/30/45/60, not Due on Receipt) is EXPECTED to still be unpaid
+        // at this point; it's not a red flag and shouldn't need a manual override at
+        // all. Has_Credit_Terms is populated by invoice_payment_status_to_so_
+        // fulfillment_sync.txt (Books' own invoice "payment_terms" field, 0 = Due on
+        // Receipt). Skips the item out of this queue entirely — no override record
+        // needed/created for it.
+        if (isTrue(row.Has_Credit_Terms)) return;
+        const validOverride = isTrue(row.Override_Approved) && row.Override_Approved_For_Status === row.payment_status;
+        if (validOverride) return;
+        rows.push({
+          type: "payment",
+          id: row.ID,
+          so: displayVal(row.sales_order_number),
+          customer: displayVal(row.customer_name),
+          item: displayVal(row.Item_Name),
+          sku: displayVal(row.SKU),
+          detail: PAYMENT_STATUS_LABEL[row.payment_status] || row.payment_status,
+          raw: row,
+        });
+      });
+      exceptionRows.forEach((row) => {
+        if (row.Status === "Completed") return;
+        if (isTrue(row.Override_Approved)) return;
+        rows.push({
+          type: "exception",
+          id: row.ID,
+          so: displayVal(row.Sales_Order),
+          customer: displayVal(row.Customer_Name),
+          item: displayVal(row.Item_Name),
+          sku: displayVal(row.SKU),
+          detail: displayVal(row.Status) || "Pending",
+          raw: row,
+        });
+      });
+      approveQueueRows = rows;
+      renderApproveQueue();
+    }).catch((err) => {
+      console.error(err);
+      document.getElementById("approveQueueBody").innerHTML = '<tr><td colspan="6" class="p-10 text-center text-slate-400 text-[13px]">Could not load — see console</td></tr>';
+      toast("Failed to load Approve Dispatch queue.", "error");
+    });
+  }
+
+  function setApproveFilter(f) {
+    approveFilter = f;
+    document.querySelectorAll("#approveFilterPills button").forEach((b) => {
+      const active = b.dataset.filter === f;
+      b.classList.toggle("tab-active", active);
+    });
+    renderApproveQueue();
+  }
+
+  function renderApproveQueue() {
+    const q = (document.getElementById("approveSearchInput").value || "").toLowerCase().trim();
+    const rows = approveQueueRows.filter((r) => {
+      if (approveFilter !== "all" && r.type !== approveFilter) return false;
+      if (!q) return true;
+      const hay = (r.so + " " + r.customer + " " + r.sku + " " + r.item).toLowerCase();
+      return hay.indexOf(q) >= 0;
+    });
+    const body = document.getElementById("approveQueueBody");
+    if (rows.length === 0) {
+      body.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-slate-400 text-[13px]">' +
+        (approveQueueRows.length === 0 ? "Nothing blocked right now." : "No rows match this filter/search.") + '</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((r) => {
+      const badge = r.type === "payment"
+        ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-semibold">Payment</span>'
+        : '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold">Exception</span>';
+      return '<tr class="border-b border-slate-100">' +
+        '<td class="px-3.5 py-2.5 text-[13px] font-semibold text-slate-700">' + escapeHtml(r.so) + '</td>' +
+        '<td class="px-3.5 py-2.5 text-[13px] text-slate-700">' + escapeHtml(r.customer) + '</td>' +
+        '<td class="px-3.5 py-2.5 text-[13px] text-slate-700">' + escapeHtml(r.item) + ' <span class="text-slate-400">(' + escapeHtml(r.sku) + ')</span></td>' +
+        '<td class="px-3.5 py-2.5">' + badge + '</td>' +
+        '<td class="px-3.5 py-2.5 text-[13px] text-slate-600">' + escapeHtml(r.detail) + '</td>' +
+        '<td class="px-3.5 py-2.5"><button class="approve-btn h-7 px-3 rounded-lg border border-teal-600 text-teal-700 hover:bg-teal-50 text-[12px] font-semibold whitespace-nowrap" data-type="' + r.type + '" data-id="' + r.id + '">Approve</button></td>' +
+      '</tr>';
+    }).join("");
+  }
+
+  // Delegated click handler for per-row Approve buttons — this file's own
+  // established convention for row actions is data-id + addEventListener
+  // (see releaseCellHtml/wireReleaseBtn ~line 715-728), not inline onclick.
+  // Wired ONCE here via delegation on the body container (rather than
+  // re-querying/re-attaching per row on every renderApproveQueue() render,
+  // since rows here are fully replaced via innerHTML on every load/filter).
+  document.getElementById("approveQueueBody").addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".approve-btn");
+    if (!btn) return;
+    openApproveModal(btn.dataset.type, btn.dataset.id);
+  });
+
+  // ADDED 2026-08-06 — Approve Dispatch override modal handlers.
+  let approveModalType = null; // "payment" | "exception"
+  let approveModalId = null;
+  let approveModalRow = null;
+
+  function openApproveModal(type, id) {
+    const row = approveQueueRows.find((r) => r.type === type && String(r.id) === String(id));
+    if (!row) return;
+    approveModalType = type;
+    approveModalId = id;
+    approveModalRow = row;
+    document.getElementById("amItem").textContent = row.item + " (" + row.sku + ")";
+    document.getElementById("amSO").textContent = row.so;
+    document.getElementById("amDetail").textContent = (type === "payment" ? "Payment: " : "Exception: ") + row.detail;
+    document.getElementById("amApprovedBy").value = "";
+    document.getElementById("amReason").value = "";
+    document.getElementById("amConfirmBtn").disabled = true;
+    document.getElementById("approveModal").classList.add("show");
+  }
+  function closeApproveModal() {
+    document.getElementById("approveModal").classList.remove("show");
+    approveModalType = null;
+    approveModalId = null;
+    approveModalRow = null;
+  }
+
+  // Shared by both the "already resolved" and successful-write paths below —
+  // only the toast text differs.
+  function finishApprove(message) {
+    toast(message, "success");
+    closeApproveModal();
+    loadApproveQueue();
+  }
+
+  // Re-checks the specific record fresh right before writing — if the block
+  // no longer actually applies (resolved on its own since the queue loaded),
+  // skips the write entirely rather than logging a meaningless approval.
+  // See design doc's "Stale-queue-row edge case" for the full reasoning.
+  function doApproveOverride() {
+    const approvedBy = document.getElementById("amApprovedBy").value.trim();
+    if (!approvedBy) return;
+    const reason = document.getElementById("amReason").value.trim();
+    const type = approveModalType;
+    const id = approveModalId;
+    if (!type || !id) return;
+    const btn = document.getElementById("amConfirmBtn");
+    btn.disabled = true;
+    btn.textContent = "Approving…";
+
+    const reportName = type === "payment" ? CONFIG.REPORT_NAME : CONFIG.EXCEPTION_CONTROL_REPORT;
+    ZOHO.CREATOR.DATA.getRecordById({ app_name: CONFIG.APP_NAME, report_name: reportName, id: String(id), field_config: "all" })
+      .then((resp) => {
+        const fresh = resp && resp.data;
+        if (!fresh) throw new Error("record-not-found");
+        let stillBlocked;
+        let data;
+        if (type === "payment") {
+          stillBlocked = fresh.payment_status && fresh.payment_status !== "Yes";
+          data = { Override_Approved: true, Override_Approved_For_Status: fresh.payment_status, Override_By: approvedBy, Override_Reason: reason, Override_Timestamp: nowForCreator() };
+        } else {
+          stillBlocked = fresh.Status !== "Completed";
+          data = { Override_Approved: true, Override_By: approvedBy, Override_Reason: reason, Override_Timestamp: nowForCreator() };
+        }
+        if (!stillBlocked) {
+          finishApprove("Already resolved — no approval needed.");
+          return null;
+        }
+        return ZOHO.CREATOR.DATA.updateRecordById({ app_name: CONFIG.APP_NAME, report_name: reportName, id: String(id), payload: { data: data } });
+      })
+      .then((updateResp) => {
+        btn.disabled = false;
+        btn.textContent = "Approve";
+        if (updateResp === null) return; // already-resolved path above, handled there
+        if (updateResp && updateResp.code === 3000) {
+          finishApprove("Override approved.");
+        } else {
+          toast("Approve failed — see console.", "error");
+          console.error(updateResp);
+        }
+      })
+      .catch((err) => {
+        btn.disabled = false;
+        btn.textContent = "Approve";
+        toast("Approve failed — see console.", "error");
+        console.error(err);
+      });
+  }
+
+  // Static-button wiring (this file's own established convention — id +
+  // addEventListener for fixed HTML, see the tab bar / filter pills built in
+  // prior tasks this session).
+  document.getElementById("amCloseBtn").addEventListener("click", closeApproveModal);
+  document.getElementById("amCancelBtn").addEventListener("click", closeApproveModal);
+  document.getElementById("amConfirmBtn").addEventListener("click", doApproveOverride);
+  document.getElementById("amApprovedBy").addEventListener("input", function () {
+    document.getElementById("amConfirmBtn").disabled = !this.value.trim();
+  });
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  searchInput.addEventListener("input", () => { renderTable(); });
+  document.getElementById("dashboardTabBtn")?.addEventListener("click", () => switchTopTab("dashboard"));
+  document.getElementById("approveDispatchTabBtn").addEventListener("click", () => switchTopTab("approve"));
+  document.getElementById("approveFilterAll").addEventListener("click", () => setApproveFilter("all"));
+  document.getElementById("approveFilterPayment").addEventListener("click", () => setApproveFilter("payment"));
+  document.getElementById("approveFilterException").addEventListener("click", () => setApproveFilter("exception"));
+
+  const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+  if (sdkReady) {
+    loadLive();
+  } else {
+    toast("This widget must be opened inside Zoho Creator to load data.", "error");
+  }
+
+  // ---------------------------------------------------------------------
+  // Timeline History + Internal Conversation — added 2026-08-26, same shared
+  // SOF_Timeline/SOF_Internal_Messages forms as SO/PreOrderReport (per user
+  // decision, one shared thread store across all 3 widgets, sourceLabel tags
+  // which one wrote each row). Threaded by this record's own Creator ID
+  // (Sales_Order_Readiness_Gate row) — same fix already proven on SO (a
+  // business-field key like PAC#/SO# can be blank or shared across rows;
+  // record ID never is).
+  var rgTimeline = TimelineHistory.init({
+    mountId: "tlhcMount",
+    appName: () => CONFIG.APP_NAME,
+    formName: "SOF_Timeline",
+    reportName: "SOF_Timeline_Report",
+    parentField: "Package",
+    actor: "FF Officer",
+    title: "Timeline History",
+    sourceLabel: "Order Readiness",
+  });
+  var internalNotes = InternalNotes.init({
+    mountId: "incMount",
+    appName: () => CONFIG.APP_NAME,
+    formName: "SOF_Internal_Messages",
+    reportName: "SOF_Internal_Messages_Report",
+    parentField: "Package",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    roleMap: {
+      "hcinvanalyst@gmail.com": "HC Systems",
+      "homecartelff@gmail.com": "HC Pack & Fulfill",
+      "homecartelsales@gmail.com": "HC Sales",
+    },
+    mentionableMap: {
+      "homecartelpacker@gmail.com": "HC Purchasing",
+      "hcdamageofficer@gmail.com": "HC Damage Officer",
+    },
+    title: "Internal Conversation",
+    sourceLabel: "Order Readiness",
+  });
+
+  // Notification bell — see notification_component/README.md. Same 2 accounts
+  // as SO/PreOrderReport for now, per user (2026-08-03): "for now that two
+  // only. we will update this some other time if have some changes."
+  // ---------------------------------------------------------------------
+  const notifications = window.NotificationSystem ? NotificationSystem.init({
+    mountId:          "notifMount",
+    appName:          CONFIG.APP_NAME,
+    reportName:       "ReadinessGate_Notifications_Report",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    environment:      () => ZC_ENV,
+    roleMap:          { "homecartelff@gmail.com": "HC Pack & Fulfill", "hcinvanalyst@gmail.com": "HC Systems" },
+    fullAccessRoles:  ["HC Systems"],
+    title:            "Notifications",
+  }) : { open(){}, close(){}, refresh(){} };
+
+  // Resolve the real logged-in email + dev/prod environment — same 2-path
+  // getInitParams()/ZOHO.CREATOR.init() fallback chain proven in SO/PreOrderReport/
+  // PRsv2/INQsv2/Shipmentsv2. This widget had no such resolution before.
+  if (sdkReady && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams === "function") {
+    ZOHO.CREATOR.UTIL.getInitParams().then((params) => {
+      if (params && (params.environment || params.env)) ZC_ENV = params.environment || params.env;
+      const email = params && (params.loginUser || params.login_user || params.userEmail || params.user_email || params.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); internalNotes.refresh(); renderTabVisibility(); }
+    }).catch(() => {});
+  }
+  if (sdkReady && typeof ZOHO.CREATOR.init === "function") {
+    ZOHO.CREATOR.init().then((initData) => {
+      if (initData && (initData.environment || initData.env)) ZC_ENV = initData.environment || initData.env;
+      const email = initData && (initData.loginUser || initData.login_user || initData.userEmail || initData.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr && !CURRENT_USER_EMAIL) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); internalNotes.refresh(); renderTabVisibility(); }
+    }).catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

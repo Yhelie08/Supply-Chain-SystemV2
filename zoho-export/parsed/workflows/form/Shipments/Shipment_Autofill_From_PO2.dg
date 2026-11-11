@@ -1,0 +1,53 @@
+// form: Shipment_Autofill_From_PO_Live  form=Shipments event=on add or edit on user input of PO_No  [.ds line 38498]
+    // === Shipment_Autofill_From_PO_Live ===
+// Form: Shipments | Event: On User Input of PO No.
+if(input.PO_No != null)
+{
+    poRecord = Purchase_Order[ID == input.PO_No.ID];
+    if(poRecord != null)
+    {
+        input.Sales_Order = poRecord.SO_No.Sales_Order_Number;
+        input.Customer = poRecord.Customer;
+        input.PO_Shipments.clear();
+        suppliers = List();
+        shippingModes = List();
+        for each  line in poRecord.PO_Line_Items
+        {
+            itemName = "";
+            itemIdList = line.Item;
+            if(itemIdList != null && itemIdList.toList().size() > 0)
+            {
+                itemID = itemIdList.toList().get(0);
+                itemRec = Items[ID == itemID.toLong()];
+                if(itemRec != null)
+                {
+                    itemName = itemRec.item_name;
+                }
+            }
+            row1 = Shipments.PO_Shipments();
+            row1.PR_No=line.PR_No;
+            row1.SKU=line.SKU;
+            row1.Item_Name=itemName;
+            row1.Ordered_QTY=line.QTY;
+            row1.Shipment_QTY=0;
+            row1.Remaining_QTY=line.QTY;
+            input.PO_Shipments.insert(row1);
+            if(!suppliers.contains(line.Supplier))
+            {
+                suppliers.add(line.Supplier);
+            }
+            if(line.Shipping_Mode != null && line.Shipping_Mode != "" && !shippingModes.contains(line.Shipping_Mode))
+            {
+                shippingModes.add(line.Shipping_Mode);
+            }
+        }
+        if(suppliers.size() == 1)
+        {
+            input.Supplier = suppliers.get(0);
+        }
+        if(shippingModes.size() == 1)
+        {
+            Shipping_Mode = shippingModes.get(0);
+        }
+    }
+}

@@ -1,0 +1,13 @@
+// form: Pack_Notify_New_Record  form=Pack event=on add on success  [.ds line 44998]
+    insert into Pack_Notifications
+[
+    Recipient_Email="homecartelff@gmail.com"
+    Notification_Type="Pack Record Created"
+    Message="New item ready for packing — " + input.SO + " (" + input.Item_Name + "). Click to open it."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:Pack1?packRecordId=" + input.ID
+    Source_Record_No=input.SO
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]

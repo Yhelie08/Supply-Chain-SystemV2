@@ -1,0 +1,15 @@
+// form: Notify on Receiving Completed  form=Receiving event=on edit on success  [.ds line 44672]
+    if(input.Receive_Status == "Completed")
+{
+    insert into App_Notifications
+    [
+        Recipient_Email="homecartelpacker@gmail.com"
+        Notification_Type="Receiving"
+        Message="Receiving " + input.Receive_No1 + " has been completed."
+        Created_On=zoho.currenttime
+        Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:Receiving1"
+        Source_Record_No=input.Receive_No1
+        Source_Record_ID=input.ID
+        Added_User=zoho.loginuser
+    ]
+}

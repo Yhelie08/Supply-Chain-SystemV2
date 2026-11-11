@@ -1,0 +1,11 @@
+
+			displayName = "PR_Internal_Messages Report"
+			show all rows from PR_Internal_Messages    
+			(
+				PR_No as "PR No"
+				Sender_Email as "Sender Email"
+				Sender_Role as "Sender Role"
+				Message
+				Sent_On as "Sent On"
+			)
+		

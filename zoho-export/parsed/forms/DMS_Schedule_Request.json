@@ -1,0 +1,98 @@
+{
+  "name": "DMS_Schedule_Request",
+  "label": "DMS Schedule Request",
+  "successMessage": "Dms Schedule Request Added Successfully",
+  "line": 1668,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "CMS_Schedule_Request_ID",
+      "label": "CMS Schedule Request ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order_Number",
+      "label": "Sales Order Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Requested_Date",
+      "label": "Requested Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Requested_Time",
+      "label": "Requested Time",
+      "type": "time",
+      "required": false
+    },
+    {
+      "name": "Requested_By",
+      "label": "Requested By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Notes",
+      "label": "Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Status",
+      "label": "Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Pending Review",
+        "Confirmed",
+        "Declined"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Service_Appointment_Record_ID",
+      "label": "Service Appointment Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Books_Sales_Order_ID",
+      "label": "Books Sales Order ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Type_of_Delivery",
+      "label": "Type of Delivery",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Delivery Only",
+        "With Installation",
+        "Full-Day Install",
+        "Multi-Day Install",
+        "Replacement",
+        "Site Visit",
+        "Pullout",
+        "Pick Up"
+      ],
+      "maxchar": "100"
+    }
+  ]
+}

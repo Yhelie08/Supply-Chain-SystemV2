@@ -1,0 +1,16 @@
+
+			displayName = "All Service Entries"
+			show all rows from Service_Entries    
+			(
+				Vehicle
+				Service
+				Remarks
+				Labor
+				Parts
+				Tax
+				Total
+				Invoice_Number as "Invoice Number"
+				Invoice_Receipt as "Invoice Receipt"
+				Submitted_by as "Submitted by"
+			)
+		

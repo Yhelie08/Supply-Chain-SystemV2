@@ -1,0 +1,21 @@
+{
+  "name": "Schedule_Test_Settings",
+  "label": "Schedule Test Settings",
+  "successMessage": "Data Added Successfully!",
+  "line": 14317,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Test_Current_Date",
+      "label": "Test Current Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

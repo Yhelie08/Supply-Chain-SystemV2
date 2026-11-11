@@ -1,0 +1,75 @@
+// form: Receiving_Set_Receive_Status  form=Receiving event=on add or edit on validate  [.ds line 40855]
+    totalLinesRS = 0;
+incompleteLinesRS = 0;
+totalAcceptedRS = 0;
+totalDamageRS = 0;
+totalMissingRS = 0;
+hasExceptionLineRS = false;
+for each  ln in input.Receiving_Line_Items
+{
+    totalLinesRS = totalLinesRS + 1;
+    accepted = ifnull(ln.Accepted_Qty,0);
+    damaged = ifnull(ln.Damage_Qty,0);
+    missing = ifnull(ln.Missing_Qty,0);
+    expected = ifnull(ln.Expected_Qty,0);
+    totalAcceptedRS = totalAcceptedRS + accepted;
+    totalDamageRS = totalDamageRS + damaged;
+    totalMissingRS = totalMissingRS + missing;
+    totalReceived = accepted + damaged + missing;
+    if(!(totalReceived == expected && accepted == expected))
+    {
+        incompleteLinesRS = incompleteLinesRS + 1;
+    }
+    if(damaged > 0 || missing > 0)
+    {
+        hasExceptionLineRS = true;
+    }
+}
+receiveStatusResult = "Pending";
+if(totalLinesRS == 0)
+{
+    receiveStatusResult = "Pending";
+}
+else if(totalAcceptedRS == 0 && totalDamageRS == 0 && totalMissingRS == 0)
+{
+    receiveStatusResult = "Pending";
+}
+else if(incompleteLinesRS == 0)
+{
+    receiveStatusResult = "Received";
+}
+else
+{
+    receiveStatusResult = "Partial Received";
+}
+input.Receive_Status = receiveStatusResult;
+// Shipment_Status auto-flip to "Delivered" — per user request 2026-07-10, scope
+// deliberately limited to JUST this one transition (In Transit/Delayed stay manual,
+// nothing in this app tracks carrier/logistics data to derive those). Real inspection
+// activity (Receive_Status moving off "Pending") only happens once the shipment has
+// actually physically arrived, so it's a reliable "Delivered" signal.
+if(receiveStatusResult != "Pending" && input.Shipments != null)
+{
+    shipRecRS = Shipments[ID == input.Shipments];
+    if(shipRecRS != null)
+    {
+        if(shipRecRS.Shipment_Status != "Delivered")
+        {
+            shipRecRS.Previous_Status=shipRecRS.Shipment_Status;
+            shipRecRS.Shipment_Status="Delivered";
+        }
+        // Need_Attention1 — per user request 2026-07-10: flag the linked Shipment
+        // once this Receiving has any exception-worthy line (Damage_Qty>0 or
+        // Missing_Qty>0), same trigger condition as native Receiving_Auto_Exception's
+        // own Exceptions-creation check, computed independently here rather than
+        // reading input.Exception_Count (avoids the same ordering risk already
+        // designed around for Receive_Status). One-directional — never auto-clears
+        // back to false once set, matching Receiving_Record_Created's own
+        // one-directional convention; resolving the underlying exception(s) doesn't
+        // automatically mean the shipment no longer needs a human to have looked at it.
+        if(hasExceptionLineRS == true && shipRecRS.Need_Attention1 != true)
+        {
+            shipRecRS.Need_Attention1=true;
+        }
+    }
+}

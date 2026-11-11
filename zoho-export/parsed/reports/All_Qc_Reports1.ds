@@ -1,0 +1,54 @@
+
+			displayName = "All Qc Reports"
+			show all rows from Checker_Checklist    
+			(
+				PR as "PR#"
+				PAC as "PAC#"
+				Order_Type as "Order Type"
+				Delivery_Type as "Delivery Type"
+				Customer_Name as "Customer Name"
+				Customer_Type as "Customer Type"
+				Customer_Address as "Customer Address"
+				Date_Checked as "Date Checked"
+				Location
+				Fixture_Body_Checklist as "Fixture Body Checklist "
+				LED_Checklist as "LED Checklist"
+				Type_of_Bulb as "Type of Bulb"
+				Kelvin
+				Color_Temperature as "Color Temperature"
+				Item_to_Replace as "Item to Replace"
+				Quantity_of_Damage_Items as "Quantity of Damage Items"
+				Uniformity
+				Remarks
+				Signature
+				QC_Status as "QC Status"
+				RR as "RR#"
+				Item_Name as "Item Name"
+				SKU
+				Quantity
+				Demo as "Demo #"
+				Bin_Location as "Bin Location"
+				Quality_Checker as "Quality Checker"
+				SO as "SO #"
+				Added_Time as "Added Time"
+				Target_Delivery_Date as "Target Delivery Date"
+				For_Crate as "For Crate"
+				Exception_Number
+				Image_Upload_max_10_JPG_JPEG_PNG as "Image Upload (max 10 · JPG, JPEG, PNG)"
+				Video_Upload_max_3_min_30_sec1 as "Video Upload (max 3 min 30 sec)"
+				Split_Rejected_Qty
+				Split_Original_Qty
+				City
+				Contact
+				Email
+				ID
+				Original_Package_Edit_Status
+				Spare_part_type as "Spare part type"
+				(
+					field = Spare_part_type.Spare_Part_Type + " " + Spare_part_type.Quantity_of_damage_spare_s + " " + Spare_part_type.Spare_Part_Type_Other
+				)
+				Forecast_Delivery as "Forecast Delivery"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+			)
+		

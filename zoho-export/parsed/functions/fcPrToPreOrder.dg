@@ -1,0 +1,61 @@
+// string fcPrToPreOrder(int prId)   [.ds lines 32603-32664]
+/* 1. Patakbuhin muna ang kasalukuyang engine. Ito ang live na function na
+   nagtatatak sa PR at sa SOF mula pa 2026-11-04 — HINDI ITO BINABAGO dito,
+   tinatawag lang. Kaya walang bagong matematika at walang pwedeng mag-iba. */
+engineSaid = thisapp.fcStampPurchaseRequest(prId);
+/* 2. Basahin PABALIK ang PR. Kailangang bagong basa: kasisulat lang ng
+   engine sa taas, at ang laman ng record variable natin ay luma na.
+   `for each`, hindi `if(rec != null)` — ang Form[criteria] na walang katugma
+   ay nagbabalik ng WALANG-LAMANG RECORD, hindi null (gotcha #28). */
+prNo = "";
+/* Date field: sa null lang ikinukumpara, hindi sa "" (gotcha #29). */
+fcDate = null;
+fcWindow = "";
+fcStatus = "";
+taken = false;
+for each  pr in Purchase_Request1[ID == prId]
+{
+    if(!taken)
+    {
+        taken = true;
+        prNo = pr.PR_No + "";
+        fcDate = pr.Forecast_Delivery;
+        fcWindow = pr.Forecast_Window + "";
+        fcStatus = pr.Forecast_Status + "";
+    }
+}
+if(prNo == "")
+{
+    return "walang PR na " + prId;
+}
+/* 3. Walang itatatak kung walang laman ang PR. Mas mabuti nang manatili ang
+   lumang petsa sa Pre-Order kaysa burahin ito ng blangko. */
+if(fcDate == null && fcStatus == "")
+{
+    return prNo + " — wala pang forecast ang PR mismo. " + engineSaid;
+}
+/* 4. Ikopya sa Pre-Order row(s) ng PR na ito. Maraming row ang pwedeng may
+   parehong PR kapag maraming linya ang iisang item — lahat sila ay pareho
+   ang hinihintay, kaya pareho rin ang petsa.
+
+   `!=` guard bago sumulat: ang write ang mabigat, hindi ang read — at kung
+   ang write ay magpaputok ulit ng workflow, sa ikalawang pasada ay wala nang
+   magbabago, kaya doon humihinto. */
+hit = 0;
+for each  po in Pre_Order_FF[PR == prNo]
+{
+    if(po.Forecast_Delivery != fcDate)
+    {
+        po.Forecast_Delivery=fcDate;
+    }
+    if(po.Forecast_Window != fcWindow)
+    {
+        po.Forecast_Window=fcWindow;
+    }
+    if(po.Forecast_Status != fcStatus)
+    {
+        po.Forecast_Status=fcStatus;
+    }
+    hit = hit + 1;
+}
+return prNo + " -> " + hit + " pre-order row | " + fcWindow + " | " + fcStatus;

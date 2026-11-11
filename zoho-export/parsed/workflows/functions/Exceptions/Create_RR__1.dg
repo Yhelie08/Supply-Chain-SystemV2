@@ -1,0 +1,302 @@
+// functions: Create_RR  form=Exceptions event= on start > on click  [.ds line 53753]
+// === Create RR button — sa Exceptions form/report ===
+                // Groups Product_Context1 rows by SKU + Type_field ("item") — each distinct group gets
+                // its OWN Replacement_Request (RR1 item1, RR2 item2, ...), all sharing the same
+                // Source_Exception_No (grouped under the same source Exception). Damage rows of the
+                // SAME SKU are per-unit (Qty=1 each) and get summed into one RR_Qty per item; Missing's
+                // single bare row already carries its own total Qty.
+                excRec = Exceptions[ID == input.ID];
+                groupKeys = List();
+                groupSku = Map();
+                groupItem = Map();
+                groupSupplier = Map();
+                groupType = Map();
+                groupQty = Map();
+                // ADDED 2026-08-08, per user request ("if it is damaged and sparepart include
+                // details of sparepart... send the RR to supplier with details of sparepart") —
+                // aggregated the same way groupQty already aggregates Qty across a group's rows.
+                // FIXED same day, code review: RR_Spare_Parts must hold a PAIRED "Type: Qty"
+                // string (comma-joined across rows) — same shape checker_checklist_qc_sync.txt's
+                // own QC-side aggregation already produces and Fenteng-RR/Tony-RR/ExceptionControl
+                // already parse (split on "," then ":" per segment). Building the pair per-row,
+                // inside this same loop where both values are known together, also avoids any
+                // positional misalignment between type and qty across multiple physical units of
+                // the same SKU. groupSpareType is kept too (bare type names only, no qty) for
+                // RR_Item_to_Replace — useful extra context, not required by the parser.
+                groupSpareType = Map();
+                groupSparePairs = Map();
+                // ADDED 2026-10-12, per user request ("before creating RR. dapat meron kung same
+                // supplier ba or pipili ng ibang supplier... kung si Tony ang supplier nakatag parin
+                // siya pero pwede parin mamili ng ibang supplier") — the officer now confirms the
+                // supplier on the Exception Control widget BEFORE this runs, and the choice lands in
+                // the new Exceptions header field RR_Supplier_Override. Read once here, used in the
+                // grouping loop below.
+                //   blank  = use the supplier already tagged on the exception line (today's behaviour,
+                //            unchanged — which is why this is safe to paste before any widget is live)
+                //   filled = that supplier instead
+                // A header field is deliberately used rather than a new argument: a Report Action Item
+                // can't show a modal or take one, so this is the only thing BOTH this native button and
+                // the createRRMain Custom Function mirror can read. Product_Context1.Supplier itself is
+                // never overwritten — the Exception keeps showing who it originally was.
+                rrSupOverride = ifnull(input.RR_Supplier_Override,"") + "";
+                rrSupOverride = rrSupOverride.trim();
+                for each  pc in excRec.Product_Context1
+                {
+                    /* ADDED 2026-07-21, per user (repair-tracking feature) — a Damage row still
+                       under in-house repair (Repairable=Yes, Repair_Outcome not yet "Not Fixed")
+                       is excluded from RR creation entirely, not just disabled in the widget's UI.
+                       This is the real backend gate — the widget's own canCreateRR() disables the
+                       button, but that alone can't stop this native Action or its Custom Function
+                       mirror being called directly. Missing rows are unaffected (no Repairable
+                       concept). */
+                    if(pc.Type_field == "Damage" && pc.Repairable == "Yes" && pc.Repair_Outcome != "Not Fixed")
+                    {
+                        continue;
+                    }
+                    gKey = pc.SKU + "||" + pc.Type_field;
+                    if(!groupKeys.contains(gKey))
+                    {
+                        groupKeys.add(gKey);
+                        groupSku.put(gKey,pc.SKU);
+                        groupItem.put(gKey,pc.Item);
+                        if(rrSupOverride != "")
+                        {
+                            groupSupplier.put(gKey,rrSupOverride);
+                        }
+                        else
+                        {
+                            groupSupplier.put(gKey,pc.Supplier);
+                        }
+                        groupType.put(gKey,pc.Type_field);
+                        groupQty.put(gKey,0);
+                        groupSpareType.put(gKey,"");
+                        groupSparePairs.put(gKey,"");
+                    }
+                    groupQty.put(gKey,groupQty.get(gKey) + ifnull(pc.Qty,0));
+                    pcQtyRaw = pc.Quantity_of_damage_spare_s + "";
+                    if(pcQtyRaw != "" && pcQtyRaw != "null")
+                    {
+                        // CHANGED 2026-08-08d, per user request ("separate quantities per sparepart
+                        // needed, per line item") — Quantity_of_damage_spare_s now holds the FULL
+                        // "Type: Qty, Type: Qty" pairs directly (the widget builds one qty box per
+                        // checked spare-part type), so this row's own contribution is parsed
+                        // straight out of it instead of reconstructed from one shared qty.
+                        // "Others" is still resolved to the officer's own typed
+                        // Spare_Part_Type_Other text per segment.
+                        pcOtherText = pc.Spare_Part_Type_Other + "";
+                        segs = pcQtyRaw.toList(",");
+                        pcSpareType = "";
+                        pcPairsThisRow = "";
+                        for each  seg in segs
+                        {
+                            segTrim = seg.trim();
+                            segType = segTrim.getPrefix(":").trim();
+                            segQty = segTrim.getSuffix(":").trim();
+                            if(segQty == "" || segQty == "null")
+                            {
+                                segQty = "—";
+                            }
+                            if(segType == "Others" && pcOtherText != "" && pcOtherText != "null")
+                            {
+                                segType = pcOtherText;
+                            }
+                            if(pcSpareType == "")
+                            {
+                                pcSpareType = segType;
+                            }
+                            else
+                            {
+                                pcSpareType = pcSpareType + ", " + segType;
+                            }
+                            segPair = segType + ": " + segQty;
+                            if(pcPairsThisRow == "")
+                            {
+                                pcPairsThisRow = segPair;
+                            }
+                            else
+                            {
+                                pcPairsThisRow = pcPairsThisRow + ", " + segPair;
+                            }
+                        }
+                        existingSpareType = groupSpareType.get(gKey);
+                        if(existingSpareType == "")
+                        {
+                            groupSpareType.put(gKey,pcSpareType);
+                        }
+                        else
+                        {
+                            groupSpareType.put(gKey,existingSpareType + ", " + pcSpareType);
+                        }
+                        existingPair = groupSparePairs.get(gKey);
+                        if(existingPair == "")
+                        {
+                            groupSparePairs.put(gKey,pcPairsThisRow);
+                        }
+                        else
+                        {
+                            groupSparePairs.put(gKey,existingPair + ", " + pcPairsThisRow);
+                        }
+                    }
+                }
+                // dedup: an RR already covering this exact SKU+Source_Type combo, under this Exception
+                existingPairs = List();
+                existingRRsForExc = Replacement_Request[Source_Exception_No == input.Exception_No];
+                for each  exrr in existingRRsForExc
+                {
+                    for each  srow in exrr.Replacement_Summary
+                    {
+                        existingPairs.add(srow.SKU + "||" + exrr.Source_Type);
+                    }
+                }
+                maxNum = 0;
+                existingRRsAll = Replacement_Request[ID != 0];
+                for each  rr in existingRRsAll
+                {
+                    rrNoStr = rr.RR_No;
+                    if(rrNoStr != null && rrNoStr != "")
+                    {
+                        numPart = rrNoStr.removeFirstOccurence("RR-");
+                        num = numPart.toLong();
+                        if(num > maxNum)
+                        {
+                            maxNum = num;
+                        }
+                    }
+                }
+                anyCreated = false;
+                for each  gKey in groupKeys
+                {
+                    gSku = groupSku.get(gKey);
+                    gType = groupType.get(gKey);
+                    sourceType = "";
+                    if(input.Source_Module == "Receiving")
+                    {
+                        if(gType == "Damage")
+                        {
+                            sourceType = "Receiving Damage";
+                        }
+                        else
+                        {
+                            sourceType = "Receiving Missing";
+                        }
+                    }
+                    else if(input.Source_Module == "Fulfillment QC")
+                    {
+                        sourceType = "QC Failure";
+                    }
+                    else
+                    {
+                        sourceType = "Management Decision";
+                    }
+                    pairKey = gSku + "||" + sourceType;
+                    if(existingPairs.contains(pairKey))
+                    {
+                        continue;
+                    }
+                    maxNum = maxNum + 1;
+                    newNum = maxNum;
+                    if(newNum < 10)
+                    {
+                        newRRNo = "RR-0000" + newNum;
+                    }
+                    else if(newNum < 100)
+                    {
+                        newRRNo = "RR-000" + newNum;
+                    }
+                    else if(newNum < 1000)
+                    {
+                        newRRNo = "RR-00" + newNum;
+                    }
+                    else if(newNum < 10000)
+                    {
+                        newRRNo = "RR-0" + newNum;
+                    }
+                    else
+                    {
+                        newRRNo = "RR-" + newNum;
+                    }
+                    /* ADDED 2026-07-20, per user — new plain header fields (NOT the Replacement_Summary
+                       subform) mirroring Supplier/SKU/Item/RR_Qty, so the new Clone Shipment mechanism
+                       can read them safely later without touching a subform on a criteria-queried
+                       record (the confirmed-broken pattern from this whole session's own debug saga).
+                       Same "mirror field to route around a platform limit" convention as
+                       Sales_Order_Display elsewhere in this app.
+                       ADDED 2026-07-23, real bug found live ("some datas are missing" on a cloned
+                       Shipment's own PO_Shipments line — PR_No/Ordered_QTY both came back blank) —
+                       RR_PR_No is a 5th mirror field, same reasoning, same source as
+                       Replacement_Summary.PR_No a few lines below (input.Receiving_Line_ID — this
+                       app's own established source for a PR number on an Exception-derived record,
+                       despite the field's own name). clone_shipment_for_replacement.txt now reads
+                       this to stamp the new Shipment line's own PR_No correctly. */
+                    newRRID = insert into Replacement_Request
+                    [
+                        RR_No=newRRNo
+                        RR_Date=zoho.currentdate
+                        RR_Status="Open"
+                        Source_Type=sourceType
+                        Source_Exception_No=input.Exception_No
+                        Last_Updated=zoho.currenttime
+                        Added_User=zoho.loginuser
+                        RR_Supplier=groupSupplier.get(gKey)
+                        RR_SKU=gSku
+                        RR_Item_Name=groupItem.get(gKey)
+                        RR_Qty_Value=groupQty.get(gKey)
+                        RR_PR_No=input.Receiving_Line_ID
+                        RR_Item_to_Replace=groupSpareType.get(gKey)
+                        RR_Damage_Qty=groupQty.get(gKey)
+                        RR_Spare_Parts=groupSparePairs.get(gKey)
+                    ];
+                    newRR = Replacement_Request[ID == newRRID];
+                    newRow = Replacement_Request.Replacement_Summary();
+                    newRow.PR_No=input.Receiving_Line_ID;
+                    newRow.Supplier=groupSupplier.get(gKey);
+                    newRow.SKU=gSku;
+                    newRow.Item=groupItem.get(gKey);
+                    newRow.SO_No=input.Sales_Order;
+                    newRow.Original_PO_No=input.PO_No;
+                    newRow.Priority=input.Priority;
+                    newRow.RR_Qty=groupQty.get(gKey);
+                    newRR.Replacement_Summary.insert(newRow);
+                    anyCreated = true;
+                    /* ADDED 2026-07-20, per user request ("let's not be dependent on supplier, their
+                       only job is to approve and populate ETA/ETD") — the Missing_SKUs stamp / new
+                       replacement PO creation used to happen on the SUPPLIER's own "Approve RR" click
+                       (approve_rr_supplier.txt). Moved here, to the OFFICER's Create RR click, so the
+                       recycle/replacement path no longer depends on the supplier ever clicking
+                       anything — it fires the moment the RR itself is raised. See that file's NOTES
+                       for the full before/after. */
+                    if(sourceType == "Receiving Missing")
+                    {
+                        targetPOsRR = Purchase_Order[PO_No == input.PO_No];
+                        for each  poRR in targetPOsRR
+                        {
+                            poRR.Missing_SKUs=gSku;
+                        }
+                    }
+                    else
+                    {
+                        /* CHANGED 2026-07-20, per user request — real architecture simplification.
+                           Damage/QC/Complaint used to spin up a brand-new Creator-only Purchase_Order
+                           (RR_Reference_No-tagged) — replaced entirely with the same "stamp a flag on
+                           the ORIGINAL PO" pattern the Missing branch already used above. New field
+                           Damage_SKUs (mirrors Missing_SKUs) drives the recycle in
+                           receiving_create_bin_receiving.txt (generalized to check Missing_SKUs OR
+                           Damage_SKUs). The replacement now flows back through a cloned Shipment +
+                           the SAME original Receiving record — no second PO, no cross-PO trace-back,
+                           no separate Books PO. See CLAUDE.md for the full before/after. */
+                        targetPOsRRDmg = Purchase_Order[PO_No == input.PO_No];
+                        for each  poRRDmg in targetPOsRRDmg
+                        {
+                            poRRDmg.Damage_SKUs=gSku;
+                        }
+                    }
+                }
+                if(anyCreated == true)
+                {
+                    input.Exception_Status = "Under Review";
+                    success message "RR(s) created successfully for Exception " + input.Exception_No + ".";
+                }
+                else
+                {
+                    info "No new RR needed — every item on this Exception already has an RR.";
+                }

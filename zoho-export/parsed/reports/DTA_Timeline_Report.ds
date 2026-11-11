@@ -1,0 +1,12 @@
+
+			displayName = "DTA_Timeline Report"
+			show all rows from DTA_Timeline    
+			(
+				DTA_ID
+				Action_Title as "Action"
+				Action_Type
+				Changes
+				Actor
+				Logged_On
+			)
+		

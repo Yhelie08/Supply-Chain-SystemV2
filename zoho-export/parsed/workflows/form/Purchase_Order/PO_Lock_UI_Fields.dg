@@ -1,0 +1,37 @@
+// form: PO_Lock_UI_Fields  form=Purchase_Order event=on add or edit on load  [.ds line 39552]
+    // === PO_Lock_UI_Fields ===
+// Form: Purchase_Order | Event: Created or Edited | Load of the form
+// Lock PO header fields
+disable PO_No;
+disable Customer;
+disable Customer_Type;
+disable Sales_Owner;
+disable SO_No;
+disable Total_PO_Value;
+disable Total_Lines;
+disable Mixed_Shipping;
+disable Supplier_Load_At_PO;
+disable Books_PO_ID;
+disable Books_PO_No;
+disable PO_Status;
+disable Sent_On;
+disable Acknowledge_On;
+disable Completed_On;
+// Lock PO_Line_Items subform columns
+disable PO_Line_Items.PR_No;
+disable PO_Line_Items.Supplier;
+disable PO_Line_Items.Item;
+disable PO_Line_Items.SKU;
+disable PO_Line_Items.QTY;
+disable PO_Line_Items.Unit;
+disable PO_Line_Items.Final_Price;
+disable PO_Line_Items.Line_Total;
+disable PO_Line_Items.Shipping_Mode;
+disable PO_Line_Items.Target_Delivery;
+disable PO_Line_Items.supplier_target_date;
+disable PO_Line_Items.Delay_Status;
+disable PO_Line_Items.Required_Days_Lead;
+disable PO_Line_Items.Remaining_Days;
+disable PO_Line_Items.Followed_Recommendation;
+disable PO_Line_Items.Override_Reason;
+disable PO_Line_Items.Priority;

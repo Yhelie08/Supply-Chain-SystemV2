@@ -1,0 +1,38 @@
+
+			displayName = "Field Service Site Visit Form Report"
+			show all rows from Field_Service_Site_Visit_Form    
+			(
+				Technician_Name as "Technician Name"
+				Driver_Name as "Driver Name"
+				Date_of_Site_Visit as "Date of Site Visit"
+				Purpose_of_Visit as "Purpose of Visit"
+				SO as "SO#"
+				Plan_the_Layout as "1) Plan the Layout"
+				Ceiling_Height as "Ceiling Height"
+				Mount_Height_from_Floor as "Mount Height from Floor"
+				Power_Source_Type as "Power Source Type"
+				Remarks
+				Prepare_the_Mounting_Surface as "2) Prepare the Mounting Surface"
+				Surface_Type as "Surface Type"
+				Remarks1 as "Remarks"
+				Electrical_Check as "3) Electrical Check"
+				Voltage
+				Breaker_Size_if_known as "Breaker Size (if known)"
+				Remarks2 as "Remarks"
+				Ceiling_Structure_Check as "4) Ceiling & Structure Check"
+				Remarks3 as "Remarks"
+				Safety_Access_Check as "5 Safety & Access Check"
+				Remarks4 as "Remarks"
+				Site_Delivery_Check as "6) Site & Delivery Check"
+				Remarks5 as "Remarks"
+				Client_Confirmation as "7) Client Confirmation"
+				Notes_Remarks as "Notes / Remarks:"
+				Final_Check_Sign_off as "8) Final Check & Sign-off"
+				Name 
+				Client_Representative_Signature as "Client/Representative Signature"
+				Signature
+				Layout_Photo as "Layout Photo"
+				Surface_Condition_Photo as "Surface Condition Photo"
+				Ceiling_Photo_if_possible as "Ceiling Photo (if possible)"
+			)
+		

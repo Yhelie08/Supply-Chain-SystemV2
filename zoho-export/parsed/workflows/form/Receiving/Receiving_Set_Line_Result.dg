@@ -1,0 +1,19 @@
+// form: Receiving_Set_Line_Result  form=Receiving event=on add or edit on validate  [.ds line 39832]
+    for each  ln in input.Receiving_Line_Items
+{
+    accepted = ifnull(ln.Accepted_Qty,0);
+    damaged = ifnull(ln.Damage_Qty,0);
+    missing = ifnull(ln.Missing_Qty,0);
+    expected = ifnull(ln.Expected_Qty,0);
+    totalReceived = accepted + damaged + missing;
+    if(totalReceived == expected && accepted == expected)
+    {
+        ln.Line_Result="Complete";
+        ln.Ready_for_Fulfillment=true;
+    }
+    else
+    {
+        ln.Line_Result="Incomplete";
+        ln.Ready_for_Fulfillment=false;
+    }
+}

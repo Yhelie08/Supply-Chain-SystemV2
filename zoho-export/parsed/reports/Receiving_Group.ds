@@ -1,0 +1,32 @@
+
+			displayName = "Receiving Group"
+			show all rows from Receiving    
+			(
+				Receive_No1 as "Receive No."
+				SO_No as "SO No."
+				PO_No as "PO No."
+				Sales_Owner as "Sales Owner"
+				Shipments
+				Customer_Name as "Customer Name"
+				Supplier
+				Books_Receive_No as "Books Receive No"
+				Receive_Status as "Receive Status"
+				Received_Date as "Received Date"
+				Warehouse
+				Books_Receive_ID as "Books Receive ID"
+				Total_Expected_Qty as "Total Expected Qty"
+				Total_Missing_Qty as "Total Missing Qty"
+				Total_Lines as "Total Lines"
+				Total_Accepted_Qty as "Total Accepted Qty"
+				Total_Damage_Qty as "Total Damage Qty"
+				Incomplete_Lines as "Incomplete Lines"
+				Ready_for_Fulfillment1 as "Ready for Fulfillment"
+				Exception_Count as "Exception Count"
+				Receiving_Notes as "Receiving Notes"
+				General_Photos as "General Photos"
+				Partial_Receive_Timeline as "Partial Receive Timeline"
+				(
+					field = Partial_Receive_Timeline.RR_No + " " + Partial_Receive_Timeline.Supplier + " " + Partial_Receive_Timeline.SKU + " " + Partial_Receive_Timeline.Item + " " + Partial_Receive_Timeline.Quantity + " " + Partial_Receive_Timeline.Shipment_Mode + " " + Partial_Receive_Timeline.Date_Time
+				)
+			)
+		

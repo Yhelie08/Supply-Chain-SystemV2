@@ -1,0 +1,30 @@
+// form: Stage_Supplier_Changed  form=Supplier_2 event=on add or edit on success  [.ds line 35474]
+    for each  s2q in input.Supplier_quotes
+{
+    nego = s2q.Negotiated_Supplier;
+    fp = s2q.Final_Price_Supplier;
+    if(nego != null && nego != 0 && fp != null && fp != 0)
+    {
+        s2q.Stage_Supplier="Final";
+    }
+    else if(nego != null && nego != 0 || fp != null && fp != 0)
+    {
+        s2q.Stage_Supplier="Negotiating";
+    }
+    else
+    {
+        s2q.Stage_Supplier="Not Selected";
+    }
+}
+if(input.Response_Status != "Selected" && input.Response_Status != "Submit Response")
+{
+    input.edit_counter = 0;
+}
+if(input.Response_Status == "Selected")
+{
+    if(input.Product_Sample_Supplier == "Completed" && input.D_Image_Supplier == "Completed" && input.Specification_Supplier == "Completed" && input.Technical_Drawing_Supplier == "Completed" && input.Specification_Details_Supplier != null && input.Specification_Details_Supplier != "")
+    {
+        input.Response_Status = "Completed";
+        input.edit_counter = 0;
+    }
+}

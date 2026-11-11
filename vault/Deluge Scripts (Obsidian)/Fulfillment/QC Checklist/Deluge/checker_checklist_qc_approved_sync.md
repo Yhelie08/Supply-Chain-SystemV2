@@ -1,0 +1,1127 @@
+---
+title: "checker_checklist_qc_approved_sync"
+source_file: "checker_checklist_qc_approved_sync.txt"
+category: "Fulfillment/QC Checklist/Deluge"
+associated_widget: "[[Fulfillment/QC Checklist/Widget/QC Checklist Widget|QC Checklist Widget]]"
+lines: 1080
+tags:
+  - crate
+  - custom-api
+  - delivery-management
+  - deluge
+  - dms
+  - fulfillment
+  - notification
+  - order-aggregation
+  - pack
+  - pick
+  - procurement
+  - purchase-order
+  - purchase-request
+  - qc
+  - readiness-gate
+  - supplier-portal
+  - zoho-books
+---
+
+# checker_checklist_qc_approved_sync
+
+> [!INFO] Script & Widget Details
+> - **Associated Widget:** [[Fulfillment/QC Checklist/Widget/QC Checklist Widget|QC Checklist Widget]]
+> - **Category:** `Fulfillment/QC Checklist/Deluge`
+> - **Source File:** `checker_checklist_qc_approved_sync.txt`
+> - **Lines of Code:** 1,080
+> - **Tags:** `#crate`, `#custom-api`, `#delivery-management`, `#deluge`, `#dms`, `#fulfillment`, `#notification`, `#order-aggregation`, `#pack`, `#pick`, `#procurement`, `#purchase-order`, `#purchase-request`, `#qc`, `#readiness-gate`, `#supplier-portal`, `#zoho-books`
+
+---
+
+## ⚡ Role in Widget Architecture
+This script powers the **[[Fulfillment/QC Checklist/Widget/QC Checklist Widget|QC Checklist Widget]]**. Any changes here affect the backend workflows, data calculations, or Zoho Creator / Books sync for this widget.
+
+---
+
+## Deluge Script Code
+
+````deluge
+// Ang Form Event ay tatakbo lang PAGKATAPOS ma-save ang record — kaya kailangan pa
+// rin ng sariling check dito kung TALAGANG "Approved" o "Rejected" na ang QC_Status,
+// para hindi ito tumakbo kapag ibang field lang ang na-edit o kapag blangko pa.
+soVal = input.SO + "";
+skuVal = input.SKU + "";
+pacVal = input.PAC + "";
+// ADDED 2026-08-10, real live bug found by user (SO-16438/PAC-16461, Email/City/
+// Contact blank in Delivery Queue) — City/Email/Contact normally relay onto THIS
+// Checker_Checklist record via Receiving (receiving_widget_custom_api.txt/
+// receiving_create_bin_receiving.txt), same chain the 2026-08-06 comment below
+// describes. But an RR-driven replacement's QC record (this same file's RR-redirect
+// branch, see foundAgg==true+input.RR section further down) is created fresh from
+// Order Readiness -> Pick -> Pack -> QC WITHOUT ever passing through Receiving
+// again (it's already-received stock being re-dispatched, not a new physical
+// receipt) — so input.City/Email/Contact are genuinely blank on THIS record even
+// though the real customer data exists on Pre_Order_FF (which the RR-redirect
+// branch itself sourced City/Email/Contact FROM originally). Fall back to a direct
+// Pre_Order_FF lookup (same SO+SKU+PAC match key used throughout this app) only
+// when the QC record's own value is blank — never overrides a genuinely-present
+// value, just fills the gap this specific code path leaves.
+custCityVal = input.City + "";
+custEmailVal = input.Email + "";
+custContactVal = input.Contact + "";
+custAddressVal = input.Customer_Address + "";
+if(custCityVal == "null")
+{
+	custCityVal = "";
+}
+if(custEmailVal == "null")
+{
+	custEmailVal = "";
+}
+if(custContactVal == "null")
+{
+	custContactVal = "";
+}
+if(custAddressVal == "null")
+{
+	custAddressVal = "";
+}
+// ADDED 2026-08-10, per user request ("order date = from sales order report -
+// SO Created Date") — Checker_Checklist has no SO-creation-date field of its own
+// at all (unlike City/Email/Contact above, this isn't a fallback for a
+// sometimes-blank value, it's ALWAYS sourced from Pre_Order_FF's own
+// SO_Creation_Date). Grabbed in the SAME lookup as the fallback above rather than
+// a second query.
+soCreatedDateVal = "";
+if(custCityVal == "" || custEmailVal == "" || custContactVal == "" || custAddressVal == "" || soCreatedDateVal == "")
+{
+	for each  poFallbackRec in Pre_Order_FF[SO == soVal && SKU == skuVal && Package_Number == pacVal]
+	{
+		if(custCityVal == "")
+		{
+			custCityVal = poFallbackRec.City + "";
+		}
+		if(custEmailVal == "")
+		{
+			custEmailVal = poFallbackRec.Email + "";
+		}
+		if(custContactVal == "")
+		{
+			custContactVal = poFallbackRec.Contact + "";
+		}
+		if(custAddressVal == "")
+		{
+			custAddressVal = poFallbackRec.Customer_Address + "";
+		}
+		if(soCreatedDateVal == "")
+		{
+			soCreatedDateVal = poFallbackRec.SO_Creation_Date + "";
+		}
+	}
+	if(custCityVal == "null")
+	{
+		custCityVal = "";
+	}
+	if(custEmailVal == "null")
+	{
+		custEmailVal = "";
+	}
+	if(custContactVal == "null")
+	{
+		custContactVal = "";
+	}
+	if(custAddressVal == "null")
+	{
+		custAddressVal = "";
+	}
+	if(soCreatedDateVal == "null")
+	{
+		soCreatedDateVal = "";
+	}
+}
+qtyVal = input.Quantity + "";
+qtyNum = 0;
+if(qtyVal != "" && qtyVal != "null")
+{
+	qtyNum = qtyVal.toLong();
+}
+// ADDED 2026-07-28, real gap found live — Exception_Control1.Supplier was never
+// set anywhere in this script (Checker_Checklist has no Supplier field of its own
+// at all), so ExceptionControl widget's Create RR ("Unknown Supplier — can't route
+// this RR") always dead-ended on a Fulfillment-EXC-sourced exception. Resolved via
+// the same PR-No chain every other trace-back in this codebase already uses:
+// Purchase_Request1[PR_No==input.PR].Selected_Supplier. Plain header-field read,
+// no subform involved — same platform-limitation-safe shape as every other
+// PR-No-based trace in this app. Fails blank (not blocking) if PR is missing or
+// unresolvable — Supplier just stays blank same as before this fix, no regression.
+prSupplierVal = "";
+if(input.PR != null && input.PR + "" != "")
+{
+	for each  prRec in Purchase_Request1[PR_No == input.PR]
+	{
+		prSupplierVal = prRec.Selected_Supplier + "";
+		if(prSupplierVal == "null")
+		{
+			prSupplierVal = "";
+		}
+	}
+}
+if(input.QC_Status == "Rejected")
+{
+	// ===== REJECTED -> Exception_Control1 =====
+	// Per-item, matched SO+SKU+PAC — UPDATE-or-CREATE, parehong pattern gaya ng
+	// Crate_Checklist branch sa ibaba.
+	// CHANGED 2026-07-27, real gap found live ("2 missing spare parts... only
+	// showing Shade") — the original version only ever read the FIRST row of
+	// the Spare_part_type grid, silently dropping every row after it (a
+	// deliberate simplification at the time, since Exception_Control1's own
+	// fields looked flat/scalar). Now collects EVERY row's own Spare_Part_Type
+	// (list-typed at the grid-column level, one value per row after the
+	// user's own single-select conversion) and Quantity_of_damage_spare_s,
+	// comma-joining both into plain strings.
+	// FIXED same day, real bug found live — first attempt assigned a raw
+	// List() object directly to Item_to_Replace1 inside the `update Form[...]
+	// [...]` block, which errored "Invalid expressions found in update multi-
+	// column Expression Line" (confirmed via a live console capture of the
+	// updateRecords response) — unlike `insert into`, the multi-column
+	// `update` task apparently can't take a List() value there, only a plain
+	// scalar. Reverted to a comma-joined STRING for Item_to_Replace1 too (same
+	// proven-safe shape Quantity_of_damage_spare_s already used, and the same
+	// shape a single value already worked in before this whole change) — a
+	// real Deluge type=list field DOES accept a plain string value via this
+	// task shape (confirmed by the original single-row version working fine),
+	// so this sacrifices nothing over the List() attempt except being briefly
+	// less "technically a list" internally.
+	// FIXED AGAIN same day, real gap found live ("qty of damage spares. blank.
+	// can you just indicate quantity per item?") — the type list and quantity
+	// list were built as two SEPARATE comma-joined strings, but the quantity
+	// list only ever ADDED an entry when a row's own quantity was non-blank —
+	// meaning if row 2 had a type but blank qty and row 3 had both, the type
+	// list ends up longer than the qty list and the two can no longer be
+	// paired by position at all (also the literal cause of the blank display
+	// in this specific test, which genuinely had no quantity typed on either
+	// row). Real fix: build ONE paired string per row ("Shade: 1, Base: 2")
+	// in a single pass — Item_to_Replace1 stays a clean comma-joined list of
+	// just the real choice values (unchanged, still needs to only contain
+	// valid picklist choices), but Quantity_of_damage_spare_s (plain text,
+	// no choice constraint) now carries the full "Type: Qty" pairing instead
+	// of a bare quantity list — this is what the widget's own QC Rejection
+	// Details card parses back into a real 2-column table.
+	// FIXED 2026-07-27, real root cause found via a live debug dump (Remarks
+	// field, temporary — see git history / this session's own notes): the
+	// inner `for each t in row.Spare_Part_Type` assumed this column was still
+	// type=list (multi-select) — but the user's own field-type conversion
+	// ("single choose dropdown, same choices, can add new choice") made it a
+	// plain SCALAR. A `for each` over a scalar in Deluge silently iterates
+	// ZERO times (no error) — so spareTypeParts/sparePairParts stayed
+	// permanently empty regardless of real row data, confirmed via the debug
+	// dump showing clean scalar values (`SPT=Shade`, `SPT=Base`, not a
+	// List-toString mess). Fixed: read row.Spare_Part_Type directly as a
+	// scalar, no inner for-each.
+	spareTypeParts = List();
+	sparePairParts = List();
+	for each  row in input.Spare_part_type
+	{
+		rowType = row.Spare_Part_Type + "";
+		if(rowType != "" && rowType != "null")
+		{
+			// ADDED 2026-08-08e, per user request ("QC FF doesn't have that Others
+			// option, implement there too") — resolve the literal "Others" catalog
+			// value to the officer's own typed Spare_Part_Type_Other text, same
+			// pattern already established in create_rr_button.txt/
+			// create_rr_custom_api.txt for the Receiving path.
+			rowOtherText = row.Spare_Part_Type_Other + "";
+			resolvedType = rowType;
+			if(rowType == "Others" && rowOtherText != "" && rowOtherText != "null")
+			{
+				resolvedType = rowOtherText;
+			}
+			spareTypeParts.add(resolvedType);
+			rowQty = row.Quantity_of_damage_spare_s + "";
+			if(rowQty == "null" || rowQty == "")
+			{
+				rowQty = "—";
+			}
+			sparePairParts.add(resolvedType + ": " + rowQty);
+		}
+	}
+	spareTypeVal = "";
+	spareTypeFirst = true;
+	for each  t2 in spareTypeParts
+	{
+		if(spareTypeFirst == true)
+		{
+			spareTypeVal = t2;
+			spareTypeFirst = false;
+		}
+		else
+		{
+			spareTypeVal = spareTypeVal + ", " + t2;
+		}
+	}
+	spareQtyVal = "";
+	spareQtyFirst = true;
+	for each  pair in sparePairParts
+	{
+		if(spareQtyFirst == true)
+		{
+			spareQtyVal = pair;
+			spareQtyFirst = false;
+		}
+		else
+		{
+			spareQtyVal = spareQtyVal + ", " + pair;
+		}
+	}
+	// REWORKED 2026-07-29, real bug found live by user ("exception control qty 2?
+	// it should be qty 1 with 2 records right? 1 qty per line items in Damaged
+	// Items — Exception Module records") — this branch used to write ONE
+	// Exception_Control1 record with Qty=qtyNum (the full rejected quantity).
+	// That contradicts this app's own established Exception_Control1 doctrine
+	// (see UI/FF Widget/ExceptionControl's own CLAUDE.md row — "every record
+	// should be 1 qty only regardless", one record PER REJECTED UNIT, same
+	// convention every manually-seeded EXC-FF-##### record already follows).
+	// Surfaced by the new 2026-07-29 QC split-approve/reject feature (a
+	// rejectedQty=2 line rejected via one write), but the bug predates that —
+	// any qty>1 full-Reject would have hit the same wrong single-record shape.
+	// Fixed: count how many Exception_Control1 records ALREADY represent a
+	// rejected unit for this SO+SKU+PAC, refresh their shared (non-Qty) fields
+	// on every save (so a later Remarks/spare-parts edit still propagates to
+	// all of them), then INSERT fresh Qty=1 records for the deficit only —
+	// grow-only, idempotent on a plain resave with the same qtyNum.
+	existingCount = 0;
+	for each  existingExceptionRec in Exception_Control1[Sales_Order == soVal && SKU == skuVal && PAC == pacVal]
+	{
+		existingCount = existingCount + 1;
+		update existingExceptionRec
+		[
+			RR_No=input.RR
+			PR=input.PR
+			Supplier=prSupplierVal
+			Demo1=input.Demo
+			Order_Type=input.Order_Type
+			DELIVERY_TYPE=input.Delivery_Type
+			Source_Module="Checker_Checklist (QC Rejected)"
+			Checker=input.Quality_Checker
+			Remarks=input.Remarks
+			Customer_Name=input.Customer_Name
+			Customer_Type=input.Customer_Type
+			Customer_Address=input.Customer_Address
+			Item_to_Replace3=input.Item_to_Replace
+			Quantity=input.Quantity_of_Damage_Items
+			Item_to_Replace1=spareTypeVal
+			Quantity_of_damage_spare_s=spareQtyVal
+			Item_Name=input.Item_Name
+		];
+	}
+	info "Exception_Control1: " + existingCount + " existing record(s) for SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + " refreshed.";
+	unitsNeeded = qtyNum - existingCount;
+	// Deluge has no counted for-loop (confirmed via official docs 2026-07-29 —
+	// only `for each`/`for each index` over an ALREADY-sized collection; `while`
+	// is a confirmed platform limit in this codebase too, see CLAUDE.md Deluge
+	// Gotchas) — inserting N new records for an arbitrary N has to be unrolled
+	// by hand instead of looped. Capped at 5 per single save (covers every real
+	// line-item qty seen in this app's data so far); a rejectedQty needing more
+	// than 5 NEW records in one save just creates the first 5 and logs a
+	// warning — a plain resave (same QC_Status, same Quantity) picks up the
+	// remainder next time, since existingCount/unitsNeeded is recomputed fresh.
+	if(unitsNeeded > 5)
+	{
+		info "WARNING: " + unitsNeeded + " new Exception_Control1 records needed for SO " + soVal + " / SKU " + skuVal + " but only 5 are created per save — re-save (or edit+save again) to create the remainder.";
+		unitsNeeded = 5;
+	}
+	if(unitsNeeded >= 1)
+	{
+		// ADDED 2026-07-28, real gap found live ("Exception # auto numbering is
+		// not on Exception control when the item in QC is rejected") — max+1-scan
+		// convention already used everywhere else in this app for client/native-
+		// numbered entities — "EXC-FF-00001" format, matching this form's own
+		// existing real records. Re-scanned fresh for each unit below so 2+ new
+		// records in the same save get consecutive, non-colliding numbers.
+		maxExcNum = 0;
+		for each  existingExcRec in Exception_Control1[ID != 0]
+		{
+			existingExcNoStr = existingExcRec.Exception_Number;
+			if(existingExcNoStr != null && existingExcNoStr.startsWith("EXC-FF-"))
+			{
+				numPart = existingExcNoStr.removeFirstOccurence("EXC-FF-");
+				numVal = numPart.toLong();
+				if(numVal > maxExcNum)
+				{
+					maxExcNum = numVal;
+				}
+			}
+		}
+		// CHANGED 2026-07-27, per user ("can we just use Exception_Control_Media")
+		// — Photos/Video no longer travel via any Deluge field copy at all
+		// (uploaded directly by the QCChecklist widget into the separate
+		// Exception_Control_Media form instead) — nothing to carry here.
+		if(unitsNeeded >= 1)
+		{
+			maxExcNum = maxExcNum + 1;
+			if(maxExcNum < 10)
+			{
+				nextExcNo = "EXC-FF-0000" + maxExcNum;
+			}
+			else if(maxExcNum < 100)
+			{
+				nextExcNo = "EXC-FF-000" + maxExcNum;
+			}
+			else if(maxExcNum < 1000)
+			{
+				nextExcNo = "EXC-FF-00" + maxExcNum;
+			}
+			else if(maxExcNum < 10000)
+			{
+				nextExcNo = "EXC-FF-0" + maxExcNum;
+			}
+			else
+			{
+				nextExcNo = "EXC-FF-" + maxExcNum;
+			}
+			newExceptionId = insert into Exception_Control1
+			[
+				Sales_Order=soVal
+				SKU=skuVal
+				PAC=pacVal
+				Exception_Number=nextExcNo
+				RR_No=input.RR
+				PR=input.PR
+				Supplier=prSupplierVal
+				Demo1=input.Demo
+				Order_Type=input.Order_Type
+				DELIVERY_TYPE=input.Delivery_Type
+				Source_Module="Checker_Checklist (QC Rejected)"
+				Checker=input.Quality_Checker
+				Remarks=input.Remarks
+				Customer_Name=input.Customer_Name
+				Customer_Type=input.Customer_Type
+				Customer_Address=input.Customer_Address
+				Item_to_Replace3=input.Item_to_Replace
+				Quantity=input.Quantity_of_Damage_Items
+				Item_to_Replace1=spareTypeVal
+				Quantity_of_damage_spare_s=spareQtyVal
+				Item_Name=input.Item_Name
+				Qty=1
+				Added_User=zoho.loginuser
+			];
+			info "Exception_Control1 record 1 of " + unitsNeeded + " created from Checker_Checklist (SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + "), new ID: " + newExceptionId + ", " + nextExcNo;
+			// ADDED 2026-08-03, per user — ExceptionControl notification bell.
+			newExcNotifId = insert into ExceptionControl_Notifications
+			[
+				Recipient_Email="homecartelff@gmail.com"
+				Notification_Type="Exception Record Created"
+				Message="New Exception Control record — " + soVal + " (" + input.Item_Name + ") — " + nextExcNo + "."
+				Created_On=zoho.currenttime
+				Read=false
+				Target_URL="https://creatorapp.zoho.com/homecartel/environment/development/supply-chain-app/#Page:Exception_Control2?excRecordId=" + newExceptionId
+				Source_Record_No=soVal
+				Source_Record_ID=newExceptionId
+				Added_User=zoho.loginuser
+			];
+		}
+		if(unitsNeeded >= 2)
+		{
+			maxExcNum = maxExcNum + 1;
+			if(maxExcNum < 10)
+			{
+				nextExcNo = "EXC-FF-0000" + maxExcNum;
+			}
+			else if(maxExcNum < 100)
+			{
+				nextExcNo = "EXC-FF-000" + maxExcNum;
+			}
+			else if(maxExcNum < 1000)
+			{
+				nextExcNo = "EXC-FF-00" + maxExcNum;
+			}
+			else if(maxExcNum < 10000)
+			{
+				nextExcNo = "EXC-FF-0" + maxExcNum;
+			}
+			else
+			{
+				nextExcNo = "EXC-FF-" + maxExcNum;
+			}
+			newExceptionId = insert into Exception_Control1
+			[
+				Sales_Order=soVal
+				SKU=skuVal
+				PAC=pacVal
+				Exception_Number=nextExcNo
+				RR_No=input.RR
+				PR=input.PR
+				Supplier=prSupplierVal
+				Demo1=input.Demo
+				Order_Type=input.Order_Type
+				DELIVERY_TYPE=input.Delivery_Type
+				Source_Module="Checker_Checklist (QC Rejected)"
+				Checker=input.Quality_Checker
+				Remarks=input.Remarks
+				Customer_Name=input.Customer_Name
+				Customer_Type=input.Customer_Type
+				Customer_Address=input.Customer_Address
+				Item_to_Replace3=input.Item_to_Replace
+				Quantity=input.Quantity_of_Damage_Items
+				Item_to_Replace1=spareTypeVal
+				Quantity_of_damage_spare_s=spareQtyVal
+				Item_Name=input.Item_Name
+				Qty=1
+				Added_User=zoho.loginuser
+			];
+			info "Exception_Control1 record 2 of " + unitsNeeded + " created from Checker_Checklist (SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + "), new ID: " + newExceptionId + ", " + nextExcNo;
+			// ADDED 2026-08-03, per user — ExceptionControl notification bell.
+			newExcNotifId = insert into ExceptionControl_Notifications
+			[
+				Recipient_Email="homecartelff@gmail.com"
+				Notification_Type="Exception Record Created"
+				Message="New Exception Control record — " + soVal + " (" + input.Item_Name + ") — " + nextExcNo + "."
+				Created_On=zoho.currenttime
+				Read=false
+				Target_URL="https://creatorapp.zoho.com/homecartel/environment/development/supply-chain-app/#Page:Exception_Control2?excRecordId=" + newExceptionId
+				Source_Record_No=soVal
+				Source_Record_ID=newExceptionId
+				Added_User=zoho.loginuser
+			];
+		}
+		if(unitsNeeded >= 3)
+		{
+			maxExcNum = maxExcNum + 1;
+			if(maxExcNum < 10)
+			{
+				nextExcNo = "EXC-FF-0000" + maxExcNum;
+			}
+			else if(maxExcNum < 100)
+			{
+				nextExcNo = "EXC-FF-000" + maxExcNum;
+			}
+			else if(maxExcNum < 1000)
+			{
+				nextExcNo = "EXC-FF-00" + maxExcNum;
+			}
+			else if(maxExcNum < 10000)
+			{
+				nextExcNo = "EXC-FF-0" + maxExcNum;
+			}
+			else
+			{
+				nextExcNo = "EXC-FF-" + maxExcNum;
+			}
+			newExceptionId = insert into Exception_Control1
+			[
+				Sales_Order=soVal
+				SKU=skuVal
+				PAC=pacVal
+				Exception_Number=nextExcNo
+				RR_No=input.RR
+				PR=input.PR
+				Supplier=prSupplierVal
+				Demo1=input.Demo
+				Order_Type=input.Order_Type
+				DELIVERY_TYPE=input.Delivery_Type
+				Source_Module="Checker_Checklist (QC Rejected)"
+				Checker=input.Quality_Checker
+				Remarks=input.Remarks
+				Customer_Name=input.Customer_Name
+				Customer_Type=input.Customer_Type
+				Customer_Address=input.Customer_Address
+				Item_to_Replace3=input.Item_to_Replace
+				Quantity=input.Quantity_of_Damage_Items
+				Item_to_Replace1=spareTypeVal
+				Quantity_of_damage_spare_s=spareQtyVal
+				Item_Name=input.Item_Name
+				Qty=1
+				Added_User=zoho.loginuser
+			];
+			info "Exception_Control1 record 3 of " + unitsNeeded + " created from Checker_Checklist (SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + "), new ID: " + newExceptionId + ", " + nextExcNo;
+			// ADDED 2026-08-03, per user — ExceptionControl notification bell.
+			newExcNotifId = insert into ExceptionControl_Notifications
+			[
+				Recipient_Email="homecartelff@gmail.com"
+				Notification_Type="Exception Record Created"
+				Message="New Exception Control record — " + soVal + " (" + input.Item_Name + ") — " + nextExcNo + "."
+				Created_On=zoho.currenttime
+				Read=false
+				Target_URL="https://creatorapp.zoho.com/homecartel/environment/development/supply-chain-app/#Page:Exception_Control2?excRecordId=" + newExceptionId
+				Source_Record_No=soVal
+				Source_Record_ID=newExceptionId
+				Added_User=zoho.loginuser
+			];
+		}
+		if(unitsNeeded >= 4)
+		{
+			maxExcNum = maxExcNum + 1;
+			if(maxExcNum < 10)
+			{
+				nextExcNo = "EXC-FF-0000" + maxExcNum;
+			}
+			else if(maxExcNum < 100)
+			{
+				nextExcNo = "EXC-FF-000" + maxExcNum;
+			}
+			else if(maxExcNum < 1000)
+			{
+				nextExcNo = "EXC-FF-00" + maxExcNum;
+			}
+			else if(maxExcNum < 10000)
+			{
+				nextExcNo = "EXC-FF-0" + maxExcNum;
+			}
+			else
+			{
+				nextExcNo = "EXC-FF-" + maxExcNum;
+			}
+			newExceptionId = insert into Exception_Control1
+			[
+				Sales_Order=soVal
+				SKU=skuVal
+				PAC=pacVal
+				Exception_Number=nextExcNo
+				RR_No=input.RR
+				PR=input.PR
+				Supplier=prSupplierVal
+				Demo1=input.Demo
+				Order_Type=input.Order_Type
+				DELIVERY_TYPE=input.Delivery_Type
+				Source_Module="Checker_Checklist (QC Rejected)"
+				Checker=input.Quality_Checker
+				Remarks=input.Remarks
+				Customer_Name=input.Customer_Name
+				Customer_Type=input.Customer_Type
+				Customer_Address=input.Customer_Address
+				Item_to_Replace3=input.Item_to_Replace
+				Quantity=input.Quantity_of_Damage_Items
+				Item_to_Replace1=spareTypeVal
+				Quantity_of_damage_spare_s=spareQtyVal
+				Item_Name=input.Item_Name
+				Qty=1
+				Added_User=zoho.loginuser
+			];
+			info "Exception_Control1 record 4 of " + unitsNeeded + " created from Checker_Checklist (SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + "), new ID: " + newExceptionId + ", " + nextExcNo;
+			// ADDED 2026-08-03, per user — ExceptionControl notification bell.
+			newExcNotifId = insert into ExceptionControl_Notifications
+			[
+				Recipient_Email="homecartelff@gmail.com"
+				Notification_Type="Exception Record Created"
+				Message="New Exception Control record — " + soVal + " (" + input.Item_Name + ") — " + nextExcNo + "."
+				Created_On=zoho.currenttime
+				Read=false
+				Target_URL="https://creatorapp.zoho.com/homecartel/environment/development/supply-chain-app/#Page:Exception_Control2?excRecordId=" + newExceptionId
+				Source_Record_No=soVal
+				Source_Record_ID=newExceptionId
+				Added_User=zoho.loginuser
+			];
+		}
+		if(unitsNeeded >= 5)
+		{
+			maxExcNum = maxExcNum + 1;
+			if(maxExcNum < 10)
+			{
+				nextExcNo = "EXC-FF-0000" + maxExcNum;
+			}
+			else if(maxExcNum < 100)
+			{
+				nextExcNo = "EXC-FF-000" + maxExcNum;
+			}
+			else if(maxExcNum < 1000)
+			{
+				nextExcNo = "EXC-FF-00" + maxExcNum;
+			}
+			else if(maxExcNum < 10000)
+			{
+				nextExcNo = "EXC-FF-0" + maxExcNum;
+			}
+			else
+			{
+				nextExcNo = "EXC-FF-" + maxExcNum;
+			}
+			newExceptionId = insert into Exception_Control1
+			[
+				Sales_Order=soVal
+				SKU=skuVal
+				PAC=pacVal
+				Exception_Number=nextExcNo
+				RR_No=input.RR
+				PR=input.PR
+				Supplier=prSupplierVal
+				Demo1=input.Demo
+				Order_Type=input.Order_Type
+				DELIVERY_TYPE=input.Delivery_Type
+				Source_Module="Checker_Checklist (QC Rejected)"
+				Checker=input.Quality_Checker
+				Remarks=input.Remarks
+				Customer_Name=input.Customer_Name
+				Customer_Type=input.Customer_Type
+				Customer_Address=input.Customer_Address
+				Item_to_Replace3=input.Item_to_Replace
+				Quantity=input.Quantity_of_Damage_Items
+				Item_to_Replace1=spareTypeVal
+				Quantity_of_damage_spare_s=spareQtyVal
+				Item_Name=input.Item_Name
+				Qty=1
+				Added_User=zoho.loginuser
+			];
+			info "Exception_Control1 record 5 of " + unitsNeeded + " created from Checker_Checklist (SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + "), new ID: " + newExceptionId + ", " + nextExcNo;
+			// ADDED 2026-08-03, per user — ExceptionControl notification bell.
+			newExcNotifId = insert into ExceptionControl_Notifications
+			[
+				Recipient_Email="homecartelff@gmail.com"
+				Notification_Type="Exception Record Created"
+				Message="New Exception Control record — " + soVal + " (" + input.Item_Name + ") — " + nextExcNo + "."
+				Created_On=zoho.currenttime
+				Read=false
+				Target_URL="https://creatorapp.zoho.com/homecartel/environment/development/supply-chain-app/#Page:Exception_Control2?excRecordId=" + newExceptionId
+				Source_Record_No=soVal
+				Source_Record_ID=newExceptionId
+				Added_User=zoho.loginuser
+			];
+		}
+	}
+	return;
+}
+if(input.QC_Status != "Approved")
+{
+	info "QC Status is not Approved or Rejected — skipping sync.";
+	return;
+}
+// ===== FULFILLMENT_STAGE SYNC — "Order Aggregation" / "Crate": ADDED 2026-09-03, per
+// direct user instruction ("ang gagalawin mo lang dito ay yung fulfillment stage. if
+// approved na mapunta na dapat ang fulfillment stage ay nasa order aggregation tapos
+// if true ang crate dapat ang fulfillment stage niya is crate") — same guarded
+// stage-bump pattern already used elsewhere in this pipeline (e.g.
+// readiness_gate_release_to_pick1_direct.txt's "Order Readiness"/"Picking",
+// pack_to_checker_checklist_sync.txt's "Quality Checking"): only bumps if the
+// record isn't already at the target stage, matched per-item on Sales_Order_
+// Fulfillment's own Item_Details1 subform (Item_Name + SKU). Only reached once
+// QC_Status is confirmed "Approved" (the guard just above already returned for
+// anything else) — For_Crate decides the target, same field this file's own
+// existing branching below already keys off of. =====
+fulfillmentStageTarget = "Order Aggregation";
+if(input.For_Crate == true)
+{
+	fulfillmentStageTarget = "Crate";
+}
+sofMatchesStage = Sales_Order_Fulfillment[SO_No == soVal];
+for each  sofRecStage in sofMatchesStage
+{
+	sofFullListStage = Sales_Order_Fulfillment[ID == sofRecStage.ID];
+	for each  sofFullStage in sofFullListStage
+	{
+		sofFoundStage = false;
+		for each  sofRowStage in sofFullStage.Item_Details1
+		{
+			if(sofRowStage.Item + "" == input.Item_Name && sofRowStage.SKU + "" == skuVal)
+			{
+				sofFoundStage = true;
+			}
+		}
+		if(sofFoundStage == true && sofFullStage.Fulfillment_Stage != fulfillmentStageTarget)
+		{
+			update sofFullStage
+			[
+				Fulfillment_Stage=fulfillmentStageTarget
+			];
+			info "Fulfillment_Stage updated to " + fulfillmentStageTarget + " for SO " + soVal + " / SKU " + skuVal;
+		}
+	}
+}
+if(input.For_Crate == true)
+{
+	// ===== APPROVED + FOR CRATE -> Crate_Checklist =====
+	// Per-item, matched SO+SKU+PAC. UPDATE-or-CREATE (2026-07-27, was skip-only
+	// before): kung existing na ang Crate_Checklist record, ina-UPDATE ang lahat ng
+	// field sa pinakabagong input, dahil possible na ma-edit ulit ang Checker_Checklist
+	// record (hal. dinagdag lang ang Target Delivery Date matapos ma-Approve) at dapat
+	// mag-propagate ang pagbabagong iyon papunta sa Crate_Checklist. Parehong pattern
+	// gaya ng pick1_to_pack_sync.txt at pack_to_checker_checklist_sync.txt.
+	alreadyExists = false;
+	for each  existingRec in Crate_Checklist[SO == soVal && SKU == skuVal && Package_Order == pacVal]
+	{
+		alreadyExists = true;
+		update existingRec
+		[
+			PR_if_any=input.PR
+			RR_if_any=input.RR
+			Order_Type=input.Order_Type
+			Target_Delivery_Date=input.Target_Delivery_Date
+			Delivery_Type=input.Delivery_Type
+			Customer_Name=input.Customer_Name
+			Customer_Address=input.Customer_Address
+			Customer_Type=input.Customer_Type
+			Item_Name=input.Item_Name
+			Quantity=input.Quantity
+			Assigned_Checker=input.Quality_Checker
+		];
+		info "Updated existing Crate_Checklist record for SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal;
+	}
+	if(alreadyExists == false)
+	{
+		newCrateId = insert into Crate_Checklist
+		[
+			SO=soVal
+			Package_Order=pacVal
+			PR_if_any=input.PR
+			RR_if_any=input.RR
+			Order_Type=input.Order_Type
+			Target_Delivery_Date=input.Target_Delivery_Date
+			Delivery_Type=input.Delivery_Type
+			Customer_Name=input.Customer_Name
+			Customer_Address=input.Customer_Address
+			Customer_Type=input.Customer_Type
+			Item_Name=input.Item_Name
+			SKU=skuVal
+			Quantity=input.Quantity
+			Assigned_Checker=input.Quality_Checker
+			Added_User=zoho.loginuser
+		];
+		info "Crate_Checklist record created from Checker_Checklist (SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + "), new ID: " + newCrateId;
+	}
+}
+else
+{
+	// ===== APPROVED + NOT FOR CRATE -> Order_Aggregation1 (isang record per SO,
+	// item rows idinadagdag sa Item_Details grid) =====
+	// Bagong row na isusulat papunta sa grid, common sa both branches sa ibaba.
+	// ADDED 2026-08-06, per user request (DMS multi-package dispatch design,
+	// approach A — "one dispatch, one package, one appointment record") — each
+	// Item_Details row now stamps its own originating PAC, since this is the
+	// ONLY place in the whole pipeline that actually knows which package a given
+	// QC-approved item belongs to at the moment it lands in Order_Aggregation1.
+	// Previously only the PARENT record had a single top-level PAC (last-write-
+	// wins from whichever QC sync ran most recently) — meaningless once an SO's
+	// items span multiple real packages. OrderAggregation/app/index.html's
+	// dispatchRecord() now groups selected items by THIS per-row PAC instead of
+	// the stale header-level one. Needs a new plain Single Line Text field, PAC,
+	// added to Order_Aggregation1's Item_Details subform in Form Builder before
+	// this can be pasted — same "add a real field first" pattern as every other
+	// native-schema-change this session.
+	newRow = Order_Aggregation1.Item_Details();
+	newRow.Item_Name=input.Item_Name;
+	newRow.SKU=skuVal;
+	newRow.QTY=qtyNum;
+	newRow.Bin_Location=input.Bin_Location;
+	newRow.PAC=pacVal;
+	// ADDED 2026-08-07, per user question ("if QC approve 1/2, will readiness
+	// gate still show original order qty 2?") — tracks whatever QTY actually
+	// ends up on this SKU's Order_Aggregation1 row (this fresh-approval value
+	// by default; overwritten below with the recomputed sum if an existing
+	// row for this SKU gets updated instead), so Sales_Order_Readiness_Gate's
+	// own Quantity can be kept in sync with it after the insert succeeds.
+	finalQtyForSku = qtyNum;
+	matchingAgg = Order_Aggregation1[SO == soVal];
+	foundAgg = false;
+	aggId = 0;
+	for each  rec in matchingAgg
+	{
+		foundAgg = true;
+		aggId = rec.ID;
+	}
+	// REMOVED 2026-08-13, per user decision ("di na siya babalik sa QC para i-
+	// approve, diretso na siya sa Pre Order. wag na siya mag create ng QC. pag ka
+	// create ng Receive rekta sa Pre Order") — this whole RR-redirect branch
+	// (originally added 2026-08-07, later revised multiple times this same day —
+	// see Widget\Fulfillment\CLAUDE.md's many 2026-08-13 entries for the full
+	// saga) existed to catch the FIRST QC approval right after Receiving created
+	// an RR-tagged Checker_Checklist record. That first QC record no longer gets
+	// created at all now (receiving_create_bin_receiving.txt's own Fulfillment EXC
+	// branch creates a Pre_Order_FF record directly instead, same-day change) — so
+	// there is no longer a "first RR approval" for this branch to ever legitimately
+	// fire on. Leaving it in place would have caused a NEW infinite loop: the only
+	// remaining Checker_Checklist record for an RR item is the genuine SECOND one
+	// (created by pack_to_checker_checklist_sync.txt after real Pick->Pack), which
+	// also carries RR non-blank (relayed through from Sales_Order_Readiness_Gate ->
+	// Pick1 -> Pack) — approving THAT would have re-triggered this same branch,
+	// created ANOTHER Pre_Order_FF, and sent the item around the whole
+	// Readiness Gate -> Pick -> Pack -> QC cycle again, forever. RR-tagged items
+	// now fall through to the exact same Order_Aggregation1 merge/create logic
+	// below as any normal item — RR is just a reference tag carried through the
+	// pipeline from here on, no special branching needed. The Books package
+	// quantity correction this branch used to do is also no longer needed: since
+	// createPackageFF (preorder_create_package.txt) never creates a NEW Books
+	// package for an RR-tagged Pre_Order_FF row (it reuses the original package #
+	// as a pure reference), there is no double-counting risk in Books to correct
+	// for in the first place.
+	if(foundAgg == false)
+	{
+		// ===== WALA PANG Order_Aggregation1 record sa SO na ito — gumawa ng bago,
+		// may kasamang unang item row. =====
+		rows = Collection();
+		rows.insert(newRow);
+		// ADDED 2026-08-06, per user request ("why other fields is not auto
+		// populated? like the city email contact") — Checker_Checklist now
+		// carries City/Email/Contact (relayed from Pre_Order_FF via
+		// receiving_widget_custom_api.txt/receiving_create_bin_receiving.txt),
+		// relayed onward below so OrderAggregation's dispatchRecord() can
+		// relay them again into Service_Appointment_Form. Comments must stay
+		// OUTSIDE the insert-into bracket literal below — a comment placed
+		// inside it (an earlier version of this edit) breaks with "Improper
+		// Statement", confirmed live 2026-08-06.
+		newAggId = insert into Order_Aggregation1
+		[
+			SO=soVal
+			PAC=pacVal
+			ORDER_TYPE=input.Order_Type
+			Target_Date=input.Target_Delivery_Date
+			PR=input.PR
+			DEMO=input.Demo
+			DELIVERY_TYPE=input.Delivery_Type
+			Customer_Name=input.Customer_Name
+			Customer_Address=custAddressVal
+			City=custCityVal
+			Email=custEmailVal
+			Contact=custContactVal
+			Customer_Type=input.Customer_Type
+			Item_Details=rows
+			Added_User=zoho.loginuser
+		];
+		// FIXED 2026-08-11, real live error found ("Error in executing On Create/
+		// Edit - On Success script... UnParsable date Line:(1,145)") — SO_Created_Date
+		// used to be written straight inside the insert bracket above; when
+		// soCreatedDateVal is genuinely blank (no Pre_Order_FF match — see its own
+		// fallback block), that's an empty STRING "", and assigning "" to a Date-typed
+		// field throws "UnParsable date" (Deluge tries to parse it as a date, not
+		// treat it as "leave blank"). Moved outside, only writes when non-blank —
+		// same fix applied to the rebuild-branch insert below.
+		if(soCreatedDateVal != "")
+		{
+			newAggRecForDate = Order_Aggregation1[ID == newAggId];
+			update newAggRecForDate
+			[
+				SO_Created_Date=soCreatedDateVal
+			];
+		}
+		info "Order_Aggregation1 record created for SO " + soVal + ", new ID: " + newAggId + ", item " + skuVal + " added.";
+		// ADDED 2026-08-07 — see finalQtyForSku's own comment above. Keeps
+		// Sales_Order_Readiness_Gate.Quantity (originally set once from
+		// Pre_Order_FF.Qty, the ORIGINAL order qty, never re-synced after a
+		// later QC split) in sync with the REAL fulfilled qty now landing in
+		// Order_Aggregation1. Matched on the same SO+SKU key readiness-gate
+		// records are upserted on elsewhere in this app.
+		for each  gateRec in Sales_Order_Readiness_Gate[sales_order_number == soVal && SKU == skuVal]
+		{
+			gateRec.Quantity=finalQtyForSku;
+		}
+	}
+	else
+	{
+		// ===== MAY EXISTING Order_Aggregation1 record na sa SO na ito. =====
+		// CONFIRMED SA LIVE TEST (2026-07-25): hindi pwedeng i-assign ang subform
+		// field sa loob ng "update Form[criteria][field=value]" — Zoho error:
+		// "The field(s) 'Item_Details' isn't supported for Update MultiColumn
+		// task." Kaya sa halip na i-update ang record sa lugar, DELETE-then-
+		// RE-INSERT na lang ang buong record.
+		// UPDATE (2026-07-27): dati, basta kinokopya lang PABALIK ang LUMANG halaga ng
+		// lahat ng top-level field (parang walang nagbago) — kaya kung na-edit ang
+		// Checker_Checklist record pagkatapos ma-Approve (hal. dinagdag lang ang Target
+		// Delivery Date), hindi ito na-uupdate sa Order_Aggregation1. Ngayon, ang mga
+		// field na may live source sa Checker_Checklist (PAC, Order Type, Target Date,
+		// PR, Demo, Delivery Type, Customer details) ay kinukuha na sa PINAKABAGONG
+		// input sa halip na sa lumang record. For_Crate at Dispatch_Selected LANG ang
+		// tunay na pina-preserve: For_Crate dahil manual/independent na desisyon ito sa
+		// Order_Aggregation1 mismo (posibleng itinakda ng TRUE ng ibang crate item ng
+		// parehong SO via crate_checklist_to_order_aggregation_sync.txt — hindi dapat
+		// ma-reset kahit ang kasalukuyang item ay hindi For Crate), at Dispatch_Selected
+		// dahil manual-only field ito ng Order Aggregation team, walang source kahit saan.
+		fullAgg = Order_Aggregation1[ID == aggId];
+		existingRows = List();
+		forCratePreserved = "";
+		dispatchSelectedPreserved = "";
+		for each  fullRec in fullAgg
+		{
+			existingRows = fullRec.Item_Details;
+			forCratePreserved = fullRec.For_Crate;
+			dispatchSelectedPreserved = fullRec.Dispatch_Selected;
+		}
+		// I-rebuild ang bawat existing row gamit ang parehong CONFIRMED-safe paraan
+		// (Form.Subform() + field assignment) na ginamit sa "wala pang record" na
+		// branch sa itaas. Kung PAREHONG SKU ng kasalukuyang item ang isang row,
+		// i-UPDATE ang laman nito (Item_Name/QTY/Bin_Location) sa halip na magdagdag ng
+		// duplicate row.
+		rebuiltRows = Collection();
+		rowUpdated = false;
+		for each  rowItem in existingRows
+		{
+			r = Order_Aggregation1.Item_Details();
+			r.Item_Name=rowItem.Item_Name;
+			r.SKU=rowItem.SKU;
+			r.QTY=rowItem.QTY;
+			r.Bin_Location=rowItem.Bin_Location;
+			r.Select1=rowItem.Select1;
+			// FIXED 2026-08-07, real data-corruption bug found live: this rebuild loop
+			// never copied Dispatched forward, so ANY subsequent QC approval landing on
+			// an SO that already had dispatched items silently reset every one of them
+			// back to un-dispatched (Order_Aggregation1's own subform default), even
+			// though DeliveryQueue/Archived still correctly showed them as delivered
+			// via their own separate Service_Appointment records. Confirmed via a live
+			// audit (SO-16415: 2 dispatched items, Aqi Downlight's own row went blank
+			// the moment the CUSTOMIZED FLOOR LAMP row was rebuilt for an unrelated
+			// reason). Same delete-then-reinsert rebuild this file already uses for
+			// every other field — just missing this one.
+			r.Dispatched=rowItem.Dispatched;
+			// ADDED 2026-08-06 — carry the row's own existing PAC forward by default
+			// (preserves already-tagged rows); overwritten below with the CURRENT
+			// input's pacVal only when this row is the one actually being refreshed
+			// (matched by SKU+PAC) — same "live source on match, preserve otherwise"
+			// convention already used for Item_Name/Bin_Location in this exact block.
+			r.PAC=rowItem.PAC;
+			existingSku = rowItem.SKU + "";
+			existingPacForRow = rowItem.PAC + "";
+			// FIXED 2026-08-07, real live bug found during Task 10 verification (SO-16415
+			// replacement test) — was SKU-only (existingSku == skuVal), the same
+			// match-key-collision class already fixed in Sales_Order_Fulfillment/
+			// Sales_Order_Readiness_Gate/Pick1 (see their own FIXED 2026-08-07 comments)
+			// but missed here. The SUM subquery a few lines below was already PAC-scoped
+			// (Checker_Checklist[...&& PAC == pacVal...]), which is why an earlier audit
+			// assumed this whole area was already safe — but THIS row-identity match, which
+			// decides update-in-place vs insert-a-new-row, was not. Confirmed live: a
+			// replacement item's own QC approval (different PAC, same SKU as the original
+			// exception item) matched the ORIGINAL's row by SKU alone and overwrote it in
+			// place — losing the original row (its own PAC, its own Dispatched=false
+			// history) entirely instead of adding a separate new row alongside it.
+			if(existingSku == skuVal && existingPacForRow == pacVal)
+			{
+				// FIXED 2026-08-06, real bug found live per user report — the 2026-08-05
+				// "ADD the RR's qty on top" fix (r.QTY=existingQtyNum+qtyNum) was NOT
+				// idempotent: this workflow fires on Created OR Edited, so any resave of
+				// an already-Approved Checker_Checklist record (e.g. fixing Date_Checked
+				// afterward) re-fires the same Approved branch and ADDS qtyNum AGAIN,
+				// compounding the total on every resave. Confirmed live (SO-16399,
+				// CUSTOMIZED (FLOOR LAMP)): original split-approval Quantity=1 + RR-00003's
+				// own completion Quantity=1 should sum to 2, but the row showed 3 — the RR
+				// record's own Date_Checked (2026-08-08) was 2 days after its Added_Time
+				// (2026-08-06), meaning it was very likely resaved at least once after
+				// first creation, double-counting its own qtyNum.
+				// REAL FIX: stop tracking an incremental running total on the row at all —
+				// recompute it fresh, every time, as the SUM of Quantity across EVERY
+				// Approved Checker_Checklist record for this exact SO+SKU (both the
+				// original item's own checklist and any RR-driven replacement ones). This
+				// is idempotent by construction: re-running it any number of times with
+				// the same underlying set of Approved records always yields the same
+				// correct sum, no separate input.RR branch needed anymore.
+				// FIXED 2026-08-06, same root cause + same fix shape as the QTY bug right
+				// above — r.Bin_Location=input.Bin_Location blindly overwrote the row with
+				// whichever QC record happened to fire most recently, so an RR-driven
+				// approval (often blank Bin_Location, or a genuinely different bin than
+				// where the original stock sits) could clobber the correct original value.
+				// Same recompute-from-source-of-truth approach: collect every DISTINCT
+				// non-blank Bin_Location across all Approved records for this SO+SKU and
+				// comma-join them — same convention already used for a multi-bin item in
+				// syncPackageToFulfillment.txt's own binLocationVal. Idempotent for the
+				// same reason the QTY fix is: recomputed fresh from source data every time,
+				// never incrementally mutated.
+				// FIXED 2026-08-06, real bug found live per user report — the SUM above
+				// scoped only by SO+SKU, no PAC/package boundary, so it kept summing
+				// EVERY historical Approved Checker_Checklist record ever created for that
+				// SO+SKU combo, including ones from earlier test/reset cycles on the same
+				// SO (11 instead of an expected 2, live on SO-16399 after several same-day
+				// package reset+retest rounds). Added `&& PAC == pacVal` to scope the sum
+				// to just THIS package's own QC approvals — the real RR-driven completion
+				// still carries the SAME PAC as its original item's own checklist
+				// (confirmed live, PR-00002/SO-16399's real RR-00003 case), so this keeps
+				// correctly adding an RR's qty on top of its original within one package
+				// cycle, without also picking up unrelated historical cycles.
+				sumQtyForSku = 0;
+				binNamesForSku = List();
+				allApprovedForSku = Checker_Checklist[SO == soVal && SKU == skuVal && PAC == pacVal && QC_Status == "Approved"];
+				for each  ccRec in allApprovedForSku
+				{
+					// FIXED 2026-08-06, real bug found live via a temporary debug dump
+					// (since removed, confirmed working) — ccRec.Quantity comes back as a
+					// STRING off this query result (not a Number, despite Quantity being a
+					// numeric field), so `sumQtyForSku + ccQty` was STRING CONCATENATION,
+					// not addition: 2 matched records each Quantity=1 produced
+					// "0"+"1"+"1" = "011", which Deluge then silently re-parsed as the
+					// number 11 once assigned into the numeric QTY subform field. Explicit
+					// .toLong() cast forces real numeric addition, same pattern already
+					// used at the very top of this same script for qtyVal/qtyNum.
+					ccQtyRaw = ccRec.Quantity + "";
+					if(ccQtyRaw != "" && ccQtyRaw != "null")
+					{
+						sumQtyForSku = sumQtyForSku + ccQtyRaw.toLong();
+					}
+					ccBin = ccRec.Bin_Location + "";
+					if(ccBin != "" && ccBin != "null" && !binNamesForSku.contains(ccBin))
+					{
+						binNamesForSku.add(ccBin);
+					}
+				}
+				binLocForSku = "";
+				binForSkuFirst = true;
+				for each  bnForSku in binNamesForSku
+				{
+					if(binForSkuFirst == true)
+					{
+						binLocForSku = bnForSku;
+						binForSkuFirst = false;
+					}
+					else
+					{
+						binLocForSku = binLocForSku + ", " + bnForSku;
+					}
+				}
+				r.QTY=sumQtyForSku;
+				finalQtyForSku = sumQtyForSku;
+				r.Item_Name=input.Item_Name;
+				r.PAC=pacVal;
+				if(binLocForSku != "")
+				{
+					r.Bin_Location=binLocForSku;
+				}
+				rowUpdated = true;
+			}
+			rebuiltRows.insert(r);
+		}
+		if(rowUpdated == false)
+		{
+			rebuiltRows.insert(newRow);
+		}
+		delete from Order_Aggregation1[ID == aggId];
+		// ADDED 2026-08-06, per user request — see the matching comment on the
+		// "brand new record" insert branch above for the full writeup. Kept
+		// OUTSIDE the insert-into bracket literal below, same fix as that
+		// branch (a comment inside it breaks with "Improper Statement").
+		newAggId = insert into Order_Aggregation1
+		[
+			SO=soVal
+			PAC=pacVal
+			ORDER_TYPE=input.Order_Type
+			Target_Date=input.Target_Delivery_Date
+			For_Crate=forCratePreserved
+			PR=input.PR
+			DEMO=input.Demo
+			DELIVERY_TYPE=input.Delivery_Type
+			Dispatch_Selected=dispatchSelectedPreserved
+			Customer_Name=input.Customer_Name
+			Customer_Address=custAddressVal
+			City=custCityVal
+			Email=custEmailVal
+			Contact=custContactVal
+			Customer_Type=input.Customer_Type
+			Item_Details=rebuiltRows
+			Added_User=zoho.loginuser
+		];
+		// FIXED 2026-08-11 — same "UnParsable date" fix as the "brand new record"
+		// insert branch above, see its comment for the full writeup.
+		if(soCreatedDateVal != "")
+		{
+			newAggRecForDate2 = Order_Aggregation1[ID == newAggId];
+			update newAggRecForDate2
+			[
+				SO_Created_Date=soCreatedDateVal
+			];
+		}
+		if(rowUpdated == true)
+		{
+			info "Order_Aggregation1 record for SO " + soVal + " updated — item " + skuVal + " row refreshed, top-level fields synced (old ID " + aggId + " deleted, new ID " + newAggId + ").";
+		}
+		else
+		{
+			info "Item " + skuVal + " added — Order_Aggregation1 record for SO " + soVal + " recreated (old ID " + aggId + " deleted, new ID " + newAggId + ").";
+		}
+		// ADDED 2026-08-07 — see finalQtyForSku's own comment above (brand-new-
+		// record branch). Same companion sync, mirrored here for this branch.
+		for each  gateRec in Sales_Order_Readiness_Gate[sales_order_number == soVal && SKU == skuVal]
+		{
+			gateRec.Quantity=finalQtyForSku;
+		}
+	}
+}
+
+````

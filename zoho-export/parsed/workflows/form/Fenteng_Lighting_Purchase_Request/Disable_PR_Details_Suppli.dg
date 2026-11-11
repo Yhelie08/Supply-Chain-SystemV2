@@ -1,0 +1,32 @@
+// form: Disable_PR_Details_Supplier1  form=Fenteng_Lighting_Purchase_Request event=on add or edit on load  [.ds line 37800]
+    disable PR_No_Supplier1;
+disable PR_Date_Supplier1;
+disable Items_Supplier1;
+disable sku_Supplier1;
+disable quantity_Supplier1;
+disable Description1_Supplier1;
+disable description_Supplier1;
+disable unit_Supplier1;
+disable category_Supplier1;
+disable Target_Delivery_Supplier1;
+disable Response_Status;
+disable edit_counter;
+disable Supplier_Selected_Supplier1.Suppliers_Supplier1;
+disable Supplier_Selected_Supplier1.Status_Supplier1;
+disable Supplier_Selected_Supplier1.Selected_Supplier1;
+if(input.edit_counter == 0)
+{
+    disable Supplier_Selected_Supplier1.Availability_Supplier1;
+    disable Supplier_Selected_Supplier1.Initial_Price_Supplier1;
+    disable Supplier_Selected_Supplier1.Negotiated_Supplier1;
+    disable Supplier_Selected_Supplier1.Final_Price_Supplier1;
+    disable Supplier_Selected_Supplier1.Lead_Time_Supplier1;
+}
+if(input.Response_Status == "Not Selected")
+{
+    disable Supplier_Selected_Supplier1.Availability_Supplier1;
+    disable Supplier_Selected_Supplier1.Initial_Price_Supplier1;
+    disable Supplier_Selected_Supplier1.Negotiated_Supplier1;
+    disable Supplier_Selected_Supplier1.Final_Price_Supplier1;
+    disable Supplier_Selected_Supplier1.Lead_Time_Supplier1;
+}

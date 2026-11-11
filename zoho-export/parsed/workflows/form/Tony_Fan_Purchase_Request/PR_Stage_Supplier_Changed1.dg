@@ -1,0 +1,30 @@
+// form: PR_Stage_Supplier_Changed_Supplier2  form=Tony_Fan_Purchase_Request event=on edit on success  [.ds line 37953]
+    prNo = input.PR_No_Supplier2;
+prRecs = Purchase_Request1[PR_No == prNo];
+for each  pr in prRecs
+{
+    for each  row in pr.Supplier_Selected
+    {
+        /* FIXED 2026-08-07 — same real bug/fix as PR_Stage_Supplier_Changed_Supplier1 above. */
+        rowSupplierVal2 = row.Suppliers + "";
+        if(rowSupplierVal2 == "Tony" || rowSupplierVal2.contains("Tony"))
+        {
+            for each  subRow in input.Supplier_Selected_Supplier2
+            {
+                row.Availability=subRow.Availability_Supplier2;
+                row.Initial_Price=subRow.Initial_Price_Supplier2;
+                row.Negotiated=subRow.Negotiated_Supplier2;
+                row.Final_Price=subRow.Final_Price_Supplier2;
+                row.Lead_Time=subRow.Lead_Time_Supplier2;
+                break;
+            }
+            break;
+        }
+    }
+    break;
+}
+if(input.Response_Status != "Selected" && input.Response_Status != "Submit Response")
+{
+    input.edit_counter = 0;
+}
+openUrl("#Report:Tony_Fan_Purchase_Request_Report","same window");

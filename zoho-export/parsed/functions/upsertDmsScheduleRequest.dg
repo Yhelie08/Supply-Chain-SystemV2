@@ -1,0 +1,54 @@
+// map upsertDmsScheduleRequest(String cmsRecordId, String salesOrderNumber, String customerName, String requestedDate, String requestedTime, String requestedBy, String notes, String booksSalesOrderId, String typeOfDelivery)   [.ds lines 34708-34762]
+response = Map();
+cmsId = cmsRecordId.trim();
+if(cmsId == "")
+{
+    response.put("status","error");
+    response.put("message","cmsRecordId is required.");
+    return response;
+}
+existingId = "";
+for each  rec in DMS_Schedule_Request[CMS_Schedule_Request_ID == cmsId]
+{
+    existingId = rec.ID + "";
+}
+if(existingId != "")
+{
+    update DMS_Schedule_Request[ID == existingId.toLong()]
+    [
+        Sales_Order_Number=salesOrderNumber
+        Customer_Name=customerName
+        Requested_Date=requestedDate
+        Requested_Time=requestedTime
+        Requested_By=requestedBy
+        Notes=notes
+        Type_of_Delivery=typeOfDelivery
+    ];
+    if(booksSalesOrderId != "")
+    {
+        update DMS_Schedule_Request[ID == existingId.toLong()]
+        [
+            Books_Sales_Order_ID=booksSalesOrderId
+        ];
+    }
+}
+else
+{
+    insert into DMS_Schedule_Request
+    [
+        CMS_Schedule_Request_ID=cmsId
+        Sales_Order_Number=salesOrderNumber
+        Customer_Name=customerName
+        Requested_Date=requestedDate
+        Requested_Time=requestedTime
+        Requested_By=requestedBy
+        Notes=notes
+        Status="Pending Review"
+        Books_Sales_Order_ID=booksSalesOrderId
+        Type_of_Delivery=typeOfDelivery
+        Added_User=zoho.loginuser
+    ]
+}
+response.put("status","success");
+response.put("message","Synced.");
+return response;

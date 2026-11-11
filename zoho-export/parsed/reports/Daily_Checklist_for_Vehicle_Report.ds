@@ -1,0 +1,18 @@
+
+			displayName = "Daily Checklist for Vehicle Report"
+			show all rows from Daily_Checklist_for_Vehicle    
+			(
+				Date_Time as "Date-Time"
+				Vehicle_Name as "Vehicle Name"
+				ODO_Number as "ODO Number"
+				Gas_Number as "Gas Number"
+				Vehicle_Checker as "Vehicle Checker"
+				Vehicle_Driver as "Vehicle Driver"
+				Vehicle_Checklist as "Vehicle Checklist"
+				Issue_Found as "Issue Found?"
+				Issue_Description as "Issue Description"
+				Odometer_Photo_Upload as "Odometer Photo Upload"
+				Checker_s_Signature as "Checker's Signature"
+				Tracking_Number as "Tracking Number"
+			)
+		

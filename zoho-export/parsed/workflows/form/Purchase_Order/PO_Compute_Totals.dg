@@ -1,0 +1,15 @@
+// form: PO_Compute_Totals  form=Purchase_Order event=on add or edit on validate  [.ds line 38762]
+    // === PO_Compute_Totals ===
+// Form: Purchase_Order | Event: Created or Edited | Validations on form submission
+totalValue = 0;
+totalLines = 0;
+for each  ln in input.PO_Line_Items
+{
+    totalLines = totalLines + 1;
+    if(ln.Line_Total != null)
+    {
+        totalValue = totalValue + ln.Line_Total;
+    }
+}
+input.Total_PO_Value = totalValue;
+input.Total_Lines = totalLines;

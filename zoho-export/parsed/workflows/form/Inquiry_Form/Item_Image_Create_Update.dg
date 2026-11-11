@@ -1,0 +1,12 @@
+// form: Item_Image_Create_Update  form=Inquiry_Form event=on add or edit on success  [.ds line 38873]
+    recs = Inquiry_Form[ID == input.ID];
+for each  r in recs
+{
+    itemRecs = Items[SKU == r.sku];
+    for each  i in itemRecs
+    {
+        r.Product_Image=i.Image;
+        break;
+    }
+    break;
+}

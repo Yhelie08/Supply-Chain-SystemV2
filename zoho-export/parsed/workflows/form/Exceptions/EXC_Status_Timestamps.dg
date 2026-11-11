@@ -1,0 +1,20 @@
+// form: EXC_Status_Timestamps  form=Exceptions event=on add or edit on validate  [.ds line 39708]
+    // === EXC_Status_Timestamps ===
+// Form: Exceptions | Event: Created or Edited | Validations on form submission
+oldRec = Exceptions[ID == input.ID];
+// Resolved_At — kapag bagong naging "Resolved" ang status
+if(input.Exception_Status == "Resolved")
+{
+    if(oldRec.Exception_Status != "Resolved")
+    {
+        Resolved_At = zoho.currenttime;
+    }
+}
+// Closed_At — kapag bagong naging "Closed" ang status
+if(input.Exception_Status == "Closed")
+{
+    if(oldRec.Exception_Status != "Closed")
+    {
+        Closed_At = zoho.currenttime;
+    }
+}

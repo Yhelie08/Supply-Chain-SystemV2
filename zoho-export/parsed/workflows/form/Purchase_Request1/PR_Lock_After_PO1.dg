@@ -1,0 +1,79 @@
+// form: PR_Lock_After_PO  form=Purchase_Request1 event=on add or edit on validate  [.ds line 37218]
+    // === PR_Lock_After_PO ===
+// Form: Purchase_Request1 | Event: Created or Edited | Validations on form submission
+if(input.PR_Status == "Converted to PO")
+{
+    oldRec = Purchase_Request1[ID == input.ID];
+    if(oldRec.PR_Status == "Converted to PO")
+    {
+        blocked = false;
+        if(input.quantity != oldRec.quantity)
+        {
+            blocked = true;
+        }
+        if(input.Selected_Supplier != oldRec.Selected_Supplier)
+        {
+            blocked = true;
+        }
+        if(input.Shipment_Mode != oldRec.Shipment_Mode)
+        {
+            blocked = true;
+        }
+        if(input.Target_Delivery != oldRec.Target_Delivery)
+        {
+            blocked = true;
+        }
+        if(input.Selcted_Final_Cost != oldRec.Selcted_Final_Cost)
+        {
+            blocked = true;
+        }
+        if(input.Production_Date != oldRec.Production_Date)
+        {
+            blocked = true;
+        }
+        // === Check Supplier_Selected subform — row count AND per-row content ===
+        newCount = 0;
+        for each  nsel in input.Supplier_Selected
+        {
+            newCount = newCount + 1;
+        }
+        oldCount = 0;
+        for each  osel in oldRec.Supplier_Selected
+        {
+            oldCount = oldCount + 1;
+        }
+        if(newCount != oldCount)
+        {
+            blocked = true;
+        }
+        else
+        {
+            // Build a snapshot map of the OLD rows, keyed by Supplier_ID
+            oldRowMap = Map();
+            for each  osel in oldRec.Supplier_Selected
+            {
+                snapshot = osel.Selected + "|" + ifnull(osel.Final_Price,0) + "|" + osel.Status + "|" + osel.Suppliers;
+                oldRowMap.put(osel.Supplier_ID.toString(),snapshot);
+            }
+            // Compare each NEW row against its old snapshot
+            for each  nsel in input.Supplier_Selected
+            {
+                newSnapshot = nsel.Selected + "|" + ifnull(nsel.Final_Price,0) + "|" + nsel.Status + "|" + nsel.Suppliers;
+                oldSnapshot = oldRowMap.get(nsel.Supplier_ID.toString());
+                if(oldSnapshot == null)
+                {
+                    blocked = true;
+                }
+                else if(newSnapshot != oldSnapshot)
+                {
+                    blocked = true;
+                }
+            }
+        }
+        if(blocked)
+        {
+            alert "Warning: this PR is already locked because it has been converted to a PO. The Qty, Supplier, Shipping Mode, Target Date, Final Cost, or Production Date should not be changed. Please revert the changes before saving.";
+            cancel submit;
+        }
+    }
+}

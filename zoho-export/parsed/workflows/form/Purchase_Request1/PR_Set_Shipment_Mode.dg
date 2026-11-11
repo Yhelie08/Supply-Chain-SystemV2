@@ -1,0 +1,28 @@
+// form: PR_Set_Shipment_Mode  form=Purchase_Request1 event=on add or edit on validate  [.ds line 38902]
+    // === PR_Set_Shipment_Mode ===
+// Form: Purchase_Request1 | Event: Created or Edited | Validations on form submission
+// Auto-derive supplier_target_date from Target_Delivery — always recompute
+if(input.Target_Delivery != null)
+{
+    input.supplier_target_date = input.Target_Delivery.addDay(-4);
+}
+// Auto-set Shipment_Mode + Shipment_Days only — hindi na nag-se-set ng Remaining_Days dito
+if(input.PR_Status != "Converted to PO")
+{
+    targetDate = input.supplier_target_date;
+    if(targetDate != null)
+    {
+        remainingDays = (targetDate - zoho.currentdate);
+        remainingDaysNum = (remainingDays / 86400000).round(0);
+        if(remainingDaysNum >= 30)
+        {
+            input.Shipment_Mode = "LCL";
+            input.Shipment_Days = 30;
+        }
+        else
+        {
+            input.Shipment_Mode = "Airfreight";
+            input.Shipment_Days = 14;
+        }
+    }
+}

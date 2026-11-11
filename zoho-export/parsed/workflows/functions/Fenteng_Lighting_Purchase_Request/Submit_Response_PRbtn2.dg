@@ -1,0 +1,2 @@
+// functions: Submit_Response_PRbtn1  form=Fenteng_Lighting_Purchase_Request event= on start > on click  [.ds line 51252]
+openUrl("#Form:Fenteng_Lighting_Purchase_Request?viewLinkName=Fenteng_Lighting_Purchase_Request_Report&recLinkID=" + input.ID,"same window");

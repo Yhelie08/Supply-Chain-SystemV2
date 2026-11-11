@@ -1,0 +1,10 @@
+// form: INQ_AutoFill_Product_Image  form=Inquiry_Form event=on add or edit on success  [.ds line 40750]
+    picStrChk = input.Product_Image + "";
+if(input.Product_Image == null || picStrChk == "" || picStrChk == "{}" || picStrChk == "[]")
+{
+    itemRec = Items[ID == input.Items];
+    if(itemRec != null && itemRec.Image != null)
+    {
+        input.Product_Image = itemRec.Image;
+    }
+}

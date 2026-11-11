@@ -1,0 +1,138 @@
+// form: Pick1 Marked to QC Sync  form=Pick1 event=on add or edit on success  [.ds line 46751]
+    // ===== FULFILLMENT_STAGE = "Picking" =====
+// Ang pagkakaroon ng Pick1 record para sa item na ito ay nangangahulugang "Picking" na
+// ang stage nito sa Sales_Order_Fulfillment. Isang Sales_Order_Fulfillment record per
+// item (see so_fulfillment_sync.txt), kaya SO + Item + SKU ang batayan ng pagtugma.
+// BINAGO 2026-10-29: naka-guard na ito sa likod ng "hindi pa Marked" - dati tumatakbo ito
+// sa BAWAT save, kaya ang muling pag-save ng isang Marked nang Pick1 record ay nagbabalik
+// muna sa "Picking" bago sumulong ulit. Kapag Marked na, ang "Quality Checking" block sa
+// dulo na ang bahala.
+if(input.Marked != true)
+{
+    soValStage = input.SO + "";
+    skuValStage = input.SKU + "";
+    itemNameForSOF = input.Item_Name + "";
+    sofMatches = Sales_Order_Fulfillment[SO_No == soValStage];
+    for each  sofRec in sofMatches
+    {
+        sofFullList = Sales_Order_Fulfillment[ID == sofRec.ID];
+        for each  sofFull in sofFullList
+        {
+            sofFound = false;
+            for each  sofRow in sofFull.Item_Details1
+            {
+                if(sofRow.Item + "" == itemNameForSOF && sofRow.SKU + "" == skuValStage)
+                {
+                    sofFound = true;
+                }
+            }
+            if(sofFound == true && sofFull.Fulfillment_Stage != "Picking")
+            {
+                update sofFull
+                [
+                    Fulfillment_Stage="Picking"
+                ];
+                info "Fulfillment_Stage updated to Picking for SO " + soValStage + " / SKU " + skuValStage;
+            }
+        }
+    }
+    info "Marked (Mark Picked) is not checked - skipping QC sync.";
+    return;
+}
+soVal = input.SO + "";
+skuVal = input.SKU + "";
+pacVal = input.Package_Order + "";
+// Guard sa "null" + "" -> literal na string na "null" na gotcha (see
+// [[deluge_creator_gotchas]]) para ang talagang blangkong RR ay maging "" dito, tugma sa
+// kung paano talaga nababasa ang existing records, hindi ang salitang "null".
+// Kailangan ang RR sa dedup key dahil sinasadyang ginagamit ulit ng isang RR replacement
+// ang PAREHONG Package_Order ng original (see checker_checklist_qc_sync.txt), kaya hindi
+// na sapat ang SO+SKU+PAC para pagkaibahin sila.
+rrVal = input.RR + "";
+if(rrVal == "null")
+{
+    rrVal = "";
+}
+// ===== UPDATE-or-CREATE sa Checker_Checklist =====
+// Kasama ang QC_Status == "" sa key: ang isang existing record ay bilang na "pareho" lang
+// kung PENDING pa ito (hindi pa na-review). Ang na-Approve/Reject na ay closed historical
+// record na - hindi binubuksan ulit, kaya ang isang RR item na umikot pabalik sa Pick ay
+// laging may sarili at bagong QC record na tunay na rere-review-in. (Parehong dahilan ng
+// 2026-08-13 fix sa pack_to_checker_checklist_sync.txt.)
+alreadyExists = false;
+for each  existingRec in Checker_Checklist[SO == soVal && SKU == skuVal && PAC == pacVal && RR == rrVal && QC_Status == ""]
+{
+    alreadyExists = true;
+    update existingRec
+    [
+        PR=input.PR_if_any
+        Demo=input.Demo
+        RR=input.RR
+        Delivery_Type=input.Delivery_Type
+        Order_Type=input.Order_Type
+        Target_Delivery_Date=input.Target_Delivery_Date
+        For_Crate=input.For_Crate
+        Customer_Name=input.Customer_Name
+        Customer_Address=input.Customer_Address
+        Customer_Type=input.Customer_Type
+        Item_Name=input.Item_Name
+        Quantity=input.Quantity_to_Pick
+        Bin_Location=input.Bin_Location
+    ];
+    info "Updated existing Checker_Checklist record for SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal;
+}
+if(alreadyExists == false)
+{
+    // ===== CREATE Checker_Checklist RECORD =====
+    // Sinasadyang WALANG Quality_Checker dito - ang QC Report widget (viewlist) ang
+    // pipili ng packer, at doon lang bubukas ang QC button.
+    newId = insert into Checker_Checklist
+    [
+        SO=soVal
+        PAC=pacVal
+        PR=input.PR_if_any
+        Demo=input.Demo
+        RR=input.RR
+        Delivery_Type=input.Delivery_Type
+        Order_Type=input.Order_Type
+        Target_Delivery_Date=input.Target_Delivery_Date
+        For_Crate=input.For_Crate
+        Customer_Name=input.Customer_Name
+        Customer_Address=input.Customer_Address
+        Customer_Type=input.Customer_Type
+        Item_Name=input.Item_Name
+        Quantity=input.Quantity_to_Pick
+        SKU=skuVal
+        Bin_Location=input.Bin_Location
+        Added_User=zoho.loginuser
+    ];
+    info "Checker_Checklist record created straight from Pick1 (SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + "), new ID: " + newId;
+}
+// ===== FULFILLMENT_STAGE = "Quality Checking" =====
+// Diretso na mula "Picking" - hindi na dumadaan sa "Pack". Parehong SO+Item+SKU na
+// pagtugma sa Item_Details1 subform ng Sales_Order_Fulfillment, parehong "bump lang kung
+// hindi pa ito ang stage" na guard para hindi paulit-ulit tumakbo sa ibang edit.
+sofMatches2 = Sales_Order_Fulfillment[SO_No == soVal];
+for each  sofRec2 in sofMatches2
+{
+    sofFullList2 = Sales_Order_Fulfillment[ID == sofRec2.ID];
+    for each  sofFull2 in sofFullList2
+    {
+        sofFound2 = false;
+        for each  sofRow2 in sofFull2.Item_Details1
+        {
+            if(sofRow2.Item + "" == input.Item_Name + "" && sofRow2.SKU + "" == skuVal)
+            {
+                sofFound2 = true;
+            }
+        }
+        if(sofFound2 == true && sofFull2.Fulfillment_Stage != "Quality Checking")
+        {
+            update sofFull2
+            [
+                Fulfillment_Stage="Quality Checking"
+            ];
+            info "Fulfillment_Stage updated to Quality Checking for SO " + soVal + " / SKU " + skuVal;
+        }
+    }
+}

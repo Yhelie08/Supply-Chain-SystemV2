@@ -1,0 +1,372 @@
+{
+  "name": "Supplier_1",
+  "label": "Fenteng Lighting",
+  "successMessage": "Data Added Successfully!",
+  "line": 3238,
+  "fields": [
+    {
+      "name": "Product_Info",
+      "label": "Product Info",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "INQ_No_Supplier",
+      "label": "INQ No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Items_Supplier",
+      "label": "Items",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Items",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[item_name]"
+    },
+    {
+      "name": "Description_Supplier",
+      "label": "Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Date_Created_Supplier",
+      "label": "Date Created",
+      "type": "date",
+      "required": false,
+      "initialValue": "${zoho.currentdate}",
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Response_Status",
+      "label": "Response Status",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SKU_Supplier",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Quantity_Supplier",
+      "label": "Quantity",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Dropdown1",
+      "label": "Drop Down",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Sales 1",
+        "Sales 2",
+        "Sales 3"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Open_to_similar_design_Supplier",
+      "label": "Open to similar design",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Product_Image_Supplier1_INQ",
+      "label": "Product Image",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "Target_Date_Supplier",
+      "label": "Target Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Unit_Supplier",
+      "label": "Unit",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Choice 1",
+        "Choice 2",
+        "Choice 3"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Dropdown2",
+      "label": "Drop Down",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "None",
+        "Supplier",
+        "Internal"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Additional_Description_Supplier",
+      "label": "Additional Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Image_from_Inq",
+      "label": "Image from Inq",
+      "type": "image",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Supplier_quotes",
+      "label": "Supplier quotes",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Not Selected",
+        "Negotiating",
+        "Final"
+      ],
+      "helpText": "If the item is in stock",
+      "fields": [
+        {
+          "name": "SupplierName",
+          "label": "SupplierName",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Availability_Supplier",
+          "label": "Availability",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Confirmed",
+            "Pending",
+            "Unavailable",
+            "Cannot Produce"
+          ],
+          "helpText": "If the item is in stock",
+          "maxchar": "100"
+        },
+        {
+          "name": "Initial_Price_Supplier",
+          "label": "Initial Price",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Negotiated_Supplier",
+          "label": "Negotiated",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Final_Price_Supplier",
+          "label": "Final Price",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Lead_Time_Supplier",
+          "label": "Lead Time",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Stage_Supplier",
+          "label": "Stage",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Not Selected",
+            "Negotiating",
+            "Final"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Selected_Supplier",
+          "label": "Selected",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "Product_Collateral_Supplier",
+      "label": "Product Collateral",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Product_Sample_Supplier",
+      "label": "Product Sample",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Completed",
+        "Pending",
+        "N/A"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Technical_Drawing_Supplier",
+      "label": "Technical Drawing",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Completed",
+        "Pending",
+        "N/A"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "D_Image_Supplier",
+      "label": "3D Image",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Completed",
+        "Pending",
+        "N/A"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Similar_Design_Photo_Supplier",
+      "label": "Similar Design Photo",
+      "type": "upload file",
+      "required": false
+    },
+    {
+      "name": "Specification_Supplier",
+      "label": "Specification",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Completed",
+        "Pending",
+        "N/A"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Specification_Details_Supplier",
+      "label": "Specification Details",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section2",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "edit_counter",
+      "label": "Edit Counter",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Specification",
+      "label": "Specification",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Dimension_Supplier",
+      "label": "Dimension",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Color_Body_Supplier",
+      "label": "Color Body",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Color_Temperature_Supplier",
+      "label": "Color Temperature",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "2700K",
+        "3000K",
+        "3500K",
+        "4000K",
+        "4500K",
+        "5000K"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Type_of_Bulb_Supplier",
+      "label": "Type of Bulb",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "A60 - E27",
+        "LED Strip",
+        "A60 - E27 Dimmable",
+        "c35 - L E14",
+        "c35 - L E14 Dimmable",
+        "Corn type E14",
+        "Corn type E14 Dimmable",
+        "Corn type E27",
+        "Corn type E27 Dimmable",
+        "E14-Candle",
+        "G4",
+        "G4 Dimmable",
+        "G4 Jelly",
+        "G9",
+        "G-95",
+        "G9 Dimmable",
+        "G45 - E27",
+        "G45 - E27 Dimmable",
+        "G80 - E27",
+        "G125 - E27",
+        "GU10",
+        "GU10 Dimmable",
+        "ST64"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Voltage_Supplier",
+      "label": "Voltage",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Lumens_Supplier",
+      "label": "Lumens",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

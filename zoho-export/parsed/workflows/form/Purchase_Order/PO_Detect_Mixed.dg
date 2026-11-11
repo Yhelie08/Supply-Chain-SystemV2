@@ -1,0 +1,17 @@
+// form: PO_Detect_Mixed  form=Purchase_Order event=on add or edit on validate  [.ds line 38794]
+    // === PO_Detect_Mixed ===
+// Form: Purchase_Order | Event: Created or Edited | Validations on form submission
+firstShippingMode = "";
+isMixedShipping = false;
+for each  ln in input.PO_Line_Items
+{
+    if(firstShippingMode == "")
+    {
+        firstShippingMode = ln.Shipping_Mode;
+    }
+    else if(ln.Shipping_Mode != firstShippingMode)
+    {
+        isMixedShipping = true;
+    }
+}
+input.Mixed_Shipping = isMixedShipping;

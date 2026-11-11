@@ -1,0 +1,74 @@
+{
+  "name": "Projects",
+  "label": "Projects",
+  "successMessage": "Data Added Successfully!",
+  "line": 9744,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Books_Estimate_ID",
+      "label": "Books Estimate ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Books_Estimate_No",
+      "label": "Books Estimate No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Project_Code",
+      "label": "Project Code",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Project_Name",
+      "label": "Project Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer",
+      "label": "Customer",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Customer",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[customer_name]"
+    },
+    {
+      "name": "Status",
+      "label": "Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Active",
+        "Inactive"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Group_Discount_Pct",
+      "label": "Quote Discount Percentage",
+      "type": "percentage",
+      "required": false
+    },
+    {
+      "name": "All_SRP_Approved",
+      "label": "All SRP Approved",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    }
+  ]
+}

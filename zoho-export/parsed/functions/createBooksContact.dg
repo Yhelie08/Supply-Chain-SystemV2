@@ -1,0 +1,129 @@
+// map createBooksContact(String customerId, String custName, String custType, String custEmail, String custPhone, String custMobile, String companyName, String custSubType, String salutation, String firstName, String lastName, String billAddress, String billCity, String billState, String billZip, String billCountry, String billAttention, String billPhone, String billFax, String shipAddress, String shipCity, String shipState, String shipZip, String shipCountry, String shipAttention, String shipPhone, String shipFax)   [.ds lines 28065-28194]
+response = Map();
+orgId = "751117756";
+if(customerId == null || customerId == "")
+{
+    response.put("status","error");
+    response.put("message","No customerId provided — cannot backfill ID1.");
+    return response;
+}
+// FIXED 2026-09-14, per user (screenshot of Books' own Primary Contact fields) —
+// if the officer filled in First/Last Name, use those properly instead of always
+// dumping the whole Customer Name into first_name with no last_name.
+personFirstName = custName;
+personLastName = "";
+if(firstName != null && firstName != "")
+{
+    personFirstName = firstName;
+    personLastName = lastName;
+}
+contactPerson = Map();
+contactPerson.put("salutation",salutation);
+contactPerson.put("first_name",personFirstName);
+contactPerson.put("last_name",personLastName);
+contactPerson.put("email",custEmail);
+contactPerson.put("phone",custPhone);
+contactPerson.put("mobile",custMobile);
+contactPerson.put("is_primary_contact",true);
+contactPersonsList = List();
+contactPersonsList.add(contactPerson);
+billMap = Map();
+billMap.put("attention",billAttention);
+billMap.put("address",billAddress);
+billMap.put("city",billCity);
+billMap.put("state",billState);
+billMap.put("zip",billZip);
+billMap.put("country",billCountry);
+billMap.put("phone",billPhone);
+billMap.put("fax",billFax);
+shipMap = Map();
+shipMap.put("attention",shipAttention);
+shipMap.put("address",shipAddress);
+shipMap.put("city",shipCity);
+shipMap.put("state",shipState);
+shipMap.put("zip",shipZip);
+shipMap.put("country",shipCountry);
+shipMap.put("phone",shipPhone);
+shipMap.put("fax",shipFax);
+contactBody = Map();
+contactBody.put("contact_name",custName);
+contactBody.put("company_name",companyName);
+custSubTypeVal = "business";
+if(custSubType == "individual")
+{
+    custSubTypeVal = "individual";
+}
+contactBody.put("customer_sub_type",custSubTypeVal);
+contactBody.put("contact_type","customer");
+contactBody.put("email",custEmail);
+contactBody.put("phone",custPhone);
+contactBody.put("mobile",custMobile);
+contactBody.put("contact_persons",contactPersonsList);
+contactBody.put("billing_address",billMap);
+contactBody.put("shipping_address",shipMap);
+// FIXED 2026-09-14, per user (screenshot of Books' own "Customer Type" CUSTOM FIELD,
+// a real dropdown: End User / Design Partner / Business Partner / Corporate /
+// Influencer) — `custType` was ALREADY being passed into this function this whole
+// time but never actually used anywhere in the body, a dead parameter. Every Books
+// contact created here left its own Customer Type custom field blank. Now maps our
+// internal Customer_Type value (Designer/Enduser/Corporate/Business Partner) onto
+// Books' real dropdown option text — same "Enduser" -> "End User" translation
+// already proven in create_estimate_custom_api.txt for the Estimate custom field of
+// the same name, plus "Designer" -> "Design Partner" (semantic match, Books has no
+// bare "Designer" option). "Corporate"/"Business Partner" pass through unchanged —
+// already exact matches. Books has no Creator-side equivalent for "Influencer" —
+// left as an option only ever chosen manually in Books itself, never sent by us.
+custTypeBooks = custType;
+if(custTypeBooks == "Enduser")
+{
+    custTypeBooks = "End User";
+}
+if(custTypeBooks == "Designer")
+{
+    custTypeBooks = "Design Partner";
+}
+if(custTypeBooks != null && custTypeBooks != "")
+{
+    cfList = List();
+    cf1 = Map();
+    cf1.put("label","Customer Type");
+    cf1.put("value",custTypeBooks);
+    cfList.add(cf1);
+    contactBody.put("custom_fields",cfList);
+}
+createResp = invokeurl
+[
+    url :"https://www.zohoapis.com/books/v3/contacts?organization_id=" + orgId
+    type :POST
+    parameters:contactBody.toString()
+    headers:{"Content-Type":"application/json"}
+    connection:"zhbooks3"
+];
+info "Books contact create resp: " + createResp;
+if(createResp == null)
+{
+    response.put("status","error");
+    response.put("message","Books contact creation — no response at all from Books (connection/network issue).");
+    return response;
+}
+if(createResp.get("contact") == null)
+{
+    errMsgFromBooks = createResp.get("message") + "";
+    if(errMsgFromBooks == "null" || errMsgFromBooks == "")
+    {
+        errMsgFromBooks = createResp.toString();
+    }
+    response.put("status","error");
+    response.put("message","Books contact creation failed — " + errMsgFromBooks);
+    return response;
+}
+newContactId = createResp.get("contact").get("contact_id") + "";
+custRecs = Customer[ID == customerId.toLong()];
+for each  cr in custRecs
+{
+    cr.ID1=newContactId;
+}
+response.put("status","success");
+response.put("contactId",newContactId);
+response.put("message","Books contact created and linked (ID1=" + newContactId + ")");
+return response;

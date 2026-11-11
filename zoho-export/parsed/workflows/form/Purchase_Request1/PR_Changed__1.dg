@@ -1,0 +1,128 @@
+// form: PR_Changed  form=Purchase_Request1 event=on edit on success  [.ds line 38000]
+    input.Last_Update = zoho.currenttime;
+fentengRecs = Fenteng_Lighting_Purchase_Request[PR_No_Supplier1 == input.PR_No];
+for each  r in fentengRecs
+{
+    hasChanges = false;
+    if(r.sku_Supplier1 != input.sku || r.quantity_Supplier1 != input.quantity || r.Target_Delivery_Supplier1 != input.Target_Delivery || r.Description1_Supplier1 != input.Description1)
+    {
+        hasChanges = true;
+    }
+    thisSelectedFC = false;
+    anySelected = false;
+    for each  row in input.Supplier_Selected
+    {
+        if(row.Selected == true)
+        {
+            anySelected = true;
+            rowSupplierValFC = row.Suppliers + "";
+            if(rowSupplierValFC.toLowerCase().contains("fenteng"))
+            {
+                thisSelectedFC = true;
+            }
+        }
+    }
+    inqSelectedFC = false;
+    inqAvailFC = "";
+    inqInitFC = 0;
+    inqNegoFC = 0;
+    inqFinalFC = 0;
+    inqLeadFC = "";
+    if(input.inquiry_reference != null && input.inquiry_reference != "")
+    {
+        inqRecsPR = Inquiry_Form[INQ_No == input.inquiry_reference];
+        for each  inqRecPR in inqRecsPR
+        {
+            for each  q in inqRecPR.Supplier_Quotes
+            {
+                if(q.Selected == true)
+                {
+                    sidPR = q.Supplier_ID + "";
+                    sidRawFC = sidPR.removeFirstOccurence("[").removeLastOccurence("]").trim();
+                    quoteBooksIdFC = "";
+                    if(sidRawFC != "")
+                    {
+                        for each  supRecFC in Suppliers
+                        {
+                            if(supRecFC.ID + "" == sidRawFC)
+                            {
+                                quoteBooksIdFC = supRecFC.Supplier_ID + "";
+                            }
+                        }
+                    }
+                    if(quoteBooksIdFC == "2680178000049168001")
+                    {
+                        inqSelectedFC = true;
+                        inqAvailFC = q.Availability;
+                        inqInitFC = q.Initial_Price;
+                        inqNegoFC = q.Negotiated;
+                        inqFinalFC = q.Final_Price;
+                        inqLeadFC = q.Lead_Time;
+                    }
+                }
+            }
+            break;
+        }
+    }
+    newStatusFC = r.Response_Status;
+    newCounterFC = r.edit_counter;
+    if(newCounterFC == null)
+    {
+        newCounterFC = 0;
+    }
+    if(hasChanges == true)
+    {
+        newStatusFC = "Submit Response";
+        newCounterFC = 1;
+    }
+    if(anySelected == true)
+    {
+        newStatusFC = "Not Selected";
+        newCounterFC = 0;
+    }
+    if(thisSelectedFC == true || inqSelectedFC == true)
+    {
+        newStatusFC = "Selected";
+        newCounterFC = 1;
+    }
+    update r
+    [
+        Response_Status=newStatusFC
+        edit_counter=newCounterFC
+    ];
+    if(inqSelectedFC == true)
+    {
+        for each  sRow1 in r.Supplier_Selected_Supplier1
+        {
+            sRow1.Availability_Supplier1=inqAvailFC;
+            sRow1.Initial_Price_Supplier1=inqInitFC;
+            sRow1.Negotiated_Supplier1=inqNegoFC;
+            sRow1.Final_Price_Supplier1=inqFinalFC;
+            sRow1.Lead_Time_Supplier1=inqLeadFC;
+            sRow1.Selected_Supplier1=true;
+        }
+    }
+    update r
+    [
+        PR_Date_Supplier1=input.PR_Date
+        sku_Supplier1=input.sku
+        quantity_Supplier1=input.quantity
+        Description1_Supplier1=input.Description1
+        description_Supplier1=input.description
+        Target_Delivery_Supplier1=input.Target_Delivery
+        SRP_Rate_PR_Supplier1=input.SRP_Rate_PR
+        inquiry_reference_Supplier1=input.inquiry_reference
+    ];
+    itemRecFC = null;
+    if(input.Items != null)
+    {
+        itemRecFC = Items[ID == input.Items];
+    }
+    if(itemRecFC != null)
+    {
+        if(itemRecFC.Image != null)
+        {
+            r.Product_Image_Supplier1_PR=itemRecFC.Image;
+        }
+    }
+}

@@ -1,0 +1,125 @@
+// form: Supplier_Populate_From_INQ  form=Inquiry_Form event=on add on success  [.ds line 34880]
+    itemRec = Items[ID == input.Items];
+seqValA1 = input.INQ_Seq;
+paddedSeqA1 = "";
+if(seqValA1 < 10)
+{
+    paddedSeqA1 = "0000" + seqValA1;
+}
+else if(seqValA1 < 100)
+{
+    paddedSeqA1 = "000" + seqValA1;
+}
+else if(seqValA1 < 1000)
+{
+    paddedSeqA1 = "00" + seqValA1;
+}
+else if(seqValA1 < 10000)
+{
+    paddedSeqA1 = "0" + seqValA1;
+}
+else
+{
+    paddedSeqA1 = seqValA1 + "";
+}
+computedInqNoA1 = "INQ-" + paddedSeqA1;
+hasSupplier2 = false;
+for each  quote in input.Supplier_Quotes
+{
+    sidRawA1 = quote.Supplier_ID.removeFirstOccurence("[").removeLastOccurence("]");
+    quoteBooksIdA1 = "";
+    if(sidRawA1 != "")
+    {
+        for each  supRecA1 in Suppliers
+        {
+            if(supRecA1.ID + "" == sidRawA1)
+            {
+                quoteBooksIdA1 = supRecA1.Supplier_ID + "";
+            }
+        }
+    }
+    if(quoteBooksIdA1 == "2680178000002735078")
+    {
+        hasSupplier2 = true;
+    }
+}
+if(hasSupplier2 == true)
+{
+    newRecID = insert into Supplier_2
+    [
+        INQ_No_Supplier=computedInqNoA1
+        SKU_Supplier=input.sku
+        Target_Date_Supplier=input.target_date
+        Items_Supplier=input.Items
+        Quantity_Supplier=input.quantity
+        Unit_Supplier=input.unit
+        Description_Supplier=input.description
+        Date_Created_Supplier=input.created_date
+        Open_to_similar_design_Supplier=input.Open_to_similar_design
+        Additional_Description_Supplier=input.Addtional_Description
+        Added_User=zoho.loginuser
+        Response_Status="Waiting"
+        edit_counter=1
+    ];
+    newRec = Supplier_2[ID == newRecID];
+    if(itemRec != null && itemRec.Image != null)
+    {
+        newRec.Product_Image_Supplier2_INQ=itemRec.Image;
+    }
+    if(input.Attachments != null && input.Attachments + "" != "" && input.Attachments + "" != "[]")
+    {
+        newRec.Image_from_Inq=input.Attachments;
+    }
+    for each  quote in input.Supplier_Quotes
+    {
+        sidRawA1b = quote.Supplier_ID.removeFirstOccurence("[").removeLastOccurence("]");
+        quoteBooksIdA1b = "";
+        if(sidRawA1b != "")
+        {
+            for each  supRecA1b in Suppliers
+            {
+                if(supRecA1b.ID + "" == sidRawA1b)
+                {
+                    quoteBooksIdA1b = supRecA1b.Supplier_ID + "";
+                }
+            }
+        }
+        if(quoteBooksIdA1b == "2680178000002735078")
+        {
+            row1 = Supplier_2.Supplier_quotes();
+            row1.SupplierName=quote.Suppliers;
+            row1.Availability_Supplier=quote.Availability;
+            row1.Initial_Price_Supplier=quote.Initial_Price;
+            row1.Negotiated_Supplier=quote.Negotiated;
+            row1.Final_Price_Supplier=quote.Final_Price;
+            row1.Lead_Time_Supplier=quote.Lead_Time;
+            row1.Stage_Supplier=quote.Stage;
+            row1.Selected_Supplier=quote.Selected;
+            newRec.Supplier_quotes.insert(row1);
+        }
+    }
+    page_base_url = "";
+    if(thisapp.environment.type == "production")
+    {
+        page_base_url = "https://creator.zoho.com/homecartel/supply-chain-app";
+    }
+    else
+    {
+        page_base_url = "https://creatorapp.zoho.com/homecartel/environment/development/supply-chain-app";
+    }
+    ts = zoho.currenttime.toString().replaceAll(" ","").replaceAll(":","").replaceAll("-","");
+    deep_link_token = "INQ-" + newRecID + "-" + ts;
+    insert into Tony_Notifications
+    [
+        Recipient_Email="184319330@qq.com"
+        Notification_Type="New Inquiry added"
+        Message="A new inquiry " + computedInqNoA1 + " was added."
+        Created_On=zoho.currenttime
+        Read=false
+        Target_URL=page_base_url + "/#Page:Tony_Fan_Inquiries?tonyinquiriesid=" + deep_link_token
+        Source_Record_No=computedInqNoA1
+        Source_Record_ID=newRecID
+        Deep_Link_Token=deep_link_token
+        Added_User=zoho.loginuser
+    ]
+}

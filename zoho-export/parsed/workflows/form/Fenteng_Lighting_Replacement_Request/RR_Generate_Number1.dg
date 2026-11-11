@@ -1,0 +1,39 @@
+// form: RR_Generate_Number  form=Fenteng_Lighting_Replacement_Request event=on add on validate  [.ds line 40436]
+    // === RR_Generate_Number ===
+// Form: Replacement_Request | Event: Created | Validations on form submission
+maxNum = 0;
+existingRRs = Replacement_Request[ID != 0];
+for each  rr in existingRRs
+{
+    rrNoStr = rr.RR_No;
+    if(rrNoStr != null && rrNoStr != "")
+    {
+        numPart = rrNoStr.removeFirstOccurence("RR-");
+        num = numPart.toLong();
+        if(num > maxNum)
+        {
+            maxNum = num;
+        }
+    }
+}
+newNum = maxNum + 1;
+if(newNum < 10)
+{
+    input.RR_No = "RR-0000" + newNum;
+}
+else if(newNum < 100)
+{
+    input.RR_No = "RR-000" + newNum;
+}
+else if(newNum < 1000)
+{
+    input.RR_No = "RR-00" + newNum;
+}
+else if(newNum < 10000)
+{
+    input.RR_No = "RR-0" + newNum;
+}
+else
+{
+    input.RR_No = "RR-" + newNum;
+}

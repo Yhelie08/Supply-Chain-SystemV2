@@ -1,0 +1,2 @@
+// form: CRATE_Instant_Forecast  form=Crate_Checklist event=on add or edit on success  [.ds line 47012]
+info thisapp.fcStampBySoNo(input.SO + "");

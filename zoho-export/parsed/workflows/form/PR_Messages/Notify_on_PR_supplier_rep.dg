@@ -1,0 +1,26 @@
+// form: Notify on PR supplier reply  form=PR_Messages event=on add on success  [.ds line 44628]
+    if(input.Sender_Role == "Supplier")
+{
+    insert into App_Notifications
+    [
+        Recipient_Email="hcinvanalyst@gmail.com"
+        Notification_Type="Supplier Purchase Request Conversation"
+        Message=input.Supplier + " sent a message on " + input.PR_No + "."
+        Created_On=zoho.currenttime
+        Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:Purchase_Request"
+        Source_Record_No=input.PR_No
+        Source_Record_ID=input.ID
+        Added_User=zoho.loginuser
+    ]
+    insert into App_Notifications
+    [
+        Recipient_Email="homecartelpacker@gmail.com"
+        Notification_Type="Supplier Purchase Request Conversation"
+        Message=input.Supplier + " sent a message on " + input.PR_No + "."
+        Created_On=zoho.currenttime
+        Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:Purchase_Request"
+        Source_Record_No=input.PR_No
+        Source_Record_ID=input.ID
+        Added_User=zoho.loginuser
+    ]
+}

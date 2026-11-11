@@ -1,0 +1,21 @@
+
+			displayName = "All Warehouse Requests"
+			show all rows from Warehouse_Request    
+			(
+				Type_of_Request as "Type of Request"
+				Request as "Request Description"
+				Date_Requested as "Date Requested"
+				Request_By as "Request By:"
+				Upload_Image as "Upload Image"
+				Picker
+				Request_Status as "Request Status:"
+				Remarks
+				Actual_Photo_Upload as "Actual Photo Upload"
+				Actual_Video_Upload as "Actual Video Upload"
+				Added_Time as "Added Time"
+				Item as "Items"
+				(
+					field = Item.Items + " " + Item.Image + " " + Item.SKU
+				)
+			)
+		

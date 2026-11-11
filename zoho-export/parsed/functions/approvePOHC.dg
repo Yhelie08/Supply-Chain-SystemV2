@@ -1,0 +1,289 @@
+// map approvePOHC(String soNo)   [.ds lines 24073-24362]
+response = Map();
+processedCount = 0;
+processedPOsH = List();
+siblingPRsH = Purchase_Request1[Sales_Order == soNo && PR_Approved == true && Link_PO_No != null && Sourcing_Type == "Local"];
+for each  prLoopH in siblingPRsH
+{
+    if(prLoopH.Link_PO_No == "")
+    {
+        continue;
+    }
+    alreadyTrackedH0 = false;
+    for each  doneNoH0 in processedPOsH
+    {
+        if(doneNoH0 == prLoopH.Link_PO_No)
+        {
+            alreadyTrackedH0 = true;
+        }
+    }
+    if(alreadyTrackedH0 == false)
+    {
+        processedPOsH.add(prLoopH.Link_PO_No);
+    }
+}
+for each  poNoTouchedH in processedPOsH
+{
+    aggPOsSyncH = Purchase_Order[PO_No == poNoTouchedH];
+    for each  apoH2 in aggPOsSyncH
+    {
+        apoH = apoH2;
+    }
+    soNoTextH = apoH.SO_No.Sales_Order_Number;
+    matchingShipNoH = "";
+    candidateShipmentsH = Shipments[PO_No == apoH.ID && Shipment_Status == "Pending"];
+    for each  shH in candidateShipmentsH
+    {
+        matchingShipNoH = shH.Shipment_No;
+    }
+    isNewShipmentH = false;
+    if(matchingShipNoH != "")
+    {
+        targetShipsH = Shipments[Shipment_No == matchingShipNoH];
+        for each  tshH in targetShipsH
+        {
+            targetShipH = tshH;
+        }
+    }
+    else
+    {
+        maxShipNumH = 0;
+        existingShipmentsH = Shipments[ID != 0];
+        for each  shH2 in existingShipmentsH
+        {
+            shipNoStrH = shH2.Shipment_No;
+            if(shipNoStrH != null && shipNoStrH != "")
+            {
+                shipNumPartH = shipNoStrH.removeFirstOccurence("SHP-");
+                shipNumH = shipNumPartH.toLong();
+                if(shipNumH > maxShipNumH)
+                {
+                    maxShipNumH = shipNumH;
+                }
+            }
+        }
+        newShipNumH = maxShipNumH + 1;
+        if(newShipNumH < 10)
+        {
+            newShipNoH = "SHP-0000" + newShipNumH;
+        }
+        else if(newShipNumH < 100)
+        {
+            newShipNoH = "SHP-000" + newShipNumH;
+        }
+        else if(newShipNumH < 1000)
+        {
+            newShipNoH = "SHP-00" + newShipNumH;
+        }
+        else if(newShipNumH < 10000)
+        {
+            newShipNoH = "SHP-0" + newShipNumH;
+        }
+        else
+        {
+            newShipNoH = "SHP-" + newShipNumH;
+        }
+        newShipIDH = insert into Shipments
+        [
+            Shipment_No=newShipNoH
+            PO_No=apoH.ID
+            Sales_Order=soNoTextH
+            Customer=apoH.Customer
+            Supplier="HC System"
+            Shipment_Status="Pending"
+            Added_User=zoho.loginuser
+        ];
+        targetShipH = Shipments[ID == newShipIDH];
+        isNewShipmentH = true;
+    }
+    for each  poLnAggH in apoH.PO_Line_Items
+    {
+        targetShipH.Required_Days_Lead=poLnAggH.Required_Days_Lead;
+        targetShipH.Remaining_Days=poLnAggH.Remaining_Days;
+        targetShipH.Target_Date=poLnAggH.Target_Delivery;
+        targetShipH.Supplier_Target_Date=poLnAggH.supplier_target_date;
+        targetShipH.Production_Date=poLnAggH.Production_Date;
+        if(poLnAggH.PR_No != null && poLnAggH.PR_No != "")
+        {
+            prLineH = Purchase_Request1[PR_No == poLnAggH.PR_No];
+            targetShipH.Shipment_Days=prLineH.Shipment_Days;
+            targetShipH.Sales_Owner=prLineH.Sales_Owner;
+        }
+        else
+        {
+            targetShipH.Sales_Owner=apoH.Sales_Owner;
+        }
+        shipLineExistsH = false;
+        for each  existingShipLnH in targetShipH.PO_Shipments
+        {
+            if(existingShipLnH.PR_No == poLnAggH.PR_No)
+            {
+                shipLineExistsH = true;
+            }
+        }
+        if(shipLineExistsH == false)
+        {
+            newShipLineH = Shipments.PO_Shipments();
+            newShipLineH.PR_No=poLnAggH.PR_No;
+            newShipLineH.SKU=poLnAggH.SKU;
+            newShipLineH.Item_Name=poLnAggH.Item;
+            newShipLineH.Ordered_QTY=poLnAggH.QTY;
+            newShipLineH.Shipment_QTY=poLnAggH.QTY;
+            newShipLineH.Remaining_QTY=poLnAggH.QTY;
+            newShipLineH.Shipping_Mode=poLnAggH.Shipping_Mode;
+            targetShipH.PO_Shipments.insert(newShipLineH);
+        }
+    }
+    recvFoundH = false;
+    matchingRecvIDH = 0;
+    existingRecvH = Receiving[Shipments == targetShipH.ID];
+    for each  rcH in existingRecvH
+    {
+        matchingRecvIDH = rcH.ID;
+        recvFoundH = true;
+    }
+    if(recvFoundH == true)
+    {
+        targetRecvsH = Receiving[ID == matchingRecvIDH];
+        for each  trcH in targetRecvsH
+        {
+            targetRecvH = trcH;
+        }
+    }
+    else
+    {
+        maxRecvNumH = 0;
+        existingRecvsH = Receiving[ID != 0];
+        for each  rcH2 in existingRecvsH
+        {
+            recvNoStrH = rcH2.Receive_No1;
+            if(recvNoStrH != null && recvNoStrH != "")
+            {
+                recvNumPartH = recvNoStrH.removeFirstOccurence("RCV-");
+                recvNumH = recvNumPartH.toLong();
+                if(recvNumH > maxRecvNumH)
+                {
+                    maxRecvNumH = recvNumH;
+                }
+            }
+        }
+        newRecvNumH = maxRecvNumH + 1;
+        if(newRecvNumH < 10)
+        {
+            newRecvNoH = "RCV-0000" + newRecvNumH;
+        }
+        else if(newRecvNumH < 100)
+        {
+            newRecvNoH = "RCV-000" + newRecvNumH;
+        }
+        else if(newRecvNumH < 1000)
+        {
+            newRecvNoH = "RCV-00" + newRecvNumH;
+        }
+        else if(newRecvNumH < 10000)
+        {
+            newRecvNoH = "RCV-0" + newRecvNumH;
+        }
+        else
+        {
+            newRecvNoH = "RCV-" + newRecvNumH;
+        }
+        newRecvIDH = insert into Receiving
+        [
+            Receive_No1=newRecvNoH
+            Shipments=targetShipH.ID
+            SO_No=soNoTextH
+            PO_No=apoH.PO_No
+            Customer_Name=apoH.Customer
+            Supplier="HC System"
+            Added_User=zoho.loginuser
+        ];
+        targetRecvH = Receiving[ID == newRecvIDH];
+    }
+    for each  poLnAggH2 in apoH.PO_Line_Items
+    {
+        if(poLnAggH2.PR_No != null && poLnAggH2.PR_No != "")
+        {
+            prLineRecvH = Purchase_Request1[PR_No == poLnAggH2.PR_No];
+            targetRecvH.Sales_Owner=prLineRecvH.Sales_Owner;
+        }
+        else
+        {
+            targetRecvH.Sales_Owner=apoH.Sales_Owner;
+        }
+        recvLineExistsH = false;
+        for each  existingRecvLnH in targetRecvH.Receiving_Line_Items
+        {
+            if(existingRecvLnH.PR_No == poLnAggH2.PR_No)
+            {
+                recvLineExistsH = true;
+            }
+        }
+        if(recvLineExistsH == false)
+        {
+            newRecvLineH = Receiving.Receiving_Line_Items();
+            newRecvLineH.PR_No=poLnAggH2.PR_No;
+            newRecvLineH.SKU=poLnAggH2.SKU;
+            newRecvLineH.Item_Name=poLnAggH2.Item;
+            newRecvLineH.Expected_Qty=poLnAggH2.QTY;
+            targetRecvH.Receiving_Line_Items.insert(newRecvLineH);
+        }
+    }
+    totalExpectedH = 0;
+    totalAcceptedH = 0;
+    totalDamageH = 0;
+    totalMissingH = 0;
+    totalLinesRH = 0;
+    incompleteLinesH = 0;
+    readyForFulfillH = 0;
+    for each  rln in targetRecvH.Receiving_Line_Items
+    {
+        totalLinesRH = totalLinesRH + 1;
+        expRH = ifnull(rln.Expected_Qty,0);
+        accRH = ifnull(rln.Accepted_Qty,0);
+        dmgRH = ifnull(rln.Damage_Qty,0);
+        misRH = ifnull(rln.Missing_Qty,0);
+        totalExpectedH = totalExpectedH + expRH;
+        totalAcceptedH = totalAcceptedH + accRH;
+        totalDamageH = totalDamageH + dmgRH;
+        totalMissingH = totalMissingH + misRH;
+        totalRecRH = accRH + dmgRH + misRH;
+        if(totalRecRH == expRH && accRH == expRH)
+        {
+            rln.Line_Result="Complete";
+            rln.Ready_for_Fulfillment=true;
+            readyForFulfillH = readyForFulfillH + 1;
+        }
+        else
+        {
+            rln.Line_Result="Incomplete";
+            rln.Ready_for_Fulfillment=false;
+            incompleteLinesH = incompleteLinesH + 1;
+        }
+    }
+    targetRecvH.Total_Expected_Qty=totalExpectedH;
+    targetRecvH.Total_Accepted_Qty=totalAcceptedH;
+    targetRecvH.Total_Damage_Qty=totalDamageH;
+    targetRecvH.Total_Missing_Qty=totalMissingH;
+    targetRecvH.Total_Lines=totalLinesRH;
+    targetRecvH.Incomplete_Lines=incompleteLinesH;
+    targetRecvH.Ready_for_Fulfillment1=readyForFulfillH;
+    if(totalLinesRH == 0 || (totalAcceptedH == 0 && totalDamageH == 0 && totalMissingH == 0))
+    {
+        targetRecvH.Receive_Status="Pending";
+    }
+    else if(incompleteLinesH == 0)
+    {
+        targetRecvH.Receive_Status="Received";
+    }
+    else
+    {
+        targetRecvH.Receive_Status="Partial Received";
+    }
+    apoH.PO_Status="Confirmed";
+    processedCount = processedCount + 1;
+}
+response.put("status","success");
+response.put("processed",processedCount);
+response.put("message",processedCount + " HC System PO(s) synced");
+return response;

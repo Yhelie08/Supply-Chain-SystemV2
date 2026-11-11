@@ -1,0 +1,139 @@
+// void syncWarehouseBins()   [.ds lines 34567-34706]
+orgId = "751117756";
+storageWarehouses = List();
+storageWarehouses.add({"id":"2680178000042173149","name":"HC WH3 BAESA"});
+storageWarehouses.add({"id":"2680178000055220196","name":"HC WH1 BANAWE"});
+storageWarehouses.add({"id":"2680178000047672049","name":"INVENTORY"});
+booksApiCalls = 0;
+updatedCount = 0;
+errorCount = 0;
+lastRunTime = zoho.currenttime.subHour(25).toString("yyyy-MM-dd'T'HH:mm:ssZ");
+info "Checking items modified since: " + lastRunTime;
+totalChecked = 0;
+for each  page in {1,2,3,4,5,6,7,8,9,10}
+{
+    listUrl = "https://www.zohoapis.com/books/v3/items?organization_id=" + orgId + "&filter_by=Status.Active&per_page=200&page=" + page + "&last_modified_time_start=" + lastRunTime;
+    listResp = invokeurl
+    [
+        url :listUrl
+        type :GET
+        connection:"zoho_books"
+    ];
+    booksApiCalls = booksApiCalls + 1;
+    items = listResp.get("items");
+    if(items.size() == 0)
+    {
+        break;
+    }
+    info "Page " + page + ": " + items.size() + " modified items";
+    for each  item in items
+    {
+        totalChecked = totalChecked + 1;
+        itemId = item.get("item_id").toString();
+        itemName = item.get("item_name");
+        try 
+        {
+            detailUrl = "https://www.zohoapis.com/books/v3/items/" + itemId + "?organization_id=" + orgId;
+            detailResp = invokeurl
+            [
+                url :detailUrl
+                type :GET
+                connection:"zoho_books"
+            ];
+            booksApiCalls = booksApiCalls + 1;
+            warehouses = detailResp.get("item").get("warehouses");
+            warehouseStr = "";
+            for each  wh in warehouses
+            {
+                whStock = wh.get("warehouse_stock_on_hand").toDecimal();
+                if(whStock != 0.0)
+                {
+                    whName = wh.get("warehouse_name");
+                    if(warehouseStr != "")
+                    {
+                        warehouseStr = warehouseStr + ", ";
+                    }
+                    warehouseStr = warehouseStr + whName;
+                }
+            }
+            binStr = "";
+            for each  sw in storageWarehouses
+            {
+                swId = sw.get("id");
+                swName = sw.get("name");
+                isEnabled = false;
+                for each  wh in warehouses
+                {
+                    if(wh.get("warehouse_id").toString() == swId)
+                    {
+                        if(wh.get("is_storage_location_enabled") == true)
+                        {
+                            isEnabled = true;
+                        }
+                    }
+                }
+                if(isEnabled)
+                {
+                    binUrl = "https://www.zohoapis.com/books/v3/settings/warehouses/" + swId + "/storagelocations?organization_id=" + orgId + "&item_id=" + itemId;
+                    binResp = invokeurl
+                    [
+                        url :binUrl
+                        type :GET
+                        connection:"zoho_books"
+                    ];
+                    booksApiCalls = booksApiCalls + 1;
+                    bins = binResp.get("storage_locations");
+                    realBins = List();
+                    for each  b in bins
+                    {
+                        bName = b.get("name");
+                        if(bName != "Receiving Area" && bName != "Package Area" && bName != "Default Area")
+                        {
+                            realBins.add(bName);
+                        }
+                    }
+                    if(binStr != "")
+                    {
+                        binStr = binStr + " | ";
+                    }
+                    if(realBins.size() > 0)
+                    {
+                        binStr = binStr + swName + ": " + realBins.toString(",");
+                    }
+                    else
+                    {
+                        binStr = binStr + swName + ": Map Bins";
+                    }
+                }
+            }
+            categoryName = ifnull(item.get("category_name"),"");
+            existingRecords = Items[ID1 == itemId];
+            if(existingRecords.count() > 0)
+            {
+                for each  rec in existingRecords
+                {
+                    rec.category=categoryName;
+                    rec.Warehouse=warehouseStr;
+                    rec.Bin_location=binStr;
+                    break;
+                }
+                updatedCount = updatedCount + 1;
+                info "Updated: " + itemName;
+            }
+            else
+            {
+                info "Not found in Creator: " + itemName;
+            }
+        }            catch (e)
+        {
+            info "Error: " + itemName + " - " + e;
+            errorCount = errorCount + 1;
+        }
+    }
+    hasMorePage = listResp.get("page_context").get("has_more_page");
+    if(hasMorePage == false)
+    {
+        break;
+    }
+}
+info "SYNC COMPLETE - Checked: " + totalChecked + " Updated: " + updatedCount + " Errors: " + errorCount + " API calls: " + booksApiCalls;

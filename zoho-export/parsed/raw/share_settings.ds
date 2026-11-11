@@ -1,0 +1,5364 @@
+
+			"Read"
+			{
+				name = "Read"
+				type = Users_Permissions
+				permissions = {Chat:false, Predefined:false, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "This profile will have read permission for all components\n"
+				ModulePermissions
+				{
+					Field_Service_Site_Visit_Form
+					{
+						allFieldsVisible= true 
+					}
+					Customer
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Customers={"View"}
+						}
+					}
+					Shipment_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Pick1
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_1
+					{
+						allFieldsVisible= true 
+					}
+					PR_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_2
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Pre_Order_FF
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pre_Order1_Report={"View"}
+						}
+					}
+					QC_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Evidence_Photos
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Order_Form
+					{
+						allFieldsVisible= true 
+					}
+					Suppliers
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Suppliers={"View"}
+						}
+					}
+					PO_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Service_Request1
+					{
+						allFieldsVisible= true 
+					}
+					Pack_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Transfer_Warehouse
+					{
+						allFieldsVisible= true 
+					}
+					Items
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Items={"View"}
+						}
+					}
+					Tony_Fan_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Pack
+					{
+						allFieldsVisible= true 
+					}
+					Shipments
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Shipments={"View"}
+						}
+					}
+					Fenteng_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Fulfillment
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Inquiries={"View","Edit","Delete"}
+						}
+					}
+					Tony_Fan_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					DelQ_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Readiness_Gate
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting
+					{
+						allFieldsVisible= true 
+					}
+					PreOrder_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Order
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Purchase_Orders={"View"}
+						}
+					}
+					PR_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Receiving_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					App_Notifications
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							App_Notifications_Report={"View","Edit"}
+						}
+					}
+					Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					RR_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					Delivery_Scheduling
+					{
+						allFieldsVisible= true 
+					}
+					Warehouse_Request
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					PR_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Package_Shipments
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Request1
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Purchase_Request={"View"}
+						}
+					}
+					Projects
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Receiving_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan1
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_ID_Counter
+					{
+						allFieldsVisible= true 
+					}
+					Field_Work
+					{
+						allFieldsVisible= true 
+					}
+					RR_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Exceptions
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exceptions_Report={"View"}
+						}
+					}
+					Fenteng_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Policy_Settings
+					{
+						allFieldsVisible= true 
+					}
+					OrderAgg_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_form1_Report={"View"}
+						}
+					}
+					Pick_Up_Request_Form
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					SO_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Checker_Checklist
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Qc_Reports1={"View"}
+						}
+					}
+					Receiving
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Report={"View"}
+						}
+					}
+					Exception_Control_Media
+					{
+						allFieldsVisible= true 
+					}
+					Crate_Checklist
+					{
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Crates={"View"}
+						}
+					}
+					ExceptionControl_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Site_Visit_Photos
+					{
+						allFieldsVisible= true 
+					}
+					Daily_Team_Availability
+					{
+						allFieldsVisible= true 
+					}
+					Pick_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Order_Aggregation1
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Returns_Form
+					{
+						allFieldsVisible= true 
+					}
+					Schedule_Test_Settings
+					{
+						allFieldsVisible= true 
+					}
+					Service_Appointment_Form
+					{
+						allFieldsVisible= true 
+					}
+					DTA_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Control1
+					{
+						allFieldsVisible= true 
+					}
+					PO_Messages
+					{
+						allFieldsVisible= true 
+					}
+					ReadinessGate_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Exception_Queue
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Order1
+					{
+						enabled = tab
+					}
+					Purchase_Request
+					{
+						enabled = tab
+					}
+				}
+			}
+			"Write"
+			{
+				name = "Write"
+				type = Users_Permissions
+				permissions = {Chat:false, Predefined:false, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "This profile will have write permission for all components\n"
+				ModulePermissions
+				{
+					Field_Service_Site_Visit_Form
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Field_Service_Site_Visit_Form_Report={"View","Edit","Delete"}
+						}
+					}
+					Customer
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Customers={"View","Edit","Delete"}
+						}
+					}
+					Shipment_Timeline
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Timeline_Report={"View","Edit","Delete"}
+						}
+					}
+					Pick1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pick1_Report={"View","Edit","Delete"}
+						}
+					}
+					Supplier_1
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supplier_1_Report={"View","Edit","Delete"}
+						}
+					}
+					PR_Timeline
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PR_Timeline_Report={"View","Edit","Delete"}
+						}
+					}
+					Supplier_2
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supplier_2_Report={"View","Edit","Delete"}
+						}
+					}
+					Inquiry_Internal_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Internal_Messages_Report={"View","Edit","Delete"}
+						}
+					}
+					Pre_Order_FF
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pre_Order1_Report={"View","Edit","Delete"}
+						}
+					}
+					QC_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							QC_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					Evidence_Photos
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Evidence_Photos={"View","Edit","Delete"}
+						}
+					}
+					Exception_Timeline
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Timeline_Report={"View","Edit","Delete"}
+						}
+					}
+					Shipment_Order_Form
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+					}
+					Suppliers
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Suppliers={"View","Edit","Delete"}
+						}
+					}
+					PO_Internal_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Internal_Messages_Report={"View","Edit","Delete"}
+						}
+					}
+					Service_Request1
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Service_Request={"View","Edit","Delete"}
+						}
+					}
+					Pack_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pack_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					Transfer_Warehouse
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Transfer_Warehouse_Report={"View","Edit","Delete"}
+						}
+					}
+					Items
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Items={"View","Edit","Delete"}
+						}
+					}
+					Tony_Fan_Replacement_Request
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Replacement_Request_Report={"View","Edit","Delete"}
+						}
+					}
+					Tony_Fan_Purchase_Request
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Request_Report={"View","Edit","Delete"}
+						}
+					}
+					Pack
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pack_Report={"View","Edit","Delete"}
+						}
+					}
+					Shipments
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Groupings={"View","Edit","Delete"}
+							All_Shipments={"View","Edit","Delete"}
+						}
+					}
+					Fenteng_Shipment
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Shipment_Report={"View","Edit","Delete"}
+						}
+					}
+					Sales_Order_Fulfillment
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_Fulfillment_Report={"View","Edit","Delete"}
+						}
+					}
+					Inquiry_Form
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supp_1_Portal={"View","Edit","Delete"}
+							Quote_Groups={"View","Edit","Delete"}
+							All_Inquiries={"View","Edit","Delete"}
+							Timeline_History={"View","Edit","Delete"}
+						}
+					}
+					SOF_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SOF_Internal_Messages_Report={"View","Edit","Delete"}
+						}
+					}
+					Tony_Fan_Purchase_Order
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Order_Report={"View","Edit","Delete"}
+						}
+					}
+					DelQ_Timeline
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DelQ_Timeline_Report={"View","Edit","Delete"}
+						}
+					}
+					SOF_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SOF_Timeline_Report={"View","Edit","Delete"}
+						}
+					}
+					Sales_Order_Readiness_Gate
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_Readiness_Gate_Report={"View","Edit","Delete"}
+						}
+					}
+					Fenteng_Lighting
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Report={"View","Edit","Delete"}
+						}
+					}
+					PreOrder_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PreOrder_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					Purchase_Order
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Purchase_Orders={"View","Edit","Delete"}
+						}
+					}
+					PR_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PR_Messages={"View","Edit","Delete"}
+						}
+					}
+					Receiving_Timeline
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Timeline_Report={"View","Edit","Delete"}
+						}
+					}
+					App_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							App_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					Replacement_Request
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Replacement_Request_Report={"View","Edit","Delete"}
+						}
+					}
+					RR_Timeline
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Timeline_Report={"View","Edit","Delete"}
+						}
+					}
+					Fenteng_Lighting_Purchase_Order
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Purchase_Order_Report={"View","Edit","Delete"}
+						}
+					}
+					Delivery_Scheduling
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+					}
+					Warehouse_Request
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Warehouse_Requests={"View","Edit","Delete"}
+						}
+					}
+					Inquiry_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Inquiry_Messages={"View","Edit","Delete"}
+						}
+					}
+					Tony_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					PR_Internal_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PR_Internal_Messages_Report={"View","Edit","Delete"}
+						}
+					}
+					Package_Shipments
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Package_Shipments_Report={"View","Edit","Delete"}
+						}
+					}
+					Purchase_Request1
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Grouping={"View","Edit","Delete"}
+							All_Purchase_Request={"View","Edit","Delete"}
+						}
+					}
+					Projects
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Projects_Report={"View","Edit","Delete"}
+						}
+					}
+					Tony_Shipment
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Shipment_Report={"View","Edit","Delete"}
+						}
+					}
+					Receiving_Internal_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Internal_Messages_Report={"View","Edit","Delete"}
+						}
+					}
+					Fenteng_Lighting_Replacement_Request
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Replacement_Request_Report={"View","Edit","Delete"}
+						}
+					}
+					Tony_Fan1
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan1_Report={"View","Edit","Delete"}
+						}
+					}
+					Shipment_ID_Counter
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_ID_Counter_Report={"View","Edit","Delete"}
+						}
+					}
+					Field_Work
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Field_Work_Report={"View","Edit","Delete"}
+						}
+					}
+					RR_Internal_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Internal_Messages_Report={"View","Edit","Delete"}
+						}
+					}
+					Exceptions
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exceptions_Report={"View","Edit","Delete"}
+						}
+					}
+					Fenteng_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					Policy_Settings
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Policy_Settings={"View","Edit","Delete"}
+						}
+					}
+					OrderAgg_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							OrderAgg_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					Sales_Order
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_form1_Report={"View","Edit","Delete"}
+						}
+					}
+					Pick_Up_Request_Form
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+					}
+					Exception_Internal_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Internal_Messages_Report={"View","Edit","Delete"}
+						}
+					}
+					SO_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SO_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					Fenteng_Lighting_Purchase_Request
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Purchase_Request_Report={"View","Edit","Delete"}
+						}
+					}
+					Checker_Checklist
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Qc_Reports1={"View","Edit","Delete"}
+						}
+					}
+					Receiving
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Group={"View","Edit","Delete"}
+							Receiving_Report={"View","Edit","Delete"}
+						}
+					}
+					Exception_Control_Media
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Media_Report={"View","Edit","Delete"}
+						}
+					}
+					Crate_Checklist
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Crates={"View","Edit","Delete"}
+						}
+					}
+					ExceptionControl_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ExceptionControl_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					Site_Visit_Photos
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Site_Visit_Photos={"View","Edit","Delete"}
+						}
+					}
+					Daily_Team_Availability
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Daily_Team_Availability={"View","Edit","Delete"}
+						}
+					}
+					Pick_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pick_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					Order_Aggregation1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Order_Aggregation1_Report={"View","Edit","Delete"}
+						}
+					}
+					Shipment_Internal_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Internal_Messages_Report={"View","Edit","Delete"}
+						}
+					}
+					Inquiry_Timeline
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Timeline_Report={"View","Edit","Delete"}
+						}
+					}
+					Sales_Returns_Form
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Returns_Form_Report={"View","Edit","Delete"}
+						}
+					}
+					Schedule_Test_Settings
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Schedule_Test_Settings_Report={"View","Edit","Delete"}
+						}
+					}
+					Service_Appointment_Form
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Service_Appointment={"View","Edit","Delete"}
+						}
+					}
+					DTA_Timeline
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DTA_Timeline_Report={"View","Edit","Delete"}
+						}
+					}
+					Exception_Control1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Report={"View","Edit","Delete"}
+						}
+					}
+					PO_Messages
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PO_Messages={"View","Edit","Delete"}
+						}
+					}
+					ReadinessGate_Notifications
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ReadinessGate_Notifications_Report={"View","Edit","Delete"}
+						}
+					}
+					DMS_Exception_Queue
+					{
+						enabled= Viewall,Modifyall,Import,Export 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_DMS_Exception_Queue={"View","Edit","Delete"}
+						}
+					}
+					SOR
+					{
+						enabled = tab
+					}
+					Pre_Order2
+					{
+						enabled = tab
+					}
+					Pick2
+					{
+						enabled = tab
+					}
+					Pack1
+					{
+						enabled = tab
+					}
+					Exception_Control2
+					{
+						enabled = tab
+					}
+					KANBAN
+					{
+						enabled = tab
+					}
+					Transfer_Item
+					{
+						enabled = tab
+					}
+				}
+			}
+			"Procurement"
+			{
+				name = "Procurement"
+				type = Users_Permissions
+				permissions = {Chat:false, Predefined:false, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "Purchasing Department\n"
+				ModulePermissions
+				{
+					Field_Service_Site_Visit_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Field_Service_Site_Visit_Form_Report={"View","Edit"}
+						}
+					}
+					Customer
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Customers={"View","Edit"}
+						}
+					}
+					Shipment_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Timeline_Report={"View","Edit"}
+						}
+					}
+					Pick1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pick1_Report={"View","Edit"}
+						}
+					}
+					Supplier_1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supplier_1_Report={"View","Edit"}
+						}
+					}
+					PR_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PR_Timeline_Report={"View","Edit"}
+						}
+					}
+					Supplier_2
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supplier_2_Report={"View","Edit"}
+						}
+					}
+					Inquiry_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Pre_Order_FF
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pre_Order1_Report={"View","Edit"}
+						}
+					}
+					QC_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							QC_Notifications_Report={"View","Edit"}
+						}
+					}
+					Evidence_Photos
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Evidence_Photos={"View","Edit","Delete"}
+						}
+					}
+					Exception_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Timeline_Report={"View","Edit"}
+						}
+					}
+					Shipment_Order_Form
+					{
+						enabled= Create,Tab 
+						allFieldsVisible= true 
+					}
+					Suppliers
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Suppliers={"View","Edit"}
+						}
+					}
+					PO_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Service_Request1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Service_Request={"View","Edit"}
+						}
+					}
+					Pack_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pack_Notifications_Report={"View","Edit"}
+						}
+					}
+					Transfer_Warehouse
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Transfer_Warehouse_Report={"View","Edit"}
+						}
+					}
+					Items
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Items={"View","Edit"}
+						}
+					}
+					Tony_Fan_Replacement_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Replacement_Request_Report={"View","Edit"}
+						}
+					}
+					Tony_Fan_Purchase_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Request_Report={"View","Edit"}
+						}
+					}
+					Pack
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pack_Report={"View","Edit"}
+						}
+					}
+					Shipments
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Groupings={"View","Edit"}
+							All_Shipments={"View","Edit"}
+						}
+					}
+					Fenteng_Shipment
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Shipment_Report={"View","Edit"}
+						}
+					}
+					Sales_Order_Fulfillment
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_Fulfillment_Report={"View","Edit"}
+						}
+					}
+					Inquiry_Form
+					{
+						enabled= Create,Viewall,Modifyall,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supp_1_Portal={"View","Edit"}
+							Quote_Groups={"View","Edit"}
+							All_Inquiries={"View","Edit"}
+							Timeline_History={"View","Edit"}
+						}
+					}
+					SOF_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SOF_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Tony_Fan_Purchase_Order
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Order_Report={"View","Edit"}
+						}
+					}
+					DelQ_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DelQ_Timeline_Report={"View","Edit"}
+						}
+					}
+					SOF_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SOF_Timeline_Report={"View","Edit"}
+						}
+					}
+					Sales_Order_Readiness_Gate
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_Readiness_Gate_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Report={"View","Edit"}
+						}
+					}
+					PreOrder_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PreOrder_Notifications_Report={"View","Edit"}
+						}
+					}
+					Purchase_Order
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Purchase_Orders={"View","Edit"}
+						}
+					}
+					PR_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PR_Messages={"View","Edit"}
+						}
+					}
+					Receiving_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Timeline_Report={"View","Edit"}
+						}
+					}
+					App_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							App_Notifications_Report={"View","Edit"}
+						}
+					}
+					Replacement_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Replacement_Request_Report={"View","Edit"}
+						}
+					}
+					RR_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Timeline_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting_Purchase_Order
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Purchase_Order_Report={"View","Edit"}
+						}
+					}
+					Delivery_Scheduling
+					{
+						enabled= Create,Tab 
+						allFieldsVisible= true 
+					}
+					Warehouse_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Warehouse_Requests={"View","Edit"}
+						}
+					}
+					Inquiry_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Inquiry_Messages={"View","Edit"}
+						}
+					}
+					Tony_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Notifications_Report={"View","Edit"}
+						}
+					}
+					PR_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PR_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Package_Shipments
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Package_Shipments_Report={"View","Edit"}
+						}
+					}
+					Purchase_Request1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Grouping={"View","Edit"}
+							All_Purchase_Request={"View","Edit"}
+						}
+					}
+					Projects
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Projects_Report={"View","Edit"}
+						}
+					}
+					Tony_Shipment
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Shipment_Report={"View","Edit"}
+						}
+					}
+					Receiving_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting_Replacement_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Replacement_Request_Report={"View","Edit"}
+						}
+					}
+					Tony_Fan1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan1_Report={"View","Edit"}
+						}
+					}
+					Shipment_ID_Counter
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_ID_Counter_Report={"View","Edit"}
+						}
+					}
+					Field_Work
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Field_Work_Report={"View","Edit"}
+						}
+					}
+					RR_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Exceptions
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exceptions_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Notifications_Report={"View","Edit"}
+						}
+					}
+					Policy_Settings
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Policy_Settings={"View","Edit"}
+						}
+					}
+					OrderAgg_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							OrderAgg_Notifications_Report={"View","Edit"}
+						}
+					}
+					Sales_Order
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_form1_Report={"View","Edit"}
+						}
+					}
+					Pick_Up_Request_Form
+					{
+						enabled= Create,Tab 
+						allFieldsVisible= true 
+					}
+					Exception_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					SO_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SO_Notifications_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting_Purchase_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Purchase_Request_Report={"View","Edit"}
+						}
+					}
+					Checker_Checklist
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Qc_Reports1={"View","Edit"}
+						}
+					}
+					Receiving
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Group={"View","Edit"}
+							Receiving_Report={"View","Edit"}
+						}
+					}
+					DMS_Schedule_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DMS_Schedule_Request_Report={"View","Edit"}
+						}
+					}
+					Exception_Control_Media
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Media_Report={"View","Edit"}
+						}
+					}
+					Crate_Checklist
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Crates={"View","Edit"}
+						}
+					}
+					ExceptionControl_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ExceptionControl_Notifications_Report={"View","Edit"}
+						}
+					}
+					Site_Visit_Photos
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Site_Visit_Photos={"View","Edit"}
+						}
+					}
+					Daily_Team_Availability
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Daily_Team_Availability={"View","Edit"}
+						}
+					}
+					DMS_Schedule_Request_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DMS_Schedule_Request_Messages_Report={"View","Edit"}
+						}
+					}
+					Pick_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pick_Notifications_Report={"View","Edit"}
+						}
+					}
+					Order_Aggregation1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Order_Aggregation1_Report={"View","Edit"}
+						}
+					}
+					Shipment_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Inquiry_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Timeline_Report={"View","Edit"}
+						}
+					}
+					Sales_Returns_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Returns_Form_Report={"View","Edit"}
+						}
+					}
+					Schedule_Test_Settings
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Schedule_Test_Settings_Report={"View","Edit"}
+						}
+					}
+					Service_Appointment_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Service_Appointment={"View","Edit"}
+						}
+					}
+					DTA_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DTA_Timeline_Report={"View","Edit"}
+						}
+					}
+					Exception_Control1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Report={"View","Edit"}
+						}
+					}
+					PO_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PO_Messages={"View","Edit"}
+						}
+					}
+					ReadinessGate_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ReadinessGate_Notifications_Report={"View","Edit"}
+						}
+					}
+					DMS_Exception_Queue
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_DMS_Exception_Queue={"View","Edit"}
+						}
+					}
+					Purchase_Order1
+					{
+						enabled = tab
+					}
+					Purchase_Request
+					{
+						enabled = tab
+					}
+					Inquiry
+					{
+						enabled = tab
+					}
+					Tony_Fan_Inquiries
+					{
+						enabled = tab
+					}
+					Tony_Fan_PR
+					{
+						enabled = tab
+					}
+					Fenteng_Lighting_Inquiries
+					{
+						enabled = tab
+					}
+					Fenteng_Lighting_PR
+					{
+						enabled = tab
+					}
+					Tony_Fan_PO
+					{
+						enabled = tab
+					}
+					Fenteng_Lighting_PO
+					{
+						enabled = tab
+					}
+					Shipments1
+					{
+						enabled = tab
+					}
+					Receiving1
+					{
+						enabled = tab
+					}
+					Replacement_Request1
+					{
+						enabled = tab
+					}
+					Exceptions1
+					{
+						enabled = tab
+					}
+					Replacement_Request_Tony
+					{
+						enabled = tab
+					}
+					Replacement_Request_Fenteng
+					{
+						enabled = tab
+					}
+					Tony_Shipments
+					{
+						enabled = tab
+					}
+					Fenteng_Shipments
+					{
+						enabled = tab
+					}
+				}
+			}
+			"Fulfillment"
+			{
+				name = "Fulfillment"
+				type = Users_Permissions
+				permissions = {Chat:false, Predefined:false, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "Fulfillment Profile\n"
+				ModulePermissions
+				{
+					Field_Service_Site_Visit_Form
+					{
+						allFieldsVisible= true 
+					}
+					Customer
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Customers={"View","Edit"}
+						}
+					}
+					Shipment_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Pick1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pick1_Report={"View","Edit"}
+						}
+					}
+					Supplier_1
+					{
+						allFieldsVisible= true 
+					}
+					PR_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_2
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Pre_Order_FF
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pre_Order1_Report={"View","Edit"}
+						}
+					}
+					QC_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							QC_Notifications_Report={"View","Edit"}
+						}
+					}
+					Evidence_Photos
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Evidence_Photos={"View","Edit"}
+						}
+					}
+					Exception_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Timeline_Report={"View","Edit"}
+						}
+					}
+					Shipment_Order_Form
+					{
+						allFieldsVisible= true 
+					}
+					Suppliers
+					{
+						allFieldsVisible= true 
+					}
+					PO_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Service_Request1
+					{
+						allFieldsVisible= true 
+					}
+					Pack_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pack_Notifications_Report={"View","Edit"}
+						}
+					}
+					Transfer_Warehouse
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm,create_new_report 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Transfer_Warehouse_Report={"View","Edit"}
+						}
+					}
+					Items
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Items={"View","Edit"}
+						}
+					}
+					Tony_Fan_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Pack
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pack_Report={"View","Edit"}
+						}
+					}
+					Shipments
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Fulfillment
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_Fulfillment_Report={"View","Edit","Delete"}
+						}
+					}
+					Inquiry_Form
+					{
+						allFieldsVisible= true 
+					}
+					SOF_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SOF_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Tony_Fan_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					DelQ_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					SOF_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SOF_Timeline_Report={"View","Edit"}
+						}
+					}
+					Sales_Order_Readiness_Gate
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_Readiness_Gate_Report={"View","Edit","Delete"}
+						}
+					}
+					Fenteng_Lighting
+					{
+						allFieldsVisible= true 
+					}
+					PreOrder_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PreOrder_Notifications_Report={"View","Edit"}
+						}
+					}
+					Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					PR_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Receiving_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					App_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							App_Notifications_Report={"View","Edit"}
+						}
+					}
+					Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					RR_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					Delivery_Scheduling
+					{
+						allFieldsVisible= true 
+					}
+					Warehouse_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Warehouse_Requests={"View","Edit"}
+						}
+					}
+					Inquiry_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					PR_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Package_Shipments
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Package_Shipments_Report={"View","Edit"}
+						}
+					}
+					Purchase_Request1
+					{
+						allFieldsVisible= true 
+					}
+					Projects
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Receiving_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan1
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_ID_Counter
+					{
+						allFieldsVisible= true 
+					}
+					Field_Work
+					{
+						allFieldsVisible= true 
+					}
+					RR_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Exceptions
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exceptions_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Policy_Settings
+					{
+						allFieldsVisible= true 
+					}
+					OrderAgg_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							OrderAgg_Notifications_Report={"View","Edit"}
+						}
+					}
+					Sales_Order
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_form1_Report={"View","Edit","Delete"}
+						}
+					}
+					Pick_Up_Request_Form
+					{
+						enabled= Create,Tab 
+						allFieldsVisible= true 
+					}
+					Exception_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					SO_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SO_Notifications_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Checker_Checklist
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Qc_Reports1={"View","Edit"}
+						}
+					}
+					Receiving
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Schedule_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DMS_Schedule_Request_Report={"View","Edit","Delete"}
+						}
+					}
+					Exception_Control_Media
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Media_Report={"View","Edit"}
+						}
+					}
+					Crate_Checklist
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Crates={"View","Edit"}
+						}
+					}
+					ExceptionControl_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ExceptionControl_Notifications_Report={"View","Edit"}
+						}
+					}
+					Site_Visit_Photos
+					{
+						allFieldsVisible= true 
+					}
+					Daily_Team_Availability
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Schedule_Request_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Pick_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pick_Notifications_Report={"View","Edit"}
+						}
+					}
+					Order_Aggregation1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm,create_new_report 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Order_Aggregation1_Report={"View","Edit"}
+						}
+					}
+					Shipment_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Returns_Form
+					{
+						allFieldsVisible= true 
+					}
+					Schedule_Test_Settings
+					{
+						allFieldsVisible= true 
+					}
+					Service_Appointment_Form
+					{
+						allFieldsVisible= true 
+					}
+					DTA_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Control1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Report={"View","Edit"}
+						}
+					}
+					PO_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PO_Messages={"View","Edit"}
+						}
+					}
+					ReadinessGate_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ReadinessGate_Notifications_Report={"View","Edit"}
+						}
+					}
+					DMS_Exception_Queue
+					{
+						allFieldsVisible= true 
+					}
+					SOR
+					{
+						enabled = tab
+					}
+					Pre_Order2
+					{
+						enabled = tab
+					}
+					Order_Readiness1
+					{
+						enabled = tab
+					}
+					Pick2
+					{
+						enabled = tab
+					}
+					Pack1
+					{
+						enabled = tab
+					}
+					Quality_Check
+					{
+						enabled = tab
+					}
+					Exception_Control2
+					{
+						enabled = tab
+					}
+					Crate1
+					{
+						enabled = tab
+					}
+					Order_Aggregation2
+					{
+						enabled = tab
+					}
+					KANBAN
+					{
+						enabled = tab
+					}
+					Transfer_Item
+					{
+						enabled = tab
+					}
+				}
+			}
+			"Administrator"
+			{
+				name = "Administrator"
+				type = Users_Permissions
+				permissions = {Chat:true, Predefined:true, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "This profile will have all the permissions.\n"
+			}
+			"Tony Portal"
+			{
+				name = "Tony Portal"
+				type = Users_Permissions
+				permissions = {Chat:false, Predefined:false, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "Tony Portal Profile\n"
+				ModulePermissions
+				{
+					Field_Service_Site_Visit_Form
+					{
+						allFieldsVisible= true 
+					}
+					Customer
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Timeline_Report={"View","Edit"}
+						}
+					}
+					Pick1
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_1
+					{
+						allFieldsVisible= true 
+					}
+					PR_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_2
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supplier_2_Report={"View","Edit"}
+						}
+					}
+					Inquiry_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Pre_Order_FF
+					{
+						allFieldsVisible= true 
+					}
+					QC_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Evidence_Photos
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Evidence_Photos={"View","Edit"}
+						}
+					}
+					Exception_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Timeline_Report={"View","Edit"}
+						}
+					}
+					Shipment_Order_Form
+					{
+						enabled= Create,Tab 
+						allFieldsVisible= true 
+					}
+					Suppliers
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Suppliers={"View","Edit"}
+						}
+					}
+					PO_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Service_Request1
+					{
+						allFieldsVisible= true 
+					}
+					Pack_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Transfer_Warehouse
+					{
+						allFieldsVisible= true 
+					}
+					Items
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Items={"View","Edit"}
+						}
+					}
+					Tony_Fan_Replacement_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Replacement_Request_Report={"View","Edit"}
+						}
+					}
+					Tony_Fan_Purchase_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Request_Report={"View","Edit"}
+						}
+					}
+					Pack
+					{
+						allFieldsVisible= true 
+					}
+					Shipments
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Groupings={"View","Edit"}
+							All_Shipments={"View","Edit"}
+						}
+					}
+					Fenteng_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Fulfillment
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supp_1_Portal={"View","Edit"}
+							Quote_Groups={"View","Edit"}
+							All_Inquiries={"View","Edit"}
+							Timeline_History={"View","Edit"}
+						}
+					}
+					SOF_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Purchase_Order
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Order_Report={"View","Edit"}
+						}
+					}
+					DelQ_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					SOF_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Readiness_Gate
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting
+					{
+						allFieldsVisible= true 
+					}
+					PreOrder_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Order
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Purchase_Orders={"View","Edit"}
+						}
+					}
+					PR_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PR_Messages={"View","Edit"}
+						}
+					}
+					Receiving_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Timeline_Report={"View","Edit"}
+						}
+					}
+					App_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							App_Notifications_Report={"View","Edit"}
+						}
+					}
+					Replacement_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Replacement_Request_Report={"View","Edit"}
+						}
+					}
+					RR_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Timeline_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					Delivery_Scheduling
+					{
+						allFieldsVisible= true 
+					}
+					Warehouse_Request
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Inquiry_Messages={"View","Edit"}
+						}
+					}
+					Tony_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Notifications_Report={"View","Edit"}
+						}
+					}
+					PR_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PR_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Package_Shipments
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Request1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Grouping={"View","Edit"}
+							All_Purchase_Request={"View","Edit"}
+						}
+					}
+					Projects
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Shipment
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Shipment_Report={"View","Edit"}
+						}
+					}
+					Receiving_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan1_Report={"View","Edit"}
+						}
+					}
+					Shipment_ID_Counter
+					{
+						allFieldsVisible= true 
+					}
+					Field_Work
+					{
+						allFieldsVisible= true 
+					}
+					RR_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Exceptions
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exceptions_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Policy_Settings
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Policy_Settings={"View","Edit"}
+						}
+					}
+					OrderAgg_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order
+					{
+						allFieldsVisible= true 
+					}
+					Pick_Up_Request_Form
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					SO_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Checker_Checklist
+					{
+						allFieldsVisible= true 
+					}
+					Receiving
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Schedule_Request
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Control_Media
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Media_Report={"View","Edit"}
+						}
+					}
+					Crate_Checklist
+					{
+						allFieldsVisible= true 
+					}
+					ExceptionControl_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ExceptionControl_Notifications_Report={"View","Edit"}
+						}
+					}
+					Site_Visit_Photos
+					{
+						allFieldsVisible= true 
+					}
+					Daily_Team_Availability
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Schedule_Request_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Pick_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Order_Aggregation1
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Inquiry_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Timeline_Report={"View","Edit"}
+						}
+					}
+					Sales_Returns_Form
+					{
+						allFieldsVisible= true 
+					}
+					Schedule_Test_Settings
+					{
+						allFieldsVisible= true 
+					}
+					Service_Appointment_Form
+					{
+						allFieldsVisible= true 
+					}
+					DTA_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Control1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Report={"View","Edit"}
+						}
+					}
+					PO_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PO_Messages={"View","Edit"}
+						}
+					}
+					ReadinessGate_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Exception_Queue
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Order1
+					{
+						enabled = tab
+					}
+					Purchase_Request
+					{
+						enabled = tab
+					}
+					Tony_Fan_Inquiries
+					{
+						enabled = tab
+					}
+					Replacement_Request1
+					{
+						enabled = tab
+					}
+					Tony_Shipments
+					{
+						enabled = tab
+					}
+				}
+			}
+			"Sales"
+			{
+				name = "Sales"
+				type = Users_Permissions
+				permissions = {Chat:false, Predefined:false, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "Sales Profile\n"
+				ModulePermissions
+				{
+					Field_Service_Site_Visit_Form
+					{
+						allFieldsVisible= true 
+					}
+					Customer
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Pick1
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_1
+					{
+						allFieldsVisible= true 
+					}
+					PR_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_2
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Pre_Order_FF
+					{
+						allFieldsVisible= true 
+					}
+					QC_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Evidence_Photos
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Order_Form
+					{
+						allFieldsVisible= true 
+					}
+					Suppliers
+					{
+						allFieldsVisible= true 
+					}
+					PO_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Service_Request1
+					{
+						allFieldsVisible= true 
+					}
+					Pack_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Transfer_Warehouse
+					{
+						allFieldsVisible= true 
+					}
+					Items
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Items={"View","Edit"}
+						}
+					}
+					Tony_Fan_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Pack
+					{
+						allFieldsVisible= true 
+					}
+					Shipments
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Fulfillment
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supp_1_Portal={"View","Edit"}
+							Quote_Groups={"View","Edit"}
+							All_Inquiries={"View","Edit"}
+							Timeline_History={"View","Edit"}
+						}
+					}
+					SOF_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					DelQ_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					SOF_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Readiness_Gate
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting
+					{
+						allFieldsVisible= true 
+					}
+					PreOrder_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					PR_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Receiving_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					App_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					RR_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					Delivery_Scheduling
+					{
+						allFieldsVisible= true 
+					}
+					Warehouse_Request
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Inquiry_Messages={"View","Edit"}
+						}
+					}
+					Tony_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					PR_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Package_Shipments
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Request1
+					{
+						allFieldsVisible= true 
+					}
+					Projects
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Receiving_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan1
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_ID_Counter
+					{
+						allFieldsVisible= true 
+					}
+					Field_Work
+					{
+						allFieldsVisible= true 
+					}
+					RR_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Exceptions
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Policy_Settings
+					{
+						allFieldsVisible= true 
+					}
+					OrderAgg_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order
+					{
+						allFieldsVisible= true 
+					}
+					Pick_Up_Request_Form
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					SO_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Checker_Checklist
+					{
+						allFieldsVisible= true 
+					}
+					Receiving
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Schedule_Request
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Control_Media
+					{
+						allFieldsVisible= true 
+					}
+					Crate_Checklist
+					{
+						allFieldsVisible= true 
+					}
+					ExceptionControl_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Site_Visit_Photos
+					{
+						allFieldsVisible= true 
+					}
+					Daily_Team_Availability
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Schedule_Request_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Pick_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Order_Aggregation1
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Timeline_Report={"View","Edit"}
+						}
+					}
+					Sales_Returns_Form
+					{
+						allFieldsVisible= true 
+					}
+					Schedule_Test_Settings
+					{
+						allFieldsVisible= true 
+					}
+					Service_Appointment_Form
+					{
+						allFieldsVisible= true 
+					}
+					DTA_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Control1
+					{
+						allFieldsVisible= true 
+					}
+					PO_Messages
+					{
+						allFieldsVisible= true 
+					}
+					ReadinessGate_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Exception_Queue
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry
+					{
+						enabled = tab
+					}
+					Fenteng_Lighting_Inquiries
+					{
+						enabled = tab
+					}
+				}
+			}
+			"Developer"
+			{
+				name = "Developer"
+				type = Developer
+				permissions = {Chat:false, Predefined:true, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "Developer Profile\n"
+			}
+			"DMS_Full_Edit"
+			{
+				name = "DMS_Full_Edit"
+				type = Users_Permissions
+				permissions = {Chat:false, Predefined:false, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "DMS_Full_Edit Profile\n"
+				ModulePermissions
+				{
+					Field_Service_Site_Visit_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Field_Service_Site_Visit_Form_Report={"View","Edit"}
+						}
+					}
+					Customer
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Timeline_Report={"View","Edit"}
+						}
+					}
+					Pick1
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_1
+					{
+						allFieldsVisible= true 
+					}
+					PR_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_2
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Pre_Order_FF
+					{
+						allFieldsVisible= true 
+					}
+					QC_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Evidence_Photos
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Evidence_Photos={"View","Edit"}
+						}
+					}
+					Exception_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Order_Form
+					{
+						enabled= Create,Tab 
+						allFieldsVisible= true 
+					}
+					Suppliers
+					{
+						allFieldsVisible= true 
+					}
+					PO_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Service_Request1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Service_Request={"View","Edit"}
+						}
+					}
+					Pack_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Transfer_Warehouse
+					{
+						allFieldsVisible= true 
+					}
+					Items
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Pack
+					{
+						allFieldsVisible= true 
+					}
+					Shipments
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Fulfillment
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Form
+					{
+						allFieldsVisible= true 
+					}
+					SOF_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					DelQ_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DelQ_Timeline_Report={"View","Edit"}
+						}
+					}
+					SOF_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Readiness_Gate
+					{
+						enabled= Create,Viewall,Modifyall,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_Readiness_Gate_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting
+					{
+						allFieldsVisible= true 
+					}
+					PreOrder_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					PR_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Receiving_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					App_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					RR_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					Delivery_Scheduling
+					{
+						enabled= Create,Tab 
+						allFieldsVisible= true 
+					}
+					Warehouse_Request
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					PR_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Package_Shipments
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Package_Shipments_Report={"View","Edit"}
+						}
+					}
+					Purchase_Request1
+					{
+						allFieldsVisible= true 
+					}
+					Projects
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Receiving_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan1
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_ID_Counter
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_ID_Counter_Report={"View","Edit"}
+						}
+					}
+					Field_Work
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Field_Work_Report={"View","Edit"}
+						}
+					}
+					RR_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Exceptions
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Policy_Settings
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Policy_Settings={"View","Edit","Delete"}
+						}
+					}
+					OrderAgg_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order
+					{
+						allFieldsVisible= true 
+					}
+					Pick_Up_Request_Form
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					SO_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Checker_Checklist
+					{
+						allFieldsVisible= true 
+					}
+					Receiving
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Schedule_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DMS_Schedule_Request_Report={"View","Edit"}
+						}
+					}
+					Exception_Control_Media
+					{
+						allFieldsVisible= true 
+					}
+					Crate_Checklist
+					{
+						allFieldsVisible= true 
+					}
+					ExceptionControl_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Site_Visit_Photos
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Site_Visit_Photos={"View","Edit"}
+						}
+					}
+					Daily_Team_Availability
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Daily_Team_Availability={"View","Edit"}
+						}
+					}
+					DMS_Schedule_Request_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DMS_Schedule_Request_Messages_Report={"View","Edit"}
+						}
+					}
+					Pick_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Order_Aggregation1
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Inquiry_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Returns_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Returns_Form_Report={"View","Edit"}
+						}
+					}
+					Schedule_Test_Settings
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Schedule_Test_Settings_Report={"View","Edit"}
+						}
+					}
+					Service_Appointment_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Service_Appointment={"View","Edit"}
+						}
+					}
+					DTA_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DTA_Timeline_Report={"View","Edit"}
+						}
+					}
+					Exception_Control1
+					{
+						allFieldsVisible= true 
+					}
+					PO_Messages
+					{
+						allFieldsVisible= true 
+					}
+					ReadinessGate_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Exception_Queue
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_DMS_Exception_Queue={"View","Edit"}
+						}
+					}
+					Daily_Team_Availability1
+					{
+						enabled = tab
+					}
+					Delivery_Queue
+					{
+						enabled = tab
+					}
+					DMS_Exception_Queue1
+					{
+						enabled = tab
+					}
+					Delivery_Analytics1
+					{
+						enabled = tab
+					}
+					Ongoing_Service1
+					{
+						enabled = tab
+					}
+					Archived
+					{
+						enabled = tab
+					}
+					Sales_Returns1
+					{
+						enabled = tab
+					}
+					Field_Service_Site_Visits1
+					{
+						enabled = tab
+					}
+					Schedule_Requests
+					{
+						enabled = tab
+					}
+				}
+			}
+			"Customer"
+			{
+				name = "Customer"
+				type = Customer_Portal
+				permissions = {Chat:false, Predefined:false, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "This is the default profile having only add and view permission.\n"
+				ModulePermissions
+				{
+					Field_Service_Site_Visit_Form
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Field_Service_Site_Visit_Form_Report={"View"}
+						}
+					}
+					Customer
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Customers={"View"}
+						}
+					}
+					Shipment_Timeline
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Timeline_Report={"View"}
+						}
+					}
+					Pick1
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pick1_Report={"View"}
+						}
+					}
+					Supplier_1
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supplier_1_Report={"View"}
+						}
+					}
+					PR_Timeline
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PR_Timeline_Report={"View"}
+						}
+					}
+					Supplier_2
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supplier_2_Report={"View"}
+						}
+					}
+					Inquiry_Internal_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Internal_Messages_Report={"View"}
+						}
+					}
+					Pre_Order_FF
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pre_Order1_Report={"View"}
+						}
+					}
+					QC_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							QC_Notifications_Report={"View"}
+						}
+					}
+					Evidence_Photos
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Evidence_Photos={"View"}
+						}
+					}
+					Exception_Timeline
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Timeline_Report={"View"}
+						}
+					}
+					Shipment_Order_Form
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+					}
+					Suppliers
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Suppliers={"View"}
+						}
+					}
+					PO_Internal_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Internal_Messages_Report={"View"}
+						}
+					}
+					Service_Request1
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Service_Request={"View"}
+						}
+					}
+					Pack_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pack_Notifications_Report={"View"}
+						}
+					}
+					Transfer_Warehouse
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Transfer_Warehouse_Report={"View"}
+						}
+					}
+					Items
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Items={"View"}
+						}
+					}
+					Tony_Fan_Replacement_Request
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Replacement_Request_Report={"View"}
+						}
+					}
+					Tony_Fan_Purchase_Request
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Request_Report={"View"}
+						}
+					}
+					Pack
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pack_Report={"View"}
+						}
+					}
+					Shipments
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Groupings={"View"}
+							All_Shipments={"View"}
+						}
+					}
+					Fenteng_Shipment
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Shipment_Report={"View"}
+						}
+					}
+					Sales_Order_Fulfillment
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_Fulfillment_Report={"View"}
+						}
+					}
+					Inquiry_Form
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supp_1_Portal={"View"}
+							Quote_Groups={"View"}
+							All_Inquiries={"View"}
+							Timeline_History={"View"}
+						}
+					}
+					Tony_Fan_Purchase_Order
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Order_Report={"View"}
+						}
+					}
+					DelQ_Timeline
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DelQ_Timeline_Report={"View"}
+						}
+					}
+					Sales_Order_Readiness_Gate
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_Readiness_Gate_Report={"View"}
+						}
+					}
+					Fenteng_Lighting
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Report={"View"}
+						}
+					}
+					PreOrder_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PreOrder_Notifications_Report={"View"}
+						}
+					}
+					Purchase_Order
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Purchase_Orders={"View"}
+						}
+					}
+					PR_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PR_Messages={"View"}
+						}
+					}
+					Receiving_Timeline
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Timeline_Report={"View"}
+						}
+					}
+					App_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							App_Notifications_Report={"View"}
+						}
+					}
+					Replacement_Request
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Replacement_Request_Report={"View"}
+						}
+					}
+					RR_Timeline
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Timeline_Report={"View"}
+						}
+					}
+					Fenteng_Lighting_Purchase_Order
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Purchase_Order_Report={"View"}
+						}
+					}
+					Delivery_Scheduling
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+					}
+					Warehouse_Request
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Warehouse_Requests={"View"}
+						}
+					}
+					Inquiry_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Inquiry_Messages={"View"}
+						}
+					}
+					Tony_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Notifications_Report={"View"}
+						}
+					}
+					PR_Internal_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PR_Internal_Messages_Report={"View"}
+						}
+					}
+					Package_Shipments
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Package_Shipments_Report={"View"}
+						}
+					}
+					Purchase_Request1
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Grouping={"View"}
+							All_Purchase_Request={"View"}
+						}
+					}
+					Projects
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Projects_Report={"View"}
+						}
+					}
+					Tony_Shipment
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Shipment_Report={"View"}
+						}
+					}
+					Receiving_Internal_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Internal_Messages_Report={"View"}
+						}
+					}
+					Fenteng_Lighting_Replacement_Request
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Replacement_Request_Report={"View"}
+						}
+					}
+					Tony_Fan1
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan1_Report={"View"}
+						}
+					}
+					Shipment_ID_Counter
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_ID_Counter_Report={"View"}
+						}
+					}
+					Field_Work
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Field_Work_Report={"View"}
+						}
+					}
+					RR_Internal_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Internal_Messages_Report={"View"}
+						}
+					}
+					Exceptions
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exceptions_Report={"View"}
+						}
+					}
+					Fenteng_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Notifications_Report={"View"}
+						}
+					}
+					Policy_Settings
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Policy_Settings={"View"}
+						}
+					}
+					OrderAgg_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							OrderAgg_Notifications_Report={"View"}
+						}
+					}
+					Sales_Order
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Order_form1_Report={"View"}
+						}
+					}
+					Pick_Up_Request_Form
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+					}
+					Exception_Internal_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Internal_Messages_Report={"View"}
+						}
+					}
+					SO_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							SO_Notifications_Report={"View"}
+						}
+					}
+					Fenteng_Lighting_Purchase_Request
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Fenteng_Lighting_Purchase_Request_Report={"View"}
+						}
+					}
+					Checker_Checklist
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Qc_Reports1={"View"}
+						}
+					}
+					Receiving
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Group={"View"}
+							Receiving_Report={"View"}
+						}
+					}
+					Exception_Control_Media
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Media_Report={"View"}
+						}
+					}
+					Crate_Checklist
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Crates={"View"}
+						}
+					}
+					ExceptionControl_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ExceptionControl_Notifications_Report={"View"}
+						}
+					}
+					Site_Visit_Photos
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Site_Visit_Photos={"View"}
+						}
+					}
+					Daily_Team_Availability
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Daily_Team_Availability={"View"}
+						}
+					}
+					Pick_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Pick_Notifications_Report={"View"}
+						}
+					}
+					Order_Aggregation1
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Order_Aggregation1_Report={"View"}
+						}
+					}
+					Shipment_Internal_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Internal_Messages_Report={"View"}
+						}
+					}
+					Inquiry_Timeline
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Timeline_Report={"View"}
+						}
+					}
+					Sales_Returns_Form
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Sales_Returns_Form_Report={"View"}
+						}
+					}
+					Schedule_Test_Settings
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Schedule_Test_Settings_Report={"View"}
+						}
+					}
+					Service_Appointment_Form
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Service_Appointment={"View"}
+						}
+					}
+					DTA_Timeline
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							DTA_Timeline_Report={"View"}
+						}
+					}
+					Exception_Control1
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Report={"View"}
+						}
+					}
+					PO_Messages
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PO_Messages={"View"}
+						}
+					}
+					ReadinessGate_Notifications
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ReadinessGate_Notifications_Report={"View"}
+						}
+					}
+					DMS_Exception_Queue
+					{
+						enabled= Viewall 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_DMS_Exception_Queue={"View"}
+						}
+					}
+					Inquiry
+					{
+						enabled = tab
+					}
+					Fenteng_Lighting_PR
+					{
+						enabled = tab
+					}
+					Fenteng_Lighting_PO
+					{
+						enabled = tab
+					}
+					Receiving1
+					{
+						enabled = tab
+					}
+					Exceptions1
+					{
+						enabled = tab
+					}
+					Replacement_Request_Fenteng
+					{
+						enabled = tab
+					}
+					Fenteng_Shipments
+					{
+						enabled = tab
+					}
+				}
+			}
+			"Tony Portal"
+			{
+				name = "Tony Portal"
+				type = Customer_Portal
+				permissions = {Chat:false, Predefined:false, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "Tony Portal Profile\n"
+				ModulePermissions
+				{
+					Field_Service_Site_Visit_Form
+					{
+						allFieldsVisible= true 
+					}
+					Customer
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Timeline_Report={"View","Edit"}
+						}
+					}
+					Pick1
+					{
+						allFieldsVisible= true 
+					}
+					Supplier_1
+					{
+						allFieldsVisible= true 
+					}
+					PR_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PR_Timeline_Report={"View","Edit"}
+						}
+					}
+					Supplier_2
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supplier_2_Report={"View","Edit"}
+						}
+					}
+					Inquiry_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Pre_Order_FF
+					{
+						allFieldsVisible= true 
+					}
+					QC_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Evidence_Photos
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Evidence_Photos={"View","Edit"}
+						}
+					}
+					Exception_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Timeline_Report={"View","Edit"}
+						}
+					}
+					Shipment_Order_Form
+					{
+						enabled= Create,Tab 
+						allFieldsVisible= true 
+					}
+					Suppliers
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Suppliers={"View","Edit"}
+						}
+					}
+					PO_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Service_Request1
+					{
+						allFieldsVisible= true 
+					}
+					Pack_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Transfer_Warehouse
+					{
+						allFieldsVisible= true 
+					}
+					Items
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Items={"View","Edit"}
+						}
+					}
+					Tony_Fan_Replacement_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Replacement_Request_Report={"View","Edit"}
+						}
+					}
+					Tony_Fan_Purchase_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Request_Report={"View","Edit"}
+						}
+					}
+					Pack
+					{
+						allFieldsVisible= true 
+					}
+					Shipments
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Groupings={"View","Edit"}
+							All_Shipments={"View","Edit"}
+						}
+					}
+					Fenteng_Shipment
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Fulfillment
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Form
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Supp_1_Portal={"View","Edit"}
+							Quote_Groups={"View","Edit"}
+							All_Inquiries={"View","Edit"}
+							Timeline_History={"View","Edit"}
+						}
+					}
+					SOF_Internal_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Purchase_Order
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan_Purchase_Order_Report={"View","Edit"}
+						}
+					}
+					DelQ_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					SOF_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order_Readiness_Gate
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting
+					{
+						allFieldsVisible= true 
+					}
+					PreOrder_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Order
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Purchase_Orders={"View","Edit"}
+						}
+					}
+					PR_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PR_Messages={"View","Edit"}
+						}
+					}
+					Receiving_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Timeline_Report={"View","Edit"}
+						}
+					}
+					App_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Replacement_Request
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Replacement_Request_Report={"View","Edit"}
+						}
+					}
+					RR_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Timeline_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting_Purchase_Order
+					{
+						allFieldsVisible= true 
+					}
+					Delivery_Scheduling
+					{
+						allFieldsVisible= true 
+					}
+					Warehouse_Request
+					{
+						allFieldsVisible= true 
+					}
+					Inquiry_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_Inquiry_Messages={"View","Edit"}
+						}
+					}
+					Tony_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Notifications_Report={"View","Edit"}
+						}
+					}
+					PR_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PR_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Package_Shipments
+					{
+						allFieldsVisible= true 
+					}
+					Purchase_Request1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							PO_Grouping={"View","Edit"}
+							All_Purchase_Request={"View","Edit"}
+						}
+					}
+					Projects
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Shipment
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Shipment_Report={"View","Edit"}
+						}
+					}
+					Receiving_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Lighting_Replacement_Request
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Tony_Fan1_Report={"View","Edit"}
+						}
+					}
+					Shipment_ID_Counter
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_ID_Counter_Report={"View","Edit"}
+						}
+					}
+					Field_Work
+					{
+						allFieldsVisible= true 
+					}
+					RR_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							RR_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Exceptions
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exceptions_Report={"View","Edit"}
+						}
+					}
+					Fenteng_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Policy_Settings
+					{
+						allFieldsVisible= true 
+					}
+					OrderAgg_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Sales_Order
+					{
+						allFieldsVisible= true 
+					}
+					Pick_Up_Request_Form
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					SO_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Fenteng_Lighting_Purchase_Request
+					{
+						allFieldsVisible= true 
+					}
+					Checker_Checklist
+					{
+						allFieldsVisible= true 
+					}
+					Receiving
+					{
+						enabled= Create,Tab 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Receiving_Group={"View"}
+							Receiving_Report={"View"}
+						}
+					}
+					DMS_Schedule_Request
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Control_Media
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Media_Report={"View","Edit"}
+						}
+					}
+					Crate_Checklist
+					{
+						allFieldsVisible= true 
+					}
+					ExceptionControl_Notifications
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							ExceptionControl_Notifications_Report={"View","Edit"}
+						}
+					}
+					Site_Visit_Photos
+					{
+						allFieldsVisible= true 
+					}
+					Daily_Team_Availability
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Schedule_Request_Messages
+					{
+						allFieldsVisible= true 
+					}
+					Pick_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					Order_Aggregation1
+					{
+						allFieldsVisible= true 
+					}
+					Shipment_Internal_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Shipment_Internal_Messages_Report={"View","Edit"}
+						}
+					}
+					Inquiry_Timeline
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Inquiry_Timeline_Report={"View","Edit"}
+						}
+					}
+					Sales_Returns_Form
+					{
+						allFieldsVisible= true 
+					}
+					Schedule_Test_Settings
+					{
+						allFieldsVisible= true 
+					}
+					Service_Appointment_Form
+					{
+						allFieldsVisible= true 
+					}
+					DTA_Timeline
+					{
+						allFieldsVisible= true 
+					}
+					Exception_Control1
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							Exception_Control_Report={"View","Edit"}
+						}
+					}
+					PO_Messages
+					{
+						enabled= Create,Viewall,Modifyall,Import,Export,Tab,read_comm,write_comm 
+						allFieldsVisible= true 
+						ReportPermissions
+						{
+							All_PO_Messages={"View","Edit"}
+						}
+					}
+					ReadinessGate_Notifications
+					{
+						allFieldsVisible= true 
+					}
+					DMS_Exception_Queue
+					{
+						allFieldsVisible= true 
+					}
+					Tony_Fan_Inquiries
+					{
+						enabled = tab
+					}
+					Tony_Fan_PR
+					{
+						enabled = tab
+					}
+					Tony_Fan_PO
+					{
+						enabled = tab
+					}
+					Replacement_Request_Tony
+					{
+						enabled = tab
+					}
+					Tony_Shipments
+					{
+						enabled = tab
+					}
+				}
+			}
+			roles
+			{
+				"CEO"
+				{
+					description = "User belonging to this role can access data of all other users."
+					"Delivery Officer"
+					{
+						description = "Delivery Officer"
+					}
+					"Dispatch Staff"
+					{
+						description = "Dispatch Staff"
+					}
+				}
+			}
+	

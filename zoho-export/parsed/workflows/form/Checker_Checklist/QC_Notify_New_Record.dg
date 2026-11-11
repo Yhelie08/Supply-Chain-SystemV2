@@ -1,0 +1,13 @@
+// form: QC_Notify_New_Record  form=Checker_Checklist event=on add on success  [.ds line 44905]
+    insert into QC_Notifications
+[
+    Recipient_Email="homecartelff@gmail.com"
+    Notification_Type="QC Record Created"
+    Message="New QC record for review — " + input.SO + " (" + input.Item_Name + "). Click to open it."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:Quality_Check?qcRecordId=" + input.ID
+    Source_Record_No=input.SO
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]

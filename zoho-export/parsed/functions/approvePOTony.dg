@@ -1,0 +1,587 @@
+// map approvePOTony(String soNo)   [.ds lines 24652-25239]
+response = Map();
+processedCount = 0;
+processedSupPOsT = List();
+siblingPRsT = Purchase_Request1[Sales_Order == soNo && PR_Approved == true && Link_PO_No != null];
+for each  prLoopT in siblingPRsT
+{
+    if(prLoopT.Link_PO_No == "")
+    {
+        continue;
+    }
+    supplierMatchesT = false;
+    if(prLoopT.Selected_Supplier == "Tony")
+    {
+        supplierMatchesT = true;
+    }
+    if(prLoopT.Selected_Supplier.contains("Tony"))
+    {
+        supplierMatchesT = true;
+    }
+    if(supplierMatchesT == false)
+    {
+        continue;
+    }
+    itemRecT = prLoopT.Items;
+    itemNameT = itemRecT.item_name;
+    existingSupPOsT = Tony_Fan_Purchase_Order[PO_No_Supplier2 == prLoopT.Link_PO_No];
+    supPOFoundT = false;
+    for each  spoT in existingSupPOsT
+    {
+        targetSupPOT = spoT;
+        supPOFoundT = true;
+    }
+    if(supPOFoundT == false)
+    {
+        newSupPOIDT = insert into Tony_Fan_Purchase_Order
+        [
+            PO_No_Supplier2=prLoopT.Link_PO_No
+            PO_Date_Supplier2=zoho.currentdate
+            PO_Status_Supplier2="Draft"
+            Added_User=zoho.loginuser
+        ];
+        targetSupPOT = Tony_Fan_Purchase_Order[ID == newSupPOIDT];
+    }
+    alreadyHasLineT = false;
+    for each  existingLnT in targetSupPOT.PO_Line_Items_Supplier2
+    {
+        if(existingLnT.PR_No_Supplier2 == prLoopT.PR_No)
+        {
+            alreadyHasLineT = true;
+        }
+    }
+    if(alreadyHasLineT == true)
+    {
+        alreadyTrackedT = false;
+        for each  doneNoT in processedSupPOsT
+        {
+            if(doneNoT == targetSupPOT.PO_No_Supplier2)
+            {
+                alreadyTrackedT = true;
+            }
+        }
+        if(alreadyTrackedT == false)
+        {
+            processedSupPOsT.add(targetSupPOT.PO_No_Supplier2);
+        }
+        continue;
+    }
+    /* REMOVED 2026-07-15: SRP_Rate_PR fallback dropped, mirrors pr_to_po_grouping.txt
+       Action 3 (see that block's comment for full reasoning). */
+    rateToUseT = prLoopT.Selcted_Final_Cost;
+    if(rateToUseT == null)
+    {
+        rateToUseT = 0;
+    }
+    /* Item_Price_Supplier2 (Single Line/TEXT) — catalog reference rate, kept
+       separate from Final_Price_Supplier2. See pr_to_po_grouping.txt Action 3 NOTES
+       for the full reasoning, including the 2026-07-15 SRP_Approved_PR priority
+       addition mirrored here. */
+    itemPriceValT = 0;
+    if(prLoopT.SRP_Approved_PR != null && prLoopT.SRP_Approved_PR != 0)
+    {
+        itemPriceValT = prLoopT.SRP_Approved_PR;
+    }
+    else if(prLoopT.SRP_Rate_PR != null && prLoopT.SRP_Rate_PR != 0)
+    {
+        /* ADDED 2026-08-05, same real bug/fix as the Fenteng block above (see its own comment for the full writeup). */
+        itemPriceValT = prLoopT.SRP_Rate_PR;
+    }
+    else
+    {
+        itemRateStrT = itemRecT.Rate + "";
+        if(itemRateStrT != "null" && itemRateStrT != "" && itemRateStrT != "0" && itemRateStrT.toDecimal() != 0)
+        {
+            itemPriceValT = itemRateStrT.toDecimal();
+        }
+    }
+    newSupLineT = Tony_Fan_Purchase_Order.PO_Line_Items_Supplier2();
+    newSupLineT.PR_No_Supplier2=prLoopT.PR_No;
+    newSupLineT.Supplier_Supplier2=prLoopT.Selected_Supplier;
+    newSupLineT.Item_Supplier2=itemNameT;
+    newSupLineT.SKU_Supplier2=prLoopT.sku;
+    newSupLineT.QTY_Supplier2=prLoopT.quantity.round(0).toLong();
+    newSupLineT.Unit_Supplier2=prLoopT.unit;
+    newSupLineT.Final_Price_Supplier2=rateToUseT;
+    newSupLineT.Item_Price_Supplier2=itemPriceValT + "";
+    newSupLineT.Line_Total_Supplier2=prLoopT.quantity.round(0).toLong() * rateToUseT.round(0).toLong();
+    newSupLineT.Shipping_Mode_Supplier2=prLoopT.Shipment_Mode;
+    newSupLineT.Target_Delivery_Supplier2=prLoopT.Target_Delivery;
+    newSupLineT.supplier_target_date_Supplier2=prLoopT.supplier_target_date;
+    newSupLineT.Delay_Status_Supplier2=prLoopT.Delay_Status;
+    newSupLineT.Followed_Recommendation_Supplier2=prLoopT.Followed_Recommendation;
+    newSupLineT.Override_Reason_Supplier2=prLoopT.Override_Reason;
+    targetSupPOT.PO_Line_Items_Supplier2.insert(newSupLineT);
+    totalValT = 0;
+    totalLnsT = 0;
+    for each  poLnT in targetSupPOT.PO_Line_Items_Supplier2
+    {
+        totalLnsT = totalLnsT + 1;
+        if(poLnT.Line_Total_Supplier2 != null)
+        {
+            totalValT = totalValT + poLnT.Line_Total_Supplier2;
+        }
+    }
+    targetSupPOT.Total_PO_Value_Supplier2=totalValT;
+    targetSupPOT.Total_Lines_Supplier2=totalLnsT;
+    targetSupPOT.Sent_On_Supplier2=zoho.currenttime;
+    targetSupPOT.Is_Locked_Supplier2=true;
+    processedCount = processedCount + 1;
+    alreadyTrackedT2 = false;
+    for each  doneNoT2 in processedSupPOsT
+    {
+        if(doneNoT2 == targetSupPOT.PO_No_Supplier2)
+        {
+            alreadyTrackedT2 = true;
+        }
+    }
+    if(alreadyTrackedT2 == false)
+    {
+        processedSupPOsT.add(targetSupPOT.PO_No_Supplier2);
+    }
+}
+/* MOVED HERE 2026-07-16 — Tony mirror of approvePOFenteng's block above. */
+for each  poNoTouchedT in processedSupPOsT
+{
+    supPOsSyncT = Tony_Fan_Purchase_Order[PO_No_Supplier2 == poNoTouchedT];
+    for each  spoT2 in supPOsSyncT
+    {
+        targetSupPOT2 = spoT2;
+    }
+    aggPOsSyncT = Purchase_Order[PO_No == poNoTouchedT];
+    for each  apoT2 in aggPOsSyncT
+    {
+        apoT = apoT2;
+    }
+    soNoTextT = apoT.SO_No.Sales_Order_Number;
+    matchingShipNoT = "";
+    candidateShipmentsT = Shipments[PO_No == apoT.ID && Shipment_Status == "Pending"];
+    for each  shT in candidateShipmentsT
+    {
+        matchingShipNoT = shT.Shipment_No;
+    }
+    isNewShipmentT = false;
+    if(matchingShipNoT != "")
+    {
+        targetShipsT = Shipments[Shipment_No == matchingShipNoT];
+        for each  tshT in targetShipsT
+        {
+            targetShipT = tshT;
+        }
+    }
+    else
+    {
+        maxShipNumT = 0;
+        existingShipmentsT = Shipments[ID != 0];
+        for each  shT in existingShipmentsT
+        {
+            shipNoStrT = shT.Shipment_No;
+            if(shipNoStrT != null && shipNoStrT != "")
+            {
+                shipNumPartT = shipNoStrT.removeFirstOccurence("SHP-");
+                shipNumT = shipNumPartT.toLong();
+                if(shipNumT > maxShipNumT)
+                {
+                    maxShipNumT = shipNumT;
+                }
+            }
+        }
+        newShipNumT = maxShipNumT + 1;
+        if(newShipNumT < 10)
+        {
+            newShipNoT = "SHP-0000" + newShipNumT;
+        }
+        else if(newShipNumT < 100)
+        {
+            newShipNoT = "SHP-000" + newShipNumT;
+        }
+        else if(newShipNumT < 1000)
+        {
+            newShipNoT = "SHP-00" + newShipNumT;
+        }
+        else if(newShipNumT < 10000)
+        {
+            newShipNoT = "SHP-0" + newShipNumT;
+        }
+        else
+        {
+            newShipNoT = "SHP-" + newShipNumT;
+        }
+        newShipIDT = insert into Shipments
+        [
+            Shipment_No=newShipNoT
+            PO_No=apoT.ID
+            Sales_Order=soNoTextT
+            Customer=apoT.Customer
+            Supplier="Tony"
+            Shipment_Status="Pending"
+            Added_User=zoho.loginuser
+        ];
+        targetShipT = Shipments[ID == newShipIDT];
+        isNewShipmentT = true;
+    }
+    for each  poLnAggT in apoT.PO_Line_Items
+    {
+        targetShipT.Required_Days_Lead=poLnAggT.Required_Days_Lead;
+        targetShipT.Remaining_Days=poLnAggT.Remaining_Days;
+        targetShipT.Target_Date=poLnAggT.Target_Delivery;
+        targetShipT.Supplier_Target_Date=poLnAggT.supplier_target_date;
+        targetShipT.Production_Date=poLnAggT.Production_Date;
+        if(poLnAggT.PR_No != null && poLnAggT.PR_No != "")
+        {
+            prLineT = Purchase_Request1[PR_No == poLnAggT.PR_No];
+            targetShipT.Shipment_Days=prLineT.Shipment_Days;
+            targetShipT.Sales_Owner=prLineT.Sales_Owner;
+        }
+        else
+        {
+            targetShipT.Sales_Owner=apoT.Sales_Owner;
+        }
+        shipLineExistsT = false;
+        for each  existingShipLnT in targetShipT.PO_Shipments
+        {
+            if(existingShipLnT.PR_No == poLnAggT.PR_No)
+            {
+                shipLineExistsT = true;
+            }
+        }
+        if(shipLineExistsT == false)
+        {
+            newShipLineT = Shipments.PO_Shipments();
+            newShipLineT.PR_No=poLnAggT.PR_No;
+            newShipLineT.SKU=poLnAggT.SKU;
+            newShipLineT.Item_Name=poLnAggT.Item;
+            newShipLineT.Ordered_QTY=poLnAggT.QTY;
+            newShipLineT.Shipment_QTY=poLnAggT.QTY;
+            newShipLineT.Remaining_QTY=poLnAggT.QTY;
+            newShipLineT.Shipping_Mode=poLnAggT.Shipping_Mode;
+            targetShipT.PO_Shipments.insert(newShipLineT);
+        }
+    }
+    /* ADDED 2026-07-21 — Tony mirror of the Fenteng block above, same reasoning. */
+    if(isNewShipmentT == true)
+    {
+        newSuppRecIDT = insert into Tony_Shipment
+        [
+            Shipment_No=targetShipT.Shipment_No
+            Parent_Shipment_ID=targetShipT.ID + ""
+            Added_User1=zoho.loginuser
+            Added_User=zoho.loginuser
+        ];
+        newSuppRecT = Tony_Shipment[ID == newSuppRecIDT];
+        for each  shLnT in targetShipT.PO_Shipments
+        {
+            newSuppRowT = Tony_Shipment.Supplier2_Shipment_Details();
+            newSuppRowT.SKU=shLnT.SKU;
+            newSuppRowT.Item_Name=shLnT.Item_Name;
+            newSuppRowT.PR_No=shLnT.PR_No;
+            newSuppRowT.RR_No="";
+            newSuppRecT.Supplier2_Shipment_Details.insert(newSuppRowT);
+        }
+    }
+    recvFoundT = false;
+    matchingRecvIDT = 0;
+    existingRecvT = Receiving[Shipments == targetShipT.ID];
+    for each  rcT in existingRecvT
+    {
+        matchingRecvIDT = rcT.ID;
+        recvFoundT = true;
+    }
+    if(recvFoundT == true)
+    {
+        targetRecvsT = Receiving[ID == matchingRecvIDT];
+        for each  trcT in targetRecvsT
+        {
+            targetRecvT = trcT;
+        }
+    }
+    else
+    {
+        maxRecvNumT = 0;
+        existingRecvsT = Receiving[ID != 0];
+        for each  rcT in existingRecvsT
+        {
+            recvNoStrT = rcT.Receive_No1;
+            if(recvNoStrT != null && recvNoStrT != "")
+            {
+                recvNumPartT = recvNoStrT.removeFirstOccurence("RCV-");
+                recvNumT = recvNumPartT.toLong();
+                if(recvNumT > maxRecvNumT)
+                {
+                    maxRecvNumT = recvNumT;
+                }
+            }
+        }
+        newRecvNumT = maxRecvNumT + 1;
+        if(newRecvNumT < 10)
+        {
+            newRecvNoT = "RCV-0000" + newRecvNumT;
+        }
+        else if(newRecvNumT < 100)
+        {
+            newRecvNoT = "RCV-000" + newRecvNumT;
+        }
+        else if(newRecvNumT < 1000)
+        {
+            newRecvNoT = "RCV-00" + newRecvNumT;
+        }
+        else if(newRecvNumT < 10000)
+        {
+            newRecvNoT = "RCV-0" + newRecvNumT;
+        }
+        else
+        {
+            newRecvNoT = "RCV-" + newRecvNumT;
+        }
+        newRecvIDT = insert into Receiving
+        [
+            Receive_No1=newRecvNoT
+            Shipments=targetShipT.ID
+            SO_No=soNoTextT
+            PO_No=apoT.PO_No
+            Customer_Name=apoT.Customer
+            Supplier="Tony"
+            Added_User=zoho.loginuser
+        ];
+        targetRecvT = Receiving[ID == newRecvIDT];
+    }
+    for each  poLnAggT in apoT.PO_Line_Items
+    {
+        if(poLnAggT.PR_No != null && poLnAggT.PR_No != "")
+        {
+            prLineRecvT = Purchase_Request1[PR_No == poLnAggT.PR_No];
+            targetRecvT.Sales_Owner=prLineRecvT.Sales_Owner;
+        }
+        else
+        {
+            targetRecvT.Sales_Owner=apoT.Sales_Owner;
+        }
+        recvLineExistsT = false;
+        for each  existingRecvLnT in targetRecvT.Receiving_Line_Items
+        {
+            if(existingRecvLnT.PR_No == poLnAggT.PR_No)
+            {
+                recvLineExistsT = true;
+            }
+        }
+        if(recvLineExistsT == false)
+        {
+            newRecvLineT = Receiving.Receiving_Line_Items();
+            newRecvLineT.PR_No=poLnAggT.PR_No;
+            newRecvLineT.SKU=poLnAggT.SKU;
+            newRecvLineT.Item_Name=poLnAggT.Item;
+            newRecvLineT.Expected_Qty=poLnAggT.QTY;
+            targetRecvT.Receiving_Line_Items.insert(newRecvLineT);
+        }
+    }
+    /* ADDED 2026-07-16 — Tony mirror of the Fenteng block above. */
+    totalExpectedT = 0;
+    totalAcceptedT = 0;
+    totalDamageT = 0;
+    totalMissingT = 0;
+    totalLinesRT = 0;
+    incompleteLinesT = 0;
+    readyForFulfillT = 0;
+    for each  rln2 in targetRecvT.Receiving_Line_Items
+    {
+        totalLinesRT = totalLinesRT + 1;
+        expRT = ifnull(rln2.Expected_Qty,0);
+        accRT = ifnull(rln2.Accepted_Qty,0);
+        dmgRT = ifnull(rln2.Damage_Qty,0);
+        misRT = ifnull(rln2.Missing_Qty,0);
+        totalExpectedT = totalExpectedT + expRT;
+        totalAcceptedT = totalAcceptedT + accRT;
+        totalDamageT = totalDamageT + dmgRT;
+        totalMissingT = totalMissingT + misRT;
+        totalRecRT = accRT + dmgRT + misRT;
+        if(totalRecRT == expRT && accRT == expRT)
+        {
+            rln2.Line_Result="Complete";
+            rln2.Ready_for_Fulfillment=true;
+            readyForFulfillT = readyForFulfillT + 1;
+        }
+        else
+        {
+            rln2.Line_Result="Incomplete";
+            rln2.Ready_for_Fulfillment=false;
+            incompleteLinesT = incompleteLinesT + 1;
+        }
+    }
+    targetRecvT.Total_Expected_Qty=totalExpectedT;
+    targetRecvT.Total_Accepted_Qty=totalAcceptedT;
+    targetRecvT.Total_Damage_Qty=totalDamageT;
+    targetRecvT.Total_Missing_Qty=totalMissingT;
+    targetRecvT.Total_Lines=totalLinesRT;
+    targetRecvT.Incomplete_Lines=incompleteLinesT;
+    targetRecvT.Ready_for_Fulfillment1=readyForFulfillT;
+    if(totalLinesRT == 0 || (totalAcceptedT == 0 && totalDamageT == 0 && totalMissingT == 0))
+    {
+        targetRecvT.Receive_Status="Pending";
+    }
+    else if(incompleteLinesT == 0)
+    {
+        targetRecvT.Receive_Status="Received";
+    }
+    else
+    {
+        targetRecvT.Receive_Status="Partial Received";
+    }
+    shipModeBooksT = "Air Freight";
+    for each  poLnBooksT in apoT.PO_Line_Items
+    {
+        shipLineValT = poLnBooksT.Shipping_Mode + "";
+        if(shipLineValT == "LCL")
+        {
+            shipModeBooksT = "LCL";
+        }
+        else if(shipLineValT == "FCL")
+        {
+            shipModeBooksT = "FCL";
+        }
+        else if(shipLineValT != "" && shipLineValT != "null")
+        {
+            shipModeBooksT = "Air Freight";
+        }
+    }
+    booksLineItemsT = List();
+    prRefListT = List();
+    for each  poLnBooksT2 in targetSupPOT2.PO_Line_Items_Supplier2
+    {
+        prRefListT.add(poLnBooksT2.PR_No_Supplier2);
+        bookItemRecsT = Items[SKU == poLnBooksT2.SKU_Supplier2];
+        bookItemIdT = "";
+        for each  biT in bookItemRecsT
+        {
+            bookItemIdT = biT.ID1 + "";
+        }
+        if(bookItemIdT == "null")
+        {
+            bookItemIdT = "";
+        }
+        if(bookItemIdT != "")
+        {
+            effectiveRateT = poLnBooksT2.Final_Price_Supplier2.toDecimal();
+            itemPriceStrT = poLnBooksT2.Item_Price_Supplier2 + "";
+            if(itemPriceStrT != "null" && itemPriceStrT != "" && itemPriceStrT != "0" && itemPriceStrT.toDecimal() != 0)
+            {
+                effectiveRateT = itemPriceStrT.toDecimal();
+            }
+            lineBT = Map();
+            lineBT.put("item_id",bookItemIdT);
+            lineBT.put("quantity",poLnBooksT2.QTY_Supplier2.toLong());
+            lineBT.put("rate",effectiveRateT);
+            lineBT.put("warehouse_id","2680178000042173149");
+            booksLineItemsT.add(lineBT);
+        }
+    }
+    prRefsStrT = "[";
+    prRefCountT = 0;
+    for each  prRefItemT in prRefListT
+    {
+        if(prRefCountT > 0)
+        {
+            prRefsStrT = prRefsStrT + ",";
+        }
+        prRefsStrT = prRefsStrT + "\"" + prRefItemT + "\"";
+        prRefCountT = prRefCountT + 1;
+    }
+    prRefsStrT = prRefsStrT + "]";
+    cfListBooksT = List();
+    cfBT1 = Map();
+    cfBT1.put("label","Mode of Shipment");
+    cfBT1.put("value",shipModeBooksT);
+    cfListBooksT.add(cfBT1);
+    cfBT2 = Map();
+    cfBT2.put("label","Type of Order");
+    cfBT2.put("value","Pre Order");
+    cfListBooksT.add(cfBT2);
+    cfBT3 = Map();
+    cfBT3.put("label","Created by");
+    cfBT3.put("value","Procurement");
+    cfListBooksT.add(cfBT3);
+    cfBT4 = Map();
+    cfBT4.put("label","Supplier");
+    cfBT4.put("value","Tony Fan");
+    cfListBooksT.add(cfBT4);
+    cfBT5 = Map();
+    cfBT5.put("label","PR References");
+    cfBT5.put("value",prRefsStrT);
+    cfListBooksT.add(cfBT5);
+    existingBooksPOIDT = apoT.Books_PO_ID + "";
+    if(existingBooksPOIDT == "null")
+    {
+        existingBooksPOIDT = "";
+    }
+    booksPOValidT = false;
+    if(existingBooksPOIDT != "")
+    {
+        checkPORespT = invokeurl
+        [
+            url :"https://www.zohoapis.com/books/v3/purchaseorders/" + existingBooksPOIDT + "?organization_id=751117756"
+            type :GET
+            connection:"zhbooks3"
+        ];
+        if(checkPORespT.get("code") == 0 && checkPORespT.get("purchaseorder") != null)
+        {
+            booksPOValidT = true;
+        }
+    }
+    if(booksPOValidT == true)
+    {
+        updatePOBodyT = Map();
+        updatePOBodyT.put("line_items",booksLineItemsT);
+        updatePOBodyT.put("custom_fields",cfListBooksT);
+        updatePOBodyStrT = updatePOBodyT.toString();
+        updatePORespT = invokeurl
+        [
+            url :"https://www.zohoapis.com/books/v3/purchaseorders/" + existingBooksPOIDT + "?organization_id=751117756"
+            type :PUT
+            parameters:updatePOBodyStrT
+            headers:{"Content-Type":"application/json"}
+            connection:"zhbooks3"
+        ];
+        info "Books PO update resp (Tony)=" + updatePORespT.toString();
+    }
+    else
+    {
+        createPOBodyT = Map();
+        createPOBodyT.put("vendor_id","2680178000002735078");
+        createPOBodyT.put("line_items",booksLineItemsT);
+        createPOBodyT.put("custom_fields",cfListBooksT);
+        createPOBodyT.put("date",zoho.currentdate.toString("yyyy-MM-dd"));
+        createPOBodyStrT = createPOBodyT.toString();
+        createPORespT = invokeurl
+        [
+            url :"https://www.zohoapis.com/books/v3/purchaseorders?organization_id=751117756"
+            type :POST
+            parameters:createPOBodyStrT
+            headers:{"Content-Type":"application/json"}
+            connection:"zhbooks3"
+        ];
+        info "Books PO create resp (Tony)=" + createPORespT.toString();
+        if(createPORespT.get("code") == 0 && createPORespT.get("purchaseorder") != null)
+        {
+            newBooksPOIDT = createPORespT.get("purchaseorder").get("purchaseorder_id") + "";
+            apoT.Books_PO_ID=newBooksPOIDT;
+            apoT.Books_PO_No=createPORespT.get("purchaseorder").get("purchaseorder_number") + "";
+            approvePORespT = invokeurl
+            [
+                url :"https://www.zohoapis.com/books/v3/purchaseorders/" + newBooksPOIDT + "/approve?organization_id=751117756"
+                type :POST
+                connection:"zhbooks3"
+            ];
+            info "Books PO approve resp (Tony)=" + approvePORespT.toString();
+            openPORespT = invokeurl
+            [
+                url :"https://www.zohoapis.com/books/v3/purchaseorders/" + newBooksPOIDT + "/status/open?organization_id=751117756"
+                type :POST
+                connection:"zhbooks3"
+            ];
+            info "Books PO status/open resp (Tony)=" + openPORespT.toString();
+        }
+    }
+}
+response.put("status","success");
+response.put("processed",processedCount);
+response.put("message",processedCount + " Tony line(s) synced");
+return response;

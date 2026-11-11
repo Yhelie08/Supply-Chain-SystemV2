@@ -1,0 +1,14 @@
+// form: Notify Fenteng on Replacement Request added  form=Fenteng_Lighting_Replacement_Request event=on add on success  [.ds line 45204]
+    targetUrl = "https://creator.zoho.com/homecartel/supply-chain-app/#Page:Replacement_Request_Fenteng?fentengrrid=" + input.RR_No;
+insert into Fenteng_Notifications
+[
+    Recipient_Email="admin@Fentenglighting.com"
+    Notification_Type="Replacement Request added"
+    Message="New replacement request " + input.RR_No + " has been added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=targetUrl
+    Source_Record_No=input.RR_No
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]

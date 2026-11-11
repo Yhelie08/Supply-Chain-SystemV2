@@ -1,0 +1,11 @@
+
+			displayName = "Inquiry_Internal_Messages Report"
+			show all rows from Inquiry_Internal_Messages    
+			(
+				INQ_No as "INQ No"
+				Sender_Email as "Sender Email"
+				Sender_Role as "Sender Role"
+				Message
+				Sent_On as "Sent On"
+			)
+		

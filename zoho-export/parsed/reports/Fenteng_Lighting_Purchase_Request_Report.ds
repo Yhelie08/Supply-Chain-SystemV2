@@ -1,0 +1,57 @@
+
+			displayName = "Fenteng Lighting Purchase Request Report"
+			show all rows from Fenteng_Lighting_Purchase_Request    
+			(
+				PR_No_Supplier1 as "PR No"
+				Items_Supplier1 as "Items"
+				Description1_Supplier1 as "Description"
+				PR_Date_Supplier1 as "PR Date"
+				sku_Supplier1 as "SKU"
+				unit_Supplier1 as "Unit"
+				Target_Delivery_Supplier1 as "Target  Delivery"
+				quantity_Supplier1 as "Quantity"
+				category_Supplier1 as "Category"
+				description_Supplier1 as "Description"
+				Priority_PR_Supplier1 as "Priority"
+				Additional_Details as "Additional Details"
+				Similar_Item as "Similar Item"
+				Attachments
+				Selected_Supplier as "Selected Supplier"
+				Selcted_Final_Cost as "Selected Final Cost"
+				Followed_Recommendation as "Followed Recommendation"
+				Shipment_Mode as "Shipment Mode"
+				Required_Days_Lead as "Required Days (Lead)"
+				Production_Date as "Production Date"
+				supplier_target_date as "Supplier  Target Date"
+				Remaining_Days as "Remaining Days"
+				Delay_Status as "Delay Status"
+				Selected_Supplier1 as "Selected Supplier"
+				Final_price_confirmed as "Final price confirmed"
+				Shipping_mode_selected as "Shipping mode selected"
+				Target_date_exists as "Target date exists"
+				PR_READY_FOR_PO as "PR READY FOR PO"
+				PR_Approved as "PR Approved"
+				edit_counter
+				Response_Status as "Response Status"
+				custom action "Submit Response"
+				(
+	  			workflow = Submit_Response_PRbtn2
+				show action in edit record menu = true
+				column header = "Submit Response"
+				condition = (Response_Status != "Not Selected" && Response_Status != "Selected" && edit_counter == 1)
+				)
+				Product_Image_Supplier1_PR as "Product Image"
+				SRP_Rate_PR_Supplier1 as "SRP (Hidden)"
+				Supplier_Selected_Supplier1 as "Supplier Selected"
+				(
+					field = Supplier_Selected_Supplier1.Suppliers_Supplier1 + " " + Supplier_Selected_Supplier1.Availability_Supplier1 + " " + Supplier_Selected_Supplier1.Final_Price_Supplier1 + " " + Supplier_Selected_Supplier1.Initial_Price_Supplier1 + " " + Supplier_Selected_Supplier1.Negotiated_Supplier1 + " " + Supplier_Selected_Supplier1.Lead_Time_Supplier1 + " " + Supplier_Selected_Supplier1.Selected_Supplier1 + " " + Supplier_Selected_Supplier1.Status_Supplier1
+				)
+				inquiry_reference_Supplier1 as "INQ Reference"
+				Dimension_Supplier as "Dimension"
+				Color_Body_Supplier as "Color Body"
+				Color_Temperature_Supplier as "Color Temperature"
+				Type_of_Bulb_Supplier as "Type of Bulb"
+				Voltage_Supplier as "Voltage"
+				Lumens_Supplier as "Lumens"
+			)
+		

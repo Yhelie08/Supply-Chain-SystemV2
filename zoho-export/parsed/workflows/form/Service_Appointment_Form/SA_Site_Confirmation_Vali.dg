@@ -1,0 +1,14 @@
+// form: SA_Site_Confirmation_Validate  form=Service_Appointment_Form event=on add or edit on validate  [.ds line 41467]
+    if(input.Site_Confirmation_Status == "Confirmed")
+{
+    if(input.Confirmation_Method == null || input.Confirmation_Method == "")
+    {
+        alert "Confirmation Method is required when confirming site readiness.";
+        cancel submit;
+    }
+    if(input.Site_Confirmation_Notes == null || input.Site_Confirmation_Notes == "")
+    {
+        alert "Site Confirmation Notes is required when confirming site readiness.";
+        cancel submit;
+    }
+}

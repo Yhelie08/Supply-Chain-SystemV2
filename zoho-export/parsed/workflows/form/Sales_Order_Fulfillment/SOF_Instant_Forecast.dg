@@ -1,0 +1,5 @@
+// form: SOF_Instant_Forecast  form=Sales_Order_Fulfillment event=on add or edit on success  [.ds line 47134]
+    if(input.Forecast_Delivery == null)
+{
+    info thisapp.fcStampBySoNo(input.SO_No + "");
+}

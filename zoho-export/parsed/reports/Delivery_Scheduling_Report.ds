@@ -1,0 +1,33 @@
+
+			displayName = "Delivery Scheduling  Report"
+			show all rows from Delivery_Scheduling    
+			(
+				Date_field as "Date"
+				Time
+				SO as "SO#"
+				Type_of_Delivery as "Type of Delivery"
+				Item_Detail as "Item Detail"
+				Qty
+				City
+				Installer
+				Vehicle_Name as "Vehicle Name"
+				Driver
+				Notes
+				Completed
+				Rescheduled
+				Package_Number as "Package Number"
+				Order_Aggregation_ID as "Order Aggregation ID"
+				Service_Request_ID as "Service Request ID"
+				Customer_Name as "Customer Name"
+				Customer_Address as "Customer Address"
+				Delivery_City as "Delivery City"
+				Email
+				Contact
+				(
+					displayformat = plainnumber 
+				)
+				Order_Date as "Order Date"
+				Schedule_Status as "Schedule Status"
+				Item_Details.PAC as "Item Details"
+			)
+		

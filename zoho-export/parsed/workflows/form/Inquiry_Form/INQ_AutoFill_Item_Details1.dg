@@ -1,0 +1,22 @@
+// form: INQ_AutoFill_Item_Details_2  form=Inquiry_Form event=on add or edit on user input of Items  [.ds line 36084]
+    if(input.Items != null && input.Items != 0)
+{
+    records = Items[ID == input.Items];
+    for each  rec in records
+    {
+        input.sku = rec.SKU;
+        input.description = rec.Description;
+        input.unit = rec.Unit;
+        input.SRP_Approved1 = rec.Rate;
+        input.Product_Image = rec.Image;
+        break;
+    }
+}
+else
+{
+    input.sku = "";
+    input.description = "";
+    input.unit = "";
+    input.SRP_Approved1 = 0;
+    input.Product_Image = null;
+}

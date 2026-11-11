@@ -1,0 +1,289 @@
+{
+  "name": "Tony_Fan_Replacement_Request",
+  "label": "Tony Fan Replacement  Request",
+  "successMessage": "Data Added Successfully!",
+  "line": 18544,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "RR_No",
+      "label": "RR No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Source_Type",
+      "label": "Source Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Receiving Damage",
+        "Receiving Missing",
+        "QC Failure",
+        "Complaint"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "RR_Status",
+      "label": "RR Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Open",
+        "Acknowledged",
+        "In Production",
+        "Shipped",
+        "Received",
+        "Closed",
+        "Cancelled"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Shipment_Mode",
+      "label": "Shipment Mode",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Airfreight",
+        "LCL",
+        "FCL"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "RR_SKU",
+      "label": "RR SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_Date",
+      "label": "RR Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Source_Exception_No",
+      "label": "Source Exception No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_Reason",
+      "label": "RR Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Source_Module",
+      "label": "Source Module",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_Qty_Value",
+      "label": "RR Qty Value",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Replacement_Summary",
+      "label": "Replacement Summary",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "On Track",
+        "At Risk",
+        "Delayed"
+      ],
+      "fields": [
+        {
+          "name": "Supplier",
+          "label": "Supplier",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "RR_Reason",
+          "label": "RR Reason",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item",
+          "label": "Item",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SO_No",
+          "label": "SO No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "PR_No",
+          "label": "PR No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Original_PO_No",
+          "label": "Original PO No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "RR_Qty",
+          "label": "RR Qty",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Priority",
+          "label": "Priority",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "High",
+            "Medium",
+            "Low"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Delay_Status",
+          "label": "Delay Status",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "On Track",
+            "At Risk",
+            "Delayed"
+          ],
+          "maxchar": "100"
+        }
+      ]
+    },
+    {
+      "name": "Supplier_Acknowledgement",
+      "label": "Supplier Feedback",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Supplier_Acknowledgement1",
+      "label": "Supplier Acknowledgement",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Supplier_Acknowledge_Date",
+      "label": "Supplier Acknowledge Date",
+      "type": "date",
+      "required": false,
+      "initialValue": "${zoho.currentdate}",
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Expected_Ship_Date",
+      "label": "Expected Ship Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Actual_Ship",
+      "label": "Actual Ship",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "ETA",
+      "label": "ETA",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Last_Updated",
+      "label": "Last Updated",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Closed_At",
+      "label": "Closed At",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Closure_Notes",
+      "label": "Closure Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Widget_things",
+      "label": "Widget things",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "RR_SO",
+      "label": "RR SO",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_PAC",
+      "label": "RR PAC",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_Item_to_Replace",
+      "label": "RR Item to Replace",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_Damage_Qty",
+      "label": "RR Damage Qty",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "RR_Spare_Parts",
+      "label": "RR Spare Parts",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "RR_Remarks",
+      "label": "RR Remarks",
+      "type": "textarea",
+      "required": false
+    }
+  ]
+}

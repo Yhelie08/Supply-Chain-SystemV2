@@ -1,0 +1,354 @@
+{
+  "name": "Service_Request1",
+  "label": "Service Request Form",
+  "successMessage": "Service Request Added Successfully",
+  "line": 15499,
+  "fields": [
+    {
+      "name": "SO_Details",
+      "label": "SO Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Service_Request1",
+      "label": "Service Request #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RMA1",
+      "label": "RMA#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Original_SO",
+      "label": "Original SO#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Reason",
+      "label": "Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Sub",
+      "label": "Sub Reason",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Change of Mind",
+        "Damaged Item",
+        "Demo",
+        "Replacement"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Sales_Order",
+      "label": "Sales Order#",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Delivery_Date",
+      "label": "Delivery Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "If_Pull_Out",
+      "label": "If Pull Out",
+      "type": "radiobuttons",
+      "required": false,
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Delivery_Type",
+      "label": "Delivery Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Item_Name",
+      "label": "Item Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SKU",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Quantity",
+      "label": "Quantity",
+      "type": "number",
+      "required": false,
+      "initialValue": "0"
+    },
+    {
+      "name": "Priority_Level",
+      "label": "Priority Level",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "High Priority",
+        "Medium Priority",
+        "Low Priority"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Scheduled_by",
+      "label": "Scheduled by:",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Jhi",
+        "Flor"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Order_Aggregation_ID",
+      "label": "Order Aggregation ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Initial_Schedule_ID",
+      "label": "Initial Schedule ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Service_Appointment_ID",
+      "label": "Service Appointment ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Initial_Schedule_Time",
+      "label": "Initial Schedule Time",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "SR_No",
+      "label": "SR No",
+      "type": "autonumber",
+      "required": false
+    },
+    {
+      "name": "SR_Status",
+      "label": "SR Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "New",
+        "Scheduling",
+        "Scheduled",
+        "Converted",
+        "Cancelled"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Customer_Details",
+      "label": "Customer Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer_Address",
+      "label": "Customer Address",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "City",
+      "label": "City",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Email",
+      "label": "Email",
+      "type": "email",
+      "required": false,
+      "maxchar": "80",
+      "personalData": "true"
+    },
+    {
+      "name": "Phone_Number",
+      "label": "Phone",
+      "type": "phonenumber",
+      "required": false,
+      "personalData": "true"
+    },
+    {
+      "name": "Address",
+      "label": "Address",
+      "type": "address",
+      "required": false,
+      "personalData": "true",
+      "fields": [
+        {
+          "name": "address_line_1",
+          "label": "Address Line 1",
+          "type": "address_line_1",
+          "required": false
+        },
+        {
+          "name": "address_line_2",
+          "label": "Address Line 2",
+          "type": "address_line_2",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "district_city",
+          "label": "City / District",
+          "type": "district_city",
+          "required": false
+        },
+        {
+          "name": "state_province",
+          "label": "State / Province",
+          "type": "state_province",
+          "required": false
+        },
+        {
+          "name": "postal_Code",
+          "label": "Postal Code",
+          "type": "postal_Code",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "country",
+          "label": "Country",
+          "type": "country",
+          "required": false
+        },
+        {
+          "name": "latitude",
+          "label": "latitude",
+          "type": "latitude",
+          "required": false,
+          "visibility": "false"
+        },
+        {
+          "name": "longitude",
+          "label": "longitude",
+          "type": "longitude",
+          "required": false,
+          "visibility": "false"
+        }
+      ]
+    },
+    {
+      "name": "Item_Details",
+      "label": "Item Details",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "PAC",
+          "label": "PAC",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Quantity",
+          "label": "Quantity",
+          "type": "number",
+          "required": false,
+          "initialValue": "0"
+        }
+      ]
+    },
+    {
+      "name": "Section1",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Complaint_Record_ID",
+      "label": "Complaint Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Appointment_Record_ID",
+      "label": "Appointment Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

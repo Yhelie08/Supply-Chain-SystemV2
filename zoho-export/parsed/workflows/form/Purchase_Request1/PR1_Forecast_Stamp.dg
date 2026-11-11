@@ -1,0 +1,5 @@
+// form: PR1_Forecast_Stamp  form=Purchase_Request1 event=on add or edit on success  [.ds line 46906]
+    /* Isang linya lang dito, sadya: lahat ng lohika ay nasa custom function, kaya
+   walang dahilan para muling hawakan ang form na ito. Nasa info log ang sagot,
+   kaya makikita mo kung na-skip ito at bakit. */
+info thisapp.fcPrToPreOrder(input.ID.toLong());

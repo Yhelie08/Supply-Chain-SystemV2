@@ -1,0 +1,31 @@
+// form: Receiving_Compute_Totals  form=Receiving event=on add or edit on validate  [.ds line 39784]
+    totalExpected = 0;
+totalAccepted = 0;
+totalDamage = 0;
+totalMissing = 0;
+totalLines = 0;
+incompleteLines = 0;
+readyForFulfillment = 0;
+for each  ln in input.Receiving_Line_Items
+{
+    totalLines = totalLines + 1;
+    totalExpected = totalExpected + ifnull(ln.Expected_Qty,0);
+    totalAccepted = totalAccepted + ifnull(ln.Accepted_Qty,0);
+    totalDamage = totalDamage + ifnull(ln.Damage_Qty,0);
+    totalMissing = totalMissing + ifnull(ln.Missing_Qty,0);
+    if(ln.Line_Result == "Incomplete")
+    {
+        incompleteLines = incompleteLines + 1;
+    }
+    if(ln.Ready_for_Fulfillment == true)
+    {
+        readyForFulfillment = readyForFulfillment + 1;
+    }
+}
+input.Total_Expected_Qty = totalExpected;
+input.Total_Accepted_Qty = totalAccepted;
+input.Total_Damage_Qty = totalDamage;
+input.Total_Missing_Qty = totalMissing;
+input.Total_Lines = totalLines;
+input.Incomplete_Lines = incompleteLines;
+input.Ready_for_Fulfillment1 = readyForFulfillment;

@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exception Control</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  Reads/writes "Exception_Control_Report" (form: Exception_Control1).
+  Schema changed 2026-07-24: NO subform anymore — one record per ITEM (same pattern
+  so_kanban_sync.txt uses for Sales_Order_Fulfillment). List mirrors the reference
+  native-mock table (flat row per item, Rework/Status editable INLINE,
+  auto-save on change — no separate Save button for these 3). Create RR is a per-row
+  button, enabled only when that row's own Status == "Unrepairable" — still a
+  PLACEHOLDER click (toast only), real RR-creation logic not yet defined.
+
+  Detail view repurposed per user request (2026-07-24) — only for what the reference
+  "Repair" mock form itself covers: Image, Video, Remarks, Checked By, Signature,
+  Repair Status. Everything else (Rework/Status/Create RR) is edited
+  inline from the list now, not here.
+
+  PREREQUISITE: `Signature` field (Image type, header, single-file) needs to be added
+  to Exception_Control1 — doesn't exist in the schema yet, same plain-upload pattern
+  as Receiving's "Receiver's Signature Upload" (not a live-draw pad).
+
+  1. Zoho Creator → Settings → Widgets → New Widget → "Upload HTML". Zip this file and upload.
+  2. Opening this file directly in a browser runs PREVIEW MODE with sample data.
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="notification_component/notification.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+        boxShadow: { card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)' }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { height: 100%; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  @keyframes toast-in { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
+  .toast-in { animation: toast-in .18s ease-out; }
+  .sig-canvas{width:100%;max-width:600px;height:140px;border:1.5px dashed #cbd5e1;border-radius:0.5rem;background:#fff;touch-action:none;cursor:crosshair;display:block}
+  .photo-thumb{width:64px;height:64px;object-fit:cover;border-radius:0.5rem;border:1px solid #e2e8f0;cursor:zoom-in;transition:transform .15s}
+  .photo-thumb:hover{transform:scale(1.06);border-color:#3b82f6}
+  .lightbox-overlay{display:none;position:fixed;inset:0;z-index:6000;align-items:center;justify-content:center;padding:40px;background:rgba(0,0,0,.82);cursor:zoom-out}
+  .lightbox-overlay.open{display:flex}
+  .lightbox-overlay img{max-width:100%;max-height:100%;border-radius:0.5rem;cursor:default}
+  .lightbox-overlay video{max-width:100%;max-height:100%;border-radius:0.5rem;cursor:default}
+  .lightbox-close{position:absolute;top:20px;right:24px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .lightbox-close:hover{background:rgba(255,255,255,.3)}
+  .lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 150ms ease}
+  .lightbox-nav:hover{background:rgba(255,255,255,.3)}
+  .lightbox-nav.prev{left:24px}
+  .lightbox-nav.next{right:24px}
+  .lightbox-counter{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:#fff;font-size:12.5px;opacity:.85}
+  .vid-spinner{display:inline-block;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:#3b82f6;border-radius:50%;animation:vidspin .7s linear infinite;vertical-align:-2px;margin-right:5px}
+  @keyframes vidspin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body class="min-h-full bg-slate-100 text-slate-800 antialiased">
+
+  <!-- CHANGED 2026-08-20, per user report ("pati yang dalawa") — same missing-
+       border/unframed-page fix already applied same day to several other widgets
+       in both Widget\Proc\ and Widget\Fulfillment\. This card already had a real
+       border — it just wasn't stretching to fill the remaining page height. -->
+  <div id="listView" class="w-full px-4 sm:px-6 py-5 min-h-screen flex flex-col">
+    <header class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5 shrink-0">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Damaged Items — Exception Module <span style="background:#dc2626;color:#fff;font-size:11px;padding:2px 8px;border-radius:5px;vertical-align:middle;">BUILD 2026-09-04-C</span></h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Items rejected during QC · Assess, rework, and resolve before re-dispatch ·
+          <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+          </span>
+        </p>
+      </div>
+    </header>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex-1 min-h-0 flex flex-col">
+      <div class="flex items-center gap-2 px-5 pt-4 shrink-0" id="sourceTabs"></div>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+        <div class="flex flex-wrap gap-1.5" id="filterPills"></div>
+        <div class="flex items-center gap-2">
+          <select id="reworkFilter" class="text-sm rounded-full border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 pl-3 pr-8 py-2">
+            <option value="All">All Rework</option>
+            <option value="Repair">Repair</option>
+            <option value="Rewire">Rewire</option>
+            <option value="Repaint">Repaint</option>
+          </select>
+          <div class="relative">
+            <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+            </svg>
+            <input id="searchInput" type="text" placeholder="Search SO#, Item, SKU…"
+              class="w-56 sm:w-64 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-auto flex-1 min-h-0">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
+              <th class="px-5 py-2.5 font-bold">Exception #</th>
+              <th class="px-3 py-2.5 font-bold">Next Step</th>
+              <th class="px-3 py-2.5 font-bold">SO#</th>
+              <th class="px-3 py-2.5 font-bold">PAC#</th>
+              <th class="px-3 py-2.5 font-bold">Item Name</th>
+              <th class="px-3 py-2.5 font-bold">SKU</th>
+              <th class="px-3 py-2.5 font-bold">Supplier</th>
+              <th class="px-3 py-2.5 font-bold text-right">Qty</th>
+              <th class="px-3 py-2.5 font-bold">Rework</th>
+              <th class="px-3 py-2.5 font-bold">Status</th>
+              <th class="px-3 py-2.5 font-bold">Create RR</th>
+              <th class="px-3 py-2.5 font-bold">RR#</th>
+              <th class="px-3 py-2.5 font-bold">Modified Time</th>
+              <th class="px-3 py-2.5 font-bold">Modified User</th>
+              <th class="px-5 py-2.5 font-bold">Added Time</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-50"></tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100 text-xs text-slate-500 shrink-0">
+        <span>Showing <strong id="totalCount" class="text-slate-700">0</strong> of <strong id="grandCount" class="text-slate-700">0</strong> items</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail view — Documentation & Repair only (image/video/remarks/checker/signature/status) -->
+  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
+        ← Back
+      </button>
+      <span class="text-slate-300">|</span>
+      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    </div>
+
+    <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+    <div id="nsBanner"></div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 mb-4">
+      <h2 id="detailTitle" class="text-xl font-bold text-slate-900"></h2>
+      <p id="detailSubline" class="text-xs text-slate-400 mt-1"></p>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase">📋 Documentation &amp; Repair</h3>
+        <button id="saveDetailBtn" class="bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition">Update</button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+        <div>
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Image (up to 10)</label>
+          <div id="dImageThumbs" class="flex flex-wrap gap-2 mb-2"></div>
+          <input id="dImageFile" type="file" accept="image/*" multiple class="text-xs w-full" />
+        </div>
+        <div>
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Video</label>
+          <div id="dVideoExisting" class="text-xs text-slate-500 mb-1"></div>
+          <input id="dVideoFile" type="file" accept="video/*" class="text-xs w-full" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Remarks</label>
+          <textarea id="dRemarks" rows="3" class="w-full text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 px-3 py-2"></textarea>
+        </div>
+        <div>
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Checked By</label>
+          <input id="dChecker" type="text" class="w-full text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 px-3 py-2" />
+        </div>
+        <div>
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Repair Status</label>
+          <select id="dStatus" class="w-full text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 px-3 py-2"></select>
+        </div>
+        <div>
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Signature</label>
+          <img id="dSignatureExisting" class="hidden w-full max-w-xs rounded-lg border border-slate-200 mb-2" />
+          <p class="text-xs text-slate-400 mb-1">Draw below to add a new signature (replaces the one above on Update):</p>
+          <canvas id="sigCanvas" class="sig-canvas" width="600" height="140"></canvas>
+          <button type="button" onclick="clearSignaturePad('sigCanvas')" class="mt-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg px-2.5 py-1 transition">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADDED 2026-07-27, per user ("i forgot display it in exception control
+         widget") — read-only display of what the native "QC Approved sync to
+         Crate or Order Aggregation" workflow (DelugeScripts/checker_checklist_
+         qc_sync.txt) writes on QC_Status=Rejected. Never editable here — this
+         data always comes FROM Checker_Checklist, this widget is downstream. -->
+    <div id="qcRejectionCard" class="hidden bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 mt-4">
+      <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🔎 QC Rejection Details</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+        <div>
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Item to Replace</label>
+          <p id="dItemToReplace" class="text-sm text-slate-800 font-medium">—</p>
+        </div>
+        <div>
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Quantity of Damage Items</label>
+          <p id="dQtyDamage" class="text-sm text-slate-800 font-medium">—</p>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Spare Parts</label>
+          <div id="dSparePartsEmpty" class="text-sm text-slate-400">—</div>
+          <div id="dSparePartsTableWrap" class="hidden overflow-x-auto">
+            <table class="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+              <thead>
+                <tr class="bg-slate-50 text-left text-[10px] uppercase tracking-wide text-slate-400 font-bold">
+                  <th class="px-3 py-1.5 border-b border-slate-200">Spare Part Type</th>
+                  <th class="px-3 py-1.5 border-b border-slate-200">Quantity</th>
+                </tr>
+              </thead>
+              <tbody id="dSparePartsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Source</label>
+          <p id="dSourceModule" class="text-sm text-slate-500">—</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADDED 2026-07-27, per user ("can we just use Exception_Control_Media") —
+         Photos/Video from the QC checker no longer travel via native Deluge field
+         copy at all (that path hit 2 real platform limits — update-task rejects
+         file-field values, and Exception_Control1's own header fields would only
+         ever populate on first-insert anyway). QCChecklist now uploads directly
+         into the separate Exception_Control_Media form (one record per file, same
+         proven one-record-per-photo pattern as Evidence_Photos elsewhere in this
+         app), correlated by a plain "SO|SKU|PAC" composite key in that form's own
+         Record_ID field (not a real record ID — repurposed, no new field needed).
+         This card is read-only, queried fresh on every detail open. -->
+    <div id="qcMediaCard" class="hidden bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 mt-4">
+      <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🖼️ Photos &amp; Video (from QC Review)</h3>
+      <div class="mb-4">
+        <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Images</label>
+        <div id="dQcImageThumbs" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div>
+        <label class="text-[10px] uppercase tracking-wide text-slate-400 font-bold block mb-1">Video</label>
+        <div id="dQcVideoExisting" class="text-xs text-slate-500"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+  <div id="confirmOverlay" class="hidden fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5">
+      <h3 class="text-sm font-bold text-slate-900 mb-1">Mark as Completed?</h3>
+      <p id="confirmMessage" class="text-sm text-slate-600 mb-4"></p>
+      <div class="flex justify-end gap-2">
+        <button id="confirmCancelBtn" class="text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5 transition">Cancel</button>
+        <button id="confirmYesBtn" class="text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-400 rounded-lg px-3 py-1.5 transition">Yes, Complete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox — Prev/Next added 2026-07-27, ported from
+       UI/DMS WIDGET/FieldServiceSiteVisits's own proven multi-photo stack viewer. -->
+  <div id="lightboxOverlay" class="lightbox-overlay" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="event.stopPropagation();closeLightbox()" title="Close">&#10005;</button>
+    <button class="lightbox-nav prev" id="lbPrev" onclick="event.stopPropagation();lightboxStep(-1)" title="Previous">&#8249;</button>
+    <img id="lightboxImg" src="" onclick="event.stopPropagation()" />
+    <button class="lightbox-nav next" id="lbNext" onclick="event.stopPropagation();lightboxStep(1)" title="Next">&#8250;</button>
+    <div class="lightbox-counter" id="lbCounter"></div>
+  </div>
+
+  <!-- Video lightbox — real browser Fullscreen API is blocked in this widget's
+       iframe (Permissions Policy, same limitation already hit in DeliveryQueue's
+       map card), so this reuses the SAME proven position:fixed full-viewport
+       overlay mechanism as the photo lightbox above (confirmed working in this
+       exact widget) instead, giving the same "fullscreen-like" click-to-view
+       experience without needing OS-level fullscreen at all. -->
+  <div id="videoLightboxOverlay" class="lightbox-overlay" onclick="closeVideoLightbox()">
+    <button class="lightbox-close" onclick="event.stopPropagation();closeVideoLightbox()" title="Close">&#10005;</button>
+    <div id="videoLightboxSlot" onclick="event.stopPropagation()"></div>
+  </div>
+
+<div id="notifMount"></div>
+<script src="notification_component/notification.js"></script>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const CONFIG = {
+    APP_NAME: "supply-chain-app",
+    REPORT_NAME: "Exception_Control_Report",
+    FORM_NAME: "Exception_Control1",
+    MAX_RECORDS: 1000,
+    IMAGE_FIELD: "Image_max_10_JPG_JPEG_PNG",
+    VIDEO_FIELD: "Video_Upload_max_3_min_30_sec",
+    SIGNATURE_FIELD: "Signature",
+    // Educated guess following this app's own `<FormName>_Report` convention —
+    // NOT independently confirmed live. If the QC media card stays empty despite
+    // real Exception_Control_Media records existing, check this report link name
+    // first (Design → Exception_Control_Media form → its default report's own
+    // Link Name) before assuming the query/criteria logic is wrong.
+    MEDIA_REPORT: "Exception_Control_Media_Report",
+  };
+
+  const REWORK_CHOICES = ["Select", "OK", "Repair", "Rewire", "Repaint"];
+  const STATUS_CHOICES = ["Pending", "In Rework", "Completed", "Unrepairable"];
+  const FILTER_PILLS = ["All", "Pending", "In Rework", "Completed", "Unrepairable"];
+
+  let allRecords = [];
+  let orderedRows = [];
+  let activeFilter = "All";
+  let activeReworkFilter = "All";
+  let currentDetailRecord = null;
+  let CURRENT_USER_EMAIL = "";
+  let ZC_ENV = "development";
+  let deepLinkChecked = false;
+
+  // Deep link from a notification click — same ZOHO.CREATOR.UTIL.navigateParentURL
+  // + getQueryParams() pattern proven in every other FF widget carrying the
+  // notification bell. Real page link name confirmed by user 2026-08-03:
+  // Exception_Control2. Page Variable `excRecordId` registered on it same day.
+  //   Target_URL = "https://creatorapp.zoho.com/homecartel/environment/" +
+  //     "<development|production>/supply-chain-app/#Page:Exception_Control2" +
+  //     "?excRecordId=" + input.ID
+  function checkDeepLinkOpenExc() {
+    if (deepLinkChecked) return;
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams !== "function") return;
+    deepLinkChecked = true;
+    ZOHO.CREATOR.UTIL.getQueryParams().then((params) => {
+      const id = params && params.excRecordId;
+      if (id) switchToDetail(id);
+    }).catch(() => {});
+  }
+
+  const tableBody = document.getElementById("tableBody");
+  const searchInput = document.getElementById("searchInput");
+  const filterPillsEl = document.getElementById("filterPills");
+  const reworkFilterEl = document.getElementById("reworkFilter");
+
+  // ---------------------------------------------------------------------
+  // Signature pad — ported verbatim from UI/DMS WIDGET/OngoingService (2026-07-23),
+  // same real native `type=signature` field limitation: cannot be set via
+  // addRecords/updateRecordById body, must go through Upload File API as a PNG;
+  // also excluded from getRecords entirely, so no read-back/preview is possible —
+  // the "already signed" chip below is a harmless no-op hook, not a real detector.
+  // ---------------------------------------------------------------------
+  var SIG_PADS = {};
+  function initSignaturePad(canvasId) {
+    var canvas = document.getElementById(canvasId);
+    var ctx = canvas.getContext("2d");
+    ctx.strokeStyle = "#1E293B";
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    var pad = { ctx: ctx, drawing: false, dirty: false };
+    SIG_PADS[canvasId] = pad;
+
+    function pos(e) {
+      var rect = canvas.getBoundingClientRect();
+      var scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
+      var cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      var cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      return { x: cx * scaleX, y: cy * scaleY };
+    }
+    function start(e) { pad.drawing = true; pad.dirty = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+    function move(e) { if (!pad.drawing) return; var p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }
+    function end() { pad.drawing = false; }
+
+    canvas.addEventListener("mousedown", start);
+    canvas.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", end);
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", end);
+  }
+  window.clearSignaturePad = function (canvasId) {
+    var canvas = document.getElementById(canvasId);
+    var pad = SIG_PADS[canvasId];
+    if (!pad) return;
+    pad.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pad.dirty = false;
+  };
+  function signaturePadToFile(canvasId, filename) {
+    var pad = SIG_PADS[canvasId];
+    if (!pad || !pad.dirty) return Promise.resolve(null);
+    var canvas = document.getElementById(canvasId);
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(null); return; }
+        resolve(new File([blob], filename, { type: "image/png" }));
+      }, "image/png");
+    });
+  }
+
+  function displayVal(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    if (typeof v === "object") return v.zc_display_value || v.display_value || v.ID || "—";
+    return String(v);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  function toast(message, type) {
+    const container = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    const styles = { success: "bg-slate-900 text-white", error: "bg-rose-600 text-white" };
+    el.className = `toast-in px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${styles[type] || styles.success}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  // ---------------------------------------------------------------------
+  // Confirm modal — same shape as PreOrderReport's showConfirm, +optional
+  // onNo (revert-on-cancel, needed for the inline Status <select>).
+  // ---------------------------------------------------------------------
+  let _confirmYesHandler = null;
+  let _confirmNoHandler = null;
+  function showConfirm(message, onYes, onNo) {
+    document.getElementById("confirmMessage").textContent = message;
+    document.getElementById("confirmOverlay").classList.remove("hidden");
+    _confirmYesHandler = onYes;
+    _confirmNoHandler = onNo || null;
+  }
+  function closeConfirm() {
+    document.getElementById("confirmOverlay").classList.add("hidden");
+    _confirmYesHandler = null;
+    _confirmNoHandler = null;
+  }
+  document.getElementById("confirmCancelBtn").addEventListener("click", () => {
+    const handler = _confirmNoHandler;
+    closeConfirm();
+    if (handler) handler();
+  });
+  document.getElementById("confirmYesBtn").addEventListener("click", () => {
+    const handler = _confirmYesHandler;
+    closeConfirm();
+    if (handler) handler();
+  });
+
+  // ---------------------------------------------------------------------
+  // Completed -> push item back into Order Aggregation for packing.
+  // Best-effort: never blocks the Status save itself, only toasts outcome.
+  // Order_Aggregation1 has no direct link to Exception_Control1 — matched
+  // by Sales_Order (+PAC if present). Only fields Exception_Control1 actually
+  // carries (SO/PAC/Item_Name/SKU/Qty) are populated; PR#/DEMO#/ORDER TYPE/
+  // DELIVERY TYPE/Target Date/For Crate/Customer fields are left blank on a
+  // brand-new Order_Aggregation1 record since this form has no source for them.
+  // ---------------------------------------------------------------------
+  const ORDER_AGG_REPORT = "Order_Aggregation1_Report";
+  const ORDER_AGG_FORM = "Order_Aggregation1";
+  const QC_FORM = "Checker_Checklist";
+  const QC_REPORT = "All_Qc_Reports1";
+
+  // Creator rejects getRecords with an HTTP 400 (not a resolved {code:!=3000})
+  // when a criteria genuinely matches nothing — code 9220 "no records exist" /
+  // 9280 "no records found matching criteria" are both "empty result", not a
+  // real failure. Same family as this app's already-documented 9220 gotcha.
+  function isNoRecordsError(err) {
+    try {
+      const text = (err && err.responseText) || (typeof err === "string" ? err : "");
+      const parsed = typeof text === "string" && text ? JSON.parse(text) : (err || {});
+      return !!(parsed && (parsed.code === 9220 || parsed.code === 9280));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function syncCompletedToOrderAggregation(rec) {
+    const so = rec.Sales_Order;
+    if (!so) {
+      toast("Completed, but no Sales Order on this item — skipped Order Aggregation sync.", "error");
+      return;
+    }
+    const newRow = { Item_Name: rec.Item_Name || "", SKU: rec.SKU || "", QTY: String(rec.Qty || "1") };
+    const getCfg = {
+      report_name: ORDER_AGG_REPORT,
+      criteria: `(SO == ${JSON.stringify(String(so))})`,
+      field_config: "all",
+      max_records: 200,
+    };
+    const proceed = (rows) => {
+      if (rows.length) {
+        const target = rows[0];
+        const items = Array.isArray(target.Item_Details) ? target.Item_Details : [];
+        const rebuilt = items.map((it) => ({
+          Item_Name: it.Item_Name || "",
+          SKU: it.SKU || "",
+          QTY: it.QTY || "",
+          Bin_Location: it.Bin_Location || "",
+        }));
+        rebuilt.push(newRow);
+        return ZOHO.CREATOR.DATA.updateRecordById({
+          report_name: ORDER_AGG_REPORT,
+          id: String(target.ID),
+          payload: { data: { Item_Details: rebuilt } },
+        }).then((r2) => {
+          if (r2 && r2.code === 3000) toast("Completed — added back to Order Aggregation.", "success");
+          else { console.error("[ExceptionControl] Order Aggregation update failed:", r2); toast("Completed, but Order Aggregation sync failed — see console.", "error"); }
+        });
+      }
+      // No existing Order_Aggregation1 record for this SO — best-effort backfill
+      // Customer/Order Type/Delivery Type/Target Date/For Crate/PR from Pre_Order_FF
+      // (same SO, real source for this data; Exception_Control1 itself has none of it).
+      const preOrderCfg = {
+        report_name: "Pre_Order1_Report",
+        criteria: `(SO == ${JSON.stringify(String(so))})`,
+        field_config: "all",
+        max_records: 200,
+      };
+      const createNew = (enrich) => ZOHO.CREATOR.DATA.addRecords({
+        form_name: ORDER_AGG_FORM,
+        payload: { data: {
+          SO: so,
+          PAC: rec.PAC || "",
+          PR: enrich.PR || "",
+          ORDER_TYPE: enrich.Order_Type || "",
+          DELIVERY_TYPE: enrich.Delivery_Type || "",
+          Target_Date: enrich.Target_Delivery || "",
+          For_Crate: enrich.For_Crate || false,
+          Customer_Name: enrich.Customer_Name || "",
+          Customer_Type: enrich.Customer_Type || "",
+          Customer_Address: enrich.Customer_Address || "",
+          Item_Details: [newRow],
+        } },
+      }).then((r2) => {
+        if (r2 && r2.code === 3000) toast("Completed — created a new Order Aggregation entry.", "success");
+        else { console.error("[ExceptionControl] Order Aggregation create failed:", r2); toast("Completed, but Order Aggregation sync failed — see console.", "error"); }
+      });
+      return ZOHO.CREATOR.DATA.getRecords(preOrderCfg).then((r3) => {
+        const match = (r3 && r3.code === 3000 && Array.isArray(r3.data) && r3.data[0]) ? r3.data[0] : {};
+        return createNew(match);
+      }).catch(() => createNew({}));
+    };
+
+    ZOHO.CREATOR.DATA.getRecords(getCfg).then((resp) => {
+      const rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+      return proceed(rows);
+    }).catch((err) => {
+      if (isNoRecordsError(err)) return proceed([]);
+      console.error("[ExceptionControl] Order Aggregation sync error:", err);
+      toast("Completed, but Order Aggregation sync failed — see console.", "error");
+    });
+  }
+  // SUPERSEDED 2026-07-27, per user ("it should be every completed -> quality
+  // check. then in quality check every rejected will go to exception control
+  // again, then approved -> aggregate") — Completed no longer pushes straight
+  // to Order Aggregation; it now creates a Quality Check record instead (see
+  // createQcRecordForCompleted() below). The Order-Aggregation-hand-back LOGIC
+  // above is unchanged/still correct — it moved to `UI/FF Widget/QCChecklist`'s
+  // own QC_Status=Approved handler (that widget's copy reads the richer header
+  // fields — Customer/PR/Order Type/Delivery Type/Target Date/For Crate — the
+  // new Checker_Checklist record now carries directly, no Pre_Order_FF lookup
+  // needed there). This function is left in place, unused, matching this app's
+  // own "don't delete, leave unused" convention — not called from anywhere
+  // anymore.
+
+  // ---------------------------------------------------------------------
+  // Quality Check hand-off — creates a real Checker_Checklist record (report
+  // All_Qc_Reports1) the moment an exception is marked Completed, pre-filled
+  // from this record + a best-effort Pre_Order_FF enrichment (same source/
+  // pattern already proven safe in syncCompletedToOrderAggregation above —
+  // Exception_Control1 itself only reliably carries SO/PAC/Item_Name/SKU/Qty/
+  // RR_No/PR/Exception_Number, everything else needs the Pre_Order_FF lookup).
+  // New field needed on Checker_Checklist (user creates manually): Exception_
+  // Number (Single Line Text) — the only link back to this record, read by
+  // QCChecklist's own Rejected handler to find/reopen this exact exception.
+  // ---------------------------------------------------------------------
+  function createQcRecordForCompleted(rec) {
+    const so = rec.Sales_Order || "";
+    const sku = rec.SKU || "";
+    const preOrderCfg = {
+      report_name: "Pre_Order1_Report",
+      criteria: `(SO == ${JSON.stringify(String(so))})`,
+      field_config: "all",
+      max_records: 200,
+    };
+    // 2nd source, added 2026-09-04 — Pre_Order1_Report has no Demo/Bin_Location
+    // at all, and can come up empty for an already-fully-processed SO (this
+    // function runs on Exception "Completed", which can happen well after the
+    // item's own pre-order row is gone). Sales_Order_Readiness_Gate_Report is
+    // the richest surviving per-SKU source for all of these reference fields
+    // (see readiness_gate_release_to_pick1_direct.txt's own field mapping) —
+    // used to fill in whatever Pre_Order1_Report's enrich still lacks.
+    const gateCfg = {
+      report_name: "Sales_Order_Readiness_Gate_Report",
+      criteria: `(sales_order_number == ${JSON.stringify(String(so))} && SKU == ${JSON.stringify(String(sku))})`,
+      field_config: "all",
+      // FIXED 2026-09-04, real bug found live via the on-screen diagnostic —
+      // max_records:1 is NOT a valid value for ZOHO.CREATOR.DATA.getRecords;
+      // Creator only accepts 200/500/1000 (code 9250 "Please enter a valid
+      // input for 'max_records' key" otherwise). This silently threw on
+      // EVERY call, so the gate fallback never once actually ran — explains
+      // why Demo/Bin_Location (gate-only fields) were blank on every test.
+      max_records: 200,
+    };
+    const createQc = (enrich, gate) => {
+      const payload = {
+        SO: so,
+        PAC: rec.PAC || "",
+        PR: rec.PR || enrich.PR || gate.pr_number || "",
+        RR: rec.RR_No || gate.rr_number || "",
+        Demo: gate.Demo || "",
+        Order_Type: enrich.Order_Type || gate.Order_Type || "",
+        Delivery_Type: enrich.Delivery_Type || gate.Delivery_Type || "",
+        Target_Delivery_Date: enrich.Target_Delivery || gate.Target_Delivery_Date || "",
+        For_Crate: enrich.For_Crate || gate.For_Crate || false,
+        Bin_Location: gate.Bin_Location || "",
+        Customer_Name: enrich.Customer_Name || gate.customer_name || "",
+        Customer_Type: enrich.Customer_Type || gate.customer_type || "",
+        Customer_Address: enrich.Customer_Address || gate.customer_address || "",
+        Item_Name: rec.Item_Name || "",
+        Quantity: String(rec.Qty || "1"),
+        SKU: sku,
+        Exception_Number: rec.Exception_Number || "",
+        // ADDED 2026-09-04, per user request — Exception_Control1's own
+        // "Checked By" (field link name Checker) pre-fills Checker_Checklist's
+        // Quality_Checker so whoever assessed/repaired the item on the
+        // Exception side is already named on the fresh QC record instead of
+        // it landing blank; still a plain editable field on QC's own edit
+        // form, so a different quality checker can still override it there.
+        Quality_Checker: rec.Checker || "",
+      };
+      return ZOHO.CREATOR.DATA.addRecords({ form_name: QC_FORM, payload: { data: payload } }).then((resp) => {
+        if (resp && resp.code === 3000) toast("Completed — sent to Quality Check for review.", "success");
+        else { console.error("[ExceptionControl] Quality Check create failed:", resp); toast("Completed, but Quality Check hand-off failed — see console.", "error"); }
+      });
+    };
+    if (!so) { createQc({}, {}); return; }
+    Promise.all([
+      ZOHO.CREATOR.DATA.getRecords(preOrderCfg).then((r) => ({ ok: true, r })).catch((e) => ({ ok: false, e })),
+      sku ? ZOHO.CREATOR.DATA.getRecords(gateCfg).then((r) => ({ ok: true, r })).catch((e) => ({ ok: false, e })) : Promise.resolve({ ok: false, e: "no SKU" }),
+    ]).then(([poOut, gateOut]) => {
+      const poResp = poOut.ok ? poOut.r : null;
+      const gateResp = gateOut.ok ? gateOut.r : null;
+      const match = (poResp && poResp.code === 3000 && Array.isArray(poResp.data) && poResp.data[0]) ? poResp.data[0] : {};
+      const gateMatch = (gateResp && gateResp.code === 3000 && Array.isArray(gateResp.data) && gateResp.data[0]) ? gateResp.data[0] : {};
+      createQc(match, gateMatch);
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Create RR — mirrors Procurement's own create_rr_button.txt shape (real
+  // Replacement_Request + matching Fenteng/Tony supplier RR), but driven
+  // client-side (this is a widget, not a native form action, no Custom
+  // Function needed for the create itself). Source_Type reuses "QC Failure"
+  // (per direct user decision, no new enum value added); Source_Module
+  // "Fulfillment EXC" is the discriminator receiving_create_bin_receiving.txt/
+  // clone_shipment_for_replacement.txt use to route back to Exception_Control1
+  // instead of the native Exceptions form once the rest of the loop is wired
+  // (see CLAUDE.md for the phased scope — Books-skip on Create Receive is a
+  // separate TODO, deferred until Shipments/Receiving get their own
+  // Source_Module/Exception_Number fields).
+  // ---------------------------------------------------------------------
+  const RR_REPORT = "Replacement_Request_Report";
+  const PR1_REPORT = "All_Purchase_Request";
+  const PO_AGG_REPORT = "All_Purchase_Orders";
+  const SUPPLIER_RR = {
+    Fenteng: { form: "Fenteng_Lighting_Replacement_Request", report: "Fenteng_Lighting_Replacement_Request_Report" },
+    Tony: { form: "Tony_Fan_Replacement_Request", report: "Tony_Fan_Replacement_Request_Report" },
+  };
+  const SUPPLIER_PO = {
+    Fenteng: { report: "Fenteng_Lighting_Purchase_Order_Report", poField: "PO_No_Supplier1", damageField: "Damage_SKUs_Supplier1" },
+    Tony: { report: "Tony_Fan_Purchase_Order_Report", poField: "PO_No_Supplier2", damageField: "Damage_SKUs_Supplier2" },
+  };
+  // FIXED 2026-08-07, real live bug found during Task 10 verification ("Unknown Supplier
+  // 'Tony Fan' — can't route this RR"): a Suppliers-form-resolved field can hold the FULL
+  // display name ("Tony Fan"/"Fenteng Lighting"), not the bare "Fenteng"/"Tony" literal
+  // these lookup objects are keyed by — same class as CLAUDE.md's documented supplier
+  // full-name-vs-bare-literal gotcha, this file just wasn't in that audit's file list.
+  // Normalize to the short key before any SUPPLIER_RR/SUPPLIER_PO lookup.
+  function supplierKey(name) {
+    const n = String(name || "");
+    if (n.indexOf("Fenteng") > -1) return "Fenteng";
+    if (n.indexOf("Tony") > -1) return "Tony";
+    return n;
+  }
+
+  function todayIso() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function computeNextRRNo() {
+    return ZOHO.CREATOR.DATA.getRecords({ report_name: RR_REPORT, field_config: "all", max_records: 200 }).then((resp) => {
+      const rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+      let max = 0;
+      rows.forEach((r) => {
+        const m = String(r.RR_No || "").match(/^RR-0*(\d+)$/);
+        if (m) { const n = parseInt(m[1], 10); if (n > max) max = n; }
+      });
+      return "RR-" + String(max + 1).padStart(5, "0");
+    }).catch((err) => {
+      if (isNoRecordsError(err)) return "RR-00001";
+      throw err;
+    });
+  }
+
+  function resolveOriginalPO(prNo) {
+    if (!prNo) return Promise.resolve("");
+    return ZOHO.CREATOR.DATA.getRecords({
+      report_name: PR1_REPORT,
+      criteria: `(PR_No == ${JSON.stringify(String(prNo))})`,
+      field_config: "all",
+      max_records: 200,
+    }).then((resp) => {
+      const rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+      return (rows[0] && rows[0].Link_PO_No) || "";
+    }).catch((err) => {
+      if (isNoRecordsError(err)) return "";
+      console.error("[ExceptionControl] PO resolve error:", err);
+      return "";
+    });
+  }
+
+  function stampDamageFlags(origPONo, supplier, sku) {
+    if (!origPONo) return Promise.resolve();
+    const aggUpdate = ZOHO.CREATOR.DATA.getRecords({
+      report_name: PO_AGG_REPORT,
+      criteria: `(PO_No == ${JSON.stringify(String(origPONo))})`,
+      field_config: "all",
+      max_records: 200,
+    }).then((resp) => {
+      const rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+      if (!rows[0]) return;
+      return ZOHO.CREATOR.DATA.updateRecordById({
+        report_name: PO_AGG_REPORT,
+        id: String(rows[0].ID),
+        payload: { data: { Damage_SKUs: sku } },
+      });
+    }).catch((err) => { if (!isNoRecordsError(err)) console.error("[ExceptionControl] agg PO stamp error:", err); });
+
+    const supCfg = SUPPLIER_PO[supplierKey(supplier)];
+    const supUpdate = supCfg ? ZOHO.CREATOR.DATA.getRecords({
+      report_name: supCfg.report,
+      criteria: `(${supCfg.poField} == ${JSON.stringify(String(origPONo))})`,
+      field_config: "all",
+      max_records: 200,
+    }).then((resp) => {
+      const rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+      if (!rows[0]) return;
+      return ZOHO.CREATOR.DATA.updateRecordById({
+        report_name: supCfg.report,
+        id: String(rows[0].ID),
+        payload: { data: { [supCfg.damageField]: sku } },
+      });
+    }).catch((err) => { if (!isNoRecordsError(err)) console.error("[ExceptionControl] supplier PO stamp error:", err); }) : Promise.resolve();
+
+    return Promise.all([aggUpdate, supUpdate]);
+  }
+
+  function existingRRForException(excNo) {
+    return ZOHO.CREATOR.DATA.getRecords({
+      report_name: RR_REPORT,
+      criteria: `(Source_Exception_No == ${JSON.stringify(String(excNo))})`,
+      field_config: "all",
+      max_records: 200,
+    }).then((resp) => (resp && resp.code === 3000 && Array.isArray(resp.data) && resp.data.length > 0))
+      .catch((err) => { if (isNoRecordsError(err)) return false; throw err; });
+  }
+
+  /* REVISED 2026-08-12, per user request ("dont remove the RR button in the
+     Exception control, the only problem is that when we choose supplier is
+     wrong. it should be in the RR") — the 2026-08-11 supplier-picker popup
+     (showSupplierPicker/closeSupplierPicker + #supplierPickOverlay) is REMOVED.
+     This button/function still ALWAYS creates the aggregate Replacement_Request
+     record, same as before. The only change: when rec.Supplier can't be
+     auto-resolved (SUPPLIER_RR lookup misses — same root cause as before, a QC/
+     Exception record whose upstream PR was never set), it no longer blocks on a
+     picker here — it skips ONLY the Fenteng/Tony supplier-specific RR create
+     (and the PO damage-flag stamp, which needs a resolved supplier anyway) and
+     leaves Supplier blank on the aggregate. The Replacement widget
+     (Widget\Proc\Replacement\app\index.html) now shows a "Select Supplier" card
+     on that RR's detail view whenever its Supplier is blank — picking there
+     creates the missing supplier-side RR record and fixes this Exception_Control1
+     record's own Supplier field for next time. See that file for the other half
+     of this flow. */
+  function createReplacementRequest(rec, btn) {
+    const supCfg = SUPPLIER_RR[supplierKey(rec.Supplier)];
+    if (btn) { btn.disabled = true; btn.textContent = "Creating…"; }
+
+    existingRRForException(rec.Exception_Number).then((exists) => {
+      if (exists) {
+        toast(`An RR already exists for ${rec.Exception_Number} — skipped duplicate create.`, "error");
+        if (btn) { btn.disabled = true; btn.textContent = "RR Created"; }
+        throw { __handled: true };
+      }
+      return Promise.all([computeNextRRNo(), resolveOriginalPO(rec.PR)]);
+    }).then(([rrNo, origPONo]) => {
+      const summaryRow = {
+        PR_No: rec.PR || "",
+        Supplier: rec.Supplier || "",
+        SKU: rec.SKU || "",
+        Item: rec.Item_Name || "",
+        SO_No: rec.Sales_Order || "",
+        Original_PO_No: origPONo || "",
+        Priority: "Medium",
+        RR_Qty: rec.Qty || 1,
+      };
+      const aggData = {
+        RR_No: rrNo,
+        RR_Date: todayIso(),
+        RR_Status: "Open",
+        Source_Type: "QC Failure",
+        Source_Module: "Fulfillment EXC",
+        Source_Exception_No: rec.Exception_Number || "",
+        Last_Updated: todayIso(),
+        RR_Supplier: rec.Supplier || "",
+        RR_SKU: rec.SKU || "",
+        RR_Item_Name: rec.Item_Name || "",
+        RR_Qty_Value: rec.Qty || 1,
+        RR_PR_No: rec.PR || "",
+        /* ADDED 2026-07-28, per user request ("bring spareparts details... to
+           RR and Supplier's RR so supplier can see what's gonna replace... also
+           picture. remarks and like all the damage/needs replacement details")
+           — mirrors the same fields Exception_Control1 already carries (see
+           renderQcRejectionCard). RR_SO/RR_PAC needed so the supplier RR widget
+           can build the SO|SKU|PAC key and read Exception_Control_Media live —
+           no photo copy, always in sync. */
+        RR_SO: rec.Sales_Order || "",
+        RR_PAC: rec.PAC || "",
+        RR_Item_to_Replace: rec.Item_to_Replace3 || "",
+        RR_Damage_Qty: rec.Quantity || "",
+        RR_Spare_Parts: rec.Quantity_of_damage_spare_s || "",
+        RR_Remarks: rec.Remarks || "",
+        Replacement_Summary: [summaryRow],
+      };
+
+      let chain = ZOHO.CREATOR.DATA.addRecords({ form_name: "Replacement_Request", payload: { data: aggData } }).then((r1) => {
+        if (!(r1 && r1.code === 3000)) throw new Error("Replacement_Request create failed: " + JSON.stringify(r1));
+        return r1;
+      });
+
+      // Supplier resolved — create the matching Fenteng/Tony RR + stamp PO damage
+      // flags right away, same as always. Supplier unresolved — skip both here;
+      // the Replacement widget's own "Select Supplier" card finishes this later.
+      if (supCfg) {
+        const supData = {
+          RR_No: rrNo,
+          RR_Date: todayIso(),
+          RR_Status: "Open",
+          Source_Type: "QC Failure",
+          Source_Module: "Fulfillment EXC",
+          Source_Exception_No: rec.Exception_Number || "",
+          Last_Updated: todayIso(),
+          RR_SO: rec.Sales_Order || "",
+          RR_PAC: rec.PAC || "",
+          RR_Item_to_Replace: rec.Item_to_Replace3 || "",
+          RR_Damage_Qty: rec.Quantity || "",
+          RR_Spare_Parts: rec.Quantity_of_damage_spare_s || "",
+          RR_Remarks: rec.Remarks || "",
+          Replacement_Summary: [summaryRow],
+        };
+        chain = chain.then((r1) => {
+          return ZOHO.CREATOR.DATA.addRecords({ form_name: supCfg.form, payload: { data: supData } }).then((r2) => {
+            if (!(r2 && r2.code === 3000)) throw new Error("Supplier RR create failed: " + JSON.stringify(r2));
+            /* WORKAROUND, real bug found live 2026-07-27 — some native workflow on
+               Fenteng_Lighting_Replacement_Request/Tony_Fan_Replacement_Request fires
+               on Created and silently recomputes/overwrites RR_No to its own max+1,
+               ignoring whatever was actually sent (confirmed: explicitly sent
+               "RR-00004", server stored "RR-00005"). A follow-up plain EDIT does NOT
+               get overridden (confirmed via a direct API create-then-patch test) —
+               same "Created or Edited"-scope class of bug as the already-documented
+               Shipment_Generate_Number gotcha, just discovered here for RR_No. Force
+               it back to the correct value right after create so it can never drift
+               from the aggregate's own RR_No. TODO: find and fix the actual native
+               workflow's trigger scope so this patch becomes unnecessary. */
+            return ZOHO.CREATOR.DATA.updateRecordById({
+              report_name: supCfg.report,
+              id: String(r2.data.ID),
+              payload: { data: { RR_No: rrNo } },
+            });
+          }).then(() => stampDamageFlags(origPONo, rec.Supplier, rec.SKU)).then(() => r1);
+        });
+      }
+
+      return chain.then(() => {
+        return ZOHO.CREATOR.DATA.updateRecordById({
+          report_name: CONFIG.REPORT_NAME,
+          id: String(rec.ID),
+          payload: { data: { RR_No: rrNo } },
+        });
+      }).then(() => {
+        rec.RR_No = rrNo;
+        if (supCfg) {
+          toast(`Created ${rrNo}, routed to ${rec.Supplier}.` + (origPONo ? "" : " (no PO resolved yet — Original PO left blank.)"), "success");
+        } else {
+          toast(`Created ${rrNo} — Supplier not resolved. Open it in the Replacement widget to pick a supplier and finish routing.`, "success");
+        }
+        renderTable();
+      });
+    }).catch((err) => {
+      if (err && err.__handled) return;
+      console.error("[ExceptionControl] Create RR failed:", err);
+      toast("Create RR failed — see console.", "error");
+    }).finally(() => {
+      if (btn && !rec.RR_No) { btn.disabled = false; btn.textContent = "+ Create RR"; }
+    });
+  }
+
+  function parseZohoDateTime(str) {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const mon = months[m[2]];
+      if (mon !== undefined) {
+        return new Date(+m[3], mon, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+      }
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  }
+
+  function formatDateTime(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${datePart} ${timePart}`;
+  }
+
+  function computeOrderedRows(records) {
+    const withTime = records.map((r) => ({ r, t: (parseZohoDateTime(r.Added_Time) || new Date(0)).getTime() }));
+    withTime.sort((a, b) => b.t - a.t);
+    return withTime.map(({ r }) => r);
+  }
+
+  // ---------------------------------------------------------------------
+  // Source tabs — QC Rejects (everything NOT tagged CMS Complaint) vs
+  // CMS Complaints (Source_Module="CMS Complaint" only). Purely a
+  // client-side filter over the already-fetched allRecords/orderedRows —
+  // no new API call, same data source the Status pills already use.
+  // ---------------------------------------------------------------------
+  let activeSourceTab = "QC";
+  function renderSourceTabs() {
+    const tabs = [["QC", "QC Rejects"], ["CMS", "CMS Complaints"]];
+    const el = document.getElementById("sourceTabs");
+    if (!el) return;
+    el.innerHTML = tabs.map(([key, label]) => {
+      const active = activeSourceTab === key;
+      return `<button type="button" class="source-tab-btn text-sm font-semibold px-4 py-2 rounded-lg border transition ${active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}" data-tab="${key}">${label}</button>`;
+    }).join("");
+    el.querySelectorAll(".source-tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeSourceTab = btn.dataset.tab;
+        renderSourceTabs();
+        renderFilterPills();
+        renderTable();
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Filter pills + stats
+  // ---------------------------------------------------------------------
+  function renderFilterPills() {
+    filterPillsEl.innerHTML = FILTER_PILLS.map((f) => {
+      const count = f === "All" ? orderedRows.length : orderedRows.filter((r) => (r.Status || "Pending") === f).length;
+      const active = activeFilter === f;
+      return `<button class="filter-pill text-xs font-medium px-3 py-1.5 rounded-full border transition ${active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}" data-filter="${f}">${f} <span class="opacity-70">${count}</span></button>`;
+    }).join("");
+    filterPillsEl.querySelectorAll(".filter-pill").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeFilter = btn.dataset.filter;
+        renderFilterPills();
+        renderTable();
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // List rendering
+  // ---------------------------------------------------------------------
+  function getFilteredRows() {
+    let rows = orderedRows;
+    rows = rows.filter((r) => {
+      const isCms = (r.Source_Module || "") === "CMS Complaint";
+      return activeSourceTab === "CMS" ? isCms : !isCms;
+    });
+    if (activeFilter !== "All") {
+      rows = rows.filter((r) => (r.Status || "Pending") === activeFilter);
+    }
+    if (activeReworkFilter !== "All") {
+      rows = rows.filter((r) => r.Rework === activeReworkFilter);
+    }
+    const q = searchInput.value.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((r) => {
+        const hay = [r.Sales_Order, r.PAC, r.Item_Name, r.SKU].map(displayVal).join(" ").toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    return rows;
+  }
+
+  function statusBadgeClass(status) {
+    if (status === "Unrepairable") return "text-rose-600 bg-rose-50 border-rose-200";
+    if (status === "Completed") return "text-emerald-600 bg-emerald-50 border-emerald-200";
+    if (status === "In Rework") return "text-amber-600 bg-amber-50 border-amber-200";
+    return "text-slate-500 bg-slate-50 border-slate-200";
+  }
+
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+  function nextStepFor(r) {
+    const st = r.Status || "Pending";
+    const hasRR = !!(r.RR_No && r.RR_No !== "—");
+    if (st === "Completed") return { here: "Repair Completed", action: "Sent back to QC", who: "Checker", tone: "done" };
+    if (st === "Unrepairable") return hasRR
+      ? { here: "Unrepairable", action: "Replacement from supplier (" + r.RR_No + ")", who: "Supplier", tone: "wait" }
+      : { here: "Unrepairable", action: "Create a Replacement (RR)", who: "Warehouse", tone: "next" };
+    if (st === "In Rework") return { here: "In Rework", action: "Finish the repair, then set Completed", who: "Warehouse", tone: "next" };
+    return { here: "Exception Pending", action: "Set Rework, or mark Unrepairable", who: "Warehouse", tone: "next" };
+  }
+  function dataRow(r) {
+    const reworkOpts = REWORK_CHOICES.map((c) => `<option value="${c}" ${(r.Rework || "Select") === c ? "selected" : ""}>${c}</option>`).join("");
+    const statusVal = r.Status || "Pending";
+    const statusOpts = STATUS_CHOICES.map((c) => `<option value="${c}" ${statusVal === c ? "selected" : ""}>${c}</option>`).join("");
+    const canCreateRR = statusVal === "Unrepairable" && !(r.RR_No && r.RR_No !== "—");
+    return `
+      <tr class="record-row hover:bg-slate-50 transition cursor-pointer" data-id="${r.ID}" onclick="switchToDetail('${r.ID}')">
+        <td class="px-5 py-2.5 text-slate-600 font-mono text-xs" data-id="${r.ID}">${escapeHtml(displayVal(r.Exception_Number))}</td>
+        <td class="px-3 py-2.5">${nextStepCell(r.ID, nextStepFor(r))}</td>
+        <td class="px-3 py-2.5 text-slate-700 font-medium" data-id="${r.ID}">${escapeHtml(displayVal(r.Sales_Order))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.PAC))}</td>
+        <td class="px-3 py-2.5 text-slate-800 max-w-[220px] truncate" data-id="${r.ID}">${escapeHtml(displayVal(r.Item_Name))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.SKU))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Supplier))}</td>
+        <td class="px-3 py-2.5 text-slate-700 text-right">${escapeHtml(displayVal(r.Qty))}</td>
+        <td class="px-3 py-2.5" onclick="event.stopPropagation()">
+          <select class="rework-input text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 px-2 py-1.5" data-id="${r.ID}">${reworkOpts}</select>
+        </td>
+        <td class="px-3 py-2.5" onclick="event.stopPropagation()">
+          <select class="status-input text-sm rounded-lg border font-medium px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-300 ${statusBadgeClass(statusVal)}" data-id="${r.ID}">${statusOpts}</select>
+        </td>
+        <td class="px-3 py-2.5" onclick="event.stopPropagation()">
+          <button class="create-rr-btn text-xs font-semibold rounded-lg px-2.5 py-1 transition ${canCreateRR ? "text-white bg-slate-900 hover:bg-slate-700" : "text-slate-300 bg-slate-100 cursor-not-allowed"}" data-id="${r.ID}" ${canCreateRR ? "" : "disabled"}>${r.RR_No ? "RR Created" : "+ Create RR"}</button>
+        </td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.RR_No))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(formatDateTime(r.Modified_Time))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Modified_By))}</td>
+        <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
+      </tr>`;
+  }
+
+  function renderTable() {
+    const filtered = getFilteredRows();
+    tableBody.innerHTML = filtered.length
+      ? filtered.map(dataRow).join("")
+      : `<tr><td colspan="15" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+
+    tableBody.querySelectorAll(".rework-input").forEach((el) => {
+      el.addEventListener("change", () => saveInlineField(el.dataset.id, "Rework", el.value));
+    });
+    tableBody.querySelectorAll(".status-input").forEach((el) => {
+      const recId = el.dataset.id;
+      el.addEventListener("change", () => {
+        const rec = allRecords.find((r) => String(r.ID) === String(recId));
+        const prevStatus = rec ? (rec.Status || "Pending") : "Pending";
+        const newVal = el.value;
+        const applyStatus = () => {
+          el.className = `status-input text-sm rounded-lg border font-medium px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-300 ${statusBadgeClass(newVal)}`;
+          saveInlineField(recId, "Status", newVal, true);
+          if (newVal === "Completed" && rec) createQcRecordForCompleted(rec);
+        };
+        if (newVal === "Completed" && prevStatus !== "Completed") {
+          showConfirm(
+            `Mark ${rec ? displayVal(rec.Item_Name) : "this item"} as Completed? It will be sent to Quality Check for review.`,
+            applyStatus,
+            () => { el.value = prevStatus; }
+          );
+        } else {
+          applyStatus();
+        }
+      });
+    });
+    tableBody.querySelectorAll(".create-rr-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return;
+        const recId = btn.dataset.id;
+        const rec = allRecords.find((r) => String(r.ID) === String(recId));
+        if (!rec) return;
+        showConfirm(
+          `Create a Replacement Request for ${displayVal(rec.Item_Name)} (SKU ${displayVal(rec.SKU)}, qty ${displayVal(rec.Qty)})? This creates a real record routed to ${displayVal(rec.Supplier)}.`,
+          () => createReplacementRequest(rec, btn)
+        );
+      });
+    });
+
+    document.getElementById("totalCount").textContent = filtered.length;
+    document.getElementById("grandCount").textContent = orderedRows.length;
+  }
+
+  // ---------------------------------------------------------------------
+  // Inline field save (Rework / Status) — auto-save on change,
+  // no separate Save button for these 2, matching the reference mock's UX.
+  // ---------------------------------------------------------------------
+  function saveInlineField(recordId, fieldName, value, rerenderOnSuccess) {
+    const config = {
+      report_name: CONFIG.REPORT_NAME,
+      id: String(recordId),
+      payload: { data: { [fieldName]: value } },
+    };
+    ZOHO.CREATOR.DATA.updateRecordById(config).then((resp) => {
+      if (resp && resp.code === 3000) {
+        const rec = allRecords.find((r) => String(r.ID) === String(recordId));
+        if (rec) rec[fieldName] = value;
+        if (rec) refreshNextStep(rec.ID, nextStepFor(rec));
+        if (rerenderOnSuccess) renderTable();
+      } else {
+        console.error("[ExceptionControl] inline save failed:", resp);
+        toast("Save failed — see console.", "error");
+      }
+    }).catch((err) => {
+      console.error(err);
+      toast("Save failed — see console.", "error");
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Detail view — Documentation & Repair only
+  // ---------------------------------------------------------------------
+  function applyImgPreview(imgEl, rawValue) {
+    if (!rawValue) { imgEl.classList.add("hidden"); imgEl.src = ""; return; }
+    imgEl.classList.remove("hidden");
+    if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData) {
+      ZOHO.CREATOR.UTIL.setImageData(imgEl, rawValue, function () {});
+    } else {
+      imgEl.src = rawValue;
+    }
+  }
+
+  // Lightbox — extended 2026-07-27 with real Prev/Next (ported from
+  // UI/DMS WIDGET/FieldServiceSiteVisits's own proven multi-photo stack viewer),
+  // now that Image_max_10_JPG_JPEG_PNG genuinely holds more than one file.
+  let LIGHTBOX_URLS = [];
+  let LIGHTBOX_IDX = 0;
+  window.openLightbox = function (urls, idx) {
+    LIGHTBOX_URLS = Array.isArray(urls) ? urls : [urls];
+    LIGHTBOX_IDX = idx || 0;
+    if (!LIGHTBOX_URLS.length) return;
+    document.getElementById("lightboxOverlay").classList.add("open");
+    renderLightboxImage();
+  };
+  function renderLightboxImage() {
+    const url = LIGHTBOX_URLS[LIGHTBOX_IDX];
+    if (!url) return;
+    applyImgPreview(document.getElementById("lightboxImg"), url);
+    document.getElementById("lbCounter").textContent = (LIGHTBOX_IDX + 1) + " / " + LIGHTBOX_URLS.length;
+    document.getElementById("lbPrev").style.visibility = LIGHTBOX_IDX > 0 ? "visible" : "hidden";
+    document.getElementById("lbNext").style.visibility = LIGHTBOX_IDX < LIGHTBOX_URLS.length - 1 ? "visible" : "hidden";
+  }
+  window.lightboxStep = function (delta) {
+    const next = LIGHTBOX_IDX + delta;
+    if (next < 0 || next >= LIGHTBOX_URLS.length) return;
+    LIGHTBOX_IDX = next;
+    renderLightboxImage();
+  };
+  window.closeLightbox = function () {
+    document.getElementById("lightboxOverlay").classList.remove("open");
+    document.getElementById("lightboxImg").src = "";
+    LIGHTBOX_URLS = [];
+  };
+  document.addEventListener("keydown", (e) => {
+    if (document.getElementById("lightboxOverlay").classList.contains("open")) {
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft") lightboxStep(-1);
+      else if (e.key === "ArrowRight") lightboxStep(1);
+    }
+    if (document.getElementById("videoLightboxOverlay").classList.contains("open") && e.key === "Escape") {
+      closeVideoLightbox();
+    }
+  });
+
+  // Video lightbox — reparents the real <video> element in/out of the overlay
+  // (see markup's own NOTES for why this exists instead of the real Fullscreen
+  // API). VIDEO_LIGHTBOX_HOME remembers where to put it back on close.
+  let VIDEO_LIGHTBOX_HOME = null;
+  window.openVideoLightbox = function (videoEl, homeParent) {
+    VIDEO_LIGHTBOX_HOME = homeParent;
+    // FIXED 2026-07-27, real bug found live ("why it is so small") — the video's
+    // own inline-preview classes (`w-full max-w-sm`) still capped it at ~24rem
+    // even inside the full-viewport overlay, since nothing ever overrode them.
+    // Inline style beats a Tailwind class's specificity, so set real
+    // viewport-relative sizing while in the lightbox, clear it on close so the
+    // small inline preview goes back to its normal `max-w-sm` size.
+    videoEl.style.width = "auto";
+    videoEl.style.maxWidth = "90vw";
+    videoEl.style.maxHeight = "85vh";
+    document.getElementById("videoLightboxSlot").appendChild(videoEl);
+    document.getElementById("videoLightboxOverlay").classList.add("open");
+  };
+  window.closeVideoLightbox = function () {
+    const overlay = document.getElementById("videoLightboxOverlay");
+    if (!overlay.classList.contains("open")) return;
+    overlay.classList.remove("open");
+    const slot = document.getElementById("videoLightboxSlot");
+    const videoEl = slot.firstElementChild;
+    if (videoEl && VIDEO_LIGHTBOX_HOME) {
+      videoEl.pause();
+      videoEl.style.width = "";
+      videoEl.style.maxWidth = "";
+      videoEl.style.maxHeight = "";
+      VIDEO_LIGHTBOX_HOME.insertBefore(videoEl, VIDEO_LIGHTBOX_HOME.firstChild);
+    }
+    VIDEO_LIGHTBOX_HOME = null;
+  };
+
+  // ---------------------------------------------------------------------
+  // File preview helpers — kept from the earlier 2026-07-27 attempts.
+  // ---------------------------------------------------------------------
+  function attachRawToString(raw) {
+    if (!raw) return "";
+    if (typeof raw === "object") return raw.url || raw.download_url || raw.value || raw.filepath || raw.filePath || "";
+    return String(raw);
+  }
+  function attachFileName(raw) {
+    if (raw && typeof raw === "object" && (raw.file_name || raw.name)) return raw.file_name || raw.name;
+    const s = attachRawToString(raw);
+    if (!s) return "File";
+    const m = s.match(/[?&]filepath=([^&]+)/);
+    if (m) { const name = decodeURIComponent(m[1]); return name.replace(/^\d+_/, ""); }
+    return s.split("/").pop().split("?")[0] || "File";
+  }
+  function normalizeFileList(rawValue) {
+    if (!rawValue) return [];
+    if (Array.isArray(rawValue)) return rawValue.filter(Boolean);
+    return [rawValue];
+  }
+  /* Video preview/download, per user pointing at a colleague's widget
+     (`UI/FF Widget/QCChecklist`) that already solved this exact problem —
+     setImageData(imgEl, url, cb) resolves a Creator file's relative path into
+     a real same-origin blob:/data: URL via an authenticated internal fetch,
+     and that resolved URL doesn't care what element it was originally set on:
+     handing it straight to a real <video src> (or an <a href download>) just
+     works, no byte reconstruction needed at all (an earlier attempt reading
+     ZOHO.CREATOR.FILE.readFile()'s own "raw string" response was confirmed
+     genuinely lossy for binary — a real ~1.7MB video came back as a 912KB
+     Blob, corrupted, not fixable by a different reconstruction). */
+  function resolveBridgeSrc(url) {
+    return new Promise((resolve) => {
+      if (!(typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.setImageData === "function")) { resolve(null); return; }
+      const img = new Image();
+      ZOHO.CREATOR.UTIL.setImageData(img, url, function () {
+        const src = img.src || "";
+        resolve((src.indexOf("blob:") === 0 || src.indexOf("data:") === 0) ? src : null);
+      });
+    });
+  }
+
+  /* REVERTED 2026-07-27, per user ("it is actually kinda same with playback
+     speed. let's go back on without new form method") — the `Exception_Control_
+     Media` separate-form architecture from earlier the same day made no real
+     difference to load time (the cost is the setImageData bridge's own fetch of
+     the actual video bytes, same regardless of which form/report they're
+     attached to) and added real complexity (staging, a 2nd form/report, a 2nd
+     fetch on every detail open) for no benefit — reverted back to the plain
+     Image_max_10_JPG_JPEG_PNG/Video_Upload_max_3_min_30_sec fields directly on
+     Exception_Control1, same as before that whole detour. Kept: resolveBridgeSrc
+     (the real, proven video-preview fix from earlier this session). Added this
+     pass, per user request: an Expand/Shrink button on the video player, and a
+     spinning-CSS loading indicator (`.vid-spinner`) instead of plain "Loading
+     preview…" text while the bridge fetch is in flight.
+     FIXED live same day, 2 rounds — (1) the button first called the real
+     browser Fullscreen API (`video.requestFullscreen()`), which errored:
+     "[Violation] Permissions policy violation: fullscreen is not allowed in this
+     document." Same already-documented limitation as `UI/DMS WIDGET/
+     DeliveryQueue`'s own map expand button (2026-07-18) — confirmed via a web
+     search (MDN's own Permissions-Policy docs): the PARENT page's `<iframe>`
+     tag needs an `allow="fullscreen"`/`allowfullscreen` attribute or a
+     Permissions-Policy response header granting it — Zoho controls that
+     embedding, no widget-side manifest setting can request it, genuinely not
+     fixable from here. (2) Per user follow-up ("not that expand button.
+     fullscreen like the photo view click") — switched to a real full-viewport
+     video lightbox instead (`#videoLightboxOverlay`/`openVideoLightbox`/
+     `closeVideoLightbox`), reusing the EXACT SAME `position:fixed` overlay
+     mechanism the photo lightbox above already uses successfully IN THIS SAME
+     WIDGET (confirmed working for photos, unlike DeliveryQueue's different,
+     failed case) — reparents the real `<video>` element into the overlay on
+     open (no reload/re-fetch, keeps whatever already resolved/was playing) and
+     back into its original spot on close. No OS-level Fullscreen API involved
+     at all, sidesteps the Permissions Policy restriction entirely. */
+  function renderImageThumbs(containerId, rawValue) {
+    const container = document.getElementById(containerId);
+    const items = normalizeFileList(rawValue);
+    container.innerHTML = "";
+    if (!items.length) return;
+    const urls = items.map(attachRawToString).filter(Boolean);
+    items.forEach((raw, idx) => {
+      const url = attachRawToString(raw);
+      if (!url) return;
+      const wrap = document.createElement("div");
+      wrap.className = "flex flex-col items-center gap-1";
+      const img = document.createElement("img");
+      img.className = "photo-thumb";
+      img.onclick = () => openLightbox(urls, idx);
+      applyImgPreview(img, url);
+      wrap.appendChild(img);
+      container.appendChild(wrap);
+    });
+  }
+
+  function renderVideoList(containerId, rawValue) {
+    const container = document.getElementById(containerId);
+    const items = normalizeFileList(rawValue);
+    if (!items.length) { container.textContent = "No video uploaded yet."; return; }
+    container.innerHTML = "";
+    items.forEach((raw) => {
+      const url = attachRawToString(raw);
+      const label = attachFileName(raw);
+      if (!url) return;
+      const row = document.createElement("div");
+      row.className = "mb-2";
+      const video = document.createElement("video");
+      video.controls = true;
+      video.preload = "metadata";
+      video.className = "hidden w-full max-w-sm rounded-lg border border-slate-200 mb-1";
+      const meta = document.createElement("div");
+      meta.className = "flex items-center gap-2 text-xs";
+      meta.innerHTML = `<span>\u{1F3AC} ${escapeHtml(label)}</span>` +
+        `<a class="hidden text-blue-600 underline" data-dl download="${escapeHtml(label)}">Download</a>` +
+        `<button type="button" class="hidden text-blue-600 underline" data-fs>⛶ Fullscreen</button>` +
+        `<span class="text-slate-400 flex items-center" data-loading><span class="vid-spinner"></span>Loading preview…</span>`;
+      row.appendChild(video);
+      row.appendChild(meta);
+      container.appendChild(row);
+      meta.querySelector("[data-fs]").onclick = () => openVideoLightbox(video, row);
+      resolveBridgeSrc(url).then((resolvedSrc) => {
+        const loadingEl = meta.querySelector("[data-loading]");
+        if (loadingEl) loadingEl.remove();
+        if (resolvedSrc) {
+          video.src = resolvedSrc;
+          video.classList.remove("hidden");
+          const dlEl = meta.querySelector("[data-dl]");
+          dlEl.href = resolvedSrc;
+          dlEl.classList.remove("hidden");
+          meta.querySelector("[data-fs]").classList.remove("hidden");
+        } else {
+          meta.appendChild(Object.assign(document.createElement("span"), { className: "text-slate-400", textContent: "Preview unavailable — download to view." }));
+        }
+      });
+    });
+  }
+
+  /* FIXED 2026-08-25, real bug reported live ("pag click ko yung row nawala na")
+     — this function is declared inside the enclosing IIFE, but each row's
+     onclick="switchToDetail('${r.ID}')" is an INLINE HTML attribute (built via
+     renderTable()'s own template string), which the browser resolves against the
+     GLOBAL scope only — never the IIFE's closure. Every row click threw
+     "ReferenceError: switchToDetail is not defined" (confirmed live via
+     console), silently doing nothing, since the error fires before any of this
+     function's own view-switching code ever runs. Every OTHER inline-onclick
+     function in this same file (clearSignaturePad/closeLightbox/lightboxStep/
+     closeVideoLightbox) already uses this exact `window.X = function(){}` form
+     for the same reason — switchToDetail was just missed. */
+  window.switchToDetail = function switchToDetail(recordId) {
+    const r = allRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r) return;
+    renderNextStepBanner("nsBanner", r.ID, nextStepFor(r));
+    currentDetailRecord = r;
+    closeVideoLightbox();
+
+    document.getElementById("detailBreadcrumb").textContent = displayVal(r.Exception_Number);
+    document.getElementById("detailTitle").textContent = displayVal(r.Item_Name);
+    document.getElementById("detailSubline").textContent = `${displayVal(r.Exception_Number)} · SO ${displayVal(r.Sales_Order)} · PAC ${displayVal(r.PAC)} · SKU ${displayVal(r.SKU)} · Supplier ${displayVal(r.Supplier)}`;
+
+    document.getElementById("dRemarks").value = (r.Remarks && r.Remarks !== "—") ? r.Remarks : "";
+    document.getElementById("dChecker").value = (r.Checker && r.Checker !== "—") ? r.Checker : "";
+    document.getElementById("dStatus").innerHTML = STATUS_CHOICES.map((c) => `<option value="${c}" ${(r.Status || "Pending") === c ? "selected" : ""}>${c}</option>`).join("");
+    renderQcRejectionCard(r);
+    loadQcMediaCard(r);
+
+    renderImageThumbs("dImageThumbs", r[CONFIG.IMAGE_FIELD]);
+    renderVideoList("dVideoExisting", r[CONFIG.VIDEO_FIELD]);
+    applyImgPreview(document.getElementById("dSignatureExisting"), r[CONFIG.SIGNATURE_FIELD]);
+    document.getElementById("dImageFile").value = "";
+    document.getElementById("dVideoFile").value = "";
+    clearSignaturePad("sigCanvas");
+
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("detailView").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }
+
+  function loadQcMediaCard(r) {
+    const card = document.getElementById("qcMediaCard");
+    card.classList.add("hidden");
+    const rowKey = `${r.Sales_Order || ""}|${r.SKU || ""}|${r.PAC || ""}`;
+    if (!r.Sales_Order || !r.SKU || !r.PAC) return;
+    ZOHO.CREATOR.DATA.getRecords({
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.MEDIA_REPORT,
+      field_config: "all",
+      criteria: `(Record_ID == ${JSON.stringify(rowKey)})`,
+      max_records: 200,
+    }).then((resp) => {
+      const rows = (resp && resp.code === 3000 && resp.data) ? resp.data : [];
+      if (!rows.length) return;
+      const images = [];
+      const videos = [];
+      rows.forEach((row) => {
+        const files = normalizeFileList(row.Media);
+        if (String(row.File_Type).toLowerCase() === "video") videos.push(...files);
+        else images.push(...files);
+      });
+      if (!images.length && !videos.length) return;
+      card.classList.remove("hidden");
+      renderImageThumbs("dQcImageThumbs", images);
+      renderVideoList("dQcVideoExisting", videos);
+    }).catch((err) => {
+      console.error("[QC MEDIA CARD]", err);
+    });
+  }
+
+  function renderQcRejectionCard(r) {
+    const card = document.getElementById("qcRejectionCard");
+    const hasData = !!(r.Item_to_Replace3 || r.Source_Module || r.Quantity || r.Item_to_Replace1 || r.Quantity_of_damage_spare_s);
+    if (!hasData) { card.classList.add("hidden"); return; }
+    card.classList.remove("hidden");
+    document.getElementById("dItemToReplace").textContent = displayVal(r.Item_to_Replace3);
+    document.getElementById("dQtyDamage").textContent = displayVal(r.Quantity);
+    document.getElementById("dSourceModule").textContent = displayVal(r.Source_Module);
+
+    // Quantity_of_damage_spare_s now holds paired "Type: Qty, Type: Qty" rows
+    // (per-row pairing fix — old data may still be a bare qty string/list, no colon).
+    const rawPairs = r.Quantity_of_damage_spare_s;
+    const pairStr = Array.isArray(rawPairs) ? rawPairs.filter(Boolean).join(", ") : (rawPairs || "");
+    const rows = [];
+    if (pairStr) {
+      pairStr.split(",").forEach((seg) => {
+        seg = seg.trim();
+        if (!seg) return;
+        const idx = seg.indexOf(":");
+        if (idx > -1) {
+          rows.push([seg.slice(0, idx).trim(), seg.slice(idx + 1).trim()]);
+        } else {
+          rows.push([seg, "—"]);
+        }
+      });
+    }
+    const emptyEl = document.getElementById("dSparePartsEmpty");
+    const wrapEl = document.getElementById("dSparePartsTableWrap");
+    const bodyEl = document.getElementById("dSparePartsTableBody");
+    bodyEl.innerHTML = "";
+    if (rows.length) {
+      emptyEl.classList.add("hidden");
+      wrapEl.classList.remove("hidden");
+      rows.forEach(([type, qty]) => {
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-slate-100 last:border-0";
+        const tdType = document.createElement("td");
+        tdType.className = "px-3 py-1.5 text-slate-800";
+        tdType.textContent = type || "—";
+        const tdQty = document.createElement("td");
+        tdQty.className = "px-3 py-1.5 text-slate-800";
+        tdQty.textContent = qty || "—";
+        tr.appendChild(tdType);
+        tr.appendChild(tdQty);
+        bodyEl.appendChild(tr);
+      });
+    } else {
+      wrapEl.classList.add("hidden");
+      emptyEl.classList.remove("hidden");
+    }
+  }
+
+  function switchToList() {
+    closeVideoLightbox();
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("listView").classList.remove("hidden");
+    currentDetailRecord = null;
+  }
+  document.getElementById("backToListBtn").addEventListener("click", switchToList);
+
+  function uploadFileField(recordId, fieldName, file) {
+    if (!file) return Promise.resolve();
+    return ZOHO.CREATOR.FILE.uploadFile({
+      report_name: CONFIG.REPORT_NAME,
+      id: String(recordId),
+      field_name: fieldName,
+      file: file,
+    });
+  }
+
+  // Sequential (not parallel) — same convention already established elsewhere in
+  // this app (Receiving's Evidence Photos) to avoid racing on the same field's
+  // own internal state when uploading multiple files to it in one save.
+  function uploadMultipleImages(recordId, fieldName, files) {
+    let chain = Promise.resolve();
+    for (const file of files) {
+      chain = chain.then(() => uploadFileField(recordId, fieldName, file));
+    }
+    return chain;
+  }
+
+  function saveDetail() {
+    if (!currentDetailRecord) return;
+    const btn = document.getElementById("saveDetailBtn");
+    btn.disabled = true;
+    btn.textContent = "Updating…";
+
+    const data = {
+      Remarks: document.getElementById("dRemarks").value,
+      Checker: document.getElementById("dChecker").value,
+      Status: document.getElementById("dStatus").value,
+    };
+    const config = {
+      report_name: CONFIG.REPORT_NAME,
+      id: String(currentDetailRecord.ID),
+      payload: { data },
+    };
+
+    ZOHO.CREATOR.DATA.updateRecordById(config).then((resp) => {
+      if (!(resp && resp.code === 3000)) {
+        throw new Error("updateRecordById failed: " + JSON.stringify(resp));
+      }
+      const imageFiles = Array.from(document.getElementById("dImageFile").files || []);
+      const videoFile = document.getElementById("dVideoFile").files[0];
+      return signaturePadToFile("sigCanvas", "signature.png").then((signatureFile) => Promise.all([
+        uploadMultipleImages(currentDetailRecord.ID, CONFIG.IMAGE_FIELD, imageFiles),
+        uploadFileField(currentDetailRecord.ID, CONFIG.VIDEO_FIELD, videoFile),
+        uploadFileField(currentDetailRecord.ID, CONFIG.SIGNATURE_FIELD, signatureFile),
+      ]));
+    }).then(() => {
+      Object.assign(currentDetailRecord, data);
+      const rec = allRecords.find((r) => String(r.ID) === String(currentDetailRecord.ID));
+      if (rec) Object.assign(rec, data);
+      if (data.Status === "Completed" && rec) createQcRecordForCompleted(rec);
+      renderFilterPills();
+      renderTable();
+      return ZOHO.CREATOR.DATA.getRecordById({ report_name: CONFIG.REPORT_NAME, id: String(currentDetailRecord.ID), field_config: "all" });
+    }).then((resp) => {
+      btn.disabled = false;
+      btn.textContent = "Update";
+      toast("Updated.", "success");
+      if (resp && resp.code === 3000 && resp.data) {
+        const fresh = resp.data;
+        Object.assign(currentDetailRecord, fresh);
+        const rec2 = allRecords.find((r) => String(r.ID) === String(currentDetailRecord.ID));
+        if (rec2) Object.assign(rec2, fresh);
+        closeVideoLightbox();
+        renderImageThumbs("dImageThumbs", fresh[CONFIG.IMAGE_FIELD]);
+        renderVideoList("dVideoExisting", fresh[CONFIG.VIDEO_FIELD]);
+        applyImgPreview(document.getElementById("dSignatureExisting"), fresh[CONFIG.SIGNATURE_FIELD]);
+        renderQcRejectionCard(fresh);
+      } else {
+        console.warn("[ExceptionControl] post-save refresh failed:", resp);
+      }
+      document.getElementById("dImageFile").value = "";
+      document.getElementById("dVideoFile").value = "";
+    }).catch((err) => {
+      console.error(err);
+      btn.disabled = false;
+      btn.textContent = "Update";
+      toast("Update failed — see console.", "error");
+    });
+  }
+  document.getElementById("saveDetailBtn").addEventListener("click", () => {
+    if (!currentDetailRecord) return;
+    const newStatus = document.getElementById("dStatus").value;
+    const prevStatus = currentDetailRecord.Status || "Pending";
+    if (newStatus === "Completed" && prevStatus !== "Completed") {
+      showConfirm(
+        `Mark ${displayVal(currentDetailRecord.Item_Name)} as Completed? It will be sent to Quality Check for review.`,
+        saveDetail,
+        () => { document.getElementById("dStatus").value = prevStatus; }
+      );
+    } else {
+      saveDetail();
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Data loading
+  // ---------------------------------------------------------------------
+  function fetchAllRecords() {
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+
+  // REMOVED 2026-07-27, per user ("remove this preview mode. just show no
+  // data here. if no data literally like other widgets") — this widget used
+  // to fall back to 3 hardcoded sample rows (+ an amber "Preview mode" banner)
+  // whenever the SDK wasn't detected or the live fetch failed, unlike every
+  // other widget in this app, which just shows a genuine empty state
+  // ("No records found", already built into renderTable() below — no new
+  // code needed for that part). No more fake data, no more banner: on any
+  // failure/no-SDK case, allRecords simply stays empty and the table's own
+  // existing empty-state row does the rest.
+  function loadLive() {
+    fetchAllRecords().then((records) => {
+      allRecords = records;
+      orderedRows = computeOrderedRows(allRecords);
+      renderSourceTabs();
+      renderFilterPills();
+      renderTable();
+      checkDeepLinkOpenExc();
+    }).catch((err) => {
+      console.error(err);
+      renderSourceTabs();
+      renderFilterPills();
+      renderTable();
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  searchInput.addEventListener("input", renderTable);
+  reworkFilterEl.addEventListener("change", () => { activeReworkFilter = reworkFilterEl.value; renderTable(); });
+  initSignaturePad("sigCanvas");
+
+  const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+  if (sdkReady) {
+    loadLive();
+  } else {
+    renderSourceTabs();
+    renderFilterPills();
+    renderTable();
+  }
+
+  // ---------------------------------------------------------------------
+  // Notification bell — see notification_component/README.md. Same
+  // FF-module-isolated pattern as every other FF widget (own dedicated
+  // report, not the shared App_Notifications the EndUser widgets use). Only
+  // two accounts for now per established convention: HC Pack & Fulfill + HC
+  // Systems (full access) — update roleMap/fullAccessRoles later if that
+  // changes.
+  // ---------------------------------------------------------------------
+  const notifications = window.NotificationSystem ? NotificationSystem.init({
+    mountId:          "notifMount",
+    appName:          CONFIG.APP_NAME,
+    reportName:       "ExceptionControl_Notifications_Report",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    environment:      () => ZC_ENV,
+    roleMap:          { "homecartelff@gmail.com": "HC Pack & Fulfill", "hcinvanalyst@gmail.com": "HC Systems" },
+    fullAccessRoles:  ["HC Systems"],
+    title:            "Notifications",
+  }) : { open(){}, close(){}, refresh(){} };
+
+  // Resolve the real logged-in email + dev/prod environment — same 2-path
+  // getInitParams()/ZOHO.CREATOR.init() fallback chain proven in every other
+  // widget carrying this component.
+  if (sdkReady && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams === "function") {
+    ZOHO.CREATOR.UTIL.getInitParams().then((params) => {
+      if (params && (params.environment || params.env)) ZC_ENV = params.environment || params.env;
+      const email = params && (params.loginUser || params.login_user || params.userEmail || params.user_email || params.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); }
+    }).catch(() => {});
+  }
+  if (sdkReady && typeof ZOHO.CREATOR.init === "function") {
+    ZOHO.CREATOR.init().then((initData) => {
+      if (initData && (initData.environment || initData.env)) ZC_ENV = initData.environment || initData.env;
+      const email = initData && (initData.loginUser || initData.login_user || initData.userEmail || initData.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr && !CURRENT_USER_EMAIL) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); }
+    }).catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

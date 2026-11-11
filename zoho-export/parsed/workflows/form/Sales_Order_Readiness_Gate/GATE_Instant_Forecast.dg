@@ -1,0 +1,9 @@
+// form: GATE_Instant_Forecast  form=Sales_Order_Readiness_Gate event=on add or edit on success  [.ds line 46928]
+    /* `sales_order_number` ang baybay dito, maliit na letra — hindi `SO` at hindi
+   `SO_No`. Apat na magkaibang baybay ng SO field ang live sa app na ito.
+
+   Pinapalitan nito ang GATE_Forecast_Stamp sa forecast_fire_on_every_form.txt.
+   HUWAG mong ilagay pareho: dalawang beses tatakbo at pareho ang isusulat —
+   sayang lang. Kung nagawa mo na ang GATE_Forecast_Stamp, palitan mo ang linya
+   nito ng linyang nasa ibaba, o i-deactivate mo ang luma. */
+info thisapp.fcStampBySoNo(input.sales_order_number + "");

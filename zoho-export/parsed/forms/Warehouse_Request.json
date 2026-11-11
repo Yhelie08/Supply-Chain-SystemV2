@@ -1,0 +1,140 @@
+{
+  "name": "Warehouse_Request",
+  "label": "Warehouse Request",
+  "successMessage": "Warehouse Request Added Successfully",
+  "line": 19250,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Type_of_Request",
+      "label": "Type of Request",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Actual Photo",
+        "Measurement",
+        "Stock Availability"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Date_Requested",
+      "label": "Date Requested",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Request_By",
+      "label": "Request By:",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Emily",
+        "Julia",
+        "Vanessa",
+        "Lovely",
+        "Ellen"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Upload_Image",
+      "label": "Upload Image",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Request",
+      "label": "Request Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Item",
+      "label": "Items",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Image",
+          "label": "Image",
+          "type": "image",
+          "required": false
+        },
+        {
+          "name": "Items",
+          "label": "Items",
+          "type": "picklist",
+          "required": false,
+          "lookup": {
+            "form": "Items",
+            "criteria": null,
+            "field": "ID"
+          },
+          "displayformat": "[item_name]"
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "To_be_Edit_by_Fulfillment",
+      "label": "To be Edit by Fulfillment",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Picker",
+      "label": "Picker",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Hendel",
+        "Jayvon"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Remarks",
+      "label": "Remarks",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Actual_Photo_Upload",
+      "label": "Actual Photo Upload",
+      "type": "image",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Actual_Video_Upload",
+      "label": "Actual Video Upload",
+      "type": "video",
+      "required": false
+    },
+    {
+      "name": "Request_Status",
+      "label": "Request Status:",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Pending",
+        "Done"
+      ],
+      "maxchar": "100"
+    }
+  ]
+}

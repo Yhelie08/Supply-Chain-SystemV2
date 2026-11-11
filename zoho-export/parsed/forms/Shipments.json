@@ -1,0 +1,406 @@
+{
+  "name": "Shipments",
+  "label": "Shipments",
+  "successMessage": "Shipment Added Successfully",
+  "line": 16324,
+  "fields": [
+    {
+      "name": "Shipments",
+      "label": "Shipments",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Shipment_No",
+      "label": "Shipment No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Customer",
+      "label": "Customer",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Target_Date",
+      "label": "Target Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "ETD",
+      "label": "ETD",
+      "type": "date",
+      "required": false,
+      "helpText": "Estimated Time of Departure from supplier",
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Risk_Status",
+      "label": "Delay Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "On Track",
+        "At Risk",
+        "Delayed"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Shipment_Days",
+      "label": "Shipment Days",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Sales_Owner",
+      "label": "Sales Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Need_Attention1",
+      "label": "Need Attention",
+      "type": "checkbox",
+      "required": false,
+      "helpText": "True if Delayed/At Risk/Missing ETA/No Prod Start",
+      "initialValue": "false"
+    },
+    {
+      "name": "Source_Module",
+      "label": "Source Module",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "PO_No",
+      "label": "PO No.",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Purchase_Order",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[PO_No]"
+    },
+    {
+      "name": "Supplier",
+      "label": "Supplier",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Production_Date",
+      "label": "Production Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Required_Days_Lead",
+      "label": "Required Days (Lead)",
+      "type": "number",
+      "required": false,
+      "helpText": "Production + Freight + Buffer + Penalties"
+    },
+    {
+      "name": "ETA",
+      "label": "ETA",
+      "type": "date",
+      "required": false,
+      "helpText": "Estimated Time of Arrival at warehouse",
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Receiving_Record_Created",
+      "label": "Receiving Record Created",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Need_Attention",
+      "label": "Received Flag",
+      "type": "checkbox",
+      "required": false,
+      "helpText": "True when SHP_Status = Received",
+      "initialValue": "false"
+    },
+    {
+      "name": "Estimated_Warehouse_Arrival",
+      "label": "Estimated Warehouse Arrival",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Exception_Number",
+      "label": "Exception Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order",
+      "label": "SO No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Previous_Status",
+      "label": "Previous Status",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipment_Status",
+      "label": "Shipment Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Pending",
+        "In Transit",
+        "Arriving In 1 Week",
+        "Delivered",
+        "Delayed"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Remaining_Days",
+      "label": "Remaining Days",
+      "type": "number",
+      "required": false,
+      "helpText": "Target_Delivery_Date − Today"
+    },
+    {
+      "name": "Arrival_Date",
+      "label": "Arrival Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Notes",
+      "label": "Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Supplier_Target_Date",
+      "label": "Supplier Target Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Ship_Out_Date",
+      "label": "Ship Out Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Notified_10d",
+      "label": "Notified 10d",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "PO_Shipments",
+      "label": "Shipment Line Items",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "In Transit",
+        "Partial",
+        "Arrived",
+        "Received"
+      ],
+      "fields": [
+        {
+          "name": "PR_No",
+          "label": "PR No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Ordered_QTY",
+          "label": "Ordered QTY",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Shipment_QTY",
+          "label": "Shipment QTY",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Remaining_QTY",
+          "label": "Remaining QTY",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Shipping_Mode",
+          "label": "Shipment Mode",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Airfreight",
+            "LCL",
+            "FCL"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Shipment_Mode_When_Received",
+          "label": "Shipment Mode When Received",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Airfreight",
+            "LCL",
+            "FCL"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Line_Status",
+          "label": "Line Status",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "In Transit",
+            "Partial",
+            "Arrived",
+            "Received"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Fully_Shipped",
+          "label": "Fully Shipped",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "Supplier_Shipment_Details",
+      "label": "Supplier Shipment Details",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "In Transit",
+        "Arrived"
+      ],
+      "fields": [
+        {
+          "name": "Shipment_ID",
+          "label": "Shipment ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SO_No",
+          "label": "SO #",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "PR_No",
+          "label": "PR #",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "RR_No",
+          "label": "RR #",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Date_Shipped",
+          "label": "Date Shipped",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Shipment_Mode",
+          "label": "Shipment Mode",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Status",
+          "label": "Status",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "In Transit",
+            "Arrived"
+          ],
+          "maxchar": "100"
+        }
+      ]
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

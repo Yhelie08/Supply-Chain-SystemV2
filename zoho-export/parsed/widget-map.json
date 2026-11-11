@@ -1,0 +1,1058 @@
+{
+  "modules/Analytic/Supply Chain Analytic/app/index.html": {
+    "references": [
+      "All_DMS_Exception_Queue",
+      "All_Purchase_Orders",
+      "All_Purchase_Request",
+      "Exception_Control_Report",
+      "Exceptions_Report",
+      "Pack",
+      "Sales_Order_Fulfillment_Report",
+      "Service_Appointment"
+    ],
+    "apiCalls": {
+      "getRecords": 1
+    }
+  },
+  "modules/Delivery Management/Archived/app/index.html": {
+    "references": [
+      "Field_Work_Report",
+      "Package_Shipments_Report",
+      "Service_Appointment"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Delivery Management/Daily Team Availability/app/index.html": {
+    "references": [
+      "All_Daily_Team_Availability",
+      "Daily_Team_Availability"
+    ],
+    "apiCalls": {
+      "getRecords": 3,
+      "updateRecordById": 1,
+      "addRecords": 2,
+      "deleteRecordById": 2
+    }
+  },
+  "modules/Delivery Management/Delivery Analytics/app/index.html": {
+    "references": [
+      "All_DMS_Exception_Queue",
+      "Field_Work_Report",
+      "Service_Appointment"
+    ],
+    "apiCalls": {
+      "getRecords": 1
+    }
+  },
+  "modules/Delivery Management/DMS Exception Queue/app/index.html": {
+    "references": [
+      "All_DMS_Exception_Queue"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "updateRecordById": 1
+    }
+  },
+  "modules/Delivery Management/Field Service Site Visits/app/index.html": {
+    "references": [
+      "All_Site_Visit_Photos",
+      "Evidence_Photos",
+      "Field_Service_Site_Visit_Form_Report",
+      "Site_Visit_Photos"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "deleteRecordById": 2,
+      "updateRecordById": 2,
+      "addRecords": 1,
+      "getRecordById": 1
+    }
+  },
+  "modules/Delivery Management/Initial Scheduling/app/index.html": {
+    "references": [
+      "Customer",
+      "Delivery_Scheduling",
+      "Delivery_Scheduling_Report",
+      "Items",
+      "Sales_Order_Fulfillment_Report",
+      "Sales_Order_Readiness_Gate_Report",
+      "Service_Request",
+      "Service_Request1"
+    ],
+    "apiCalls": {
+      "getRecords": 7,
+      "getRecordById": 1,
+      "updateRecordById": 3,
+      "addRecords": 2
+    }
+  },
+  "modules/Delivery Management/Ongoing Service/app/index.html": {
+    "references": [
+      "All_Evidence_Photos",
+      "Evidence_Photos",
+      "Field_Work",
+      "Field_Work_Report",
+      "Service_Appointment"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "deleteRecordById": 2,
+      "addRecords": 3,
+      "updateRecordById": 2
+    }
+  },
+  "modules/Delivery Management/Policy Settings/app/index.html": {
+    "references": [
+      "All_Policy_Settings",
+      "Policy_Settings"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "updateRecordById": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Delivery Management/Sales Returns/app/index.html": {
+    "references": [
+      "Package_Shipments_Report",
+      "Sales_Returns_Form",
+      "Sales_Returns_Form_Report",
+      "Service_Appointment"
+    ],
+    "apiCalls": {
+      "getRecords": 4,
+      "getRecordById": 1,
+      "updateRecordById": 1,
+      "invokeCustomApi": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Delivery Management/Schedule Requests/app/dms-schedule-request.html": {
+    "references": [
+      "DMS_Schedule_Request_Messages",
+      "DMS_Schedule_Request_Messages_Report",
+      "DMS_Schedule_Request_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "invokeCustomApi": 3
+    }
+  },
+  "modules/Delivery Management/Schedule Requests/app/internal-notes-open_component/internal-notes-open.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Delivery Management/Service Appointment/app/index.html": {
+    "references": [
+      "All_Daily_Team_Availability",
+      "All_Dispatch_Checklists",
+      "Dispatch_Checklist",
+      "Exception_Control_Report",
+      "Sales_Order_Fulfillment_Report",
+      "Sales_Order_Readiness_Gate_Report",
+      "Service_Appointment"
+    ],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1,
+      "updateRecordById": 2,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Delivery Management/Service Request/app/index.html": {
+    "references": [
+      "DMS_Schedule_Request",
+      "Sales_Order_Readiness_Gate_Report",
+      "Service_Appointment",
+      "Service_Request",
+      "Service_Request1"
+    ],
+    "apiCalls": {
+      "getRecords": 5,
+      "getRecordById": 1,
+      "updateRecordById": 2,
+      "addRecords": 1,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Delivery Management/Truck Maintenance/app/index.html": {
+    "references": [
+      "All_Fuel_Entries",
+      "All_Service_Entries",
+      "Daily_Checklist_for_Vehicle",
+      "Daily_Checklist_for_Vehicle_Report",
+      "Fuel_Entries",
+      "Service_Entries"
+    ],
+    "apiCalls": {
+      "getRecords": 5,
+      "updateRecordById": 4,
+      "addRecords": 3
+    }
+  },
+  "modules/Fenteng Lighting/Inquiries/app/index.html": {
+    "references": [
+      "All_Evidence_Photos",
+      "All_Inquiries",
+      "All_Inquiry_Messages",
+      "All_Items",
+      "Evidence_Photos",
+      "Inquiry_Messages",
+      "Supplier_1_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 12,
+      "addRecords": 3,
+      "deleteRecordById": 1,
+      "updateRecordById": 5,
+      "getRecordById": 2,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Fenteng Lighting/Purchase Order/app/index.html": {
+    "references": [
+      "All_PO_Messages",
+      "All_Purchase_Request",
+      "All_Shipments",
+      "Fenteng_Lighting_Purchase_Order_Report",
+      "Fenteng_Notifications_Report",
+      "PO_Messages",
+      "Sales_Order"
+    ],
+    "apiCalls": {
+      "getRecords": 10,
+      "addRecords": 2,
+      "getRecordById": 2,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Fenteng Lighting/Purchase Order/app/notification_component/notification.js": {
+    "references": [],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fenteng Lighting/Purchase Request/app/index.html": {
+    "references": [
+      "All_Items",
+      "All_PR_Messages",
+      "All_Purchase_Request",
+      "Fenteng_Lighting_Purchase_Request_Report",
+      "PR_Messages",
+      "Sales_Order"
+    ],
+    "apiCalls": {
+      "getRecords": 10,
+      "addRecords": 2,
+      "getRecordById": 2,
+      "updateRecordById": 3,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Fenteng Lighting/Replacement Request/app/index.html": {
+    "references": [
+      "All_Evidence_Photos",
+      "All_Purchase_Request",
+      "Exception_Control_Media_Report",
+      "Exception_Control_Report",
+      "Exceptions_Report",
+      "Fenteng_Lighting_Purchase_Order_Report",
+      "Fenteng_Lighting_Replacement_Request_Report",
+      "Receiving_Report",
+      "Sales_Order"
+    ],
+    "apiCalls": {
+      "getRecords": 11,
+      "getRecordById": 2,
+      "updateRecordById": 3,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Fenteng Lighting/Shipments/app/index.html": {
+    "references": [
+      "All_Purchase_Request",
+      "All_Shipments",
+      "Fenteng_Lighting_Purchase_Order_Report",
+      "Fenteng_Notifications_Report",
+      "Fenteng_Shipment_Report",
+      "Sales_Order",
+      "Shipments"
+    ],
+    "apiCalls": {
+      "getRecords": 9,
+      "getRecordById": 2,
+      "updateRecordById": 1
+    }
+  },
+  "modules/Fenteng Lighting/Shipments/app/notification_component/notification.js": {
+    "references": [],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fulfillment/Crate/app/index.html": {
+    "references": [
+      "All_Crates",
+      "Crate_Checklist"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "updateRecords": 1
+    }
+  },
+  "modules/Fulfillment/Exception Control/app/index.html": {
+    "references": [
+      "All_Purchase_Orders",
+      "All_Purchase_Request",
+      "All_Qc_Reports1",
+      "Checker_Checklist",
+      "ExceptionControl_Notifications_Report",
+      "Exception_Control1",
+      "Exception_Control_Media_Report",
+      "Exception_Control_Report",
+      "Fenteng_Lighting_Purchase_Order_Report",
+      "Fenteng_Lighting_Replacement_Request",
+      "Fenteng_Lighting_Replacement_Request_Report",
+      "Order_Aggregation1",
+      "Order_Aggregation1_Report",
+      "Pre_Order1_Report",
+      "Replacement_Request",
+      "Replacement_Request_Report",
+      "Sales_Order_Readiness_Gate_Report",
+      "Tony_Fan_Purchase_Order_Report",
+      "Tony_Fan_Replacement_Request",
+      "Tony_Fan_Replacement_Request_Report"
+    ],
+    "apiCalls": {
+      "updateRecordById": 7,
+      "addRecords": 4,
+      "getRecords": 12,
+      "getRecordById": 1
+    }
+  },
+  "modules/Fulfillment/Exception Control/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fulfillment/Fulfillment Dashboard/app/index.html": {
+    "references": [
+      "All_Qc_Reports1",
+      "Pack",
+      "Pack_Report",
+      "Pick1_Report",
+      "Sales_Order_Fulfillment_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 3
+    }
+  },
+  "modules/Fulfillment/Kanban/app/index.html": {
+    "references": [
+      "All_Crates",
+      "All_Qc_Reports1",
+      "Exception_Control_Media",
+      "Exception_Control_Media_Report",
+      "Pack",
+      "Pack_Report",
+      "Pick1_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "updateRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/Order Readiness/app/index.html": {
+    "references": [
+      "All_Purchase_Request",
+      "Exception_Control_Report",
+      "ReadinessGate_Notifications_Report",
+      "SOF_Internal_Messages",
+      "SOF_Internal_Messages_Report",
+      "SOF_Timeline",
+      "SOF_Timeline_Report",
+      "Sales_Order_Readiness_Gate_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 4,
+      "updateRecords": 3,
+      "invokeCustomApi": 1,
+      "getRecordById": 1,
+      "updateRecordById": 1
+    }
+  },
+  "modules/Fulfillment/Order Readiness/app/internal-notes_component/internal-notes.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/Order Readiness/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fulfillment/Order Readiness/app/timeline_history_component/timeline-history.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pack/app/index.html": {
+    "references": [
+      "Pack",
+      "Pack_Notifications_Report",
+      "Pack_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "updateRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pack/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pack & QC/app/index.html": {
+    "references": [
+      "All_Purchase_Request",
+      "All_Qc_Reports1",
+      "Exception_Control_Media",
+      "Exception_Control_Media_Report",
+      "QC_Notifications_Report",
+      "SOF_Internal_Messages",
+      "SOF_Internal_Messages_Report",
+      "SOF_Timeline",
+      "SOF_Timeline_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 3,
+      "addRecords": 1,
+      "updateRecords": 2
+    }
+  },
+  "modules/Fulfillment/Pack & QC/app/internal-notes_component/internal-notes.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pack & QC/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pack & QC/app/timeline_history_component/timeline-history.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pick/app/index.html": {
+    "references": [
+      "Pick1_Report",
+      "Pick_Notifications_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 2,
+      "updateRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pick/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pre-Order/app/index.html": {
+    "references": [
+      "All_Purchase_Request",
+      "Exceptions",
+      "PreOrder_Notifications_Report",
+      "Pre_Order1_Report",
+      "Pre_Order_FF",
+      "SOF_Internal_Messages",
+      "SOF_Internal_Messages_Report",
+      "SOF_Timeline",
+      "SOF_Timeline_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 4,
+      "invokeCustomApi": 1,
+      "updateRecordById": 1
+    }
+  },
+  "modules/Fulfillment/Pre-Order/app/internal-notes_component/internal-notes.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pre-Order/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fulfillment/Pre-Order/app/timeline_history_component/timeline-history.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/Sales Order Report/app/index.html": {
+    "references": [
+      "Crate_Checklist",
+      "Customer",
+      "Exceptions",
+      "Pack",
+      "Pre_Order1_Report",
+      "SOF_Internal_Messages",
+      "SOF_Internal_Messages_Report",
+      "SOF_Timeline",
+      "SOF_Timeline_Report",
+      "SO_Notifications_Report",
+      "Sales_Order_Fulfillment_Report"
+    ],
+    "apiCalls": {
+      "invokeCustomApi": 1,
+      "getRecords": 3,
+      "getRecordById": 3
+    }
+  },
+  "modules/Fulfillment/Sales Order Report/app/internal-notes_component/internal-notes.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/Sales Order Report/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fulfillment/Sales Order Report/app/timeline_history_component/timeline-history.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/To Ship/app/index.html": {
+    "references": [
+      "All_Qc_Reports1",
+      "Customer",
+      "Delivery_Scheduling",
+      "Exception_Control_Report",
+      "Items",
+      "OrderAgg_Notifications_Report",
+      "Order_Aggregation1_Report",
+      "Package_Shipments",
+      "Pre_Order1_Report",
+      "Sales_Order_Readiness_Gate_Report",
+      "Service_Appointment_Form"
+    ],
+    "apiCalls": {
+      "getRecords": 4,
+      "getRecordById": 3,
+      "updateRecords": 3,
+      "addRecords": 1
+    }
+  },
+  "modules/Fulfillment/To Ship/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Fulfillment/Transfer Item/app/index.html": {
+    "references": [
+      "All_Items",
+      "All_Warehouse_Requests",
+      "Transfer_Warehouse",
+      "Transfer_Warehouse_Report",
+      "Warehouse_Request"
+    ],
+    "apiCalls": {
+      "getRecords": 4,
+      "updateRecordById": 1,
+      "invokeCustomApi": 2,
+      "updateRecords": 4,
+      "addRecords": 2
+    }
+  },
+  "modules/Procurement/Dashboard/app/index.html": {
+    "references": [
+      "All_Inquiries",
+      "All_Purchase_Orders",
+      "All_Purchase_Request",
+      "All_Shipments",
+      "All_Suppliers",
+      "Exceptions_Report",
+      "Receiving",
+      "Receiving_Report",
+      "Replacement_Request_Report",
+      "Suppliers"
+    ],
+    "apiCalls": {
+      "getRecords": 2
+    }
+  },
+  "modules/Procurement/Exceptions/app/index.html": {
+    "references": [
+      "All_Evidence_Photos",
+      "App_Notifications_Report",
+      "Evidence_Photos",
+      "Exception_Internal_Messages",
+      "Exception_Internal_Messages_Report",
+      "Exception_Timeline",
+      "Exception_Timeline_Report",
+      "Exceptions",
+      "Exceptions_Report",
+      "Receiving",
+      "Receiving_Report",
+      "Sales_Order"
+    ],
+    "apiCalls": {
+      "invokeCustomApi": 1,
+      "getRecords": 5,
+      "getRecordById": 3,
+      "updateRecordById": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Exceptions/app/internal-notes_component/internal-notes.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Exceptions/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Procurement/Exceptions/app/timeline_history_component/timeline-history.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Forecast Setting/app/index.html": {
+    "references": [
+      "All_Crates",
+      "All_Purchase_Request",
+      "All_Qc_Reports1",
+      "All_Shipments",
+      "Customer",
+      "Forecast_Settings",
+      "Items",
+      "Pack",
+      "Pick1_Report",
+      "Policy_Settings",
+      "Sales_Order",
+      "Sales_Order_Fulfillment_Report",
+      "Sales_Order_Readiness_Gate_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 1,
+      "updateRecordById": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Inquiry List/app/index.html": {
+    "references": [
+      "All_Customers",
+      "All_Evidence_Photos",
+      "All_Inquiries",
+      "All_Inquiry_Messages",
+      "All_Items",
+      "All_Suppliers",
+      "App_Notifications_Report",
+      "Customer",
+      "Inquiry_Form",
+      "Inquiry_Internal_Messages",
+      "Inquiry_Internal_Messages_Report",
+      "Inquiry_Messages",
+      "Inquiry_Timeline",
+      "Inquiry_Timeline_Report",
+      "Items",
+      "Projects",
+      "Projects_Report",
+      "Quote_Groups",
+      "Supplier_1_Report",
+      "Supplier_2_Report"
+    ],
+    "apiCalls": {
+      "invokeCustomApi": 7,
+      "getRecords": 21,
+      "addRecords": 8,
+      "getRecordById": 5,
+      "updateRecordById": 8,
+      "readFile": 3,
+      "deleteRecordById": 1
+    }
+  },
+  "modules/Procurement/Inquiry List/app/internal-notes_component/internal-notes.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Inquiry List/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Procurement/Inquiry List/app/timeline_history_component/timeline-history.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Purchase Order/app/PO.html": {
+    "references": [
+      "All_PO_Messages",
+      "All_Purchase_Orders",
+      "All_Purchase_Request",
+      "Customer",
+      "Items",
+      "PO_Grouping",
+      "PO_Messages",
+      "Receiving_Report",
+      "Sales_Order"
+    ],
+    "apiCalls": {
+      "getRecords": 11,
+      "addRecords": 2,
+      "getRecordById": 3,
+      "updateRecordById": 1,
+      "invokeCustomApi": 2
+    }
+  },
+  "modules/Procurement/Purchase Request/app/index.html": {
+    "references": [
+      "All_Customers",
+      "All_Inquiries",
+      "All_Items",
+      "All_PR_Messages",
+      "All_Purchase_Orders",
+      "All_Purchase_Request",
+      "All_Suppliers",
+      "App_Notifications_Report",
+      "Customer",
+      "Items",
+      "PO_Grouping",
+      "PR_Internal_Messages",
+      "PR_Internal_Messages_Report",
+      "PR_Messages",
+      "PR_Timeline",
+      "PR_Timeline_Report",
+      "Purchase_Request1",
+      "Sales_Order",
+      "Suppliers"
+    ],
+    "apiCalls": {
+      "updateRecordById": 7,
+      "getRecords": 9,
+      "addRecords": 3,
+      "getRecordById": 3,
+      "invokeCustomApi": 5
+    }
+  },
+  "modules/Procurement/Purchase Request/app/internal-notes_component/internal-notes.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Purchase Request/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Procurement/Purchase Request/app/timeline_history_component/timeline-history.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Receiving/app/index.html": {
+    "references": [
+      "All_Customers",
+      "All_Evidence_Photos",
+      "All_Items",
+      "All_Purchase_Orders",
+      "All_Purchase_Request",
+      "All_Shipments",
+      "All_Suppliers",
+      "Evidence_Photos",
+      "Exceptions",
+      "Exceptions_Report",
+      "Fenteng_Shipment_Report",
+      "Purchase_Order",
+      "Receiving",
+      "Receiving_Group",
+      "Receiving_Internal_Messages",
+      "Receiving_Internal_Messages_Report",
+      "Receiving_Report",
+      "Receiving_Timeline",
+      "Receiving_Timeline_Report",
+      "Replacement_Request_Report",
+      "Tony_Shipment_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 20,
+      "invokeCustomApi": 1,
+      "deleteRecordById": 2,
+      "addRecords": 3,
+      "getRecordById": 1,
+      "updateRecordById": 3
+    }
+  },
+  "modules/Procurement/Receiving/app/internal-notes_component/internal-notes.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Receiving/app/timeline_history_component/timeline-history.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Replacement Request/app/index.html": {
+    "references": [
+      "All_Purchase_Orders",
+      "Exception_Control_Report",
+      "Fenteng_Lighting_Purchase_Order_Report",
+      "Fenteng_Lighting_Replacement_Request",
+      "Fenteng_Lighting_Replacement_Request_Report",
+      "Replacement_Request_Report",
+      "Tony_Fan_Purchase_Order_Report",
+      "Tony_Fan_Replacement_Request",
+      "Tony_Fan_Replacement_Request_Report"
+    ],
+    "apiCalls": {
+      "invokeCustomApi": 1,
+      "getRecords": 8,
+      "updateRecordById": 9,
+      "getRecordById": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Shipments/app/index.html": {
+    "references": [
+      "All_Purchase_Request",
+      "All_Shipments",
+      "App_Notifications_Report",
+      "Exceptions_Report",
+      "Fenteng_Shipment_Report",
+      "Replacement_Request_Report",
+      "Shipment_Groupings",
+      "Shipment_Internal_Messages",
+      "Shipment_Internal_Messages_Report",
+      "Shipment_Timeline",
+      "Shipment_Timeline_Report",
+      "Shipments",
+      "Tony_Shipment_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 11,
+      "getRecordById": 1,
+      "updateRecordById": 5
+    }
+  },
+  "modules/Procurement/Shipments/app/internal-notes_component/internal-notes.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 2,
+      "addRecords": 1
+    }
+  },
+  "modules/Procurement/Shipments/app/notification_component/notification.js": {
+    "references": [
+      "Receiving"
+    ],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Procurement/Shipments/app/timeline_history_component/timeline-history.js": {
+    "references": [],
+    "apiCalls": {
+      "getRecords": 1,
+      "addRecords": 1
+    }
+  },
+  "modules/Tony Fan/Inquiries/app/index.html": {
+    "references": [
+      "All_Evidence_Photos",
+      "All_Inquiries",
+      "All_Inquiry_Messages",
+      "All_Items",
+      "Evidence_Photos",
+      "Inquiry_Messages",
+      "Supplier_2_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 12,
+      "addRecords": 3,
+      "deleteRecordById": 1,
+      "updateRecordById": 5,
+      "getRecordById": 2,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Tony Fan/Purchase Order/app/index.html": {
+    "references": [
+      "All_PO_Messages",
+      "All_Purchase_Request",
+      "All_Shipments",
+      "PO_Messages",
+      "Sales_Order",
+      "Tony_Fan_Purchase_Order_Report",
+      "Tony_Notifications_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 12,
+      "addRecords": 2,
+      "getRecordById": 2,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Tony Fan/Purchase Order/app/notification_component/notification.js": {
+    "references": [],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  },
+  "modules/Tony Fan/Purchase Request/app/index.html": {
+    "references": [
+      "All_Items",
+      "All_PR_Messages",
+      "All_Purchase_Request",
+      "PR_Messages",
+      "Sales_Order",
+      "Tony_Fan_Purchase_Request_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 10,
+      "addRecords": 2,
+      "getRecordById": 2,
+      "updateRecordById": 3,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Tony Fan/Replacement Request/app/index.html": {
+    "references": [
+      "All_Evidence_Photos",
+      "All_Purchase_Request",
+      "Exception_Control_Media_Report",
+      "Exception_Control_Report",
+      "Exceptions_Report",
+      "Receiving_Report",
+      "Sales_Order",
+      "Tony_Fan_Purchase_Order_Report",
+      "Tony_Fan_Replacement_Request_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 11,
+      "getRecordById": 2,
+      "updateRecordById": 3,
+      "invokeCustomApi": 1
+    }
+  },
+  "modules/Tony Fan/Shipments/app/index.html": {
+    "references": [
+      "All_Purchase_Request",
+      "All_Shipments",
+      "Sales_Order",
+      "Shipments",
+      "Tony_Fan_Purchase_Order_Report",
+      "Tony_Notifications_Report",
+      "Tony_Shipment_Report"
+    ],
+    "apiCalls": {
+      "getRecords": 11,
+      "getRecordById": 2,
+      "updateRecordById": 1
+    }
+  },
+  "modules/Tony Fan/Shipments/app/notification_component/notification.js": {
+    "references": [],
+    "apiCalls": {
+      "updateRecordById": 1,
+      "getRecords": 1
+    }
+  }
+}

@@ -1,0 +1,12 @@
+
+			displayName = "Exception_Timeline Report"
+			show all rows from Exception_Timeline    
+			(
+				Exception_No as "Exception No"
+				Action_Title as "Action"
+				Action_Type as "Action Type"
+				Changes
+				Actor
+				Logged_On as "Logged On"
+			)
+		

@@ -1,0 +1,52 @@
+{
+  "name": "Exception_Control_Media",
+  "label": "Exception Control Media",
+  "successMessage": "Data Added Successfully!",
+  "line": 2460,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Record_ID",
+      "label": "Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Exception_Number",
+      "label": "Exception Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "File_Type",
+      "label": "File Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "File_Name",
+      "label": "File Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Media",
+      "label": "Media",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Uploaded_On",
+      "label": "Uploaded On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   EDITABLE HIGHLIGHT COMPONENT — styles
+   Drop-in "this field is editable" indicator for any widget in this app family
+   that has a toggleable edit mode (a plain display view that swaps specific
+   fields for real inputs, e.g. an Edit/Cancel/Save flow). See README.md for
+   integration steps.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* CHANGED — per user story ("static, no animation, red border, to avoid
+   distraction") — the original version animated a blue pulsing ring + a
+   sweeping gradient overlay. Replaced with a single steady red ring, no
+   animation, no ::after/keyframes at all. box-shadow (not border) so it never
+   affects layout — floats just outside the field's own edge without shifting
+   anything. Still gated behind body.is-editing exactly as before: dormant in
+   the plain display view, visible only once the host page marks itself as
+   mid-edit (see README.md). */
+.is-editable{position:relative;isolation:isolate;border-radius:4px}
+
+body.is-editing .is-editable{box-shadow:0 0 0 1.5px var(--red, #DC2626)}

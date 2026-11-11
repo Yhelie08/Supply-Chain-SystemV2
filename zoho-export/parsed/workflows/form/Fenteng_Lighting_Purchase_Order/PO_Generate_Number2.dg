@@ -1,0 +1,39 @@
+// form: PO_Generate_Number  form=Fenteng_Lighting_Purchase_Order event=on add on validate  [.ds line 38947]
+    // === PO_Generate_Number ===
+// Form: Purchase_Order | Event: Created | Validations on form submission
+maxNum = 0;
+existingPOs = Purchase_Order[ID != 0];
+for each  po in existingPOs
+{
+    poNoStr = po.PO_No;
+    if(poNoStr != null && poNoStr != "")
+    {
+        numPart = poNoStr.removeFirstOccurence("PO-");
+        num = numPart.toLong();
+        if(num > maxNum)
+        {
+            maxNum = num;
+        }
+    }
+}
+newNum = maxNum + 1;
+if(newNum < 10)
+{
+    input.PO_No_Supplier1 = "PO-0000" + newNum;
+}
+else if(newNum < 100)
+{
+    input.PO_No_Supplier1 = "PO-000" + newNum;
+}
+else if(newNum < 1000)
+{
+    input.PO_No_Supplier1 = "PO-00" + newNum;
+}
+else if(newNum < 10000)
+{
+    input.PO_No_Supplier1 = "PO-0" + newNum;
+}
+else
+{
+    input.PO_No_Supplier1 = "PO-" + newNum;
+}

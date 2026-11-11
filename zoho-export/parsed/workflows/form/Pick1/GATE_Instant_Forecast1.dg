@@ -1,0 +1,2 @@
+// form: GATE_Instant_Forecast  form=Pick1 event=on add or edit on success  [.ds line 46974]
+info thisapp.fcStampBySoNo(input.SO + "");

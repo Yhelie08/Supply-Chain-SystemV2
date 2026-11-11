@@ -1,0 +1,65 @@
+{
+  "name": "SOF_Timeline",
+  "label": "SOF Timeline",
+  "successMessage": "Data Added Successfully!",
+  "line": 17048,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "From",
+      "label": "From",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package",
+      "label": "Package",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Action_Title",
+      "label": "Action Title",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Action_Type",
+      "label": "Action Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Created",
+        "Updated",
+        "Approval",
+        "Message",
+        "Deleted"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Changes",
+      "label": "Changes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Actor",
+      "label": "Actor",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Logged_On",
+      "label": "Logged On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

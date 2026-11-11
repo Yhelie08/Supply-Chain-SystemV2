@@ -1,0 +1,13 @@
+
+			displayName = "Shipment Report"
+			show all rows from Tony_Shipment    
+			(
+				Shipment_No as "Shipment No."
+				Added_User1 as "Added_User"
+				Supplier2_Shipment_Details as "Supplier2 Shipment Details"
+				(
+					field = Supplier2_Shipment_Details.Date_Shipped + " " + Supplier2_Shipment_Details.Item_Name + " " + Supplier2_Shipment_Details.SKU + " " + Supplier2_Shipment_Details.Shipment_Mode + " " + Supplier2_Shipment_Details.PR_No + " " + Supplier2_Shipment_Details.RR_No + " " + Supplier2_Shipment_Details.Added_User + " " + Supplier2_Shipment_Details.Select_To_Ship + " " + Supplier2_Shipment_Details.Synced + " " + Supplier2_Shipment_Details.Status
+				)
+				Parent_Shipment_ID
+			)
+		

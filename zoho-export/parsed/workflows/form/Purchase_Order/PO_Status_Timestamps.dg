@@ -1,0 +1,28 @@
+// form: PO_Status_Timestamps  form=Purchase_Order event=on add or edit on validate  [.ds line 38828]
+    // === PO_Status_Timestamps ===
+// Form: Purchase_Order | Event: Created or Edited | Validations on form submission
+oldRec = Purchase_Order[ID == input.ID];
+// Sent On — kapag bagong naging "Sent" ang status
+if(input.PO_Status == "Sent")
+{
+    if(oldRec.PO_Status != "Sent")
+    {
+        input.Sent_On = zoho.currentdate;
+    }
+}
+// Acknowledged On — kapag bagong naging "Acknowledged" ang status
+if(input.PO_Status == "Acknowledged")
+{
+    if(oldRec.PO_Status != "Acknowledged")
+    {
+        Acknowledged_On = zoho.currentdate;
+    }
+}
+// Completed On — kapag bagong naging "Completed" ang status
+if(input.PO_Status == "Completed")
+{
+    if(oldRec.PO_Status != "Completed")
+    {
+        input.Completed_On = zoho.currentdate;
+    }
+}

@@ -1,0 +1,13 @@
+
+			displayName = "SOF Timeline Report"
+			show all rows from SOF_Timeline    
+			(
+				Package
+				Action_Title
+				Action_Type
+				Changes
+				Actor
+				Logged_On
+				From
+			)
+		

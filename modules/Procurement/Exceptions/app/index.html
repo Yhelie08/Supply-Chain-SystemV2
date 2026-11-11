@@ -1,0 +1,2550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Exceptions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+    --green:#16A34A; --green-light:#DCFCE7; --green-mid:#86EFAC;
+    --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+    --red:#DC2626; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+    --purple:#7C3AED; --purple-dark:#6D28D9; --purple-light:#EDE9FE; --purple-mid:#C4B5FD;
+    --orange:#EA580C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0;
+    --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B;
+    --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+    --white:#FFFFFF;
+    --radius-sm:4px; --radius:8px; --radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+    --t:150ms ease;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+
+  /* ── Buttons ── */
+  .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-ghost:disabled{color:var(--gray-300);cursor:not-allowed}
+  .btn-ghost:disabled:hover{border-color:var(--gray-200)}
+  .btn-purple{background:var(--purple);color:var(--white);font-weight:700;box-shadow:0 1px 4px rgba(124,58,237,.35);border:none;cursor:pointer}
+  .btn-purple:hover{background:var(--purple-dark);transform:translateY(-1px)}
+  .btn-purple:active{transform:translateY(0)}
+  .btn-purple:disabled{background:var(--gray-300);color:var(--gray-500);cursor:not-allowed;transform:none;box-shadow:none}
+  .btn-green-outline{background:var(--white);border:1.5px solid var(--green-mid);color:var(--green);font-weight:600}
+  .btn-green-outline:hover{background:var(--green-light)}
+  .btn-sm{height:30px;padding:0 12px;font-size:12.5px}
+
+  .badge-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .b-gray{background:var(--gray-100);color:var(--gray-500);border-color:var(--gray-300)}
+  .b-orange{background:var(--orange-light);color:var(--orange);border-color:var(--orange-mid)}
+  .b-red{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+  .b-blue{background:var(--blue-light);color:var(--blue);border-color:var(--blue-mid)}
+  .b-purple{background:var(--purple-light);color:var(--purple);border-color:var(--purple-mid)}
+  .b-green{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .b-amber{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+
+  /* ── Shared top bar ── */
+  .rr-topbar{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:0 24px;height:44px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.06);position:sticky;top:0;z-index:200}
+  .rr-topbar-title{font-size:13px;font-weight:600;color:var(--gray-600)}
+  .rr-topbar-right{display:flex;align-items:center;gap:14px}
+  .clock{font-size:12.5px;font-weight:600;color:var(--gray-400);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+
+  /* ════════════════════════════════
+     VIEW: EXCEPTION LIST
+  ════════════════════════════════ */
+  .rr-page{display:flex;flex-direction:column;height:100vh;box-sizing:border-box;overflow:hidden}
+  .rr-content{padding:20px 24px 24px;display:flex;flex-direction:column;gap:16px;flex:1;min-height:0;overflow:hidden}
+
+  .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;flex-shrink:0}
+  .page-header-left h1{font-size:24px;font-weight:700;color:var(--purple);letter-spacing:-.02em;line-height:1.2}
+  .page-header-left p{font-size:13px;color:var(--gray-500);margin-top:4px}
+  .page-header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+
+  .toppills{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+  .toppill{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 15px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .toppill:hover{border-color:var(--purple);color:var(--purple)}
+  .toppill.active{background:var(--gray-700);border-color:var(--gray-700);color:var(--white)}
+  .toppill .cnt{font-size:11.5px;opacity:.8;background:rgba(0,0,0,.12);border-radius:999px;padding:1px 7px}
+  .toppill.active .cnt{background:rgba(255,255,255,.22)}
+  .toppill.rrlink{background:var(--purple-light);border-color:var(--purple-mid);color:var(--purple)}
+  .toppill.rrlink:hover{background:var(--purple);color:var(--white)}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;flex-shrink:0}
+  @media(max-width:1300px){.stat-cards{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:700px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow)}
+  .stat-card.stat-alert{border-color:var(--red-mid);background:var(--red-light)}
+  .stat-label{font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em}
+  .stat-value{font-size:25px;font-weight:700;line-height:1.1;margin:6px 0 3px;color:var(--gray-800)}
+  .stat-value.red{color:var(--red)}
+  .stat-value.purple{color:var(--purple)}
+  .stat-sub{font-size:11px;color:var(--gray-400)}
+  .stat-sub.red{color:var(--red);font-weight:600}
+
+  .main-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;flex:1;min-height:0}
+
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap;flex-shrink:0}
+  .filter-pills{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 14px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .pill:hover{border-color:var(--purple);color:var(--purple)}
+  .pill.active{background:var(--purple);border-color:var(--purple);color:var(--white)}
+  .pill .pill-count{font-size:12px;opacity:.85}
+  .search-wrap{position:relative;flex:0 1 220px;min-width:160px}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400);pointer-events:none}
+  .search-input{width:100%;height:32px;padding:0 10px 0 32px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--gray-50);color:var(--gray-700);font-family:inherit;font-size:13px;outline:none;transition:all var(--t);box-sizing:border-box}
+  .search-input::placeholder{color:var(--gray-400)}
+  .search-input:focus{border-color:var(--purple);background:var(--white)}
+
+  .table-wrap{overflow:auto;flex:1;min-height:0}
+  .rr-table{width:100%;border-collapse:collapse;min-width:1280px}
+  .rr-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .rr-table th{padding:10px 12px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;position:sticky;top:0;z-index:5;background:var(--gray-50);box-shadow:0 1.5px 0 var(--gray-200)}
+  .rr-table tbody tr{border-bottom:1px solid var(--gray-100);transition:background var(--t);cursor:pointer}
+  .rr-table tbody tr:hover{background:var(--gray-50)}
+  .rr-table tbody tr:last-child{border-bottom:none}
+  .rr-table td{padding:11px 12px;font-size:13px;color:var(--gray-700);vertical-align:middle}
+  .rr-table td:first-child{border-left:4px solid transparent}
+  .rr-table tr.risk-red td:first-child{border-left-color:var(--red)}
+  .rr-table tr.risk-orange td:first-child{border-left-color:var(--orange)}
+  .rr-table tr.risk-tan td:first-child{border-left-color:var(--amber-mid)}
+  .rr-table tr.risk-gray td:first-child{border-left-color:var(--gray-300)}
+
+  .cell-excno{color:var(--purple);font-weight:700;font-size:13px;white-space:nowrap}
+  .cell-mono{font-variant-numeric:tabular-nums;color:var(--gray-600);white-space:nowrap}
+  .cell-dash{color:var(--gray-300)}
+  .cell-waiting.on-supplier{color:var(--orange);font-weight:600}
+  .cell-waiting.on-internal{color:var(--blue);font-weight:600}
+  .cell-target{white-space:nowrap;font-weight:500}
+  .cell-target.warn{color:var(--red);font-weight:700}
+
+  .st-open{background:var(--purple-light);color:var(--purple);border-color:var(--purple-mid)}
+  .st-underreview{background:var(--blue-light);color:var(--blue);border-color:var(--blue-mid)}
+  .st-waiting{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+  .st-resolved{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .st-closed{background:var(--gray-100);color:var(--gray-500);border-color:var(--gray-300)}
+  .sev-high{color:var(--red);font-weight:700;font-size:12px}
+  .sev-med{color:var(--amber);font-weight:700;font-size:12px}
+  .sev-low{color:var(--gray-400);font-weight:600;font-size:12px}
+  .dot-sev{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+  .sev-high .dot-sev{background:var(--red)}
+  .sev-med .dot-sev{background:var(--amber)}
+  .sev-low .dot-sev{background:var(--gray-300)}
+
+  .table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--gray-100);background:var(--gray-50);flex-wrap:wrap;gap:8px;flex-shrink:0}
+  .table-footer-info{font-size:12.5px;color:var(--gray-500)}
+  .table-footer-info strong{color:var(--gray-700)}
+
+  /* ── Toast + confirm modal (same pattern as PO.html / PR.html) ── */
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transform:translateY(6px);transition:opacity 200ms ease,transform 200ms ease;pointer-events:none;max-width:360px}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .confirm-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;z-index:4000;opacity:0;pointer-events:none;transition:opacity 150ms ease}
+  .confirm-overlay.show{opacity:1;pointer-events:auto}
+  .confirm-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:380px;max-width:90vw;padding:22px;transform:translateY(8px);transition:transform 150ms ease}
+  .confirm-overlay.show .confirm-box{transform:translateY(0)}
+  .confirm-title{font-size:15px;font-weight:700;color:var(--gray-800);margin-bottom:8px}
+  .confirm-msg{font-size:13.5px;color:var(--gray-600);line-height:1.5;margin-bottom:20px}
+  .confirm-actions{display:flex;justify-content:flex-end;gap:8px}
+  .confirm-btn{height:34px;padding:0 16px;border-radius:var(--radius);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all var(--t)}
+  .confirm-btn-cancel{background:var(--gray-100);color:var(--gray-700)}
+  .confirm-btn-cancel:hover{background:var(--gray-200)}
+  .confirm-btn-ok{background:var(--purple);color:var(--white)}
+  .confirm-btn-ok:hover{background:var(--purple-dark)}
+
+  /* ── Supplier confirmation on Create RR — ADDED 2026-10-12. Reuses the confirm
+     overlay's own backdrop/animation so it looks like every other modal in this
+     app family; only the box is wider, because it carries a list and a radio set. ── */
+  .rrsup-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:460px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:22px;transform:translateY(8px);transition:transform 150ms ease}
+  .confirm-overlay.show .rrsup-box{transform:translateY(0)}
+  .rrsup-sub{font-size:12px;color:var(--gray-500);margin:-4px 0 14px}
+  .rrsup-items{background:var(--gray-50);border:1px solid var(--gray-100);border-radius:var(--radius);padding:10px 12px;margin-bottom:16px}
+  .rrsup-item{font-size:12.5px;color:var(--gray-700);line-height:1.7}
+  .rrsup-q{font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:8px}
+  .rrsup-opt{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);margin-bottom:7px;cursor:pointer;transition:all var(--t)}
+  .rrsup-opt:hover{background:var(--gray-50);border-color:var(--gray-300)}
+  .rrsup-opt input{margin-top:2px;flex-shrink:0;cursor:pointer}
+  .rrsup-opt-body{display:flex;flex-direction:column;gap:2px}
+  .rrsup-opt-label{font-size:13px;font-weight:600;color:var(--gray-800)}
+  .rrsup-opt-hint{font-size:11.5px;color:var(--gray-500);line-height:1.45}
+  .rrsup-warn{background:var(--red-light);border:1px solid var(--red);border-radius:var(--radius);padding:9px 12px;font-size:12px;color:var(--gray-700);line-height:1.5;margin-bottom:12px}
+  .rrsup-reason{margin:12px 0 4px}
+  .rrsup-reason label{display:block;font-size:12px;font-weight:600;color:var(--gray-700);margin-bottom:5px}
+  .rrsup-reason textarea{width:100%;min-height:62px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;font-size:13px;color:var(--gray-800);resize:vertical}
+  .rrsup-reason textarea:focus{outline:none;border-color:var(--purple)}
+  .confirm-btn-ok:disabled{background:var(--gray-200);color:var(--gray-400);cursor:not-allowed}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spin{display:inline-block;width:14px;height:14px;border:2.5px solid var(--gray-200);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+
+  /* ════════════════════════════════
+     SHARED: sec-card / side-card
+  ════════════════════════════════ */
+  .sec-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .side-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .sec-header{padding:11px 20px;background:var(--gray-50);border-left:4px solid var(--gray-300);border-bottom:1px solid var(--gray-100);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .sec-header.accent-red{background:var(--red-light);border-left-color:var(--red)}
+  .sec-header.accent-purple{border-left-color:var(--purple-mid)}
+  .sec-header.accent-green{background:var(--green-light);border-left-color:var(--green)}
+  .sec-title{font-size:12px;font-weight:800;color:var(--gray-700);text-transform:uppercase;letter-spacing:.07em}
+  .sec-hint{font-size:11px;color:var(--gray-400)}
+  .sec-body{padding:18px 20px}
+
+  .fg{display:grid;gap:14px 20px}
+  .fg-2{grid-template-columns:repeat(2,1fr)}
+  .fg-3{grid-template-columns:repeat(3,1fr)}
+  .fg-5{grid-template-columns:repeat(5,1fr)}
+  @media(max-width:900px){.fg-3,.fg-5{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:700px){.fg-2{grid-template-columns:1fr}}
+  .fi{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .fi.span-2{grid-column:1/-1}
+  .fi-lbl{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em}
+  .fi-val{font-size:13.5px;font-weight:600;color:var(--gray-800);line-height:1.4;overflow-wrap:anywhere}
+  .fi-val.muted{color:var(--gray-400);font-style:italic;font-weight:400}
+  /* editable-highlight_component wrapper — display:block/width:100% so the glisten
+     hugs the actual .prf-input/.prf-select/.prf-textarea it wraps exactly (those
+     already carry width:100% themselves), rather than the span defaulting to
+     shrink-to-fit while its control stretches full-width underneath it (the same
+     mismatch fixed on Receiving/app's Damage/Missing Evidence card). */
+  .fi .is-editable,.impact-item .is-editable{display:block;width:100%}
+
+  .prf-input,.prf-select,.prf-textarea{width:100%;font-family:inherit;font-size:13.5px;color:var(--gray-800);background:var(--white);border:1.5px solid var(--gray-200);border-radius:var(--radius);padding:7px 11px;outline:none;transition:border-color var(--t)}
+  .prf-input:focus,.prf-select:focus,.prf-textarea:focus{border-color:var(--purple)}
+  .prf-input[readonly]{background:var(--gray-50);color:var(--gray-500);cursor:default}
+  .prf-textarea{resize:vertical;min-height:64px;line-height:1.5}
+  .prf-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+
+  .ctx-table{width:100%;border-collapse:collapse;margin-top:2px}
+  .ctx-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .ctx-table th{padding:8px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em}
+  .ctx-table td{padding:10px 14px;font-size:12.5px;color:var(--gray-700);border-bottom:1px solid var(--gray-100)}
+  .ctx-table tr:last-child td{border-bottom:none}
+
+  /* ADDED 2026-07-16 — Product_Context1 evidence cards + lightbox, ported from
+     UI/EndUser/Receiving/app/index.html (same classes, same visual language). */
+  .lightbox-overlay{display:none;position:fixed;inset:0;z-index:6000;align-items:center;justify-content:center;padding:40px;background:rgba(0,0,0,.82);cursor:zoom-out}
+  .lightbox-overlay.open{display:flex}
+  .lightbox-overlay img{max-width:100%;max-height:100%;border-radius:var(--radius);box-shadow:var(--shadow-lg);cursor:default}
+  .lightbox-close{position:absolute;top:20px;right:24px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:var(--white);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .lightbox-close:hover{background:rgba(255,255,255,.3)}
+  .ctx-ev-card{border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px;margin-bottom:12px;background:var(--gray-50)}
+  .ctx-ev-card:last-child{margin-bottom:0}
+  .ctx-ev-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .ctx-ev-fg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px;margin-bottom:10px}
+  @media(max-width:900px){.ctx-ev-fg{grid-template-columns:repeat(2,1fr)}}
+  .ctx-ev-photo{width:96px;height:96px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--gray-200);cursor:zoom-in;background:var(--gray-100)}
+  .ctx-ev-empty{color:var(--gray-400);font-size:12.5px;padding:8px 0}
+
+  /* ════════════════════════════════
+     VIEW: EXCEPTION DETAIL
+  ════════════════════════════════ */
+  .rr-subheader{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:12px 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;position:sticky;top:44px;z-index:190;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .rr-subheader-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .rr-no{font-size:17px;font-weight:800;color:var(--purple);letter-spacing:-.01em}
+  .rr-subheader-right{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+
+  .prf-select:disabled{background:var(--gray-50);color:var(--gray-500);cursor:default;opacity:1;background-image:none}
+  .chk-inline input:disabled{cursor:default}
+
+  .rr-body{display:flex;gap:16px;padding:16px 24px 32px;align-items:flex-start}
+  .rr-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
+  .rr-sidebar{width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
+  @media(max-width:1000px){.rr-body{flex-direction:column}.rr-sidebar{width:100%}}
+
+  .impact-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
+  .impact-item{display:flex;flex-direction:column;gap:5px}
+  .chk-inline{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--gray-600)}
+  .chk-inline input{width:15px;height:15px;accent-color:var(--purple)}
+
+  .file-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:var(--radius);background:var(--gray-50);border:1px solid var(--gray-200);color:var(--gray-700);font-size:12px;max-width:220px}
+  .file-chip a{color:var(--blue);text-decoration:none}
+  .file-chip a:hover{text-decoration:underline}
+  .file-chip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+  .file-chip-del{background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:16px;line-height:1;padding:0;flex-shrink:0}
+  .file-chip-del:hover{color:var(--gray-700)}
+
+  /* ════════════════════════════════
+     VIEW: NEW EXCEPTION (Raise Exception)
+  ════════════════════════════════ */
+  .upload-box{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:4px 0}
+  .upload-box input[type=file]{display:none}
+  .upload-label{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:var(--radius);border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-700);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .upload-label:hover{border-color:var(--purple);color:var(--purple)}
+  .upload-hint{font-size:11.5px;color:var(--gray-400)}
+  .file-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+
+  .ctx-row{display:grid;grid-template-columns:repeat(6,1fr) auto;gap:10px;align-items:end;padding:10px 0;border-bottom:1px solid var(--gray-100)}
+  .ctx-row:last-child{border-bottom:none}
+  .ctx-row-del{background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:18px;height:36px;padding:0 4px}
+  .ctx-row-del:hover{color:var(--red)}
+  .req{color:var(--red)}
+
+  .chk-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px}
+  .chk-row:not(:last-child){border-bottom:1px solid var(--gray-100)}
+  .chk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--gray-300)}
+  .chk-dot.ok{background:var(--green)}
+  .chk-lbl{color:var(--gray-500)}
+  .chk-lbl.ok{color:var(--green);font-weight:500}
+
+  .new-body{display:grid;grid-template-columns:1fr 300px;gap:16px;padding:20px 24px 32px;align-items:start}
+  @media(max-width:960px){.new-body{grid-template-columns:1fr}}
+  .new-main{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .new-side{display:flex;flex-direction:column;gap:14px}
+
+  .sum-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px}
+  .sum-row:last-child{border-bottom:none}
+  .sum-lbl{color:var(--gray-500);font-size:12.5px;white-space:nowrap;flex-shrink:0}
+  .sum-val{font-weight:600;color:var(--gray-800);text-align:right;word-break:break-word}
+  .sum-val.muted{color:var(--gray-300);font-weight:400;font-style:italic}
+
+  .btn-submit-side{width:100%;height:42px;font-size:14px;font-weight:700;border-radius:var(--radius);color:var(--white);border:none;cursor:pointer;transition:all var(--t);display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;background:var(--purple);box-shadow:0 2px 6px rgba(124,58,237,.3)}
+  .btn-submit-side:disabled{background:var(--gray-300);color:var(--gray-500);cursor:not-allowed;box-shadow:none}
+  .btn-cancel-side{width:100%;margin-top:8px;height:34px;font-size:13px;font-weight:500;border-radius:var(--radius);background:var(--white);color:var(--gray-700);border:1.5px solid var(--gray-200);cursor:pointer;transition:all var(--t);display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .btn-cancel-side:hover{border-color:var(--gray-400)}
+
+  .flag-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-100);gap:8px}
+  .flag-row:last-child{border-bottom:none}
+  .flag-lbl{font-size:12px;color:var(--gray-600)}
+
+  .res-block{border-top:1.5px dashed var(--red-mid);margin-top:2px}
+  .loading-row{text-align:center;padding:40px;color:var(--gray-400);font-size:13px}
+</style>
+<link rel="stylesheet" href="timeline_history_component/timeline-history.css" />
+<link rel="stylesheet" href="internal-notes_component/internal-notes.css" />
+<link rel="stylesheet" href="editable-highlight_component/editable-highlight.css" />
+<link rel="stylesheet" href="notification_component/notification.css" />
+</head>
+<body>
+
+<!-- ════════════════════════════════
+     VIEW: EXCEPTION LIST (Resolution Queue)
+════════════════════════════════ -->
+<div id="view-list" class="rr-page">
+
+  <div class="rr-content">
+
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Exceptions</h1>
+      </div>
+      <div class="page-header-right">
+        <span class="badge-pill b-purple" id="topSummaryPill">● Loading…</span>
+        <button class="btn btn-purple" onclick="showView('new')">+ Raise Exception</button>
+      </div>
+    </div>
+
+    <div class="toppills" id="topPills">
+      <button class="toppill active" data-scope="all">All Open <span class="cnt" id="cntAllOpen">0</span></button>
+      <button class="toppill" data-scope="high">High Severity <span class="cnt" id="cntHigh">0</span></button>
+      <button class="toppill" data-scope="supplier">Waiting on Supplier <span class="cnt" id="cntSupplier">0</span></button>
+      <button class="toppill" data-scope="receiving">Receiving Source <span class="cnt" id="cntReceiving">0</span></button>
+      <button class="toppill" data-scope="fulfillment">Fulfillment QC Source <span class="cnt" id="cntFulfillment">0</span></button>
+      <button class="toppill rrlink" onclick="alert('This would open the Replacement Request (RR) module.')">RR List →</button>
+    </div>
+
+    <div class="stat-cards">
+      <div class="stat-card"><div class="stat-label">Open Exceptions</div><div class="stat-value" id="statOpen">0</div><div class="stat-sub">Status != Closed</div></div>
+      <div class="stat-card" id="statHighCard"><div class="stat-label">High Severity</div><div class="stat-value red" id="statHigh">0</div><div class="stat-sub">Priority = High</div></div>
+      <div class="stat-card"><div class="stat-label">Waiting on Supplier</div><div class="stat-value" id="statSupplier">0</div><div class="stat-sub">Supplier response due</div></div>
+      <div class="stat-card" id="statOverdueCard"><div class="stat-label">Overdue</div><div class="stat-value red" id="statOverdue">0</div><div class="stat-sub">Past due date</div></div>
+      <div class="stat-card"><div class="stat-label">Receiving Exceptions</div><div class="stat-value purple" id="statReceiving">0</div><div class="stat-sub">Source = Receiving</div></div>
+      <div class="stat-card"><div class="stat-label">Fulfillment QC Exceptions</div><div class="stat-value purple" id="statFulfillment">0</div><div class="stat-sub">Source = Fulfillment QC</div></div>
+    </div>
+
+    <div class="main-card">
+      <div class="filter-row">
+        <div class="filter-pills" id="excPills">
+          <button class="pill active" data-filter="all">All <span class="pill-count" id="pcAll">(0)</span></button>
+          <button class="pill" data-filter="Open">Open <span class="pill-count" id="pcOpen">(0)</span></button>
+          <button class="pill" data-filter="Under Review">Under Review <span class="pill-count" id="pcUnderReview">(0)</span></button>
+          <button class="pill" data-filter="Waiting">Waiting <span class="pill-count" id="pcWaiting">(0)</span></button>
+          <button class="pill" data-filter="Resolved">Resolved <span class="pill-count" id="pcResolved">(0)</span></button>
+          <button class="pill" data-filter="Closed">Closed <span class="pill-count" id="pcClosed">(0)</span></button>
+          <button class="pill" data-filter="overdue">Overdue <span class="pill-count" id="pcOverdue">(0)</span></button>
+        </div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input class="search-input" id="excSearch" placeholder="Search exceptions..." oninput="renderTable()" />
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="rr-table">
+          <thead>
+            <tr>
+              <th>Exception No.</th>
+              <th>Source</th>
+              <th>Type</th>
+              <th>Severity</th>
+              <th>Status</th>
+              <th>Next Step</th>
+              <th>SO No.</th>
+              <th>PO No.</th>
+              <th>Shipment No.</th>
+              <th>Receiving No.</th>
+              <th>SKU</th>
+              <th>Affected Qty</th>
+              <th>Dept.</th>
+              <th>Assigned To</th>
+              <th>Waiting On</th>
+              <th>Due Date</th>
+            </tr>
+          </thead>
+          <tbody id="excTbody">
+            <tr><td colspan="16" class="loading-row"><span class="spin"></span>Loading from Zoho Creator…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="table-footer-info">Showing <strong id="footCount">0</strong> of <strong id="footTotal">0</strong> exceptions</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     VIEW: EXCEPTION DETAIL (Resolution Workspace)
+════════════════════════════════ -->
+<div id="view-detail" style="display:none">
+  <div class="rr-detail-page">
+
+    <div class="rr-topbar">
+      <div class="rr-topbar-title" id="dTopbarTitle">Resolution Workspace</div>
+      <div class="rr-topbar-right">
+        <span class="badge-pill b-red" id="dTopbarBadge">●</span>
+      </div>
+    </div>
+    <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+    <div id="nsBanner" style="padding:12px 16px 0"></div>
+
+    <div class="rr-subheader">
+      <div class="rr-subheader-left">
+        <button class="btn btn-ghost" onclick="showView('list')">← Back to Queue</button>
+        <span class="rr-no" id="dExcNo">—</span>
+        <span class="badge-pill b-red" id="dTypeBadge">—</span>
+        <span class="badge-pill b-red" id="dPriorityBadge">—</span>
+        <span class="badge-pill b-amber" id="dStatusBadge">—</span>
+        <span class="badge-pill b-red" id="dOverdueBadge" style="display:none">Overdue</span>
+      </div>
+      <div class="rr-subheader-right">
+        <button class="btn btn-ghost btn-sm" onclick="setExceptionStatus('Under Review')">Mark Under Review</button>
+        <button class="btn btn-ghost btn-sm" onclick="setExceptionStatus('Waiting')">Mark Waiting</button>
+        <button class="btn btn-green-outline btn-sm" onclick="setExceptionStatus('Resolved')">Resolve</button>
+        <button class="btn btn-purple btn-sm" id="btnCreateRR" onclick="runCreateRR()">Create RR</button>
+        <button class="btn btn-purple btn-sm" id="btnEditDetail" onclick="applyEditMode(true)">Edit</button>
+        <button class="btn btn-ghost btn-sm" id="btnSaveDetail" style="display:none" onclick="saveException()">Save</button>
+        <button class="btn btn-ghost btn-sm" id="btnCancelEditDetail" style="display:none" onclick="cancelEditDetail()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="rr-body">
+      <div class="rr-main">
+
+        <!-- B - SOURCE LINKAGE -->
+        <div class="sec-card">
+          <div class="sec-header">
+            <span class="sec-title">Source Linkage</span>
+          </div>
+          <div class="sec-body">
+            <div class="fg fg-5">
+              <div class="fi"><span class="fi-lbl">SO No.</span><span class="is-editable"><input class="prf-input editable-field" id="dSoNo"></span></div>
+              <div class="fi"><span class="fi-lbl">PO No.</span><span class="is-editable"><input class="prf-input editable-field" id="dPoNo"></span></div>
+              <div class="fi"><span class="fi-lbl">Shipment No.</span><span class="is-editable"><input class="prf-input editable-field" id="dShipmentNo"></span></div>
+              <div class="fi"><span class="fi-lbl">Receiving No.</span><span class="is-editable"><input class="prf-input editable-field" id="dReceiveNo"></span></div>
+              <div class="fi"><span class="fi-lbl">Receiving Line ID</span><span class="is-editable"><input class="prf-input editable-field" id="dReceivingLineId"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- C - PRODUCT / CONTEXT -->
+        <div class="sec-card">
+          <div class="sec-header">
+            <span class="sec-title">Product / Context</span>
+            <span class="sec-hint">From Product Context subform — read only here</span>
+          </div>
+          <table class="ctx-table">
+            <thead><tr><th>SKU</th><th>Item</th><th>Category</th><th>Qty</th><th>Type</th><th>Supplier</th></tr></thead>
+            <tbody id="dCtxTbody"></tbody>
+          </table>
+        </div>
+
+        <!-- C2 - DAMAGE/MISSING EVIDENCE FROM RECEIVING -->
+        <div class="sec-card">
+          <div class="sec-header">
+            <span class="sec-title">Damage / Missing Evidence</span>
+            <span class="sec-hint">Populated from Receiving — read only here</span>
+          </div>
+          <div class="sec-body" id="dCtxEvidence"></div>
+        </div>
+
+        <!-- D - PROBLEM DETAILS -->
+        <div class="sec-card">
+          <div class="sec-header">
+            <span class="sec-title">Problem Details</span>
+          </div>
+          <div class="sec-body">
+            <div class="fg fg-2" style="margin-bottom:14px">
+              <div class="fi">
+                <span class="fi-lbl">Exception Title</span>
+                <span class="is-editable"><input type="text" class="prf-input editable-field" id="dExcTitle" placeholder="Optional — short summary"></span>
+              </div>
+              <div class="fi">
+                <span class="fi-lbl">Root Cause Category</span>
+                <span class="fi-val" id="dRootCause" title="Rolled up from Product/Context rows below — edit those to change it">—</span>
+              </div>
+            </div>
+            <div class="fi" style="margin-bottom:14px">
+              <span class="fi-lbl">Exception Description</span>
+              <span class="is-editable"><textarea class="prf-textarea editable-field" id="dExcDesc" oninput="refreshCreateRRGateLive()"></textarea></span>
+            </div>
+            <div class="impact-row">
+              <div class="impact-item">
+                <span class="fi-lbl">Impact Type</span>
+                <span class="is-editable"><select class="prf-select editable-field" id="dImpactType"></select></span>
+              </div>
+              <div class="impact-item">
+                <span class="fi-lbl">Delay Impact</span>
+                <label class="chk-inline"><input type="checkbox" class="editable-field" id="dDelayImpact"> Yes</label>
+              </div>
+              <div class="impact-item">
+                <span class="fi-lbl">Fulfillment Impact</span>
+                <label class="chk-inline"><input type="checkbox" class="editable-field" id="dFulfillImpact"> Yes</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- G - EVIDENCE -->
+        <div class="sec-card">
+          <div class="sec-header">
+            <span class="sec-title">Evidence — Files &amp; Descriptions</span>
+          </div>
+          <div class="sec-body">
+            <div class="fg fg-2">
+              <div class="fi">
+                <span class="fi-lbl">Uploaded Files</span>
+                <div id="dFileChips" style="display:flex;flex-wrap:wrap;gap:6px">—</div>
+              </div>
+              <div class="fi">
+                <span class="fi-lbl">Evidence Descriptions</span>
+                <span class="is-editable"><textarea class="prf-textarea editable-field" id="dEvidenceDesc" style="min-height:44px" oninput="refreshCreateRRGateLive()"></textarea></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SIDEBAR -->
+      <div class="rr-sidebar">
+
+        <!-- E - OWNERSHIP -->
+        <div class="sec-card">
+          <div class="sec-header accent-red">
+            <span class="sec-title">Ownership</span>
+          </div>
+          <div class="sec-body">
+            <div class="fg">
+              <div class="fi">
+                <span class="fi-lbl">Source</span>
+                <span class="fi-val" id="dSourceVal">—</span>
+              </div>
+              <div class="fi">
+                <span class="fi-lbl">Assigned Department</span>
+                <span class="is-editable"><select class="prf-select editable-field" id="dAssignedDept"></select></span>
+              </div>
+              <div class="fi">
+                <span class="fi-lbl">Assigned To</span>
+                <span class="is-editable"><input class="prf-input editable-field" id="dAssignedTo"></span>
+              </div>
+              <div class="fi">
+                <span class="fi-lbl">Opened On</span>
+                <span class="is-editable"><input class="prf-input editable-field" id="dOpenedOn"></span>
+              </div>
+              <div class="fi">
+                <span class="fi-lbl">Due Date</span>
+                <span class="is-editable"><input type="date" class="prf-input editable-field" id="dDueDate"></span>
+              </div>
+              <div class="fi">
+                <span class="fi-lbl">Waiting On</span>
+                <span class="is-editable"><select class="prf-select editable-field" id="dWaitingOn"></select></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- F - RESOLUTION -->
+        <div class="sec-card res-block">
+          <div class="sec-header accent-green">
+            <span class="sec-title">Resolution</span>
+          </div>
+          <div class="sec-body">
+            <div class="fi" style="margin-bottom:12px">
+              <span class="fi-lbl">Resolution Action</span>
+              <span class="is-editable"><textarea class="prf-textarea editable-field" id="dResolutionAction" placeholder="Describe the resolution taken..."></textarea></span>
+            </div>
+            <button class="btn btn-green-outline" style="width:100%;justify-content:center;margin-bottom:8px" onclick="setExceptionStatus('Resolved')">Mark Resolved</button>
+            <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="setExceptionStatus('Closed')">Close Exception</button>
+          </div>
+        </div>
+
+        <div id="tlhcMount"></div>
+        <div id="incMount"></div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     VIEW: NEW EXCEPTION (Raise Exception)
+════════════════════════════════ -->
+<div id="view-new" style="display:none">
+
+  <div class="rr-subheader" style="position:static">
+    <div class="rr-subheader-left">
+      <span class="rr-no">Raise Exception</span>
+      <span class="meta-item" id="newExcNoBadge">Exception No. assigned on save</span>
+    </div>
+    <div class="rr-subheader-right">
+      <button class="btn btn-ghost" onclick="showView('list')">← Cancel</button>
+      <button class="btn btn-purple" id="btnRaiseTop" onclick="submitNewException()">Raise Exception →</button>
+    </div>
+  </div>
+
+  <div class="new-body">
+    <div class="new-main">
+
+      <div class="sec-card">
+        <div class="sec-header accent-purple"><span class="sec-title">Exception Basics</span></div>
+        <div class="sec-body">
+          <div class="fg fg-2">
+            <div class="fi"><span class="fi-lbl">Priority <span class="req">*</span></span><select class="prf-select" id="nPriority" onchange="refreshNewExc()"></select></div>
+            <div class="fi"><span class="fi-lbl">Source Module <span class="req">*</span></span><select class="prf-select" id="nSourceModule" onchange="refreshNewExc()"></select></div>
+            <div class="fi"><span class="fi-lbl">Due Date <span class="req">*</span></span><input type="date" class="prf-input" id="nDueDate" oninput="refreshNewExc()"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header accent-purple">
+          <span class="sec-title">Source Linkage</span>
+          <span class="sec-hint">Optional — fill in whatever references apply</span>
+        </div>
+        <div class="sec-body">
+          <div class="fg fg-5">
+            <div class="fi"><span class="fi-lbl">SO No.</span><input class="prf-input" id="nSoNo"></div>
+            <div class="fi"><span class="fi-lbl">PO No.</span><input class="prf-input" id="nPoNo"></div>
+            <div class="fi"><span class="fi-lbl">Shipment No.</span><input class="prf-input" id="nShipmentNo"></div>
+            <div class="fi"><span class="fi-lbl">Receiving No.</span><input class="prf-input" id="nReceiveNo"></div>
+            <div class="fi"><span class="fi-lbl">Receiving Line ID</span><input class="prf-input" id="nReceivingLineId"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header accent-purple">
+          <span class="sec-title">Product / Context</span>
+          <span class="sec-hint">One row per affected SKU — Type (Damage/Missing) is what routes Create RR later</span>
+        </div>
+        <div class="sec-body">
+          <div id="nCtxRows"></div>
+          <button type="button" class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="addCtxRow()">+ Add Row</button>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header accent-purple"><span class="sec-title">Problem Details</span></div>
+        <div class="sec-body">
+          <div class="fi" style="margin-bottom:14px">
+            <span class="fi-lbl">Exception Title</span>
+            <input type="text" class="prf-input" id="nExcTitle" placeholder="Optional — short summary">
+          </div>
+          <div class="fi" style="margin-bottom:14px">
+            <span class="fi-lbl">Exception Description <span class="req">*</span></span>
+            <textarea class="prf-textarea" id="nExcDesc" oninput="refreshNewExc()"></textarea>
+          </div>
+          <div class="impact-row">
+            <div class="impact-item"><span class="fi-lbl">Impact Type</span><select class="prf-select" id="nImpactType"></select></div>
+            <div class="impact-item"><span class="fi-lbl">Delay Impact</span><label class="chk-inline"><input type="checkbox" id="nDelayImpact"> Yes</label></div>
+            <div class="impact-item"><span class="fi-lbl">Fulfillment Impact</span><label class="chk-inline"><input type="checkbox" id="nFulfillImpact"> Yes</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header accent-purple"><span class="sec-title">Evidence</span></div>
+        <div class="sec-body">
+          <div class="upload-box">
+            <input type="file" id="nFileUpload" multiple onchange="onNewExcFiles()">
+            <label for="nFileUpload" class="upload-label">📎 Select Files</label>
+            <span class="upload-hint">Photos, supplier docs, etc. — uploaded after the record is created</span>
+          </div>
+          <div class="file-chips" id="nFileChips"></div>
+          <div class="fi" style="margin-top:14px">
+            <span class="fi-lbl">Evidence Descriptions</span>
+            <textarea class="prf-textarea" id="nEvidenceDesc" style="min-height:56px"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header accent-purple"><span class="sec-title">Ownership</span></div>
+        <div class="sec-body">
+          <div class="fg fg-2">
+            <div class="fi"><span class="fi-lbl">Assigned Department</span><select class="prf-select" id="nAssignedDept"></select></div>
+            <div class="fi"><span class="fi-lbl">Assigned To</span><input class="prf-input" id="nAssignedTo"></div>
+            <div class="fi"><span class="fi-lbl">Opened On</span><input class="prf-input" id="nOpenedOn"></div>
+            <div class="fi"><span class="fi-lbl">Waiting On</span><select class="prf-select" id="nWaitingOn"></select></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="new-side">
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title">Summary</span></div>
+        <div class="sec-body">
+          <div class="sum-row"><span class="sum-lbl">Status</span><span class="sum-val">Open</span></div>
+          <div class="sum-row"><span class="sum-lbl">Type</span><span class="sum-val muted" id="sumType">—</span></div>
+          <div class="sum-row"><span class="sum-lbl">Priority</span><span class="sum-val muted" id="sumPriority">—</span></div>
+          <div class="sum-row"><span class="sum-lbl">Source</span><span class="sum-val muted" id="sumSource">—</span></div>
+          <div class="sum-row"><span class="sum-lbl">Due Date</span><span class="sum-val muted" id="sumDue">—</span></div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title">Required Fields</span></div>
+        <div class="sec-body" id="nChecklist"></div>
+      </div>
+
+      <button class="btn-submit-side" id="btnRaiseSide" onclick="submitNewException()">Raise Exception →</button>
+      <button class="btn-cancel-side" onclick="showView('list')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Confirm modal -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">Confirm</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="confirm-btn confirm-btn-cancel" id="confirmCancelBtn" onclick="cancelConfirm()">Cancel</button>
+      <button class="confirm-btn confirm-btn-ok" id="confirmOkBtn">Yes, proceed</button>
+    </div>
+  </div>
+</div>
+
+<!-- Supplier confirmation on Create RR — ADDED 2026-10-12. See runCreateRR()/
+     openSupplierChoice() below, and Proposals/RR_Supplier_Choice_Before_Create_RR_
+     Plan_2026-10-12.md. -->
+<div class="confirm-overlay" id="rrsupOverlay">
+  <div class="rrsup-box">
+    <div class="confirm-title">Create Replacement Request</div>
+    <div class="rrsup-sub">Confirm where the replacement should come from before the RR is raised.</div>
+    <div class="rrsup-items" id="rrsupItems"></div>
+    <div class="rrsup-warn" id="rrsupNoTag" style="display:none">
+      No supplier is tagged on this Exception &mdash; its originating PR was blank. Pick one before continuing.
+    </div>
+    <div class="rrsup-q">Where should the replacement come from?</div>
+    <div id="rrsupOptions"></div>
+    <div class="rrsup-reason" id="rrsupReasonRow" style="display:none">
+      <label for="rrsupReason">Reason for changing the supplier</label>
+      <textarea id="rrsupReason" placeholder="Why is this replacement moving off the original supplier?" oninput="onSupplierChoiceChange()"></textarea>
+    </div>
+    <div class="confirm-actions" style="margin-top:18px">
+      <button class="confirm-btn confirm-btn-cancel" onclick="closeSupplierChoice()">Cancel</button>
+      <button class="confirm-btn confirm-btn-ok" id="rrsupOkBtn" onclick="confirmSupplierChoice()">Create RR</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox — ADDED 2026-07-16, ported from UI/EndUser/Receiving/app/index.html -->
+<div id="lightboxOverlay" class="lightbox-overlay" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()" title="Close">&#10005;</button>
+  <img id="lightboxImg" src="" onclick="event.stopPropagation()" />
+</div>
+
+<script src="timeline_history_component/timeline-history.js"></script>
+<script src="internal-notes_component/internal-notes.js"></script>
+<script src="notification_component/notification.js"></script>
+<div id="notifMount"></div>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+'use strict';
+/* ════════════════════════════════
+   CREATOR CONFIG — same account/app as the sibling PO/PR/RR/Inquiry widgets
+════════════════════════════════ */
+var FORM_NAME     = 'Exceptions';
+var REPORT_NAME   = 'Exceptions_Report';
+var REAL_APP_NAME = 'supply-chain-app';
+var ACCOUNT_OWNER = 'homecartel';
+/* Same dev/prod URL-switching signal as the sibling widgets' own ZC_ENV — this widget
+   never tracked environment before notification_component needed it (see that
+   component's _isProd()). Updated in resolveCurrentUserEmail() below. */
+var ZC_ENV = '';
+
+/* ADDED — Timeline History card (Detail view sidebar, after Resolution). Same
+   component/pattern as the sibling PRs/Shipments/Receiving widgets (see
+   timeline_history_component/README.md). */
+var excTimeline = TimelineHistory.init({
+  mountId: 'tlhcMount',
+  appName: function(){ return REAL_APP_NAME; },
+  formName: 'Exception_Timeline',
+  reportName: 'Exception_Timeline_Report',
+  parentField: 'Exception_No',
+  actor: 'Staff',
+  title: 'Timeline History'
+});
+
+/* Internal Conversation — see internal-notes_component/README.md.
+   Per user's full cross-module layout (2026-07-30): Exception is one of the modules
+   where 'hcinvanalyst@gmail.com' ("HC Systems") sits at its default — access on
+   this module, but solo, with no one else in roleMap to talk to (mentionableMap
+   below still allows granting HC Damage Officer access on a specific record). */
+var CURRENT_USER_EMAIL = '';
+var INTERNAL_CONVERSATION_ENABLED = true;
+var internalNotes = INTERNAL_CONVERSATION_ENABLED ? InternalNotes.init({
+  mountId:          'incMount',
+  appName:          function(){ return REAL_APP_NAME; },
+  formName:         'Exception_Internal_Messages',
+  reportName:       'Exception_Internal_Messages_Report',
+  parentField:      'Exception_No',
+  currentUserEmail: function(){ return CURRENT_USER_EMAIL; },
+  roleMap:          { 'hcinvanalyst@gmail.com':'HC Systems' },
+  /* Per user request (2026-07-30): mentionableMap is every known account
+     EXCLUDING whoever is already in this module's own roleMap. */
+  mentionableMap:   { 'homecartelpacker@gmail.com':'HC Purchasing', 'hcdamageofficer@gmail.com':'HC Damage Officer', 'homecartelsales@gmail.com':'HC Sales', 'homecartelff@gmail.com':'HC Pack & Fulfill' },
+  title:            'Internal Conversation'
+}) : { open:function(){}, close:function(){}, refresh:function(){} };
+
+/* Notification System — bottom-right bell, not scoped to this (or any) record; see
+   notification_component/README.md. Same shared App_Notifications form as the sibling
+   widgets. roleMap independent of internalNotes' own roleMap above (that one's HC
+   Systems solo for Exception specifically) — this one's the same HC Purchasing + HC
+   Systems pair used everywhere else, since the notification matrix always routes to
+   Purchasing. */
+var notifications = NotificationSystem.init({
+  mountId:          'notifMount',
+  appName:          function(){ return REAL_APP_NAME; },
+  reportName:       'App_Notifications_Report',
+  currentUserEmail: function(){ return CURRENT_USER_EMAIL; },
+  environment:      function(){ return ZC_ENV; },
+  roleMap:          { 'homecartelpacker@gmail.com':'HC Purchasing', 'hcinvanalyst@gmail.com':'HC Systems' },
+  fullAccessRoles:  ['HC Systems'],
+  title:            'Notifications'
+});
+
+/* This widget had no user-identity resolution at all before (REAL_APP_NAME/
+   ACCOUNT_OWNER above are plain hardcoded vars, never resolved from any Zoho init
+   call) — added defensively for internalNotes' currentUserEmail, same dual-attempt
+   pattern as PRs/app's own resolveCurrentUserEmail(). Harmless no-op while the
+   feature stays disabled (internalNotes.refresh() on the stub just does nothing). */
+function resolveCurrentUserEmail(){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR) return;
+  if(ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams==='function'){
+    ZOHO.CREATOR.UTIL.getInitParams().then(function(params){
+      if(params && (params.environment || params.env)) ZC_ENV = params.environment || params.env;
+      var email = params && (params.loginUser || params.login_user || params.userEmail || params.user_email || params.user || '');
+      email = String(email||'').trim().toLowerCase();
+      if(email){ CURRENT_USER_EMAIL = email; internalNotes.refresh(); notifications.refresh(); }
+    }).catch(function(){});
+  }
+  if(typeof ZOHO.CREATOR.init==='function'){
+    ZOHO.CREATOR.init().then(function(initData){
+      if(initData && (initData.environment || initData.env)) ZC_ENV = initData.environment || initData.env;
+      var email = initData && (initData.loginUser || initData.login_user || initData.userEmail || initData.user || '');
+      email = String(email||'').trim().toLowerCase();
+      if(email && !CURRENT_USER_EMAIL){ CURRENT_USER_EMAIL = email; internalNotes.refresh(); notifications.refresh(); }
+    }).catch(function(){});
+  }
+}
+
+/* Create RR — Exceptions Report Action Item can't be invoked via SDK directly (same
+   established limitation as approve_po/acknowledge_po/create_bin_receiving elsewhere
+   in this app), wrapped as 3 Custom APIs mirroring create_rr_button.txt's 3 native
+   Actions 1:1. Keys wired in after Custom API setup in Creator — see
+   DelugeScripts/create_rr_custom_api.txt. */
+var CUSTOM_API_CREATE_RR_MAIN     = 'create_rr_main';
+var CUSTOM_API_CREATE_RR_MAIN_KEY = 'ySxu1gdBSPVgWEAkXnMbD8hVf';
+var CUSTOM_API_CREATE_RR_FENTENG     = 'create_rr_fenteng';
+var CUSTOM_API_CREATE_RR_FENTENG_KEY = 'kTD8D7PQ1wn6TaS7uOgW3mT0D';
+var CUSTOM_API_CREATE_RR_TONY     = 'create_rr_tony';
+var CUSTOM_API_CREATE_RR_TONY_KEY = 'ShEsAxd59CygyG25Z5kjnOmQ0';
+
+/* ════════════════════════════════
+   PICKLIST VALUES — mirrors the Deluge form script exactly
+════════════════════════════════ */
+var PICK_STATUS      = ['Open','Under Review','Waiting','Resolved','Closed'];
+var PICK_PRIORITY     = ['High','Medium','Low'];
+var PICK_SOURCE       = ['Receiving','Fulfillment QC'];
+/* PICK_TITLE and PICK_ROOTCAUSE removed 2026-07-15 — Exception_Title converted to
+   plain text (was a placeholder picklist with dummy "Choice 1/2/3" values, now a plain
+   <input>); Root Cause Category is now a read-only rollup of Product_Context1 rows'
+   own Root_Cause_Category (no real header field ever existed — the old code wrote/read
+   a typo'd `Root_Cause_Catergory` that silently matched nothing). See mapException()'s
+   `derivedRootCause` and DelugeScripts/receiving_validations_and_damage_missing.txt. */
+var PICK_IMPACT       = ['Damage Only','Damage + Delay','Delay Only','No Impact'];
+var PICK_DEPT         = ['Procurement','Fulfillment'];
+var PICK_WAITING      = ['Supplier','Purchasing','Fulfillment'];
+
+/* ════════════════════════════════
+   HELPERS
+════════════════════════════════ */
+function $(id){ return document.getElementById(id); }
+function invokeApi(apiName, publicKey, payload){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({
+    api_name: apiName,
+    http_method: 'POST',
+    content_type: 'application/json',
+    payload: payload || {},
+    public_key: publicKey
+  }).then(function(resp){
+    /* Standard-response Custom APIs wrap the function's Map under "result", not "data" —
+       see the invokeCustomApi Deluge Gotchas entry in CLAUDE.md. Check both. */
+    return (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+  });
+}
+function escapeHtml(v){
+  return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+// ADDED 2026-08-08c, real live bug — Zoho's REST/widget-SDK read returns a native
+// Checkbox field's value as a JS ARRAY, not a comma string; _val()'s generic
+// object-branch (display_value/Name/ID) doesn't match a plain array, so it
+// silently returned '' for Spare_Part_Type — spare-part detail never showed on
+// this Exception's own Damage/Missing Evidence card. Same shape QCChecklist's
+// own toArray() already works around.
+function toArray(v){
+  if(v === null || v === undefined || v === '') return [];
+  if(Array.isArray(v)) return v.map(function(x){ return String(x); }).filter(Boolean);
+  if(typeof v === 'string') return v.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  return [String(v)];
+}
+function _val(r, f){
+  var x = r[f];
+  if(x===null||x===undefined) return '';
+  if(typeof x==='object') return x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'';
+  return String(x);
+}
+function _numVal(r, f){
+  var x = r[f];
+  if(x==null) return 0;
+  if(typeof x==='object') return parseFloat(x.value||x.display_value||0)||0;
+  return parseFloat(String(x).replace(/[^0-9.\-]/g,''))||0;
+}
+function _boolVal(r, f){ return r[f]===true || r[f]==='true'; }
+
+function extractSubformRows(raw, fieldName){
+  if(Array.isArray(raw)) return raw;
+  if(raw && typeof raw==='object'){
+    if(Array.isArray(raw.data)) return raw.data;
+    if(Array.isArray(raw.records)) return raw.records;
+    var keys = Object.keys(raw);
+    if(keys.length) return [raw];
+  }
+  if(fieldName) console.warn('[EXC] '+fieldName+' — unrecognized subform shape:', JSON.stringify(raw));
+  return [];
+}
+
+/* Due_Date / date fields come back as either ISO (YYYY-MM-DD) or DD-MMM-YYYY */
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var MONTHS_NUM = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+function toISODate(v){
+  if(!v) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  var m = v.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})$/);
+  if(m) return m[3]+'-'+(MONTHS_NUM[m[2]]||'01')+'-'+m[1];
+  return '';
+}
+function fmtDateShort(v){
+  var iso = toISODate(v);
+  if(!iso) return v || '—';
+  var p = iso.split('-');
+  return MONTHS[parseInt(p[1],10)-1]+' '+parseInt(p[2],10)+', '+p[0];
+}
+
+/* Upload-file fields can come back as an array of file-info objects or plain strings depending on API version */
+function fileList(raw){
+  if(!raw) return [];
+  var arr = Array.isArray(raw) ? raw : [raw];
+  return arr.map(function(f){
+    if(typeof f==='string') return { name: f, url: '' };
+    if(f && typeof f==='object') return { name: f.file_name||f.name||f.display_value||'file', url: f.url||f.download_url||f.href||'' };
+    return null;
+  }).filter(Boolean);
+}
+
+/* ════════════════════════════════
+   PRODUCT_CONTEXT1 PHOTO EVIDENCE — REBUILT 2026-07-17, per user ("since we're having
+   trouble with photos, can we just save the photos in another module? same with the
+   images/photos/files in receiving and exception"). Replaces the whole get_subform_file
+   Custom API + Photo_Filenames_Map read pipeline below with a plain query against
+   `Evidence_Photos` (report `All_Evidence_Photos`) — the SAME new form Receiving now
+   uploads into (see UI/EndUser/Receiving/app/index.html's own matching section header
+   for the full rationale: subform File/Image fields are structurally broken via API,
+   plain HEADER Image fields on a plain form are not). Rows are matched by `Row_Key`
+   alone (PR_No+SKU+Type_field+position — same content-based scheme both widgets already
+   used) — no Record_ID/Source_Form filter needed since Product_Context1 rows are built
+   1:1 from the same Damage_Missing_Details rows using the identical key, so this widget
+   just reads the SAME photo records Receiving uploaded, no copy/mirror step at all.
+   This widget stays read-only for photos (upload/delete only ever happens from the
+   Receiving side, unchanged from before). */
+var EVIDENCE_REPORT = 'All_Evidence_Photos';
+var MAX_PHOTOS_PER_ROW = 5;
+
+function evidenceRowKey(rows, idx){
+  var row = rows[idx];
+  var sameKey = rows.filter(function(r){
+    return r.prNo === row.prNo && r.sku === row.sku && r.typeField === row.typeField;
+  });
+  var pos = sameKey.indexOf(row);
+  return row.prNo + '||' + row.sku + '||' + row.typeField + '||' + pos;
+}
+
+/* Fetches every Evidence_Photos record for this Exception's own ctxRows in ONE query
+   (criteria ORs every distinct Row_Key together), grouped onto exc.photosByKey. Called
+   from showDetail() right after mapException() builds the full record, before the
+   final renderDetail() — same "load then render" ordering as the Receiving widget's
+   own openDetail->loadEvidencePhotos->renderEvidence. */
+function loadCtxEvidencePhotos(exc){
+  exc.photosByKey = exc.photosByKey || {};
+  var keys = exc.ctxRows.map(function(c, idx){ return evidenceRowKey(exc.ctxRows, idx); })
+    .filter(function(k, i, a){ return k && a.indexOf(k) === i; });
+  if(!keys.length) return Promise.resolve(exc);
+  var criteria = keys.map(function(k){ return 'Row_Key=="' + k.replace(/"/g,'\\"') + '"'; }).join('||');
+  return ZOHO.CREATOR.DATA.getRecords({
+    report_name: EVIDENCE_REPORT,
+    criteria: criteria,
+    field_config: 'all'
+  }).then(function(resp){
+    var byKey = {};
+    if(resp && resp.code === 3000 && Array.isArray(resp.data)){
+      resp.data.forEach(function(rec){
+        var k = rec.Row_Key || '';
+        if(!byKey[k]) byKey[k] = [];
+        byKey[k].push(rec);
+      });
+    }
+    exc.photosByKey = byKey;
+    return exc;
+  }).catch(function(err){
+    console.warn('[EXC] loadCtxEvidencePhotos failed:', err);
+    exc.photosByKey = {};
+    return exc;
+  });
+}
+
+/* Same rendering mechanism as any other header Image field in this app — ported from
+   applyCreatorImage() in UI/EndUser/INQs/app/index.html / applyEvidencePhotoImg() in
+   the Receiving widget. Photo comes back as a plain string URL, no wrapper needed. */
+function applyEvidencePhotoImg(imgEl, rawValue){
+  if(!imgEl || rawValue == null || rawValue === '') return false;
+  var url = (typeof rawValue === 'string') ? rawValue : (rawValue.url || rawValue.download_url || rawValue.filepath || '');
+  if(!url) return false;
+  if(typeof ZOHO !== 'undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData){
+    ZOHO.CREATOR.UTIL.setImageData(imgEl, url, function(){});
+  } else {
+    imgEl.src = url;
+  }
+  return true;
+}
+function ctxPhotoFallback(el){
+  el.onerror = null;
+  el.style.display = 'none';
+  var chip = document.createElement('span');
+  chip.className = 'file-chip';
+  chip.textContent = '📎 photo (preview unavailable)';
+  el.parentNode.appendChild(chip);
+}
+function openLightbox(src){
+  $('lightboxImg').src = src;
+  $('lightboxOverlay').classList.add('open');
+}
+function closeLightbox(){
+  $('lightboxOverlay').classList.remove('open');
+  $('lightboxImg').src = '';
+}
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape' && $('lightboxOverlay') && $('lightboxOverlay').classList.contains('open')) closeLightbox();
+});
+
+function selectOptions(selectEl, values, current){
+  var opts = values.slice();
+  if(current && opts.indexOf(current)===-1) opts.unshift(current);
+  var html = '<option value=""'+(!current?' selected':'')+'></option>';
+  html += opts.map(function(v){
+    return '<option value="'+escapeHtml(v)+'"'+(v===current?' selected':'')+'>'+escapeHtml(v)+'</option>';
+  }).join('');
+  selectEl.innerHTML = html;
+}
+
+function isOverdue(exc){
+  if(!exc.dueDateIso) return false;
+  if(exc.status==='Resolved' || exc.status==='Closed') return false;
+  return new Date(exc.dueDateIso+'T23:59:59') < new Date();
+}
+
+/* ════════════════════════════════
+   TOAST + CONFIRM MODAL
+════════════════════════════════ */
+function showToast(msg){
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(function(){ t.classList.remove('show'); }, 3200);
+}
+var _confirmYesHandler = null;
+var _confirmNoHandler = null;
+/* onNo optional (added 2026-07-23 for the Repair Outcome confirm below) — existing
+   callers that only pass onYes are unaffected. */
+function showConfirm(msg, onYes, onNo){
+  $('confirmMsg').textContent = msg;
+  _confirmYesHandler = onYes;
+  _confirmNoHandler = onNo;
+  var okBtn = $('confirmOkBtn');
+  okBtn.onclick = function(){ closeConfirm(); if(typeof _confirmYesHandler==='function') _confirmYesHandler(); };
+  $('confirmOverlay').classList.add('show');
+}
+function closeConfirm(){ $('confirmOverlay').classList.remove('show'); }
+function cancelConfirm(){ closeConfirm(); if(typeof _confirmNoHandler==='function') _confirmNoHandler(); }
+
+/* ════════════════════════════════
+   MAPPER — raw Creator record → plain display object
+════════════════════════════════ */
+function mapException(r){
+  var ctxRows = extractSubformRows(r['Product_Context1'], 'Product_Context1').map(function(row){
+    return {
+      id: row.ID || row.id || '',
+      prNo: _val(row,'PR_No') || '',
+      sku: _val(row,'SKU') || '—',
+      item: _val(row,'Item') || '—',
+      category: _val(row,'Category') || '—',
+      qty: _numVal(row,'Qty'),
+      supplier: _val(row,'Supplier') || '—',
+      typeField: _val(row,'Type_field') || '',
+      rootCauseCategory: _val(row,'Root_Cause_Category') || '',
+      /* ADDED 2026-07-16, per user ("populate from receiving all needed including
+         photo") — the rest of Product_Context1's own detail fields, carried over from
+         Damage_Missing_Details by Receiving_Sync_Product_Context (see that action's
+         own NOTES). Photo itself isn't stored here at all anymore (2026-07-17
+         rebuild) — fetched separately from the Evidence_Photos form by Row_Key, see
+         loadCtxEvidencePhotos() below. */
+      affectedPart: _val(row,'Affected_Missing_Part') || '',
+      dmCategory: _val(row,'Damage_Missing_Category') || '',
+      description: _val(row,'Description') || '',
+      actionRequired: _val(row,'Action_Required') || '',
+      /* ADDED 2026-07-21, per user (repair-tracking feature) — Repairable is a
+         read-only mirror of the Receiving-side value (synced by
+         Receiving_Sync_Product_Context). Repair_Outcome is the ONLY field on this
+         row this widget actually writes back — an exception-handling decision,
+         not something Receiving knows about. */
+      repairable: _val(row,'Repairable') || '',
+      repairOutcome: _val(row,'Repair_Outcome') || 'Pending',
+      /* ADDED 2026-08-08c, per user report ("sparepart details not showing in
+         exception") — Product_Context1's Spare_Part_Type is a native Checkbox
+         field (array on read, see toArray() above); resolve the literal "Others"
+         catalog token to the officer's own typed Spare_Part_Type_Other text so
+         this card shows the same real part name the eventual RR will carry. */
+      /* CHANGED 2026-08-08d, per user request ("separate quantities per sparepart
+         needed, per line item") — Quantity_of_damage_spare_s now holds the FULL
+         "Type: Qty, Type: Qty" pairs directly (one qty box per checked type on the
+         Receiving side), so this card just resolves "Others" per segment and
+         displays the pairs as-is — no separate bare-type-list/shared-qty split. */
+      spareQtyRaw: _val(row,'Quantity_of_damage_spare_s') || '',
+      spareDisplay: (function(){
+        var raw = _val(row,'Quantity_of_damage_spare_s') || '';
+        if(!raw) return '';
+        var otherText = _val(row,'Spare_Part_Type_Other');
+        return raw.split(',').map(function(seg){
+          var parts = seg.split(':');
+          if(parts.length<2) return seg.trim();
+          var t = parts[0].trim();
+          var q = parts.slice(1).join(':').trim();
+          if(t === 'Others' && otherText) t = otherText;
+          return t + ': ' + q;
+        }).join(', ');
+      })(),
+      /* Kept alongside the display-ready value above so saveRepairOutcome()'s
+         Product_Context1 rebuild (below) can write the real catalog tokens/raw
+         string back unchanged, not the resolved display text. */
+      spareTypeRaw: toArray(row['Spare_Part_Type']),
+      spareTypeOther: _val(row,'Spare_Part_Type_Other'),
+    };
+  });
+  /* "Root Cause Category" has no real header field on Exceptions (the widget used to
+     write/read a typo'd `Root_Cause_Catergory` that never matched anything on the real
+     form — silent no-op, see CLAUDE.md). Fixed 2026-07-15, per user: read-only rollup of
+     whatever's on the Product_Context1 rows instead of a fake editable header field —
+     joins distinct non-blank values, same pattern as `derivedType` below. */
+  var rootCauseVals = ctxRows.map(function(c){ return c.rootCauseCategory; }).filter(Boolean);
+  var rootCauseUniq = rootCauseVals.filter(function(v,i){ return rootCauseVals.indexOf(v)===i; });
+  var derivedRootCause = rootCauseUniq.length ? rootCauseUniq.join(' + ') : '—';
+  var skuSummary = ctxRows.length===0 ? '—' : ctxRows.length===1 ? ctxRows[0].sku : (ctxRows[0].sku+' +'+(ctxRows.length-1)+' more');
+  var qtySummary = ctxRows.reduce(function(s,c){ return s+c.qty; }, 0);
+  /* Type now derives from Product_Context1.Type_field, not the Exception_Type header
+     field — that field is being phased out (see CLAUDE.md Deluge Gotchas / receiving_
+     validations_and_damage_missing.txt), Type_field (Damage/Missing per row) is the
+     real source going forward. Manually-raised exceptions with no item rows show '—'. */
+  var typeVals = ctxRows.map(function(c){ return c.typeField; }).filter(Boolean);
+  var typeUniq = typeVals.filter(function(v,i){ return typeVals.indexOf(v)===i; });
+  var derivedType = typeUniq.length ? typeUniq.join(' + ') : '—';
+
+  return {
+    id: r.ID,
+    excNo: _val(r,'Exception_No') || '—',
+    status: _val(r,'Exception_Status') || 'Open',
+    type: derivedType,
+    priority: _val(r,'Priority') || 'Medium',
+    source: _val(r,'Source_Module') || '—',
+    dueDateIso: toISODate(_val(r,'Due_Date')),
+    dueDateRaw: _val(r,'Due_Date'),
+    soNo: _val(r,'Sales_Order'),
+    poNo: _val(r,'PO_No'),
+    shipmentNo: _val(r,'Shipment_No'),
+    receiveNo: _val(r,'Receive_No'),
+    receivingLineId: _val(r,'Receiving_Line_ID'),
+    ctxRows: ctxRows,
+    skuSummary: skuSummary,
+    qtySummary: qtySummary,
+    excTitle: _val(r,'Exception_Title'),
+    rootCause: derivedRootCause,
+    description: _val(r,'Exception_Description'),
+    resolutionAction: _val(r,'Resolution_Action'),
+    impactType: _val(r,'Impact_Type'),
+    delayImpact: _boolVal(r,'Delay_Impact'),
+    fulfillmentImpact: _boolVal(r,'Fulfillment_Impact'),
+    files: fileList(r['File_upload']),
+    evidenceDesc: _val(r,'Evidence_Descriptions'),
+    photosByKey: {},
+    assignedDept: _val(r,'Assigned_Department'),
+    assignedTo: _val(r,'Assigned_To'),
+    openedOn: _val(r,'Opened_On'),
+    waitingOn: _val(r,'Waiting_On'),
+  };
+}
+
+/* ════════════════════════════════
+   BADGE HELPERS
+════════════════════════════════ */
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+function nextStepFor(exc){
+  var st = exc.status || 'Open';
+  var owner = exc.assignedTo || exc.assignedDept || 'Purchasing';
+  if(st==='Closed') return {here:'Closed', action:'Closed', who:'', tone:'done'};
+  if(st==='Resolved') return {here:'Resolved', action:'Close the exception', who:owner, tone:'next'};
+  if(st==='Waiting') return {here:'Waiting', action:'Response from '+(exc.waitingOn||'the other party'), who:exc.waitingOn||'', tone:'wait'};
+  if(st==='Under Review') return {here:'Under Review', action:'Decide the resolution (repair / replace / credit)', who:owner, tone:'next'};
+  if(!exc.assignedTo) return {here:'Open', action:'Assign an owner', who:exc.assignedDept||'Purchasing', tone:'next'};
+  return {here:'Open', action:'Start the review', who:exc.assignedTo, tone:'next'};
+}
+
+function statusClass(status){
+  return { 'Open':'st-open','Under Review':'st-underreview','Waiting':'st-waiting','Resolved':'st-resolved','Closed':'st-closed' }[status] || 'st-open';
+}
+function severityHtml(priority){
+  var cls = priority==='High' ? 'sev-high' : priority==='Low' ? 'sev-low' : 'sev-med';
+  var lbl = priority==='High' ? 'HIGH' : priority==='Low' ? 'LOW' : 'MED';
+  return '<span class="'+cls+'"><span class="dot-sev"></span>'+lbl+'</span>';
+}
+function riskRowClass(exc){
+  if(isOverdue(exc)) return 'risk-red';
+  if(exc.priority==='High') return 'risk-orange';
+  if(exc.priority==='Medium') return 'risk-tan';
+  return 'risk-gray';
+}
+
+/* ════════════════════════════════
+   STATE
+════════════════════════════════ */
+var ALL_EXC = [];
+var creatorLoaded = false;
+var topScope = 'all';
+var subFilter = 'all';
+var _currentExcId = null;
+var _currentExcObj = null;
+var editMode = false;
+
+/* New Exception (Raise Exception) form state */
+var newExcCtxRows = [];
+var newExcFiles = [];
+var _ctxRowSeq = 0;
+
+/* ════════════════════════════════
+   LIST — LOAD + RENDER
+════════════════════════════════ */
+function loadExceptionsFromCreator(){
+  $('excTbody').innerHTML = '<tr><td colspan="16" class="loading-row"><span class="spin"></span>Loading from Zoho Creator…</td></tr>';
+  var _timeout = setTimeout(function(){
+    console.warn('[EXC] getRecords timed out');
+    showToast('Creator timeout — check widget permissions');
+    creatorLoaded = true;
+    renderTable(); updateStats();
+  }, 10000);
+
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    clearTimeout(_timeout);
+    console.warn('[EXC] SDK not available');
+    creatorLoaded = true;
+    renderTable(); updateStats();
+    return;
+  }
+
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: REPORT_NAME, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      clearTimeout(_timeout);
+      console.log('[EXC] getRecords code:', resp && resp.code, '| records:', resp && resp.data && resp.data.length);
+      if(resp && resp.code === 3000){
+        var raw = Array.isArray(resp.data) ? resp.data : [];
+        ALL_EXC = raw.map(mapException);
+      } else {
+        console.warn('[EXC] getRecords non-3000:', JSON.stringify(resp));
+        showToast('Creator error '+(resp&&resp.code)+': '+(resp&&resp.message||''));
+      }
+      creatorLoaded = true;
+      renderTable(); updateStats();
+    })
+    .catch(function(err){
+      clearTimeout(_timeout);
+      var code = err && (err.code || (err.responseJSON && err.responseJSON.code));
+      if(code === 9220){
+        console.log('[EXC] Report is empty (9220)');
+        ALL_EXC = [];
+      } else {
+        console.error('[EXC] getRecords threw:', JSON.stringify(err));
+        showToast('Creator connection error — see console');
+      }
+      creatorLoaded = true;
+      renderTable(); updateStats();
+    });
+}
+
+function matchesTopScope(exc){
+  switch(topScope){
+    case 'high': return exc.priority==='High';
+    case 'supplier': return exc.waitingOn==='Supplier';
+    case 'receiving': return exc.source==='Receiving';
+    case 'fulfillment': return exc.source==='Fulfillment QC';
+    default: return true;
+  }
+}
+function matchesSubFilter(exc){
+  if(subFilter==='all') return true;
+  if(subFilter==='overdue') return isOverdue(exc);
+  return exc.status===subFilter;
+}
+
+function renderTable(){
+  var tbody = $('excTbody');
+  if(!creatorLoaded) return;
+
+  var q = ($('excSearch').value||'').trim().toLowerCase();
+  var data = ALL_EXC.filter(function(exc){
+    if(!matchesTopScope(exc) || !matchesSubFilter(exc)) return false;
+    if(!q) return true;
+    var hay = [exc.excNo, exc.type, exc.soNo, exc.poNo, exc.shipmentNo, exc.receiveNo, exc.skuSummary, exc.assignedTo].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+
+  if(!data.length){
+    tbody.innerHTML = '<tr><td colspan="16" class="loading-row">No exceptions found.</td></tr>';
+  } else {
+    tbody.innerHTML = data.map(function(exc){
+      return '<tr class="'+riskRowClass(exc)+'" onclick="showDetail(\''+exc.id+'\')">'
+        + '<td class="cell-excno">'+escapeHtml(exc.excNo)+'</td>'
+        + '<td><span class="badge-pill '+(exc.source==='Receiving'?'b-red':'b-orange')+'">'+escapeHtml(exc.source)+'</span></td>'
+        + '<td><span class="badge-pill b-blue">'+escapeHtml(exc.type)+'</span></td>'
+        + '<td>'+severityHtml(exc.priority)+'</td>'
+        + '<td><span class="badge-pill '+statusClass(exc.status)+'">'+escapeHtml(exc.status)+'</span></td>'
+        + '<td>'+nextStepCell(exc.id, nextStepFor(exc))+'</td>'
+        + '<td class="cell-mono">'+(escapeHtml(exc.soNo)||'<span class="cell-dash">–</span>')+'</td>'
+        + '<td class="cell-mono">'+(escapeHtml(exc.poNo)||'<span class="cell-dash">–</span>')+'</td>'
+        + '<td class="cell-mono">'+(escapeHtml(exc.shipmentNo)||'<span class="cell-dash">–</span>')+'</td>'
+        + '<td class="cell-mono">'+(escapeHtml(exc.receiveNo)||'<span class="cell-dash">–</span>')+'</td>'
+        + '<td class="cell-mono">'+escapeHtml(exc.skuSummary)+'</td>'
+        + '<td>'+(exc.qtySummary||'<span class="cell-dash">–</span>')+'</td>'
+        + '<td>'+escapeHtml(exc.assignedDept||'—')+'</td>'
+        + '<td>'+escapeHtml(exc.assignedTo||'—')+'</td>'
+        + '<td class="cell-waiting '+(exc.waitingOn==='Supplier'?'on-supplier':'on-internal')+'">'+escapeHtml(exc.waitingOn||'—')+'</td>'
+        + '<td class="cell-target'+(isOverdue(exc)?' warn':'')+'">'+fmtDateShort(exc.dueDateRaw)+(isOverdue(exc)?' ⚠':'')+'</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  $('footCount').textContent = data.length;
+  $('footTotal').textContent = ALL_EXC.length;
+
+  var counts = { all: ALL_EXC.length };
+  PICK_STATUS.forEach(function(s){ counts[s] = ALL_EXC.filter(function(e){ return e.status===s; }).length; });
+  counts.overdue = ALL_EXC.filter(isOverdue).length;
+  $('pcAll').textContent = '('+counts.all+')';
+  $('pcOpen').textContent = '('+counts['Open']+')';
+  $('pcUnderReview').textContent = '('+counts['Under Review']+')';
+  $('pcWaiting').textContent = '('+counts['Waiting']+')';
+  $('pcResolved').textContent = '('+counts['Resolved']+')';
+  $('pcClosed').textContent = '('+counts['Closed']+')';
+  $('pcOverdue').textContent = '('+counts.overdue+')';
+}
+
+function updateStats(){
+  var openCount = ALL_EXC.filter(function(e){ return e.status!=='Closed'; }).length;
+  var highCount = ALL_EXC.filter(function(e){ return e.priority==='High'; }).length;
+  var supplierCount = ALL_EXC.filter(function(e){ return e.waitingOn==='Supplier'; }).length;
+  var overdueCount = ALL_EXC.filter(isOverdue).length;
+  var receivingCount = ALL_EXC.filter(function(e){ return e.source==='Receiving'; }).length;
+  var fulfillmentCount = ALL_EXC.filter(function(e){ return e.source==='Fulfillment QC'; }).length;
+
+  $('statOpen').textContent = openCount;
+  $('statHigh').textContent = highCount;
+  $('statSupplier').textContent = supplierCount;
+  $('statOverdue').textContent = overdueCount;
+  $('statReceiving').textContent = receivingCount;
+  $('statFulfillment').textContent = fulfillmentCount;
+
+  $('cntAllOpen').textContent = openCount;
+  $('cntHigh').textContent = highCount;
+  $('cntSupplier').textContent = supplierCount;
+  $('cntReceiving').textContent = receivingCount;
+  $('cntFulfillment').textContent = fulfillmentCount;
+
+  $('topSummaryPill').textContent = '● '+openCount+' Open · '+highCount+' High Severity · '+supplierCount+' Waiting on Supplier';
+}
+
+document.querySelectorAll('#topPills .toppill[data-scope]').forEach(function(p){
+  p.addEventListener('click', function(){
+    document.querySelectorAll('#topPills .toppill[data-scope]').forEach(function(b){ b.classList.remove('active'); });
+    p.classList.add('active');
+    topScope = p.dataset.scope;
+    renderTable();
+  });
+});
+document.querySelectorAll('#excPills .pill').forEach(function(p){
+  p.addEventListener('click', function(){
+    document.querySelectorAll('#excPills .pill').forEach(function(b){ b.classList.remove('active'); });
+    p.classList.add('active');
+    subFilter = p.dataset.filter;
+    renderTable();
+  });
+});
+
+/* ════════════════════════════════
+   VIEW SWITCHING
+════════════════════════════════ */
+function showView(name){
+  $('view-list').style.display = name === 'list' ? '' : 'none';
+  $('view-detail').style.display = name === 'detail' ? '' : 'none';
+  $('view-new').style.display = name === 'new' ? '' : 'none';
+  if(name === 'new') resetNewExceptionForm();
+  if(name !== 'detail') internalNotes.close();
+  window.scrollTo(0, 0);
+}
+
+function updateClock(){
+  var t = new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  var l = $('listClock');
+  if(l) l.textContent = t;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+/* ════════════════════════════════
+   DETAIL VIEW
+════════════════════════════════ */
+function showDetail(id){
+  var exc = ALL_EXC.find(function(e){ return String(e.id)===String(id); });
+  if(!exc){ showToast('Exception not found'); return; }
+  _currentExcId = id;
+  renderDetail(exc);
+  showView('detail');
+
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.DATA && typeof ZOHO.CREATOR.DATA.getRecordById==='function'){
+    var gbr = ZOHO.CREATOR.DATA.getRecordById.bind(ZOHO.CREATOR.DATA);
+    gbr({ report_name: REPORT_NAME, id: String(id), field_config: 'all' })
+      .then(function(resp){
+        if(resp && resp.code===3000 && resp.data){
+          var full = mapException(resp.data);
+          return loadCtxEvidencePhotos(full).then(function(){
+            var idx = ALL_EXC.findIndex(function(e){ return String(e.id)===String(id); });
+            if(idx>-1) ALL_EXC[idx] = full;
+            if(String(_currentExcId)===String(id)) renderDetail(full);
+          });
+        } else {
+          console.warn('[EXC] getRecordById non-3000:', resp && resp.code);
+        }
+      })
+      .catch(function(err){ console.warn('[EXC] getRecordById error:', JSON.stringify(err)); });
+  }
+}
+
+/* ADDED 2026-07-16, per user ("populate from receiving all needed including photo,
+   must be viewable") — per-row cards for each Product_Context1 row's own detail
+   fields + a clickable photo thumbnail (get_subform_file, see loadCtxEvidencePhoto
+   above). Only fetches a photo for rows that actually have an entry in
+   Photo_Filenames_Map — most rows won't (Missing rows, or Damage rows the user never
+   attached a photo to on the Receiving side), no point calling the API for those. */
+function renderCtxEvidence(exc){
+  var el = $('dCtxEvidence');
+  if(!el) return;
+  if(!exc.ctxRows.length){
+    el.innerHTML = '<div class="ctx-ev-empty">No product context rows yet.</div>';
+    return;
+  }
+  var photosByKey = exc.photosByKey || {};
+  el.innerHTML = exc.ctxRows.map(function(c, idx){
+    var key = evidenceRowKey(exc.ctxRows, idx);
+    var photos = photosByKey[key] || [];
+    var photoHtml = photos.length
+      ? photos.map(function(p, slot){
+          return '<img class="ctx-ev-photo" id="ctxPhoto'+idx+'_'+slot+'" title="'+escapeHtml(p.File_Name||'')+'" onclick="openLightbox(this.src)" onerror="ctxPhotoFallback(this)" />';
+        }).join('')
+      : '<span class="ctx-ev-empty">No photo</span>';
+    /* ADDED 2026-07-21, per user (repair-tracking feature) — only Damage rows have
+       a "repairable" concept at all (Missing has nothing to repair). Repairable
+       itself is read-only here (set at Receiving time, synced in by
+       Receiving_Sync_Product_Context) — Repair_Outcome is the one field this
+       widget actually writes back, via saveRepairOutcome() below. */
+    var repairHtml = '';
+    if(c.typeField === 'Damage'){
+      var repairableLabel = c.repairable === 'Yes' ? 'Yes' : c.repairable === 'No' ? 'No' : '—';
+      repairHtml = '<div><span class="fi-lbl">Repairable</span><div>'+escapeHtml(repairableLabel)+'</div></div>'
+        + (c.repairable === 'Yes'
+          ? '<div><span class="fi-lbl">Repair Outcome</span><div>'
+            + '<select class="fi-input" id="repairOutcomeSel'+idx+'" onchange="onRepairOutcomeChange('+idx+', this)">'
+            + ['Pending','Fixed','Not Fixed'].map(function(v){ return '<option value="'+v+'"'+(c.repairOutcome===v?' selected':'')+'>'+v+'</option>'; }).join('')
+            + '</select></div></div>'
+          : '');
+    }
+    /* ADDED 2026-08-08c — same visibility gate as repairHtml (Damage rows only,
+       Missing has no spare-part concept). Blank when the officer picked no spare
+       part on this row, matching create_rr_button.txt's own blank-skip behavior. */
+    var sparePartHtml = '';
+    if(c.typeField === 'Damage' && c.spareDisplay){
+      sparePartHtml = '<div><span class="fi-lbl">Spare Part(s) Needed</span><div>'+escapeHtml(c.spareDisplay)+'</div></div>';
+    }
+    return '<div class="ctx-ev-card">'
+      + '<div class="ctx-ev-head">'
+      + '<strong>'+escapeHtml(c.sku)+'</strong>'
+      + (c.typeField ? ' <span class="badge-pill '+(c.typeField==='Damage'?'b-red':'b-amber')+'">'+escapeHtml(c.typeField)+'</span>' : '')
+      + (c.typeField === 'Damage' && c.repairable === 'Yes' ? ' <span class="badge-pill '+(c.repairOutcome==='Fixed'?'b-green':c.repairOutcome==='Not Fixed'?'b-red':'b-amber')+'">Repair: '+escapeHtml(c.repairOutcome)+'</span>' : '')
+      + '</div>'
+      + '<div class="ctx-ev-fg">'
+      + '<div><span class="fi-lbl">Affected/Missing Part</span><div>'+(escapeHtml(c.affectedPart)||'—')+'</div></div>'
+      + '<div><span class="fi-lbl">Category</span><div>'+(escapeHtml(c.dmCategory)||'—')+'</div></div>'
+      + '<div><span class="fi-lbl">Action Required</span><div>'+(escapeHtml(c.actionRequired)||'—')+'</div></div>'
+      + repairHtml
+      + sparePartHtml
+      + '</div>'
+      + '<div style="margin-bottom:10px"><span class="fi-lbl">Description</span><div>'+(escapeHtml(c.description)||'—')+'</div></div>'
+      + '<div><span class="fi-lbl">Photo</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:6px">'+photoHtml+'</div></div>'
+      + '</div>';
+  }).join('');
+  exc.ctxRows.forEach(function(c, idx){
+    var key = evidenceRowKey(exc.ctxRows, idx);
+    var photos = photosByKey[key] || [];
+    photos.forEach(function(p, slot){
+      var elImg = document.getElementById('ctxPhoto'+idx+'_'+slot);
+      if(elImg) applyEvidencePhotoImg(elImg, p.Photo);
+    });
+  });
+}
+
+/* ADDED 2026-07-16, per user ("we shouldnt be able to create RR when the problem
+   details and evidence are not yet filled") — Problem Details = a real Exception
+   Description (the only field this form ever treated as meaningfully required, see
+   the New Exception form's own asterisk). Evidence = something was actually
+   attached/described — either directly on this Exception (File_upload/
+   Evidence_Descriptions) or via the Receiving-populated Product_Context1 rows
+   (a photo or a description on at least one row). Either evidence source counts —
+   don't force a duplicate manual upload when Receiving already provided it. */
+/* CHANGED 2026-07-20, per user request ("disabled when no proof photo on damage
+   items only. missing can skip photo upload") — photo proof is now required
+   PER-ROW, only for rows typed "Damage". A "Missing" row has nothing physical to
+   photograph, so it's exempt entirely — Problem Details alone covers it. Exceptions
+   with no Product_Context1 rows at all (rare — e.g. a manually-raised Exception with
+   no Receiving link) fall back to the old blanket evidence check (a file, or a
+   general evidence description) so a truly-empty RR still can't be created. */
+/* ADDED 2026-07-21, per user (repair-tracking feature) — a Damage row still under
+   in-house repair (Repairable=Yes, Repair_Outcome not yet "Not Fixed") blocks
+   Create RR the same way a missing photo does. This is the WIDGET-side gate only —
+   the real backend enforcement lives in create_rr_button.txt/create_rr_custom_api.txt's
+   grouping logic (a widget-only gate can't stop the native button/API being called
+   directly), see those files' own NOTES. */
+function canCreateRR(exc){
+  var hasProblemDetails = !!(exc.description && exc.description.trim());
+  if(!hasProblemDetails) return false;
+  if(!exc.ctxRows || exc.ctxRows.length===0){
+    return (exc.files && exc.files.length>0) || !!(exc.evidenceDesc && exc.evidenceDesc.trim());
+  }
+  var photosByKey = exc.photosByKey || {};
+  return exc.ctxRows.every(function(c, idx){
+    if(c.typeField !== 'Damage') return true;
+    if(c.repairable === 'Yes' && c.repairOutcome !== 'Not Fixed') return false;
+    var key = evidenceRowKey(exc.ctxRows, idx);
+    return (photosByKey[key]||[]).length > 0;
+  });
+}
+
+/* ADDED 2026-07-23, per user ("when we change dropdown to fixed/not fixed it will
+   ask first for confirmation yes/no") — gate in front of saveRepairOutcome().
+   Native <select> already shows the newly-picked value the instant onchange fires,
+   so a Cancel has to explicitly revert the DOM element back to the prior value
+   (selectEl passed in for exactly this — nothing else here is a full re-render). */
+function onRepairOutcomeChange(idx, selectEl){
+  var exc = _currentExcObj;
+  if(!exc || !exc.ctxRows[idx]) return;
+  var priorValue = exc.ctxRows[idx].repairOutcome;
+  var newValue = selectEl.value;
+  if(newValue === priorValue) return;
+  var c = exc.ctxRows[idx];
+  showConfirm(
+    'Set Repair Outcome to "'+newValue+'" for '+escapeHtml(c.sku)+'?',
+    function(){ saveRepairOutcome(idx, newValue); },
+    function(){ selectEl.value = priorValue; }
+  );
+}
+
+/* ADDED 2026-07-21 — writes Repair_Outcome back via a full Product_Context1
+   replace (omit row IDs — the proven-safe subform write pattern throughout this
+   app; a targeted per-row update isn't supported). Rebuilds every row from the
+   already-loaded exc.ctxRows with only this one row's Repair_Outcome changed.
+   EXTENDED 2026-07-23, per user ("when item repairable is fixed in exception it
+   should automatically damage=(how many is fixed) accepted qty=(how many is
+   accepted)") — on a genuine transition INTO "Fixed" (not every re-save), also
+   reconciles the linked Receiving line: see reconcileReceivingOnRepairFixed(). */
+function saveRepairOutcome(idx, newValue){
+  if(!_currentExcObj || !_currentExcId) return;
+  var exc = _currentExcObj;
+  var priorValue = exc.ctxRows[idx].repairOutcome;
+  var rowSnapshot = { sku: exc.ctxRows[idx].sku, prNo: exc.ctxRows[idx].prNo, qty: exc.ctxRows[idx].qty };
+  exc.ctxRows[idx].repairOutcome = newValue;
+  var payload = {
+    Product_Context1: exc.ctxRows.map(function(c){
+      return {
+        PR_No: c.prNo,
+        SKU: c.sku,
+        Item: c.item,
+        Category: c.category,
+        Qty: c.qty,
+        Type_field: c.typeField,
+        Supplier: c.supplier,
+        Affected_Missing_Part: c.affectedPart,
+        Damage_Missing_Category: c.dmCategory,
+        Root_Cause_Category: c.rootCauseCategory,
+        Description: c.description,
+        Action_Required: c.actionRequired,
+        Repairable: c.repairable,
+        Repair_Outcome: c.repairOutcome,
+        // ADDED 2026-08-08c, real bug — this rebuild replaces the WHOLE
+        // Product_Context1 subform on every Repair Outcome change; omitting these
+        // 3 fields would silently wipe them the next time an officer touches this
+        // dropdown. spareTypeRaw is already an array (see toArray() above) —
+        // matches the shape Zoho's own Checkbox field write expects.
+        Spare_Part_Type: c.spareTypeRaw,
+        Quantity_of_damage_spare_s: c.spareQtyRaw,
+        Spare_Part_Type_Other: c.spareTypeOther,
+      };
+    })
+  };
+  updateExceptionRecord(_currentExcId, payload, 'Repair outcome updated.').then(function(ok){
+    if(!ok) return;
+    maybeAutoResolveOnFixed(exc);
+    if(newValue === 'Fixed' && priorValue !== 'Fixed'){
+      reconcileReceivingOnRepairFixed(rowSnapshot);
+    }
+    refreshCurrentDetail(_currentExcId);
+    refreshCreateRRGateLive();
+  });
+}
+
+/* ADDED 2026-07-23 — moves this row's own repaired Qty from Damage_Qty into
+   Accepted_Qty on the linked Receiving record's own Receiving_Line_Items, the
+   moment a Damage row flips to Repair_Outcome=="Fixed" in this widget. Mirrors
+   the exact reconcile shape already proven in receiving_create_bin_receiving.txt's
+   replacement branch (full clear+rebuild of the subform, every row carried
+   verbatim except the matched one, delta floored at whatever Damage_Qty actually
+   had, header Total_Accepted_Qty/Total_Damage_Qty rollups adjusted by the same
+   delta) — same pattern, just triggered from the in-house-repair path instead of
+   an RR completion. Matches by SKU (+PR_No when present, defensive against a
+   duplicate SKU across 2 different PR lines on the same Receiving record) —
+   deliberately NOT by any subform row ID, since Receiving_Line_Items rows are
+   fully rebuilt on every Receiving save (same row-ID-instability class already
+   documented for Damage_Missing_Details/Product_Context1 elsewhere in this app).
+   Best-effort: Repair_Outcome itself is already saved by the time this runs, so
+   a failure here only means the qty needs a manual correction, never blocks the
+   status change itself. */
+function reconcileReceivingOnRepairFixed(c){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    showToast('Not connected to Zoho Creator — Receiving quantities not auto-adjusted.');
+    return;
+  }
+  var receiveNo = _currentExcObj && _currentExcObj.receiveNo;
+  if(!receiveNo){
+    showToast('No linked Receiving record on this Exception — quantities not auto-adjusted.');
+    return;
+  }
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: 'Receiving_Report', criteria: '(Receive_No1=="'+String(receiveNo).replace(/"/g,'\\"')+'")', field_config: 'all' })
+    .then(function(resp){
+      if(!(resp && resp.code===3000 && Array.isArray(resp.data) && resp.data.length)){
+        console.warn('[EXC] reconcileReceivingOnRepairFixed — Receiving lookup non-3000/empty:', resp && resp.code);
+        showToast('Could not find the linked Receiving record ('+receiveNo+') — quantities not auto-adjusted.');
+        return;
+      }
+      var recvRaw = resp.data[0];
+      var lines = extractSubformRows(recvRaw['Receiving_Line_Items'], 'Receiving_Line_Items');
+      var matchIdx = -1;
+      for(var i=0;i<lines.length;i++){
+        var skuMatch = (lines[i].SKU||'') === c.sku;
+        var prMatch = !c.prNo || (lines[i].PR_No||'') === c.prNo;
+        if(skuMatch && prMatch){ matchIdx = i; break; }
+      }
+      if(matchIdx===-1){
+        showToast('Could not find the matching Receiving line for '+c.sku+' — quantities not auto-adjusted.');
+        return;
+      }
+      var qty = parseFloat(c.qty)||0;
+      var oldAccepted = parseFloat(lines[matchIdx].Accepted_Qty)||0;
+      var oldDamage = parseFloat(lines[matchIdx].Damage_Qty)||0;
+      var applied = Math.min(qty, oldDamage);
+      if(applied<=0){
+        showToast('Nothing to adjust — Damage Qty already 0 for '+c.sku+'.');
+        return;
+      }
+      var newLines = lines.map(function(ln, i){
+        var row = {
+          PR_No: ln.PR_No, RR_No: ln.RR_No, SKU: ln.SKU, Single_Line: ln.Single_Line,
+          Item_Name: ln.Item_Name, Expected_Qty: ln.Expected_Qty,
+          Accepted_Qty: ln.Accepted_Qty, Damage_Qty: ln.Damage_Qty, Missing_Qty: ln.Missing_Qty,
+          Bin_location: ln.Bin_location, Shipment_Mode_When_Received: ln.Shipment_Mode_When_Received,
+          Line_Result: ln.Line_Result, Has_Exceptions: ln.Has_Exceptions,
+          Ready_for_Fulfillment: ln.Ready_for_Fulfillment, Label_Ready: ln.Label_Ready,
+          Label_Printed: ln.Label_Printed
+        };
+        if(i===matchIdx){
+          row.Accepted_Qty = oldAccepted + applied;
+          row.Damage_Qty = oldDamage - applied;
+        }
+        return row;
+      });
+      var payload = {
+        Receiving_Line_Items: newLines,
+        Total_Accepted_Qty: (parseFloat(recvRaw.Total_Accepted_Qty)||0) + applied,
+        Total_Damage_Qty: (parseFloat(recvRaw.Total_Damage_Qty)||0) - applied
+      };
+      var ubr = ZOHO.CREATOR.DATA.updateRecordById.bind(ZOHO.CREATOR.DATA);
+      ubr({ report_name: 'Receiving_Report', id: String(recvRaw.ID), payload: { data: payload } })
+        .then(function(uresp){
+          if(uresp && (uresp.code===3000 || String(uresp.code)==='3000')){
+            showToast('Receiving updated: +'+applied+' Accepted, -'+applied+' Damage for '+c.sku+'.');
+          } else {
+            console.warn('[EXC] reconcileReceivingOnRepairFixed — update non-3000:', uresp && uresp.code);
+            showToast('Repair outcome saved, but Receiving quantities failed to update — code '+(uresp && uresp.code));
+          }
+        })
+        .catch(function(err){
+          console.error('[EXC] reconcileReceivingOnRepairFixed update error:', JSON.stringify(err));
+          showToast('Repair outcome saved, but Receiving quantities failed to update — see console');
+        });
+    })
+    .catch(function(err){
+      console.error('[EXC] reconcileReceivingOnRepairFixed fetch error:', JSON.stringify(err));
+      showToast('Could not reach Receiving to auto-adjust quantities — see console');
+    });
+}
+
+/* ADDED 2026-07-21 — deliberately SCOPED, not general: only auto-resolves when
+   EVERY row on this Exception is Damage + Repairable=Yes + Fixed (a pure
+   in-house-repair case, no RR ever needed for anything on this Exception). If
+   there's a Missing row or any non-repairable Damage row present, this does
+   NOT fire — that mixed case is already owned by the native RR-completion path
+   (receiving_create_bin_receiving.txt), which resolves the Exception once every
+   RR under it is Completed. Firing this for a mixed exception would risk
+   resolving it while genuine RR work is still outstanding. */
+function maybeAutoResolveOnFixed(exc){
+  var allRepairableAndFixed = exc.ctxRows.length > 0 && exc.ctxRows.every(function(c){
+    return c.typeField === 'Damage' && c.repairable === 'Yes' && c.repairOutcome === 'Fixed';
+  });
+  if(allRepairableAndFixed && exc.status !== 'Resolved' && exc.status !== 'Closed'){
+    updateExceptionRecord(_currentExcId, { Exception_Status: 'Resolved' }, 'All items repaired — Exception marked Resolved.').then(function(ok){
+      if(ok) refreshCurrentDetail(_currentExcId);
+    });
+  }
+}
+function updateCreateRRGate(exc){
+  var btn = $('btnCreateRR');
+  if(!btn) return;
+  var ok = canCreateRR(exc);
+  btn.disabled = !ok;
+  btn.title = ok ? '' : 'Fill in Exception Description, attach a photo for every Damage item (Missing items don\'t need one), and set Repair Outcome to "Not Fixed" for any repairable Damage item still under repair, before creating an RR.';
+}
+/* Re-checks the gate live as the user types, without waiting for a Save round-trip —
+   reads straight off the DOM inputs since _currentExcObj won't reflect an unsaved
+   edit yet. */
+function refreshCreateRRGateLive(){
+  if(!_currentExcObj) return;
+  var liveExc = {
+    description: $('dExcDesc') ? $('dExcDesc').value : _currentExcObj.description,
+    evidenceDesc: $('dEvidenceDesc') ? $('dEvidenceDesc').value : _currentExcObj.evidenceDesc,
+    files: _currentExcObj.files,
+    ctxRows: _currentExcObj.ctxRows,
+    photosByKey: _currentExcObj.photosByKey,
+  };
+  updateCreateRRGate(liveExc);
+}
+
+function renderDetail(exc){
+  _currentExcObj = exc;
+  renderNextStepBanner("nsBanner", exc.id, nextStepFor(exc));
+  excTimeline.open(exc.excNo);
+  internalNotes.open(exc.excNo);
+  $('dTopbarTitle').textContent = exc.excNo+' — Resolution Workspace';
+  $('dTopbarBadge').textContent = '● '+exc.priority.toUpperCase()+' · '+exc.type+(isOverdue(exc)?' · Overdue':'');
+  $('dExcNo').textContent = exc.excNo;
+  $('dTypeBadge').textContent = exc.type;
+  $('dPriorityBadge').textContent = exc.priority.toUpperCase();
+  $('dPriorityBadge').className = 'badge-pill '+(exc.priority==='High'?'b-red':exc.priority==='Low'?'b-gray':'b-amber');
+  $('dStatusBadge').textContent = exc.status;
+  $('dStatusBadge').className = 'badge-pill '+statusClass(exc.status);
+  $('dOverdueBadge').style.display = isOverdue(exc) ? '' : 'none';
+
+  $('dSourceVal').textContent = exc.source || '—';
+
+  // B
+  $('dSoNo').value = exc.soNo;
+  $('dPoNo').value = exc.poNo;
+  $('dShipmentNo').value = exc.shipmentNo;
+  $('dReceiveNo').value = exc.receiveNo;
+  $('dReceivingLineId').value = exc.receivingLineId;
+
+  // C
+  $('dCtxTbody').innerHTML = exc.ctxRows.length
+    ? exc.ctxRows.map(function(c){
+        return '<tr><td>'+escapeHtml(c.sku)+'</td><td>'+escapeHtml(c.item)+'</td><td>'+escapeHtml(c.category)+'</td><td>'+c.qty+'</td><td>'+(c.typeField?'<span class="badge-pill '+(c.typeField==='Damage'?'b-red':'b-amber')+'">'+escapeHtml(c.typeField)+'</span>':'—')+'</td><td>'+escapeHtml(c.supplier)+'</td></tr>';
+      }).join('')
+    : '<tr><td colspan="6" style="color:var(--gray-400);font-style:italic">No product context rows</td></tr>';
+
+  // C2
+  renderCtxEvidence(exc);
+  updateCreateRRGate(exc);
+
+  // D
+  $('dExcTitle').value = exc.excTitle || '';
+  $('dRootCause').textContent = exc.rootCause;
+  $('dExcDesc').value = exc.description;
+  selectOptions($('dImpactType'), PICK_IMPACT, exc.impactType);
+  $('dDelayImpact').checked = exc.delayImpact;
+  $('dFulfillImpact').checked = exc.fulfillmentImpact;
+
+  // G
+  $('dFileChips').innerHTML = exc.files.length
+    ? exc.files.map(function(f){
+        return f.url
+          ? '<span class="file-chip"><a href="'+escapeHtml(f.url)+'" target="_blank" rel="noopener">'+escapeHtml(f.name)+'</a></span>'
+          : '<span class="file-chip">'+escapeHtml(f.name)+'</span>';
+      }).join('')
+    : '—';
+  $('dEvidenceDesc').value = exc.evidenceDesc;
+
+  // E
+  selectOptions($('dAssignedDept'), PICK_DEPT, exc.assignedDept);
+  $('dAssignedTo').value = exc.assignedTo;
+  $('dOpenedOn').value = exc.openedOn;
+  $('dDueDate').value = exc.dueDateIso;
+  selectOptions($('dWaitingOn'), PICK_WAITING, exc.waitingOn);
+
+  // F
+  $('dResolutionAction').value = exc.resolutionAction;
+
+  applyEditMode(false);
+}
+
+/* ════════════════════════════════
+   VIEW / EDIT MODE — workspace opens read-only; "Edit" unlocks the fields
+════════════════════════════════ */
+function applyEditMode(on){
+  editMode = on;
+  document.body.classList.toggle('is-editing', on);
+  document.querySelectorAll('#view-detail .editable-field').forEach(function(el){
+    if(el.tagName==='SELECT' || el.type==='checkbox' || el.type==='date'){ el.disabled = !on; }
+    else { el.readOnly = !on; }
+  });
+  $('btnEditDetail').style.display = on ? 'none' : '';
+  $('btnSaveDetail').style.display = on ? '' : 'none';
+  $('btnCancelEditDetail').style.display = on ? '' : 'none';
+}
+function cancelEditDetail(){
+  if(_currentExcObj) renderDetail(_currentExcObj);
+  else applyEditMode(false);
+}
+
+/* ════════════════════════════════
+   UPDATE — Save + status actions
+════════════════════════════════ */
+function updateExceptionRecord(id, payload, successMsg){
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA){
+    showToast('Creator SDK not available (preview mode)');
+    return Promise.resolve(false);
+  }
+  var ubr = ZOHO.CREATOR.DATA.updateRecordById.bind(ZOHO.CREATOR.DATA);
+  return ubr({ report_name: REPORT_NAME, id: String(id), payload: { data: payload } })
+    .then(function(resp){
+      console.log('[EXC] updateRecordById resp:', JSON.stringify(resp));
+      if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+        showToast(successMsg);
+        return true;
+      }
+      showToast('Update failed — code '+(resp&&resp.code)+' '+(resp&&resp.message||''));
+      return false;
+    })
+    .catch(function(err){
+      console.error('[EXC] updateRecordById error:', JSON.stringify(err));
+      showToast('Update failed — see console');
+      return false;
+    });
+}
+
+function refreshCurrentDetail(id){
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA){ return; }
+  var gbr = ZOHO.CREATOR.DATA.getRecordById.bind(ZOHO.CREATOR.DATA);
+  gbr({ report_name: REPORT_NAME, id: String(id), field_config: 'all' }).then(function(resp){
+    if(resp && resp.code===3000 && resp.data){
+      var full = mapException(resp.data);
+      var idx = ALL_EXC.findIndex(function(e){ return String(e.id)===String(id); });
+      if(idx>-1) ALL_EXC[idx] = full;
+      if(String(_currentExcId)===String(id)) renderDetail(full);
+      renderTable(); updateStats();
+    }
+  });
+}
+
+/* Human labels for the Timeline History diff — see TimelineHistory.diffFlat in
+   timeline_history_component/README.md. Keyed by the real payload field names. */
+var EXC_EDIT_FIELD_LABELS = {
+  Sales_Order:'SO No.', PO_No:'PO No.', Shipment_No:'Shipment No.', Receive_No:'Receiving No.',
+  Receiving_Line_ID:'Receiving Line ID', Exception_Title:'Exception Title',
+  Exception_Description:'Exception Description', Impact_Type:'Impact Type',
+  Delay_Impact:'Delay Impact', Fulfillment_Impact:'Fulfillment Impact',
+  Evidence_Descriptions:'Evidence Description', Assigned_Department:'Assigned Department',
+  Assigned_To:'Assigned To', Opened_On:'Opened On', Due_Date:'Due Date',
+  Waiting_On:'Waiting On', Resolution_Action:'Resolution Action'
+};
+function saveException(){
+  if(!_currentExcId) return;
+  var payload = {
+    Sales_Order: $('dSoNo').value,
+    PO_No: $('dPoNo').value,
+    Shipment_No: $('dShipmentNo').value,
+    Receive_No: $('dReceiveNo').value,
+    Receiving_Line_ID: $('dReceivingLineId').value,
+    Exception_Title: $('dExcTitle').value,
+    Exception_Description: $('dExcDesc').value,
+    Impact_Type: $('dImpactType').value,
+    Delay_Impact: $('dDelayImpact').checked,
+    Fulfillment_Impact: $('dFulfillImpact').checked,
+    Evidence_Descriptions: $('dEvidenceDesc').value,
+    Assigned_Department: $('dAssignedDept').value,
+    Assigned_To: $('dAssignedTo').value,
+    Opened_On: $('dOpenedOn').value,
+    Due_Date: $('dDueDate').value,
+    Waiting_On: $('dWaitingOn').value,
+    Resolution_Action: $('dResolutionAction').value,
+  };
+  var id = _currentExcId;
+  /* _currentExcObj still holds the pre-edit mapped record at this point — nothing
+     in this widget mutates it live as the user types (unlike Receiving/app's
+     Receiving_Line_Items, which onLineInput() edits in place) — so it doubles as
+     the "before" snapshot, just re-keyed from its own mapped field names to the
+     real payload field names diffFlat needs to compare against. */
+  var exc = _currentExcObj || {};
+  var before = {
+    Sales_Order: exc.soNo, PO_No: exc.poNo, Shipment_No: exc.shipmentNo, Receive_No: exc.receiveNo,
+    Receiving_Line_ID: exc.receivingLineId, Exception_Title: exc.excTitle, Exception_Description: exc.description,
+    Impact_Type: exc.impactType, Delay_Impact: exc.delayImpact, Fulfillment_Impact: exc.fulfillmentImpact,
+    Evidence_Descriptions: exc.evidenceDesc, Assigned_Department: exc.assignedDept, Assigned_To: exc.assignedTo,
+    Opened_On: exc.openedOn, Due_Date: exc.dueDateIso, Waiting_On: exc.waitingOn, Resolution_Action: exc.resolutionAction
+  };
+  updateExceptionRecord(id, payload, 'Exception saved.').then(function(ok){
+    if(ok){
+      var tlChanges = TimelineHistory.diffFlat(before, payload, EXC_EDIT_FIELD_LABELS, null, null);
+      if(tlChanges.length) excTimeline.log(exc.excNo, TimelineHistory.titleFor(tlChanges, 'Updated Exception'), 'Updated', tlChanges);
+      refreshCurrentDetail(id);
+    }
+  });
+}
+
+function setExceptionStatus(status){
+  if(!_currentExcId) return;
+  var id = _currentExcId;
+  showConfirm('Set this exception\'s status to "'+status+'"?', function(){
+    updateExceptionRecord(id, { Exception_Status: status }, 'Status set to '+status+'.').then(function(ok){
+      if(ok) refreshCurrentDetail(id);
+    });
+  });
+}
+
+/* ════════════════════════════════
+   CREATE RR — mirrors create_rr_button.txt's 3 native Actions (aggregate + Fenteng/
+   Tony), same sequential-call pattern as PRs widget's runApprovePOBatch. Groups
+   Product_Context1 rows by SKU+Type_field, 1 RR per distinct item, dedup per
+   (SKU, Source_Type) — all logic lives server-side in the Custom Functions, this just
+   calls all 3 and refreshes.
+════════════════════════════════ */
+/* ── Supplier confirmation, ADDED 2026-10-12, per user request ("before creating RR
+   dapat meron kung same supplier ba or pipili ng ibang supplier... kung si Tony ang
+   supplier nakatag parin siya pero pwede parin mamili ng ibang supplier kagaya kay
+   Fenteng at HC System"). See Proposals/RR_Supplier_Choice_Before_Create_RR_Plan_
+   2026-10-12.md for the full research.
+
+   Until now the supplier was taken silently off the exception line (Product_Context1.
+   Supplier) and the supplier-side RR went out in the same click, so nobody ever got to
+   confirm it. This modal is that confirmation. The tagged supplier stays pre-selected,
+   so the normal case is still one extra click and nothing else changes.
+
+   The choice is stored as two HEADER fields on the Exception — RR_Supplier_Override
+   and RR_Supplier_Change_Reason — NOT on the Product_Context1 subform. Two reasons:
+   a header write can't hit the stale-subform-row-ID failure this codebase has already
+   been burned by (RR-00004, code 2930), and the NATIVE "Create RR" report button reads
+   the same fields, so both paths route identically. A Report Action Item can't show a
+   modal or take an argument, so a field is the only thing both can see.
+
+   Product_Context1.Supplier is never overwritten — the exception keeps showing who it
+   originally was. Only RR_Supplier on the new RR carries the effective supplier. */
+/* PHASE 1, 2026-10-12 — HC System is deliberately NOT offered yet. Per the user's own
+   condition it ships together with its downstream fix, and that is not built: an
+   HC System RR currently cannot log a replacement shipment at all
+   (clone_shipment_for_replacement.txt only resolves acknowledgment for Fenteng/Tony),
+   so offering it here would create permanently stuck records. Add 'HC System' back to
+   this array once Steps 3 / 3b / 3c in DelugeScripts/rr_supplier_override_setup.txt
+   are live — that one line is the whole switch.
+   Note this only stops someone SWITCHING to HC System. An exception already tagged
+   HC System (a Local-sourced item) still shows "Same supplier — HC System" and behaves
+   exactly as it does today, because that comes from the tagged value, not this list. */
+/* PHASE 2, 2026-10-13 — HC System enabled: clone gate, Local tab and close-out are built. */
+var RR_SUPPLIERS = ['Fenteng Lighting','Tony Fan','HC System'];
+/* HC System is Local sourcing — no portal, no supplier RR form, nothing to acknowledge
+   (DelugeScripts/hc_system_local_sourcing_setup.txt). Actions 2/3 filter on
+   "Fenteng"/"Tony" so no supplier-side record is created for it, which is correct. */
+var RR_SUPPLIER_HINTS = { 'HC System': 'Local sourcing — no supplier portal, so there is nothing for them to acknowledge' };
+
+/* Supplier values arrive in both shapes depending on record history — the bare
+   "Tony"/"Fenteng" of older test data and the full Suppliers-form name
+   ("Tony Fan"/"Fenteng Lighting") of real Production records. Same defensive
+   contains() normalisation the backend itself uses (create_rr_button.txt:286/427). */
+function canonicalSupplier(raw){
+  var s = String(raw == null ? '' : raw);
+  if(s.indexOf('Fenteng') >= 0) return 'Fenteng Lighting';
+  if(s.indexOf('Tony') >= 0) return 'Tony Fan';
+  if(s.indexOf('HC') >= 0) return 'HC System';
+  return '';
+}
+function taggedSupplierOf(exc){
+  if(!exc || !exc.ctxRows) return '';
+  for(var i=0;i<exc.ctxRows.length;i++){
+    var c = canonicalSupplier(exc.ctxRows[i].supplier);
+    if(c) return c;
+  }
+  return '';
+}
+/* Mirrors the backend's own grouping (SKU + "||" + Type_field, one RR per group) and
+   its repair-tracking skip, so the modal lists exactly the items that will actually
+   become RRs — not every subform row. */
+function rrItemGroups(exc){
+  var order = [], byKey = {};
+  if(!exc || !exc.ctxRows) return order;
+  exc.ctxRows.forEach(function(c){
+    if(c.typeField === 'Damage' && c.repairable === 'Yes' && c.repairOutcome !== 'Not Fixed') return;
+    var key = (c.sku||'') + '||' + (c.typeField||'');
+    if(!byKey[key]){
+      byKey[key] = { sku: c.sku||'—', typeField: c.typeField||'', qty: 0 };
+      order.push(byKey[key]);
+    }
+    byKey[key].qty += (c.qty || 0);
+  });
+  return order;
+}
+
+var _rrTaggedSupplier = '';
+function runCreateRR(){
+  if(!_currentExcId) return;
+  /* Defense in depth — updateCreateRRGate() already disables the button, but check
+     again here in case of a stale render or a direct call. Runs BEFORE the modal: the
+     supplier choice is not a way around the evidence/repair gate. */
+  if(_currentExcObj && !canCreateRR(_currentExcObj)){
+    showToast('Fill in Exception Description and add evidence before creating an RR.');
+    return;
+  }
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA){
+    showToast('Creator SDK not available (preview mode)');
+    return;
+  }
+  /* 2026-10-13: briefly removed this morning, RESTORED the same day per user. A Proc
+     replacement from a different supplier is still received into the ORIGINAL PO in
+     Books (no new PO — it completes the qty the damage left short), so a supplier change
+     is safe here. What needed fixing was the RR close-out on receive, which used to look
+     only in the original supplier's RR form — fixed in create_bin_receiving /
+     createBinReceivingWidget (2026-10-13). */
+  openSupplierChoice();
+}
+
+function openSupplierChoice(){
+  var exc = _currentExcObj;
+  _rrTaggedSupplier = taggedSupplierOf(exc);
+
+  var groups = rrItemGroups(exc);
+  var itemsHtml = groups.length === 0
+    ? '<div class="rrsup-item">No items — this Exception has no eligible lines.</div>'
+    : groups.map(function(g){
+        return '<div class="rrsup-item"><strong>'+escapeHtml(g.sku)+'</strong>'
+          + (g.typeField ? ' · '+escapeHtml(g.typeField) : '')
+          + ' · qty '+g.qty+'</div>';
+      }).join('');
+  $('rrsupItems').innerHTML = itemsHtml;
+
+  var opts = [];
+  if(_rrTaggedSupplier){
+    opts.push(optionHtml('', 'Same supplier — '+_rrTaggedSupplier, 'Keeps today’s routing. Nothing changes.', true));
+  }
+  RR_SUPPLIERS.forEach(function(name){
+    if(name === _rrTaggedSupplier) return;
+    opts.push(optionHtml(name, name, RR_SUPPLIER_HINTS[name] || '', false));
+  });
+  $('rrsupOptions').innerHTML = opts.join('');
+
+  /* An Exception whose originating PR was blank has no supplier tagged at all. There is
+     no "same" to default to, so a pick is mandatory — same situation the Replacement
+     widget's own selectSupplierCard was built for, just caught earlier. */
+  $('rrsupNoTag').style.display = _rrTaggedSupplier ? 'none' : 'block';
+
+  $('rrsupReason').value = '';
+  onSupplierChoiceChange();
+  $('rrsupOverlay').classList.add('show');
+}
+function optionHtml(value, label, hint, checked){
+  return '<label class="rrsup-opt">'
+    + '<input type="radio" name="rrsupChoice" value="'+escapeHtml(value)+'"'+(checked?' checked':'')+' onchange="onSupplierChoiceChange()">'
+    + '<span class="rrsup-opt-body"><span class="rrsup-opt-label">'+escapeHtml(label)+'</span>'
+    + (hint ? '<span class="rrsup-opt-hint">'+escapeHtml(hint)+'</span>' : '')
+    + '</span></label>';
+}
+function selectedRRSupplier(){
+  var el = document.querySelector('input[name="rrsupChoice"]:checked');
+  return el ? el.value : null;
+}
+/* Reason is required only when the supplier is actually being changed — the audit trail
+   for why a replacement left the original supplier. The common case stays frictionless. */
+function onSupplierChoiceChange(){
+  var chosen = selectedRRSupplier();
+  var isChange = !!chosen;
+  $('rrsupReasonRow').style.display = isChange ? 'block' : 'none';
+  var ok = $('rrsupOkBtn');
+  if(chosen === null){ ok.disabled = true; return; }
+  ok.disabled = isChange && !$('rrsupReason').value.trim();
+}
+function closeSupplierChoice(){ $('rrsupOverlay').classList.remove('show'); }
+
+function confirmSupplierChoice(){
+  var chosen = selectedRRSupplier();
+  if(chosen === null){ showToast('Pick where the replacement should come from.'); return; }
+  var reason = $('rrsupReason').value.trim();
+  if(chosen && !reason){ showToast('Give a reason for changing the supplier.'); return; }
+  closeSupplierChoice();
+  /* Always written, including the blank-blank case — a previous Create RR run on this
+     same Exception may have left an override behind, and silently reusing it would be
+     the exact kind of invisible routing this whole change exists to stop. */
+  var payload = { RR_Supplier_Override: chosen || '', RR_Supplier_Change_Reason: chosen ? reason : '' };
+  var id = _currentExcId;
+  var btn = $('btnCreateRR');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  updateExceptionRecord(id, payload, chosen ? ('Routing to '+chosen+'…') : 'Creating RR…').then(function(ok){
+    if(!ok){
+      btn.disabled = false; btn.textContent = 'Create RR';
+      return;
+    }
+    if(chosen && _currentExcObj){
+      excTimeline.log(_currentExcObj.excNo, 'Replacement supplier changed to '+chosen, 'Updated',
+        [{ label:'Replacement supplier', from:(_rrTaggedSupplier||'not set'), to:chosen },
+         { label:'Reason', to:reason }]);
+    }
+    doCreateRR(id, chosen);
+  });
+}
+
+/* ════════════════════════════════
+   CREATE RR — mirrors create_rr_button.txt's 3 native Actions (aggregate + Fenteng/
+   Tony), same sequential-call pattern as PRs widget's runApprovePOBatch. Groups
+   Product_Context1 rows by SKU+Type_field, 1 RR per distinct item, dedup per
+   (SKU, Source_Type) — all logic lives server-side in the Custom Functions, this just
+   calls all 3 and refreshes.
+   The Fenteng/Tony calls are made unconditionally even when HC System was chosen:
+   their own supplier gates skip them server-side, and keeping the call sequence
+   identical to the native button's 3 Actions is what keeps the mirror honest.
+════════════════════════════════ */
+function doCreateRR(id, chosen){
+  var btn = $('btnCreateRR');
+  invokeApi(CUSTOM_API_CREATE_RR_MAIN, CUSTOM_API_CREATE_RR_MAIN_KEY, { exceptionId: id })
+    .then(function(r1){
+      if(r1 && r1.status === 'error'){
+        showToast('Create RR failed: '+(r1.message||'unknown error'));
+        btn.disabled = false; btn.textContent = 'Create RR';
+        return;
+      }
+      return invokeApi(CUSTOM_API_CREATE_RR_FENTENG, CUSTOM_API_CREATE_RR_FENTENG_KEY, { exceptionId: id })
+        .then(function(){ return invokeApi(CUSTOM_API_CREATE_RR_TONY, CUSTOM_API_CREATE_RR_TONY_KEY, { exceptionId: id }); })
+        .then(function(){
+          btn.disabled = false; btn.textContent = 'Create RR';
+          var msg = (r1 && r1.message) || 'RR(s) created.';
+          if(chosen === 'HC System') msg += ' Local supplier — no portal, so tell whoever handles local sourcing yourself.';
+          showToast(msg);
+          refreshCurrentDetail(id);
+        });
+    })
+    .catch(function(err){
+      console.error('[EXC] Create RR failed:', JSON.stringify(err));
+      btn.disabled = false; btn.textContent = 'Create RR';
+      showToast('Create RR failed — see console');
+    });
+}
+
+/* ════════════════════════════════
+   FILE UPLOAD — ported from the sibling PR widget (PR.html), confirmed
+   working against this same Zoho account/app, with layered fallbacks.
+════════════════════════════════ */
+async function uploadFilesTo(recordId, fieldName, files){
+  var allOk = true;
+  for(var i=0;i<files.length;i++){
+    var file = files[i], ok = false;
+    if(!ok && typeof ZOHO!=='undefined'&&ZOHO.CREATOR&&ZOHO.CREATOR.FILE&&typeof ZOHO.CREATOR.FILE.uploadFile==='function'){
+      try{
+        var r1 = await ZOHO.CREATOR.FILE.uploadFile({ app_name:REAL_APP_NAME, report_name:REPORT_NAME, id:String(recordId), field_name:fieldName, file:file });
+        ok = (r1 && r1.code===3000);
+      } catch(e){ console.warn('[Upload-1 SDK] failed:', e.message||e); }
+    }
+    if(!ok && typeof ZOHO!=='undefined'&&ZOHO.CREATOR&&ZOHO.CREATOR.UTIL&&typeof ZOHO.CREATOR.UTIL.uploadFile==='function'){
+      try{
+        var r2 = await ZOHO.CREATOR.UTIL.uploadFile({ app_name:REAL_APP_NAME, report_name:REPORT_NAME, id:String(recordId), field_name:fieldName, file:file });
+        ok = (r2 && r2.code===3000);
+      } catch(e){ console.warn('[Upload-2 UTIL] failed:', e.message||e); }
+    }
+    if(!ok){
+      try{
+        var fd = new FormData(); fd.append(fieldName, file, file.name);
+        var url = 'https://creator.zoho.com/api/v2/'+ACCOUNT_OWNER+'/'+REAL_APP_NAME+'/report/'+REPORT_NAME+'/'+String(recordId)+'/'+fieldName+'/upload';
+        var r3 = await fetch(url, { method:'POST', body:fd, credentials:'include' });
+        var d3 = await r3.json();
+        ok = (d3 && d3.code===3000);
+      } catch(e){ console.warn('[Upload-3 REST] failed:', e.message||e); }
+    }
+    if(!ok){ console.error('[Upload] All methods failed for', fieldName, file.name); allOk = false; }
+  }
+  return allOk;
+}
+
+/* ════════════════════════════════
+   VIEW: NEW EXCEPTION (Raise Exception)
+════════════════════════════════ */
+function computeNextExcNo(){
+  var max = 0;
+  ALL_EXC.forEach(function(e){ var m=(e.excNo||'').match(/EXC-(\d+)/); if(m) max=Math.max(max,parseInt(m[1],10)); });
+  return 'EXC-' + String(max+1).padStart(5,'0');
+}
+function todayISO(){
+  var d=new Date(); var pad=function(n){return String(n).padStart(2,'0');};
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+function resetNewExceptionForm(){
+  $('newExcNoBadge').textContent = 'Will be assigned: '+computeNextExcNo();
+
+  selectOptions($('nPriority'), PICK_PRIORITY, 'Medium');
+  selectOptions($('nSourceModule'), PICK_SOURCE, '');
+  $('nDueDate').value = '';
+
+  $('nSoNo').value=''; $('nPoNo').value=''; $('nShipmentNo').value=''; $('nReceiveNo').value=''; $('nReceivingLineId').value='';
+
+  newExcCtxRows = [];
+  addCtxRow();
+
+  $('nExcTitle').value = '';
+  $('nExcDesc').value = '';
+  selectOptions($('nImpactType'), PICK_IMPACT, '');
+  $('nDelayImpact').checked = false;
+  $('nFulfillImpact').checked = false;
+
+  newExcFiles = [];
+  renderNewExcFileChips();
+  $('nEvidenceDesc').value = '';
+
+  selectOptions($('nAssignedDept'), PICK_DEPT, '');
+  $('nAssignedTo').value = '';
+  $('nOpenedOn').value = fmtDateShort(todayISO());
+  selectOptions($('nWaitingOn'), PICK_WAITING, '');
+
+  refreshNewExc();
+}
+
+function addCtxRow(){
+  newExcCtxRows.push({ id: ++_ctxRowSeq, sku:'', item:'', category:'', qty:'', supplier:'', typeField:'' });
+  renderCtxRows();
+}
+function removeCtxRow(id){
+  newExcCtxRows = newExcCtxRows.filter(function(r){ return r.id!==id; });
+  if(!newExcCtxRows.length) addCtxRow(); else renderCtxRows();
+}
+function updateCtxRow(id, field, value){
+  var row = newExcCtxRows.find(function(r){ return r.id===id; });
+  if(row) row[field] = value;
+}
+function renderCtxRows(){
+  $('nCtxRows').innerHTML = newExcCtxRows.map(function(r){
+    return '<div class="ctx-row">'
+      + '<div class="fi"><span class="fi-lbl">SKU</span><input class="prf-input" value="'+escapeHtml(r.sku)+'" oninput="updateCtxRow('+r.id+',\'sku\',this.value)"></div>'
+      + '<div class="fi"><span class="fi-lbl">Item</span><input class="prf-input" value="'+escapeHtml(r.item)+'" oninput="updateCtxRow('+r.id+',\'item\',this.value)"></div>'
+      + '<div class="fi"><span class="fi-lbl">Category</span><input class="prf-input" value="'+escapeHtml(r.category)+'" oninput="updateCtxRow('+r.id+',\'category\',this.value)"></div>'
+      + '<div class="fi"><span class="fi-lbl">Qty</span><input type="number" min="0" class="prf-input" value="'+escapeHtml(r.qty)+'" oninput="updateCtxRow('+r.id+',\'qty\',this.value)"></div>'
+      + '<div class="fi"><span class="fi-lbl">Type</span><select class="prf-select" onchange="updateCtxRow('+r.id+',\'typeField\',this.value)"><option value=""'+(!r.typeField?' selected':'')+'></option><option value="Damage"'+(r.typeField==='Damage'?' selected':'')+'>Damage</option><option value="Missing"'+(r.typeField==='Missing'?' selected':'')+'>Missing</option></select></div>'
+      + '<div class="fi"><span class="fi-lbl">Supplier</span><input class="prf-input" value="'+escapeHtml(r.supplier)+'" oninput="updateCtxRow('+r.id+',\'supplier\',this.value)"></div>'
+      + '<button type="button" class="ctx-row-del" onclick="removeCtxRow('+r.id+')" title="Remove row">&times;</button>'
+      + '</div>';
+  }).join('');
+}
+
+function onNewExcFiles(){
+  var input = $('nFileUpload');
+  newExcFiles = newExcFiles.concat(Array.from(input.files));
+  renderNewExcFileChips();
+  input.value = '';
+}
+function removeNewExcFile(i){ newExcFiles.splice(i,1); renderNewExcFileChips(); }
+function renderNewExcFileChips(){
+  $('nFileChips').innerHTML = newExcFiles.map(function(f,i){
+    return '<span class="file-chip"><span class="file-chip-name">'+escapeHtml(f.name)+'</span><button type="button" class="file-chip-del" onclick="removeNewExcFile('+i+')">&times;</button></span>';
+  }).join('');
+}
+
+function refreshNewExc(){
+  var priority = $('nPriority').value;
+  var source = $('nSourceModule').value;
+  var due = $('nDueDate').value;
+  var desc = $('nExcDesc').value.trim();
+
+  var ctxTypes = newExcCtxRows.map(function(r){ return r.typeField; }).filter(Boolean);
+  var ctxTypeUniq = ctxTypes.filter(function(v,i){ return ctxTypes.indexOf(v)===i; });
+  $('sumType').textContent = ctxTypeUniq.length ? ctxTypeUniq.join(' + ') : '—';
+  $('sumType').classList.toggle('muted', !ctxTypeUniq.length);
+  $('sumPriority').textContent = priority || '—';
+  $('sumPriority').classList.toggle('muted', !priority);
+  $('sumSource').textContent = source || '—';
+  $('sumSource').classList.toggle('muted', !source);
+  $('sumDue').textContent = due ? fmtDateShort(due) : '—';
+  $('sumDue').classList.toggle('muted', !due);
+
+  var checks = [
+    { ok: !!priority, lbl: 'Priority selected' },
+    { ok: !!source, lbl: 'Source Module selected' },
+    { ok: !!due, lbl: 'Due Date set' },
+    { ok: !!desc, lbl: 'Exception Description entered' },
+  ];
+  $('nChecklist').innerHTML = checks.map(function(c){
+    return '<div class="chk-row"><span class="chk-dot'+(c.ok?' ok':'')+'"></span><span class="chk-lbl'+(c.ok?' ok':'')+'">'+c.lbl+'</span></div>';
+  }).join('');
+
+  var allOk = checks.every(function(c){ return c.ok; });
+  ['btnRaiseTop','btnRaiseSide'].forEach(function(id){
+    var b = $(id);
+    if(b) b.disabled = !allOk;
+  });
+}
+
+function submitNewException(){
+  if($('btnRaiseTop').disabled) return;
+
+  var btn = $('btnRaiseTop'), btnSide = $('btnRaiseSide');
+  function setSaving(saving){
+    [btn, btnSide].forEach(function(b){ if(b){ b.disabled = saving; b.textContent = saving ? 'Saving…' : 'Raise Exception →'; } });
+  }
+  setSaving(true);
+
+  var payload = {
+    Exception_Status: 'Open',
+    Exception_No: computeNextExcNo(),
+    Priority: $('nPriority').value,
+    Source_Module: $('nSourceModule').value,
+    Due_Date: $('nDueDate').value,
+    Sales_Order: $('nSoNo').value,
+    PO_No: $('nPoNo').value,
+    Shipment_No: $('nShipmentNo').value,
+    Receive_No: $('nReceiveNo').value,
+    Receiving_Line_ID: $('nReceivingLineId').value,
+    Exception_Title: $('nExcTitle').value,
+    Exception_Description: $('nExcDesc').value,
+    Impact_Type: $('nImpactType').value,
+    Evidence_Descriptions: $('nEvidenceDesc').value,
+    Assigned_Department: $('nAssignedDept').value,
+    Assigned_To: $('nAssignedTo').value,
+    Opened_On: $('nOpenedOn').value,
+    Waiting_On: $('nWaitingOn').value,
+  };
+  if($('nDelayImpact').checked) payload.Delay_Impact = true;
+  if($('nFulfillImpact').checked) payload.Fulfillment_Impact = true;
+
+  var ctxRows = newExcCtxRows.filter(function(r){ return r.sku||r.item||r.category||r.qty||r.supplier||r.typeField; }).map(function(r){
+    var row = {};
+    if(r.sku) row.SKU = r.sku;
+    if(r.item) row.Item = r.item;
+    if(r.category) row.Category = r.category;
+    if(r.qty) row.Qty = String(parseFloat(r.qty)||0);
+    if(r.supplier) row.Supplier = r.supplier;
+    if(r.typeField) row.Type_field = r.typeField;
+    return row;
+  });
+  if(ctxRows.length) payload.Product_Context1 = ctxRows;
+
+  var clean = {};
+  Object.keys(payload).forEach(function(k){
+    var v = payload[k];
+    if(v===false||v===null||v===undefined||v==='') return;
+    clean[k] = v;
+  });
+  console.log('[New-EXC] Submitting payload:', JSON.stringify(clean, null, 2));
+
+  function onSuccess(newId){
+    setSaving(false);
+    if(newExcFiles.length && newId){
+      showToast('Uploading '+newExcFiles.length+' file(s)…');
+      uploadFilesTo(newId, 'File_upload', newExcFiles).then(function(ok){
+        showToast(ok ? 'Exception raised with attachments!' : 'Exception raised — some files failed, attach via Zoho Creator.');
+      });
+    } else {
+      showToast('Exception raised successfully!');
+    }
+    setTimeout(function(){ loadExceptionsFromCreator(); showView('list'); }, 800);
+  }
+  function onError(resp){
+    setSaving(false);
+    var msg = (resp && (resp.message||resp.error)) || JSON.stringify(resp).substring(0,120);
+    console.error('[New-EXC] addRecords error:', JSON.stringify(resp));
+    showToast('Save failed: '+msg);
+  }
+
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA){
+    setTimeout(function(){ setSaving(false); showToast('Exception raised (preview mode)!'); }, 800);
+    return;
+  }
+
+  var watchdog = setTimeout(function(){ onError({message:'Creator timeout'}); }, 20000);
+
+  ZOHO.CREATOR.DATA.addRecords({ form_name: FORM_NAME, payload: { data: clean } })
+    .then(function(r){
+      clearTimeout(watchdog);
+      console.log('[New-EXC] addRecords resp:', JSON.stringify(r));
+      if(r && r.code===3000){
+        var saved = r.data && (Array.isArray(r.data) ? r.data[0] : r.data);
+        var newId = saved && (saved.ID || saved.id || saved.record_id);
+        onSuccess(newId);
+        return;
+      }
+      onError(r);
+    })
+    .catch(function(err){
+      clearTimeout(watchdog);
+      console.error('[New-EXC] addRecords threw:', JSON.stringify(err));
+      onError(err);
+    });
+}
+
+/* ════════════════════════════════
+   INIT
+════════════════════════════════ */
+window.addEventListener('load', function(){ resolveCurrentUserEmail(); loadExceptionsFromCreator(); });
+</script>
+
+</body>
+</html>

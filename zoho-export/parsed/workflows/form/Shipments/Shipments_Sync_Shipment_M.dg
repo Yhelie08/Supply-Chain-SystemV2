@@ -1,0 +1,18 @@
+// form: Shipments_Sync_Shipment_Mode_To_Receiving  form=Shipments event=on edit on success  [.ds line 41275]
+    recvRecs = Receiving[Shipments == input.ID];
+for each  r in recvRecs
+{
+    for each  li in input.PO_Shipments
+    {
+        if(li.PR_No != null && li.PR_No != "" && li.Shipment_Mode_When_Received != null && li.Shipment_Mode_When_Received != "")
+        {
+            for each  rl in r.Receiving_Line_Items
+            {
+                if(rl.PR_No == li.PR_No && rl.Shipment_Mode_When_Received != li.Shipment_Mode_When_Received)
+                {
+                    rl.Shipment_Mode_When_Received=li.Shipment_Mode_When_Received;
+                }
+            }
+        }
+    }
+}

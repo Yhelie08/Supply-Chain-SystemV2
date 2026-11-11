@@ -1,0 +1,12 @@
+// functions: Approve_RR_Supplier2  form=Tony_Fan_Replacement_Request event= on start > on click  [.ds line 54589]
+/* SLIMMED 2026-07-20 — see Approve_RR_Supplier1's matching comment above. */
+                if(input.RR_Status != "Open")
+                {
+                    info "Already approved.";
+                    return;
+                }
+                input.RR_Status = "Acknowledged";
+                input.Supplier_Acknowledgement1 = true;
+                input.Supplier_Acknowledge_Date = zoho.currenttime;
+                input.Last_Updated = zoho.currenttime;
+                success message "Replacement Request approved.";

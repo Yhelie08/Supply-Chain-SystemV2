@@ -1,0 +1,21 @@
+// form: Receiving_Validate_Qty  form=Receiving event=on add or edit on validate  [.ds line 39868]
+    for each  ln in input.Receiving_Line_Items
+{
+    accepted = ifnull(ln.Accepted_Qty,0);
+    damaged = ifnull(ln.Damage_Qty,0);
+    missing = ifnull(ln.Missing_Qty,0);
+    expected = ifnull(ln.Expected_Qty,0);
+    totalReceived = accepted + damaged + missing;
+    // RELAXED 2026-07-30, per user ("we can input below the expected qty but
+    // not more than") — was a strict equality block (totalReceived != expected),
+    // which made partial receiving impossible: a shipment that only had 5 of 10
+    // units arrive couldn't be saved at all until the remaining 5 showed up.
+    // Now only blocks a genuine OVER-receive (more than was ever ordered) —
+    // under-receiving (a real partial) is allowed and just leaves the line
+    // Incomplete (see Receiving_Set_Line_Result above), receivable again later.
+    if(expected > 0 && totalReceived > expected)
+    {
+        alert "Quantity mismatch on line " + ln.PR_No + " — Accepted + Damaged + Missing (" + totalReceived + ") cannot exceed Expected Qty (" + expected + "). Please correct before saving.";
+        cancel submit;
+    }
+}

@@ -1,0 +1,21 @@
+// form: Set initial visibility  form=Checker_Checklist event=on add or edit on load  [.ds line 44301]
+    // Parehong logic lang gaya ng WORKFLOW 2 — pero tumatakbo ito PAG-BUKAS ng form (bago
+// pa man ma-touch ang dropdown), kaya ito ang nagtatakda ng TAMANG unang visibility:
+// blangko sa Add mode (papasok sa "else", ITATAGO ang dalawa), o kung ano na ang
+// existing value sa Edit mode (ipapakita ang tamang field agad, kahit hindi pa
+// na-touch ang dropdown).
+if(Item_to_Replace == "Whole Fixture")
+{
+    show Quantity_of_Damage_Items;
+    hide Spare_part_type;
+}
+else if(Item_to_Replace == "Spare Parts")
+{
+    hide Quantity_of_Damage_Items;
+    show Spare_part_type;
+}
+else
+{
+    hide Quantity_of_Damage_Items;
+    hide Spare_part_type;
+}

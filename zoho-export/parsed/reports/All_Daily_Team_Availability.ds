@@ -1,0 +1,16 @@
+
+			displayName = "Daily Team Availability Report"
+			show all rows from Daily_Team_Availability    
+			(
+				Availability_Date
+				Installer
+				Driver
+				Vehicle
+				Availability_Status
+				Max_Capacity_Hours
+				Notes
+				Added_By
+				Max_SO_Capacity
+				Start_Time1 as "Start Time"
+			)
+		

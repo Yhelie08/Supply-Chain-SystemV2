@@ -1,0 +1,58 @@
+{
+  "name": "Package_Shipments",
+  "label": "Package Shipments",
+  "successMessage": "Data Added Successfully!",
+  "line": 8138,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Service_Appointment_ID",
+      "label": "Service Appointment ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order",
+      "label": "Sales Order",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipment_Created",
+      "label": "Shipment Created",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Shipment_Order_No",
+      "label": "Shipment Order No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipment_Order_ID",
+      "label": "Shipment Order ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Created_Time",
+      "label": "Created Time",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

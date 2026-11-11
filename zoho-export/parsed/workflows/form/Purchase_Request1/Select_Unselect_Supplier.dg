@@ -1,0 +1,11 @@
+// form: Select_Unselect_Supplier  form=Purchase_Request1 event=on add or edit on user input of Supplier_Selected.Selected  [.ds line 37106]
+    if(row.Selected == true)
+{
+    for each  sq in input.Supplier_Selected
+    {
+        if(sq.ID != row.ID)
+        {
+            sq.Selected=false;
+        }
+    }
+}

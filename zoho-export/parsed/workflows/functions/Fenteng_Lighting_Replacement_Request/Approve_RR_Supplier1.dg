@@ -1,0 +1,22 @@
+// functions: Approve_RR_Supplier1  form=Fenteng_Lighting_Replacement_Request event= on start > on click  [.ds line 54553]
+/* SLIMMED 2026-07-20, per user request ("let's not be dependent on supplier — their
+                   only job is to approve and populate ETA/ETD"): every bit of Missing_SKUs stamping /
+                   new replacement PO creation that used to live here moved to create_rr_button.txt
+                   (officer-triggered Create RR, fires the moment the RR is raised — no longer waits
+                   on the supplier clicking anything). This button's only remaining job is the status
+                   + audit-date flip. ETA/Expected_Ship_Date themselves are NOT written here — the
+                   native Action Item has no click-time input to collect them with (same limitation
+                   already documented for PO Acknowledge); they're entered via the widget's own
+                   "Update Progress" fields, and the widget-side Approve flow (approve_rr_custom_api.txt)
+                   requires both to be filled before it'll call this same logic. This native copy is
+                   reference/parity only — this whole app is confirmed widget-only in deployment. */
+                if(input.RR_Status != "Open")
+                {
+                    info "Already approved.";
+                    return;
+                }
+                input.RR_Status = "Acknowledged";
+                input.Supplier_Acknowledgement1 = true;
+                input.Supplier_Acknowledge_Date = zoho.currenttime;
+                input.Last_Updated = zoho.currenttime;
+                success message "Replacement Request approved.";

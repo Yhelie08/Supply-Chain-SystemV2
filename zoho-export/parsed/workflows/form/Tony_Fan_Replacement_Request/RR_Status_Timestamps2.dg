@@ -1,0 +1,23 @@
+// form: RR_Status_Timestamps  form=Tony_Fan_Replacement_Request event=on add or edit on validate  [.ds line 40672]
+    // === RR_Status_Timestamps ===
+// Form: Replacement_Request | Event: Created or Edited | Validations on form submission
+oldRec = Replacement_Request[ID == input.ID];
+// Auto-fill Last_Updated on every save
+input.Last_Updated = zoho.currenttime;
+// Supplier_Acknowledge_Date — kapag bagong naging "Acknowledged" ang status
+if(input.RR_Status == "Acknowledged")
+{
+    if(oldRec.RR_Status != "Acknowledged")
+    {
+        input.Supplier_Acknowledge_Date = zoho.currentdate;
+        Supplier_Acknowledged = true;
+    }
+}
+// Closed_At — kapag bagong naging "Closed" ang status
+if(input.RR_Status == "Closed")
+{
+    if(oldRec.RR_Status != "Closed")
+    {
+        input.Closed_At = zoho.currenttime;
+    }
+}

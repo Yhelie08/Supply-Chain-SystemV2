@@ -1,0 +1,12 @@
+
+			displayName = "Shipment_Timeline Report"
+			show all rows from Shipment_Timeline    
+			(
+				Shipment_No as "Shipment No"
+				Action_Title as "Action"
+				Action_Type as "Action Type"
+				Changes
+				Actor
+				Logged_On as "Logged On"
+			)
+		

@@ -1,0 +1,68 @@
+// form: EXC_Resolve_Sync  form=DMS_Exception_Queue event=on add or edit on success  [.ds line 41876]
+    if(input.Status == "Resolved" || input.Status == "Dismissed" && input.Sales_Order_Reference != null)
+{
+    rec = DMS_Exception_Queue[ID == input.ID];
+    if(input.Status == "Resolved" && input.Resolution_Date == null)
+    {
+        rec.Resolution_Date=zoho.currenttime;
+    }
+    sa = Service_Appointment_Form[ID == input.Sales_Order_Reference];
+    if(sa != null)
+    {
+        sa.Exception_Status="Resolved";
+        if(input.Revert_to_System == true)
+        {
+            sa.Suggested_Schedule_Date=null;
+            sa.Suggested_Time_Slot=null;
+            sa.Confirmed_Schedule_Date=null;
+            sa.Confirmed_Time_Slot=null;
+            // KUSANG PATAKBUHIN ANG ENGINE PARA MAGKA-SLOT AGAD ANG ORDER:
+            schedOut = thisapp.dmsScheduleSlot(sa.ID.toString(),true);
+        }
+    }
+    // Dispatch-stage requeue (kung galing sa delivery failure sa field)
+    if(input.Exception_Stage == "Dispatch" && input.Status == "Resolved" && input.Requeue_Processed != true)
+    {
+        for each  saLoop in Service_Appointment_Form[ID == input.Sales_Order_Reference]
+        {
+            newId = insert into Service_Appointment_Form
+            [
+                Sales_Order=saLoop.Sales_Order
+                Sales_Order_Display=saLoop.Sales_Order
+                Customer_Address=saLoop.Customer_Address
+                City=saLoop.City
+                Contact=saLoop.Contact
+                Email=saLoop.Email
+                Type_of_Delivery=saLoop.Type_of_Delivery
+                Package_Number=saLoop.Package_Number
+                Appointment_Status="Queued"
+                Rescheduled_From_SA=saLoop.ID
+                Rescheduled_Via_Exception=rec.Exception_ID + ""
+                Priority=true
+                Initial_Schedule_ID=saLoop.Initial_Schedule_ID
+                Service_Request_ID=saLoop.Service_Request_ID
+                Service_Request=saLoop.Service_Request
+                Requested_Delivery_Date=saLoop.Requested_Delivery_Date
+                Requested_Delivery_Time=saLoop.Requested_Delivery_Time
+                Added_User=zoho.loginuser
+            ];
+            newSA = Service_Appointment_Form[ID == newId];
+            if(saLoop.Customer_Name != null)
+            {
+                newSA.Customer_Name=saLoop.Customer_Name;
+            }
+            for each  it in saLoop.Item_Details
+            {
+                newRow = Service_Appointment_Form.Item_Details();
+                newRow.Item_Name=it.Item_Name;
+                newRow.SKU=it.SKU;
+                newRow.Quantity=it.Quantity;
+                newRow.PAC=it.PAC;
+                newSA.Item_Details.insert(newRow);
+            }
+            // Ang orihinal na attempt ay minamarkahang Failed para ma-archive nang maayos
+            saLoop.Appointment_Status="Failed";
+        }
+        rec.Requeue_Processed=true;
+    }
+}

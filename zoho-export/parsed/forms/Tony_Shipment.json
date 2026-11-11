@@ -1,0 +1,108 @@
+{
+  "name": "Tony_Shipment",
+  "label": "Tony Shipment",
+  "successMessage": "Data Added Successfully!",
+  "line": 18869,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Shipment_No",
+      "label": "Shipment No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Added_User1",
+      "label": "Added_User",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Parent_Shipment_ID",
+      "label": "Parent Shipment ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Supplier2_Shipment_Details",
+      "label": "Supplier2 Shipment Details",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Airfreight",
+        "LCL",
+        "FCL"
+      ],
+      "fields": [
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "PR_No",
+          "label": "PR No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "RR_No",
+          "label": "RR No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Date_Shipped",
+          "label": "Date Shipped",
+          "type": "date",
+          "required": false,
+          "alloweddays": "0,1,2,3,4,5,6"
+        },
+        {
+          "name": "Shipment_Mode",
+          "label": "Shipment Mode",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Airfreight",
+            "LCL",
+            "FCL"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Select_To_Ship",
+          "label": "Select to Ship",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        },
+        {
+          "name": "Synced",
+          "label": "Synced",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        },
+        {
+          "name": "Status",
+          "label": "Status",
+          "type": "text",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

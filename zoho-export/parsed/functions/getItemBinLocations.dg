@@ -1,0 +1,151 @@
+// map getItemBinLocations(String itemBooksId)   [.ds lines 34184-34335]
+response = Map();
+orgId = "751117756";
+itemBooksId = itemBooksId.trim();
+if(itemBooksId == "")
+{
+    response.put("code",3001);
+    response.put("message","itemBooksId is required.");
+    return response;
+}
+itemResp = invokeurl
+[
+    url :"https://www.zohoapis.com/books/v3/items/" + itemBooksId + "?organization_id=" + orgId
+    type :GET
+    connection:"zhbooks3"
+];
+detail = itemResp.get("item");
+if(detail == null)
+{
+    response.put("code",3002);
+    response.put("message","Item not found in Books for ID " + itemBooksId + ".");
+    return response;
+}
+warehouses = detail.get("warehouses");
+warehouseResults = List();
+whMatch1 = null;
+if(warehouses != null)
+{
+    for each  wh in warehouses
+    {
+        if(wh.get("warehouse_id") + "" == "2680178000042173149")
+        {
+            whMatch1 = wh;
+        }
+    }
+}
+if(whMatch1 != null && whMatch1.get("is_storage_location_enabled") == true)
+{
+    binResp1 = invokeurl
+    [
+        url :"https://www.zohoapis.com/books/v3/settings/warehouses/2680178000042173149/storagelocations?item_id=" + itemBooksId + "&organization_id=" + orgId
+        type :GET
+        connection:"zhbooks3"
+    ];
+    locs1 = binResp1.get("storage_locations");
+    binsOut1 = List();
+    if(locs1 != null)
+    {
+        for each  loc in locs1
+        {
+            locQty1 = loc.get("balance_quantity");
+            if(locQty1 != null && locQty1 > 0)
+            {
+                binRow1 = Map();
+                binRow1.put("name",loc.get("name") + "");
+                binRow1.put("balance_quantity",locQty1);
+                binsOut1.add(binRow1);
+            }
+        }
+    }
+    whOut1 = Map();
+    whOut1.put("warehouse_id","2680178000042173149");
+    whOut1.put("warehouse_name","HC WH3 BAESA");
+    whOut1.put("bins",binsOut1);
+    warehouseResults.add(whOut1);
+}
+whMatch2 = null;
+if(warehouses != null)
+{
+    for each  wh in warehouses
+    {
+        if(wh.get("warehouse_id") + "" == "2680178000055220196")
+        {
+            whMatch2 = wh;
+        }
+    }
+}
+if(whMatch2 != null && whMatch2.get("is_storage_location_enabled") == true)
+{
+    binResp2 = invokeurl
+    [
+        url :"https://www.zohoapis.com/books/v3/settings/warehouses/2680178000055220196/storagelocations?item_id=" + itemBooksId + "&organization_id=" + orgId
+        type :GET
+        connection:"zhbooks3"
+    ];
+    locs2 = binResp2.get("storage_locations");
+    binsOut2 = List();
+    if(locs2 != null)
+    {
+        for each  loc in locs2
+        {
+            locQty2 = loc.get("balance_quantity");
+            if(locQty2 != null && locQty2 > 0)
+            {
+                binRow2 = Map();
+                binRow2.put("name",loc.get("name") + "");
+                binRow2.put("balance_quantity",locQty2);
+                binsOut2.add(binRow2);
+            }
+        }
+    }
+    whOut2 = Map();
+    whOut2.put("warehouse_id","2680178000055220196");
+    whOut2.put("warehouse_name","HC WH1 BANAWE");
+    whOut2.put("bins",binsOut2);
+    warehouseResults.add(whOut2);
+}
+whMatch3 = null;
+if(warehouses != null)
+{
+    for each  wh in warehouses
+    {
+        if(wh.get("warehouse_id") + "" == "2680178000047672049")
+        {
+            whMatch3 = wh;
+        }
+    }
+}
+if(whMatch3 != null && whMatch3.get("is_storage_location_enabled") == true)
+{
+    binResp3 = invokeurl
+    [
+        url :"https://www.zohoapis.com/books/v3/settings/warehouses/2680178000047672049/storagelocations?item_id=" + itemBooksId + "&organization_id=" + orgId
+        type :GET
+        connection:"zhbooks3"
+    ];
+    locs3 = binResp3.get("storage_locations");
+    binsOut3 = List();
+    if(locs3 != null)
+    {
+        for each  loc in locs3
+        {
+            locQty3 = loc.get("balance_quantity");
+            if(locQty3 != null && locQty3 > 0)
+            {
+                binRow3 = Map();
+                binRow3.put("name",loc.get("name") + "");
+                binRow3.put("balance_quantity",locQty3);
+                binsOut3.add(binRow3);
+            }
+        }
+    }
+    whOut3 = Map();
+    whOut3.put("warehouse_id","2680178000047672049");
+    whOut3.put("warehouse_name","INVENTORY");
+    whOut3.put("bins",binsOut3);
+    warehouseResults.add(whOut3);
+}
+response.put("code",3000);
+response.put("warehouses",warehouseResults);
+return response;

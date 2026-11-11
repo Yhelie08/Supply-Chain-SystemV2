@@ -1,0 +1,10 @@
+// form: Tony_Sync_Image_PR  form=Tony_Fan_Purchase_Request event=on add or edit on success  [.ds line 39237]
+    if(input.Items_Supplier2 != null)
+{
+    itemRec = Items[ID == input.Items_Supplier2];
+    if(itemRec != null && itemRec.Image != null)
+    {
+        r = Tony_Fan_Purchase_Request[ID == input.ID];
+        r.Product_Image_Supplier2_PR=itemRec.Image;
+    }
+}

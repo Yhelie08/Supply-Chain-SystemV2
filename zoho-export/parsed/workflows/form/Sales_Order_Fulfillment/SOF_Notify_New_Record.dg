@@ -1,0 +1,13 @@
+// form: SOF_Notify_New_Record  form=Sales_Order_Fulfillment event=on add on success  [.ds line 44812]
+    insert into SO_Notifications
+[
+    Recipient_Email="homecartelff@gmail.com"
+    Notification_Type="SO Record Created"
+    Message="New Sales Order Fulfillment record — " + input.SO_No + " (" + input.PR_No + "). Click to open it."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:SOR?soRecordId=" + input.ID
+    Source_Record_No=input.SO_No
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]

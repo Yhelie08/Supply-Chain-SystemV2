@@ -1,0 +1,62 @@
+
+			displayName = "Receiving Report"
+			show all rows from Receiving    
+			(
+				Receive_No1 as "Receive No."
+				PO_No as "PO No."
+				Received_Date as "Received Date"
+				SO_No as "SO No."
+				Customer_Name as "Customer Name"
+				General_Photos as "General Photos"
+				Shipments
+				Supplier
+				Receive_Status as "Receive Status"
+				Warehouse
+				Total_Expected_Qty as "Total Expected Qty"
+				Total_Accepted_Qty as "Total Accepted Qty"
+				Total_Damage_Qty as "Total Damage Qty"
+				Total_Missing_Qty as "Total Missing Qty"
+				Total_Lines as "Total Lines"
+				Incomplete_Lines as "Incomplete Lines"
+				Exception_Count as "Exception Count"
+				Ready_for_Fulfillment1 as "Ready for Fulfillment"
+				Receiving_Notes as "Receiving Notes"
+				Shipments.Shipment_No as "Shipment No."
+				ID
+				custom action "Create Receive"
+				(
+	  			workflow = Create_Bin_Receiving
+				show action in edit record menu = true
+				column header = "Create Receive"
+				condition = (Total_Accepted_Qty > 0)
+				confirmation before execution
+				(
+					message for individual record = "Create Bin?"
+					confirm button text = "Yes"		
+					cancel button text = "No"
+				)
+				)
+				Sales_Owner as "Sales Owner"
+				Books_Receive_No as "Books Receive No"
+				Books_Receive_ID as "Books Receive ID"
+				Receiving_Line_Items as "Item and Quantity"
+				(
+					field = Receiving_Line_Items.PR_No + " " + Receiving_Line_Items.RR_No + " " + Receiving_Line_Items.Item_Name + " " + Receiving_Line_Items.SKU + " " + Receiving_Line_Items.Line_Result + " " + Receiving_Line_Items.Expected_Qty + " " + Receiving_Line_Items.Accepted_Qty + " " + Receiving_Line_Items.Missing_Qty + " " + Receiving_Line_Items.Damage_Qty + " " + Receiving_Line_Items.Has_Exceptions + " " + Receiving_Line_Items.Label_Ready + " " + Receiving_Line_Items.Label_Printed + " " + Receiving_Line_Items.Ready_for_Fulfillment + " " + Receiving_Line_Items.Shipment_Mode_When_Received + " " + Receiving_Line_Items.Bin_location
+				)
+				Partial_Receive_Timeline.RR_No as "Partial Receive Timeline"
+				Exception_Number
+				Source_Module
+				SKU_Receive_History
+				(
+					field = SKU_Receive_History.Item + " " + SKU_Receive_History.Books_Receive_No + " " + SKU_Receive_History.Books_Receive_ID + " " + SKU_Receive_History.Item_QTY + " " + SKU_Receive_History.Receive_Count + " " + SKU_Receive_History.SKU + " " + SKU_Receive_History.Added_Time + " " + SKU_Receive_History.Added_User
+				)
+				Damage_Missing_Details as "Damage & Missing Details"
+				(
+					field = Damage_Missing_Details.PR_No + " " + Damage_Missing_Details.Action_Required + " " + Damage_Missing_Details.Affected_Missing_Part + " " + Damage_Missing_Details.Damage_Missing_Category + " " + Damage_Missing_Details.Description + " " + Damage_Missing_Details.Qty + " " + Damage_Missing_Details.Root_Cause_Category + " " + Damage_Missing_Details.Type_field + " " + Damage_Missing_Details.SKU + " " + Damage_Missing_Details.Repairable + " " + Damage_Missing_Details.Quantity_of_damage_spare_s + " " + Damage_Missing_Details.Spare_Part_Type + " " + Damage_Missing_Details.Spare_Part_Type_Other
+				)
+				Create_Exception_Requested as "Create Exception Requested"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+				Forecast_Delivery as "Forecast Delivery"
+			)
+		

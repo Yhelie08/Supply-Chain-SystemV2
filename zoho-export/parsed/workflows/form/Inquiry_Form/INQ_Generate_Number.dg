@@ -1,0 +1,28 @@
+// form: INQ_Generate_Number  form=Inquiry_Form event=on add on success  [.ds line 44767]
+    seqVal = input.INQ_Seq;
+paddedSeq = "";
+if(seqVal < 10)
+{
+    paddedSeq = "0000" + seqVal;
+}
+else if(seqVal < 100)
+{
+    paddedSeq = "000" + seqVal;
+}
+else if(seqVal < 1000)
+{
+    paddedSeq = "00" + seqVal;
+}
+else if(seqVal < 10000)
+{
+    paddedSeq = "0" + seqVal;
+}
+else
+{
+    paddedSeq = seqVal + "";
+}
+newInqNo = "INQ-" + paddedSeq;
+update Inquiry_Form[ID == input.ID]
+[
+    INQ_No=newInqNo
+];

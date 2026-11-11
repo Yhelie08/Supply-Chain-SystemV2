@@ -1,0 +1,669 @@
+[
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "acknowledgePOFenteng",
+    "params": "String poNoSupplier1, String etd, String eta",
+    "line": 22334,
+    "endLine": 22647,
+    "file": "functions/acknowledgePOFenteng.dg",
+    "formsUsed": [
+      "Fenteng_Lighting_Purchase_Order",
+      "Purchase_Order",
+      "Purchase_Request1",
+      "Receiving",
+      "Shipments"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "acknowledgePOTony",
+    "params": "String poNoSupplier2, String etd, String eta",
+    "line": 22649,
+    "endLine": 22951,
+    "file": "functions/acknowledgePOTony.dg",
+    "formsUsed": [
+      "Purchase_Order",
+      "Purchase_Request1",
+      "Receiving",
+      "Shipments",
+      "Tony_Fan_Purchase_Order"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "addCustomerByIdBooks",
+    "params": "String customerBooksId",
+    "line": 22953,
+    "endLine": 23110,
+    "file": "functions/addCustomerByIdBooks.dg",
+    "formsUsed": [
+      "Customer"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "addDmsScheduleRequestMessage",
+    "params": "String cmsRecordId, String senderEmail, String senderName, String message, String sentOn",
+    "line": 23112,
+    "endLine": 23139,
+    "file": "functions/addDmsScheduleRequestMessage.dg",
+    "formsUsed": [
+      "DMS_Schedule_Request",
+      "DMS_Schedule_Request_Messages"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "addItemByIdBooks",
+    "params": "String itemBooksId",
+    "line": 23141,
+    "endLine": 23476,
+    "file": "functions/addItemByIdBooks.dg",
+    "formsUsed": [
+      "Items"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "approvePOFenteng",
+    "params": "String soNo",
+    "line": 23478,
+    "endLine": 24071,
+    "file": "functions/approvePOFenteng.dg",
+    "formsUsed": [
+      "Fenteng_Lighting_Purchase_Order",
+      "Fenteng_Shipment",
+      "Items",
+      "Purchase_Order",
+      "Purchase_Request1",
+      "Receiving",
+      "Shipments"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "approvePOHC",
+    "params": "String soNo",
+    "line": 24073,
+    "endLine": 24362,
+    "file": "functions/approvePOHC.dg",
+    "formsUsed": [
+      "Purchase_Order",
+      "Purchase_Request1",
+      "Receiving",
+      "Shipments"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "approvePOMain",
+    "params": "String soNo",
+    "line": 24364,
+    "endLine": 24650,
+    "file": "functions/approvePOMain.dg",
+    "formsUsed": [
+      "Purchase_Order",
+      "Purchase_Request1",
+      "Sales_Order",
+      "Suppliers"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "approvePOTony",
+    "params": "String soNo",
+    "line": 24652,
+    "endLine": 25239,
+    "file": "functions/approvePOTony.dg",
+    "formsUsed": [
+      "Items",
+      "Purchase_Order",
+      "Purchase_Request1",
+      "Receiving",
+      "Shipments",
+      "Tony_Fan_Purchase_Order",
+      "Tony_Shipment"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "approveRRFenteng",
+    "params": "String rrRecordId, String expectedShipDate, String eta",
+    "line": 25241,
+    "endLine": 25280,
+    "file": "functions/approveRRFenteng.dg",
+    "formsUsed": [
+      "Fenteng_Lighting_Replacement_Request",
+      "Replacement_Request"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "approveRRTony",
+    "params": "String rrRecordId, String expectedShipDate, String eta",
+    "line": 25282,
+    "endLine": 25321,
+    "file": "functions/approveRRTony.dg",
+    "formsUsed": [
+      "Replacement_Request",
+      "Tony_Fan_Replacement_Request"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "string",
+    "name": "Approve_Multiple_PRs",
+    "params": "Purchase_Request1 selectedPRs",
+    "line": 25323,
+    "endLine": 25466,
+    "file": "functions/Approve_Multiple_PRs.dg",
+    "formsUsed": [
+      "Customer",
+      "Items",
+      "Purchase_Order",
+      "Sales_Order",
+      "Suppliers"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "checkPaymentStatus",
+    "params": "String recordId",
+    "line": 25468,
+    "endLine": 25572,
+    "file": "functions/checkPaymentStatus.dg",
+    "formsUsed": [
+      "Sales_Order_Readiness_Gate"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "cloneShipmentForReplacement",
+    "params": "String rrRecordId",
+    "line": 25574,
+    "endLine": 26006,
+    "file": "functions/cloneShipmentForReplacement.dg",
+    "formsUsed": [
+      "Exception_Control1",
+      "Exceptions",
+      "Fenteng_Lighting_Replacement_Request",
+      "Fenteng_Shipment",
+      "Pre_Order_FF",
+      "Purchase_Order",
+      "Purchase_Request1",
+      "Receiving",
+      "Replacement_Request",
+      "Sales_Order_Fulfillment",
+      "Shipments",
+      "Tony_Fan_Replacement_Request",
+      "Tony_Shipment"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "confirmDmsScheduleRequest",
+    "params": "String dmsRecordId",
+    "line": 26008,
+    "endLine": 26177,
+    "file": "functions/confirmDmsScheduleRequest.dg",
+    "formsUsed": [
+      "DMS_Schedule_Request"
+    ],
+    "calls": [
+      "pushDmsStatusToCms"
+    ]
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createBinReceivingWidget",
+    "params": "String receivingId",
+    "line": 26179,
+    "endLine": 28063,
+    "file": "functions/createBinReceivingWidget.dg",
+    "formsUsed": [
+      "Exception_Control1",
+      "Exceptions",
+      "Fenteng_Lighting_Purchase_Order",
+      "Fenteng_Lighting_Replacement_Request",
+      "Pre_Order_FF",
+      "Purchase_Order",
+      "Purchase_Request1",
+      "Receiving",
+      "Replacement_Request",
+      "Sales_Order_Fulfillment",
+      "Shipments",
+      "Tony_Fan_Purchase_Order",
+      "Tony_Fan_Replacement_Request"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createBooksContact",
+    "params": "String customerId, String custName, String custType, String custEmail, String custPhone, String custMobile, String companyName, String custSubType, String salutation, String firstName, String lastName, String billAddress, String billCity, String billState, String billZip, String billCountry, String billAttention, String billPhone, String billFax, String shipAddress, String shipCity, String shipState, String shipZip, String shipCountry, String shipAttention, String shipPhone, String shipFax",
+    "line": 28065,
+    "endLine": 28194,
+    "file": "functions/createBooksContact.dg",
+    "formsUsed": [
+      "Customer"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createEstimateForInquiry",
+    "params": "String inqNo",
+    "line": 28196,
+    "endLine": 28907,
+    "file": "functions/createEstimateForInquiry.dg",
+    "formsUsed": [
+      "Customer",
+      "Inquiry_Form",
+      "Items",
+      "Projects"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createExceptionControlFromComplaint",
+    "params": "String complaintNumber, String salesOrder, String customerName, String orderType, String itemsJson",
+    "line": 28909,
+    "endLine": 29020,
+    "file": "functions/createExceptionControlFromComplaint.dg",
+    "formsUsed": [
+      "Exception_Control1",
+      "ExceptionControl_Notifications"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createNewCustomerBooks",
+    "params": "String custName, String custEmail, String custPhone, String billAddress, String billCity",
+    "line": 29022,
+    "endLine": 29117,
+    "file": "functions/createNewCustomerBooks.dg",
+    "formsUsed": [
+      "Customer"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createPackageFF",
+    "params": "string recordIdsCsv, string deliveryType",
+    "line": 29119,
+    "endLine": 30310,
+    "file": "functions/createPackageFF.dg",
+    "formsUsed": [
+      "Order_Aggregation1",
+      "Pre_Order_FF",
+      "Sales_Order_Fulfillment",
+      "Sales_Order_Readiness_Gate"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createReceivingFromShipmentWidget",
+    "params": "String shipmentId",
+    "line": 30312,
+    "endLine": 30415,
+    "file": "functions/createReceivingFromShipmentWidget.dg",
+    "formsUsed": [
+      "Purchase_Request1",
+      "Receiving",
+      "Shipments"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createRRFenteng",
+    "params": "String exceptionId",
+    "line": 30417,
+    "endLine": 30667,
+    "file": "functions/createRRFenteng.dg",
+    "formsUsed": [
+      "Exceptions",
+      "Fenteng_Lighting_Purchase_Order",
+      "Fenteng_Lighting_Replacement_Request",
+      "Replacement_Request"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createRRMain",
+    "params": "String exceptionId",
+    "line": 30669,
+    "endLine": 30925,
+    "file": "functions/createRRMain.dg",
+    "formsUsed": [
+      "Exceptions",
+      "Purchase_Order",
+      "Replacement_Request"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createRRTony",
+    "params": "String exceptionId",
+    "line": 30927,
+    "endLine": 31169,
+    "file": "functions/createRRTony.dg",
+    "formsUsed": [
+      "Exceptions",
+      "Replacement_Request",
+      "Tony_Fan_Purchase_Order",
+      "Tony_Fan_Replacement_Request"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createSalesReturnBooks",
+    "params": "String recordId, String salesOrderNo, String rmaVal, String dateVal, String reasonVal, String subReasonVal, String returnedByVal, String itemsJson",
+    "line": 31171,
+    "endLine": 31432,
+    "file": "functions/createSalesReturnBooks.dg",
+    "formsUsed": [
+      "Sales_Returns_Form"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "createShipmentOrder",
+    "params": "String recordId, String packageShipmentId, String typeOfDelivery, String shipDate, String deliveryDate, String carrier, String shippingCharge, String ceilingMaterial, String ceilingHeight, String siteWiringReady, String preparedBy, String deliveryTeam",
+    "line": 31434,
+    "endLine": 31632,
+    "file": "functions/createShipmentOrder.dg",
+    "formsUsed": [
+      "Package_Shipments",
+      "Service_Appointment_Form"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "string",
+    "name": "Create_Estimate_Inq_Fn",
+    "params": "string record_id",
+    "line": 31634,
+    "endLine": 32008,
+    "file": "functions/Create_Estimate_Inq_Fn.dg",
+    "formsUsed": [
+      "Customer",
+      "Inquiry_Form",
+      "Items",
+      "Projects"
+    ],
+    "calls": [
+      "Create_Estimate_Inq_Fn"
+    ]
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "declineDmsScheduleRequest",
+    "params": "String dmsRecordId",
+    "line": 32010,
+    "endLine": 32041,
+    "file": "functions/declineDmsScheduleRequest.dg",
+    "formsUsed": [
+      "DMS_Schedule_Request"
+    ],
+    "calls": [
+      "pushDmsStatusToCms"
+    ]
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "string",
+    "name": "diagInsertThenPatch",
+    "params": "",
+    "line": 32043,
+    "endLine": 32078,
+    "file": "functions/diagInsertThenPatch.dg",
+    "formsUsed": [
+      "Service_Appointment_Form"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "dmsScheduleSlot",
+    "params": "String recordId, bool isRerun",
+    "line": 32080,
+    "endLine": 32601,
+    "file": "functions/dmsScheduleSlot.dg",
+    "formsUsed": [
+      "Daily_Team_Availability",
+      "DMS_Exception_Queue",
+      "Policy_Settings",
+      "Service_Appointment_Form"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "string",
+    "name": "fcPrToPreOrder",
+    "params": "int prId",
+    "line": 32603,
+    "endLine": 32664,
+    "file": "functions/fcPrToPreOrder.dg",
+    "formsUsed": [
+      "Pre_Order_FF",
+      "Purchase_Request1"
+    ],
+    "calls": [
+      "fcStampPurchaseRequest"
+    ]
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "string",
+    "name": "fcStampBySoNo",
+    "params": "string soNo",
+    "line": 32666,
+    "endLine": 33529,
+    "file": "functions/fcStampBySoNo.dg",
+    "formsUsed": [
+      "Crate_Checklist",
+      "Forecast_Settings",
+      "Order_Aggregation1",
+      "Pick1",
+      "Pre_Order_FF",
+      "Purchase_Request1",
+      "Checker_Checklist",
+      "Receiving",
+      "Sales_Order_Fulfillment",
+      "Sales_Order_Readiness_Gate",
+      "Shipments"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "string",
+    "name": "fcStampDelivery",
+    "params": "string soText",
+    "line": 33531,
+    "endLine": 33722,
+    "file": "functions/fcStampDelivery.dg",
+    "formsUsed": [
+      "Delivery_Scheduling",
+      "Field_Work",
+      "Sales_Order_Fulfillment",
+      "Service_Appointment_Form",
+      "Service_Request1"
+    ],
+    "calls": [
+      "fcStampBySoNo"
+    ]
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "string",
+    "name": "fcStampPurchaseRequest",
+    "params": "int prId",
+    "line": 33724,
+    "endLine": 34182,
+    "file": "functions/fcStampPurchaseRequest.dg",
+    "formsUsed": [
+      "Crate_Checklist",
+      "Forecast_Settings",
+      "Pick1",
+      "Purchase_Request1",
+      "Checker_Checklist",
+      "Sales_Order_Fulfillment",
+      "Sales_Order_Readiness_Gate",
+      "Shipments"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "getItemBinLocations",
+    "params": "String itemBooksId",
+    "line": 34184,
+    "endLine": 34335,
+    "file": "functions/getItemBinLocations.dg",
+    "formsUsed": [],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "getReceivingBinChoices",
+    "params": "String receivingId",
+    "line": 34337,
+    "endLine": 34457,
+    "file": "functions/getReceivingBinChoices.dg",
+    "formsUsed": [
+      "Items",
+      "Receiving"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "patchItemDetailsRetry",
+    "params": "String saIdStr, String itemRowsJson, String attemptsLeftStr",
+    "line": 34459,
+    "endLine": 34530,
+    "file": "functions/patchItemDetailsRetry.dg",
+    "formsUsed": [],
+    "calls": [
+      "patchItemDetailsRetry"
+    ]
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "pushDmsMessageToCms",
+    "params": "String cmsRecordId, String senderEmail, String senderName, String message, String sentOn",
+    "line": 34532,
+    "endLine": 34547,
+    "file": "functions/pushDmsMessageToCms.dg",
+    "formsUsed": [],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "pushDmsStatusToCms",
+    "params": "String cmsRecordId, String newStatus",
+    "line": 34549,
+    "endLine": 34561,
+    "file": "functions/pushDmsStatusToCms.dg",
+    "formsUsed": [],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "reScheduleDelivery",
+    "params": "String recordId",
+    "line": 34563,
+    "endLine": 34565,
+    "file": "functions/reScheduleDelivery.dg",
+    "formsUsed": [],
+    "calls": [
+      "dmsScheduleSlot"
+    ]
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "void",
+    "name": "syncWarehouseBins",
+    "params": "",
+    "line": 34567,
+    "endLine": 34706,
+    "file": "functions/syncWarehouseBins.dg",
+    "formsUsed": [
+      "Items"
+    ],
+    "calls": []
+  },
+  {
+    "namespace": "Deluge",
+    "returns": "map",
+    "name": "upsertDmsScheduleRequest",
+    "params": "String cmsRecordId, String salesOrderNumber, String customerName, String requestedDate, String requestedTime, String requestedBy, String notes, String booksSalesOrderId, String typeOfDelivery",
+    "line": 34708,
+    "endLine": 34762,
+    "file": "functions/upsertDmsScheduleRequest.dg",
+    "formsUsed": [
+      "DMS_Schedule_Request"
+    ],
+    "calls": []
+  }
+]

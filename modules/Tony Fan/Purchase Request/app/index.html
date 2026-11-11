@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tony Fan — Purchase Requests</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+    --green:#16A34A; --green-light:#DCFCE7; --green-mid:#86EFAC;
+    --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+    --red:#DC2626; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+    --purple:#7C3AED; --purple-light:#EDE9FE; --purple-mid:#C4B5FD;
+    --orange:#EA580C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0;
+    --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B;
+    --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+    --white:#FFFFFF;
+    --radius-sm:4px; --radius:8px; --radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+    --t:150ms ease;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-sm{height:32px;padding:0 13px;font-size:13px}
+  .btn-orange{background:var(--orange);color:var(--white);font-weight:600;box-shadow:0 1px 3px rgba(234,88,12,.3)}
+  .btn-orange:hover{background:#C2410C;transform:translateY(-1px);box-shadow:0 4px 12px rgba(234,88,12,.3)}
+  .btn-orange:disabled{background:var(--gray-300);color:var(--gray-500);box-shadow:none;cursor:not-allowed;transform:none}
+
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transform:translateY(6px);transition:opacity 200ms ease,transform 200ms ease;pointer-events:none;max-width:340px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  .list-page{padding:24px;display:flex;flex-direction:column;gap:20px;min-height:100vh;box-sizing:border-box}
+  .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .page-header-left h1{font-size:24px;font-weight:700;color:var(--orange);letter-spacing:-.02em;line-height:1.2}
+  .page-header-left p{font-size:13px;color:var(--gray-500);margin-top:4px}
+  .page-header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+  .supplier-pill{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 6px;border-radius:999px;background:var(--white);border:1px solid var(--gray-200);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .supplier-pill span.name{font-size:13px;font-weight:600;color:var(--gray-800)}
+  .supplier-avatar{width:26px;height:26px;border-radius:50%;background:var(--orange);color:var(--white);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+  .lang-toggle{display:flex;align-items:center;gap:4px;height:36px;padding:0 12px;border-radius:999px;background:var(--white);border:1px solid var(--gray-200);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .lang-toggle:hover{border-color:var(--gray-400)}
+  .lang-opt{opacity:.4;transition:opacity var(--t),color var(--t)}
+  .lang-opt.active{opacity:1;color:var(--orange)}
+  .lang-sep{opacity:.3;font-size:11px}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:900px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:16px 20px;box-shadow:var(--shadow)}
+  .stat-label{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em}
+  .stat-value{font-size:28px;font-weight:700;line-height:1.1;margin:6px 0 4px;color:var(--gray-800)}
+  .stat-value.gray{color:var(--gray-500)}
+  .stat-value.amber{color:var(--amber)}
+  .stat-value.green{color:var(--green)}
+  .stat-value.red{color:var(--red)}
+  .stat-sub{font-size:12px;color:var(--gray-400)}
+
+  .main-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .filter-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 14px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .pill:hover{border-color:var(--blue);color:var(--blue)}
+  .pill.active{background:var(--blue);border-color:var(--blue);color:var(--white)}
+  .search-wrap{position:relative;flex:0 1 220px;min-width:160px}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400);pointer-events:none}
+  .search-input{width:100%;height:32px;padding:0 10px 0 32px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--gray-50);color:var(--gray-700);font-family:inherit;font-size:13px;outline:none;transition:all var(--t);box-sizing:border-box}
+  .search-input::placeholder{color:var(--gray-400)}
+  .search-input:focus{border-color:var(--blue);background:var(--white)}
+
+  .table-wrap{overflow-x:auto}
+  .inq-table{width:100%;border-collapse:collapse;min-width:900px}
+  .inq-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .inq-table th{padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+  .inq-table tbody tr{border-bottom:1px solid var(--gray-100);transition:background var(--t);cursor:pointer}
+  .inq-table tbody tr:hover{background:var(--gray-50)}
+  .inq-table tbody tr:last-child{border-bottom:none}
+  .inq-table td{padding:12px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle}
+  .cell-sku{font-family:monospace;font-size:12px;color:var(--gray-500);background:var(--gray-100);padding:2px 7px;border-radius:var(--radius-sm);white-space:nowrap}
+  .cell-desc{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--gray-600)}
+  .cell-inq{font-weight:700;color:var(--orange);font-size:12.5px}
+  .empty{text-align:center;padding:48px 20px;color:var(--gray-400);font-size:13px}
+  .spin{display:inline-block;width:16px;height:16px;border:2.5px solid var(--gray-200);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .badge-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .badge-pill::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+  .status-waiting{background:var(--gray-100);color:var(--gray-500);border-color:var(--gray-300)}
+  .status-submit{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+  .status-selected{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .status-notselected{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+  .lock-ico{margin-left:6px;font-size:11px;color:var(--gray-400)}
+
+  .priority-pill{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .priority-high{background:var(--red-light);color:var(--red)}
+  .priority-medium{background:var(--amber-light);color:var(--amber)}
+  .priority-low{background:var(--gray-100);color:var(--gray-500)}
+
+  /* Row action button — color mirrors the row's own status badge. Waiting/Selected/
+     Not Selected all read gray (nothing needs your attention); Submit Response is
+     blue (you have an open response to send) — matches SupplierPortal/Fenteng-Inquiries
+     convention exactly. */
+  .btn-status-waiting{background:var(--white);border:1.5px solid var(--gray-300);color:var(--gray-600)}
+  .btn-status-waiting:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-status-submit{background:var(--blue-light);border:1.5px solid var(--blue-mid);color:var(--blue)}
+  .btn-status-submit:hover{background:var(--blue);border-color:var(--blue);color:var(--white)}
+  .btn-status-selected{background:var(--gray-100);border:1.5px solid var(--gray-300);color:var(--gray-600)}
+  .btn-status-selected:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-status-notselected{background:var(--gray-100);border:1.5px solid var(--gray-300);color:var(--gray-600)}
+  .btn-status-notselected:hover{border-color:var(--gray-400);color:var(--gray-800)}
+
+  .detail-page{display:flex;flex-direction:column;min-height:100vh;background:var(--gray-100)}
+  .detail-topbar{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .detail-topbar-title{font-size:15px;font-weight:600;color:var(--gray-800);letter-spacing:-.01em}
+
+  .detail-subheader{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .detail-subheader-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .detail-inq-no{font-size:16px;font-weight:800;color:var(--orange);letter-spacing:-.01em}
+  .detail-sku{font-size:13px;color:var(--gray-500)}
+
+  .lock-banner{display:flex;align-items:center;gap:10px;margin:12px 24px 0;padding:10px 14px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);font-size:12.5px;color:var(--gray-600)}
+
+  .detail-body{display:grid;grid-template-columns:1fr 1fr 300px;gap:16px;padding:16px 24px 28px;align-items:start}
+  @media(max-width:1200px){.detail-body{grid-template-columns:1fr 1fr}}
+  @media(max-width:900px){.detail-body{grid-template-columns:1fr}}
+
+  /* ── Conversation panel — see UI/EndUser/INQs/app/index.html's own copy of this
+     comment for the full rationale (new plain form, polling not push, etc). This side
+     only ever shows ONE thread (this supplier ↔ buyer), no tabs. ── */
+  .chat-panel{display:flex;flex-direction:column;height:560px;position:sticky;top:16px}
+  .chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--gray-50)}
+  .chat-empty{color:var(--gray-400);font-size:12.5px;text-align:center;margin-top:20px}
+  .chat-bubble{max-width:82%;padding:7px 10px;border-radius:10px;font-size:12.5px;line-height:1.4;word-break:break-word}
+  .chat-bubble .chat-meta{font-size:10.5px;font-weight:600;opacity:.7;margin-bottom:2px}
+  .chat-bubble .chat-time{font-size:9.5px;opacity:.55;margin-top:3px}
+  .chat-bubble.mine{align-self:flex-end;background:var(--orange);color:var(--white);border-bottom-right-radius:2px}
+  .chat-bubble.theirs{align-self:flex-start;background:var(--white);color:var(--gray-800);border:1px solid var(--gray-200);border-bottom-left-radius:2px}
+  .chat-inputbar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--gray-100)}
+  .chat-inputbar textarea{flex:1;resize:none;border:1px solid var(--gray-200);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;max-height:80px}
+  .chat-send-btn{align-self:flex-end}
+
+  .sec-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+  .sec-card:last-child{margin-bottom:0}
+  .sec-header{padding:12px 20px;background:var(--orange-light);border-left:4px solid var(--orange);border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .sec-header.blue{background:var(--blue-light);border-left-color:var(--blue)}
+  .sec-title{font-size:13px;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:.08em}
+  .sec-body{padding:20px}
+
+  .fg{display:grid;gap:16px 24px}
+  .fg-2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:520px){.fg-2{grid-template-columns:1fr}}
+  .fi-lbl{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+  .fi-val{font-size:14px;font-weight:600;color:var(--gray-800);line-height:1.3}
+  .fi-note{margin-top:14px;padding-top:14px;border-top:1px dashed var(--gray-200);font-size:12.5px;color:var(--gray-600);line-height:1.55}
+
+  .product-image-wrap{width:100%;height:150px;border-radius:var(--radius);background:var(--gray-50);border:1px solid var(--gray-200);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:16px}
+  .product-image-wrap img{max-width:100%;max-height:100%;object-fit:contain;display:none;cursor:zoom-in}
+  .product-image-wrap .ph{color:var(--gray-300);font-size:28px}
+  .lightbox-overlay{display:none;position:fixed;inset:0;z-index:6000;align-items:center;justify-content:center;padding:40px;background:rgba(0,0,0,.82);cursor:zoom-out}
+  .lightbox-overlay.open{display:flex}
+  .lightbox-overlay img{max-width:100%;max-height:100%;border-radius:var(--radius);box-shadow:var(--shadow-lg);cursor:default}
+  .lightbox-close{position:absolute;top:20px;right:24px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:var(--white);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background var(--t)}
+  .lightbox-close:hover{background:rgba(255,255,255,.3)}
+
+  .alert-overlay{display:none;position:fixed;inset:0;z-index:7000;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.5)}
+  .alert-overlay.open{display:flex}
+  .alert-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:380px;max-width:100%;padding:22px}
+  .alert-msg{font-size:13.5px;color:var(--gray-700);line-height:1.55;margin-bottom:18px;white-space:pre-line}
+  .alert-ok{width:100%;justify-content:center}
+
+  .prf-group{margin-bottom:16px}
+  .prf-group:last-child{margin-bottom:0}
+  .prf-label{display:block;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+  .prf-label .req{color:var(--red)}
+  .prf-input, .prf-select, .prf-textarea{width:100%;padding:8px 11px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:13.5px;color:var(--gray-800);background:var(--white);outline:none;transition:border-color var(--t);box-sizing:border-box}
+  .prf-input:focus, .prf-select:focus, .prf-textarea:focus{border-color:var(--blue)}
+  .field-error{border-color:var(--red)!important;box-shadow:0 0 0 3px var(--red-light)!important;animation:field-error-shake .35s}
+  @keyframes field-error-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+  @media (prefers-reduced-motion:reduce){.field-error{animation:none}}
+  .prf-input:disabled, .prf-select:disabled, .prf-textarea:disabled{background:var(--gray-50);color:var(--gray-400);cursor:not-allowed}
+  .prf-grid{display:grid;gap:14px}
+  .prf-2{grid-template-columns:1fr 1fr}
+  @media(max-width:520px){.prf-2{grid-template-columns:1fr}}
+  .prf-hint{font-size:11px;color:var(--gray-400);margin-top:5px}
+
+  .submit-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:16px;margin-top:4px;border-top:1px solid var(--gray-100);flex-wrap:wrap}
+  .submit-note{font-size:11.5px;color:var(--gray-400);max-width:380px}
+  .btn-submit{height:40px;padding:0 20px;font-size:14px;font-weight:700;box-shadow:0 2px 6px rgba(234,88,12,.3)}
+
+  /* ADDED 2026-09-11, per user ("paano ba pwedeng igroup yung PR para kila tony at
+     fenteng" -> grouped by the buyer-side Sales_Order, fetched quietly from
+     All_Purchase_Request and never shown as its own column — see loadPrSoMap()) —
+     new "PR Groups" tab, same 2-tab shape as the sibling buyer-side Purchase
+     Request widget's own tab-nav, translated to this file's blue palette. */
+  .tab-nav{display:flex;gap:4px;padding:0 20px;border-bottom:1.5px solid var(--gray-200);background:var(--white)}
+  .tab-btn2{display:flex;align-items:center;gap:7px;padding:14px 4px 12px;margin-right:22px;border:none;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;background:transparent;color:var(--gray-500);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:color var(--t),border-color var(--t)}
+  .tab-btn2:hover{color:var(--gray-700)}
+  .tab-btn2.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+  .pr-group-empty{padding:60px 20px;text-align:center;color:var(--gray-400);font-size:13px}
+  .pr-group-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;margin:16px 20px}
+  .pr-group-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .pr-group-card-so{font-size:14px;font-weight:700;color:var(--gray-800)}
+  .pr-group-card-meta{font-size:12px;color:var(--gray-500);margin-top:2px}
+  /* min-width added 2026-09-11, per user ("dapat nag aadapt or responsive sila")
+     — without it, a fixed-layout table's % columns just shrink to fit a narrow
+     phone screen until every cell is illegibly squished. The wrapping
+     .table-wrap already has overflow-x:auto (base rule above); a min-width here
+     is what actually makes that scroll ever kick in — matches .inq-table's own
+     min-width:900px (this same tab's Group Inquiry sibling widget). */
+  .pr-group-mini-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:900px}
+  .pr-group-mini-table th{padding:8px 14px;text-align:left;font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;background:var(--gray-50);white-space:nowrap}
+  .pr-group-mini-table td{padding:10px 14px;font-size:12.5px;color:var(--gray-700);border-top:1px solid var(--gray-100);cursor:pointer;overflow:hidden}
+  /* FIXED 2026-09-11, per user ("nakaka bunguan ito", screenshot: SKU text
+     visually overlapping the Description column text) — .cell-sku's own base
+     rule (used elsewhere in this file for short badge-style SKUs) sets
+     white-space:nowrap with no overflow/max-width limit; under this table's
+     fixed 14%-wide SKU column, a longer real SKU (this app has some genuinely
+     long ones, e.g. "HC-PEND-LWNNAA-THREE-WALNUT...") just visually spills
+     past its own <td> boundary into the next column instead of wrapping or
+     truncating, since a <td> only clips overflowing content if something
+     inside it actually establishes that — the plain td rule above already
+     helps, this makes the badge itself truncate with an ellipsis rather than
+     relying on the cell alone. */
+  .pr-group-mini-table .cell-sku{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+  .pr-group-mini-table tr:hover td{background:var(--gray-50)}
+  /* ── PR Groups row (added 2026-09-11, "Pati yung PR?") — thumbnail + inline
+     Availability/Lead Time/Initial Price edit inputs, same shape as the
+     sibling Inquiries widget's own Group Inquiry rework. ── */
+  /* FIXED 2026-09-11, 2nd attempt — first pass (plain width/height:100%
+     !important on the <img>) did NOT fix it, confirmed live via a follow-up
+     screenshot still showing multi-row-tall stretched thumbnails. Real cause:
+     the classic flexbox "min-size:auto" trap — a flex ITEM that's a replaced
+     element (like <img>) defaults to min-width/min-height:auto, which resolves
+     to its own INTRINSIC (natural, often large) size and can force the flex
+     CONTAINER itself to grow to fit it, even though the container has a fixed
+     width/height set — overflow:hidden on the container can't clip anything
+     once the container's own box has already grown. min-width/min-height:0
+     !important on the <img> overrides that default, letting it actually shrink
+     to the container's real 32px box; min-width/max-width/min-height/max-height
+     (not just width/height, which flex-basis calculations can still override)
+     on .grp-thumb itself locks the container down completely regardless. */
+  .grp-thumb{width:32px;height:32px;min-width:32px;max-width:32px;min-height:32px;max-height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:var(--blue-light);color:var(--blue)}
+  .grp-thumb img{width:100% !important;height:100% !important;min-width:0 !important;min-height:0 !important;max-width:100% !important;max-height:100% !important;object-fit:cover !important;display:block !important;cursor:zoom-in}
+  .grp-input{width:100%;max-width:110px;height:30px;padding:0 8px;border:1.5px solid var(--blue-mid);border-radius:6px;font-family:inherit;font-size:12.5px;outline:none;background:var(--white)}
+  .grp-input:focus{border-color:var(--blue)}
+  select.grp-input{max-width:130px}
+</style>
+<script>
+/* ════════════════════════════════
+   PR ON HOLD — PR On Hold plan, Phase 3 (ADDED 2026-10-01)
+   A PR can be put On Hold / Cancelled in the Purchase Request widget
+   (Purchase_Request1.Hold_Status). Every line in this widget carries its PR No,
+   so this looks up the held PRs and lets the widget badge and lock just that
+   line. Read-only here: Hold / Resume / Cancel / Restore live only in the
+   Purchase Request widget.
+════════════════════════════════ */
+var PRHold = (function(){
+  var map = {}, busy = false, waiters = [];
+  function v(x){
+    if(x===null||x===undefined) return '';
+    if(typeof x==='object') return x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'';
+    return String(x);
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function zh(){ try{ return typeof LANG!=='undefined' && LANG==='zh'; }catch(e){ return false; } }
+  function key(prNo){ return String(prNo===null||prNo===undefined ? '' : prNo).trim(); }
+  /* Re-fetches every call (cheap: only held PRs match), so a Resume/Restore shows up
+     on the next list load. A failed fetch keeps the last known map. */
+  function load(cb){
+    if(cb) waiters.push(cb);
+    if(busy) return;
+    busy = true;
+    function done(next){
+      if(next) map = next;
+      busy = false;
+      var w = waiters; waiters = [];
+      w.forEach(function(f){ try{ f(); }catch(e){ console.warn('[PRHold] callback error', e); } });
+    }
+    if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function'){ done(null); return; }
+    ZOHO.CREATOR.DATA.getRecords({ report_name:'All_Purchase_Request', criteria:'(Hold_Status == "On Hold" || Hold_Status == "Cancelled")', field_config:'all', max_records:200 })
+      .then(function(resp){
+        var next = {};
+        if(resp && resp.code===3000 && Array.isArray(resp.data)){
+          resp.data.forEach(function(r){
+            var pr = key(v(r.PR_No)), st = v(r.Hold_Status);
+            if(pr && (st==='On Hold' || st==='Cancelled')) next[pr] = { state:st, reason:v(r.Hold_Reason), date:v(r.Hold_Date) };
+          });
+        }
+        done(next);
+      })
+      .catch(function(err){
+        /* 9220 = no PR is held right now, which is a real (empty) answer. */
+        var empty = false;
+        try{
+          var txt = err && (err.responseText || (err.content && err.content.responseText));
+          var p = txt ? JSON.parse(txt) : err;
+          if(p && String(p.code)==='9220') empty = true;
+        }catch(e){}
+        if(!empty) console.warn('[PRHold] could not load held PRs:', err);
+        done(empty ? {} : null);
+      });
+  }
+  function state(prNo){ var m = map[key(prNo)]; return m ? m.state : ''; }
+  function locked(prNo){ return !!state(prNo); }
+  function label(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消' : 'CANCELLED';
+    return zh() ? '暂停' : 'ON HOLD';
+  }
+  function text(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消 — 客户已取消此产品，请勿继续。' : 'CANCELLED — the client cancelled this item. Do not proceed.';
+    return zh() ? '暂停 — 客户已暂停此产品，请勿继续。' : 'ON HOLD — the client paused this item. Do not proceed.';
+  }
+  function badge(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    var m = map[key(prNo)];
+    var c = s==='Cancelled' ? 'background:#FEE2E2;color:#DC2626;border:1px solid #FCA5A5' : 'background:#FEF3C7;color:#92400E;border:1px solid #FCD34D';
+    var tip = text(prNo) + (m.date ? ' (' + m.date + ')' : '');
+    return ' <span class="pr-hold-badge" title="'+esc(tip)+'" style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;'+c+'">'+label(prNo)+'</span>';
+  }
+  /* Which of these PR numbers are held (for PO / shipment level summaries). */
+  function heldOf(prNos){ return (prNos||[]).filter(function(p){ return locked(p); }); }
+  return { load:load, state:state, locked:locked, label:label, text:text, badge:badge, heldOf:heldOf };
+})();
+</script>
+</head>
+<body>
+
+<!-- ══ LIST VIEW ══ -->
+<div id="view-list" class="list-page">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 data-i18n="appTitle">Supplier Portal</h1>
+      <p data-i18n="pageSubtitle">Purchase requests assigned to you — submit pricing, availability and lead time.</p>
+    </div>
+    <div class="page-header-right">
+      <button class="lang-toggle" id="langToggleBtn" onclick="toggleLang()" title="Switch language / 切换语言">
+        <span class="lang-opt" id="langOptEn">EN</span><span class="lang-sep">/</span><span class="lang-opt" id="langOptZh">中</span>
+      </button>
+      <div class="supplier-pill">
+        <span class="supplier-avatar" id="avatarMark">T</span>
+        <span class="name" id="supplierNameLabel">Tony Fan</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-cards" id="statStrip"></div>
+
+  <div class="tab-nav">
+    <button class="tab-btn2 active" data-maintab="all" onclick="switchMainTab('all')" data-i18n="tabAllPrs">All PRs</button>
+    <button class="tab-btn2" data-maintab="prgroups" onclick="switchMainTab('prgroups')" data-i18n="tabPrGroups">PR Groups</button>
+  </div>
+
+  <div id="panel-main-all">
+  <div class="main-card">
+    <div class="filter-row">
+      <div class="filter-pills" id="filterPills">
+        <div class="pill active" data-filter="all" onclick="setFilter('all')" data-i18n="filterAll">All</div>
+        <div class="pill" data-filter="Waiting" onclick="setFilter('Waiting')" data-i18n="filterWaiting">Waiting</div>
+        <div class="pill" data-filter="Submit Response" onclick="setFilter('Submit Response')" data-i18n="filterSubmit">Submit Response</div>
+        <div class="pill" data-filter="Selected" onclick="setFilter('Selected')" data-i18n="filterSelected">Selected</div>
+      </div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" class="search-input" id="searchBox" placeholder="Search Item, SKU or PR No..." data-i18n-placeholder="searchPlaceholder" oninput="renderList()">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="inq-table">
+        <thead>
+          <tr><th data-i18n="thPrNo">PR No</th><th data-i18n="thItemName">Item Name</th><th data-i18n="thSku">SKU</th><th data-i18n="thDescription">Description</th><th data-i18n="thQty">Qty</th><th data-i18n="thTargetDelivery">Target Delivery</th><th data-i18n="thPriority">Priority</th><th data-i18n="thStatus">Status</th><th></th></tr>
+        </thead>
+        <tbody id="listBody"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray-400)"><span class="spin"></span><span data-i18n="loadingList">Loading from Zoho Creator...</span></td></tr></tbody>
+      </table>
+      <div class="empty" id="emptyState" style="display:none;" data-i18n="emptyList">No purchase requests match this view.</div>
+    </div>
+  </div>
+  </div>
+
+  <!-- ADDED 2026-09-11 — "PR Groups": same ALL_ROWS data as the All PRs panel above,
+       clustered by the buyer-side Sales Order (see loadPrSoMap()). A PR with no
+       resolvable SO (no match found in All_Purchase_Request) shows as its own
+       standalone single-row card instead of being force-grouped with anything. -->
+  <div id="panel-main-prgroups" style="display:none">
+    <div class="main-card">
+      <div class="filter-row">
+        <div style="font-size:13px;color:var(--gray-500)" id="prGroupSummary" data-i18n="prGroupLoading">Loading groups…</div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" class="search-input" id="prGroupSearch" placeholder="Search SO#, PR No, SKU..." data-i18n-placeholder="prGroupSearchPlaceholder" oninput="renderPrGroupCards()">
+        </div>
+      </div>
+      <div id="prGroupCardsWrap"><div class="pr-group-empty" data-i18n="prGroupLoading">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DETAIL VIEW ══ -->
+<div id="view-detail" style="display:none">
+  <div class="detail-page">
+    <div class="detail-topbar">
+      <span class="detail-topbar-title" data-i18n="detailTitle">Purchase Request Response</span>
+      <button class="btn btn-ghost btn-sm" onclick="showList()" data-i18n="backToQueue">&#8592; Back to queue</button>
+    </div>
+    <div class="detail-subheader">
+      <div class="detail-subheader-left">
+        <span class="detail-inq-no" id="d-prno"></span>
+        <span class="detail-sku" id="d-sku"></span>
+      </div>
+      <div id="d-statstamp"></div>
+    </div>
+
+    <div id="lockBanner" class="lock-banner" style="display:none;"></div>
+
+    <div class="detail-body">
+      <!-- Buyer spec -->
+      <div class="sec-card">
+        <div class="sec-header"><span class="sec-title" data-i18n="secPrDetails">PR Details</span></div>
+        <div class="sec-body">
+          <div class="product-image-wrap" id="s-imgwrap"><span class="ph">&#128247;</span><img id="s-productimage" alt="Product" onclick="if(this.src) openLightbox(this.src)"></div>
+          <div class="fg fg-2">
+            <div><div class="fi-lbl" data-i18n="fiItemName">Item Name</div><div class="fi-val" id="s-itemname"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiSku">SKU</div><div class="fi-val" id="s-sku"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiQuantity">Quantity</div><div class="fi-val" id="s-qty"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiUnit">Unit</div><div class="fi-val" id="s-unit"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiCategory">Category</div><div class="fi-val" id="s-category"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiTargetDelivery">Target Delivery</div><div class="fi-val" id="s-date"></div></div>
+            <div><div class="fi-lbl" data-i18n="fiPriority">Priority</div><div class="fi-val" id="s-priority"></div></div>
+            <div style="grid-column:1/-1"><div class="fi-lbl" data-i18n="fiDescription">Description</div><div class="fi-val" id="s-desc" style="font-weight:500"></div></div>
+            <!-- Item specifications. Hidden entirely when the PR carries none, so older PRs
+                 and PRs raised without an Inquiry do not show six empty rows. -->
+            <div style="grid-column:1/-1;display:none" id="s-specswrap">
+              <div class="fi-lbl" data-i18n="fiSpecifications">Specifications</div>
+              <div class="fg fg-2" id="s-specs" style="margin-top:6px"></div>
+            </div>
+          </div>
+          <div class="fi-note" id="s-note" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Supplier response -->
+      <div class="sec-card">
+        <div class="sec-header blue"><span class="sec-title" data-i18n="secYourResponse">Your Response</span></div>
+        <div class="sec-body">
+          <div class="prf-grid prf-2">
+            <div class="prf-group">
+              <label class="prf-label"><span data-i18n="labelAvailability">Availability</span> <span class="req">*</span></label>
+              <select id="r-avail" class="prf-select" onchange="onAvailChange()">
+                <option value="" data-i18n="optSelect">-Select-</option>
+                <option value="Confirmed" data-i18n="optConfirmed">Confirmed</option>
+                <option value="Pending" data-i18n="optPending">Pending</option>
+                <option value="Unavailable" data-i18n="optUnavailable">Unavailable</option>
+                <option value="Cannot Produce" data-i18n="optCannotProduce">Cannot Produce</option>
+              </select>
+            </div>
+            <div class="prf-group">
+              <label class="prf-label"><span data-i18n="labelLeadTime">Lead Time (days)</span> <span class="req" id="lt-req">*</span></label>
+              <input type="text" id="r-lead" class="prf-input" placeholder="e.g. 14 days" data-i18n-placeholder="leadPlaceholder">
+            </div>
+          </div>
+          <div class="prf-grid prf-2">
+            <div class="prf-group">
+              <label class="prf-label"><span data-i18n="labelInitialPrice">Initial Price</span> <span class="req" id="ip-req">*</span></label>
+              <input type="number" id="r-initial" class="prf-input" min="0" placeholder="0.00">
+            </div>
+            <div class="prf-group">
+              <label class="prf-label" data-i18n="labelNegotiatedPrice">Negotiated Price</label>
+              <input type="number" id="r-negotiated" class="prf-input" min="0" placeholder="0.00">
+            </div>
+          </div>
+          <div class="prf-group">
+            <label class="prf-label" data-i18n="labelFinalPrice">Final Price</label>
+            <input type="number" id="r-final" class="prf-input" min="0" placeholder="0.00" readonly>
+            <div class="prf-hint" id="fp-hint" data-i18n="fpHint">Auto-calculated — Negotiated Price if entered, otherwise Initial Price. This is the price the buyer sees when comparing suppliers.</div>
+          </div>
+
+          <div class="submit-row">
+            <div class="submit-note" id="submitNote"><span data-i18n="submitNote">Fields marked</span> <span class="req">*</span> <span data-i18n="submitNoteSuffix">are required before you can submit.</span></div>
+            <button class="btn btn-orange btn-submit" id="submitBtn" onclick="submitResponse()" data-i18n="submitBtn">Submit Response</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-card chat-panel">
+        <div class="sec-header"><span class="sec-title" data-i18n="secConversation">Conversation</span></div>
+        <div class="chat-msgs" id="chatMsgs"></div>
+        <div class="chat-inputbar">
+          <textarea id="chatInput" rows="1" placeholder="Message the buyer..." data-i18n-placeholder="chatPlaceholder"></textarea>
+          <button class="btn btn-orange btn-sm chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()" data-i18n="chatSendBtn">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="lightboxOverlay" class="lightbox-overlay" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()" title="Close">&#10005;</button>
+  <img id="lightboxImg" src="" onclick="event.stopPropagation()" />
+</div>
+
+<div id="alertOverlay" class="alert-overlay">
+  <div class="alert-box">
+    <div class="alert-msg" id="alertMsg"></div>
+    <button class="btn btn-orange alert-ok" id="alertOkBtn" data-i18n="alertOkBtn">OK</button>
+  </div>
+</div>
+
+<!-- ADDED 2026-08-10 — Yes/Cancel confirm, same look as alertOverlay/alert-box
+     above (reused classes, just 2 buttons instead of 1). Used for the
+     Cannot Produce/Unavailable decline confirmation. -->
+<div id="confirmOverlay" class="alert-overlay">
+  <div class="alert-box">
+    <div class="alert-msg" id="confirmMsg"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" id="confirmCancelBtn" style="flex:1;justify-content:center" data-i18n="confirmCancelBtn">Cancel</button>
+      <button class="btn btn-orange" id="confirmYesBtn" style="flex:1;justify-content:center" data-i18n="confirmYesBtn">Yes</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* ════════════════════════════════
+   CREATOR CONFIG — the only block that differs between the Fenteng and
+   Tony copies of this widget. Keep everything below identical across both.
+   Mirrors UI/SupplierPortal/Fenteng-Inquiries/app/index.html's structure —
+   see that file + CLAUDE.md's "Purchase Request System" section for the native
+   workflow behavior this widget replicates (purchase_request_scripts1.txt +
+   PR1_Created_Edited_Routing.txt).
+════════════════════════════════ */
+const REPORT_NAME = 'Tony_Fan_Purchase_Request_Report';
+const PRODUCT_IMAGE_FIELD = 'Product_Image_Supplier2_PR';
+const SUPPLIER_LABEL = 'Tony Fan';
+const SUPPLIER_INITIAL = 'T';
+/* Matches Purchase_Request1's own Supplier_Selected.Suppliers value ("Tony") —
+   must be re-sent on every submit since the write is a full subform-row replace
+   (see submitResponse) — omitting it wipes Suppliers_Supplier2 blank. */
+const SUPPLIER_MATCH_NAME = 'Tony';
+/* Subform + field link names — differ between Fenteng (_Supplier1) and Tony (_Supplier2) */
+const SUBFORM_NAME = 'Supplier_Selected_Supplier2';
+const F = {
+  prNo: 'PR_No_Supplier2', sku: 'sku_Supplier2', desc1: 'Description1_Supplier2',
+  desc: 'description_Supplier2', unit: 'unit_Supplier2', qty: 'quantity_Supplier2',
+  category: 'category_Supplier2', date: 'Target_Delivery_Supplier2', priority: 'Priority_PR_Supplier2',
+  srpRate: 'SRP_Rate_PR_Supplier2', inqRef: 'inquiry_reference_Supplier2',
+  suppliers: 'Suppliers_Supplier2', avail: 'Availability_Supplier2', initial: 'Initial_Price_Supplier2',
+  negotiated: 'Negotiated_Supplier2', final: 'Final_Price_Supplier2', lead: 'Lead_Time_Supplier2',
+  status: 'Status_Supplier2', selected: 'Selected_Supplier2',
+  /* Item specifications, written by so_to_pr.txt from the matched Inquiry (2026-10-19).
+     Optional on the Inquiry, so any of them can legitimately arrive blank. */
+  dimension: 'Dimension_Supplier',
+  colorBody: 'Color_Body_Supplier',
+  colorTemp: 'Color_Temperature_Supplier',
+  bulbType: 'Type_of_Bulb_Supplier',
+  voltage: 'Voltage_Supplier',
+  lumens: 'Lumens_Supplier',
+};
+let REAL_APP_NAME = 'supply-chain-app';
+let ACCOUNT_OWNER = 'homecartel';
+const CHAT_REPORT = 'All_PR_Messages'; /* form 'PR_Messages' — see startChatPolling() NOTES */
+
+document.getElementById('supplierNameLabel').textContent = SUPPLIER_LABEL;
+document.getElementById('avatarMark').textContent = SUPPLIER_INITIAL;
+
+/* ════════════════════════════════
+   STATE
+════════════════════════════════ */
+const $ = id => document.getElementById(id);
+let ALL_ROWS = [];
+let currentFilter = 'all';
+let currentId = null;
+let _currentRaw = null;
+/* Set in renderDetailFull — whether this PR was routed from a real Inquiry
+   (inquiry_reference_Supplier2 has a value). Added 2026-07-14, per user: a
+   PR-sourced-from-Inquiry means the supplier already answered via the Inquiry flow,
+   so the PR-level quote flow should be locked to view-only entirely. */
+let _hasInqRef = false;
+
+/* ════════════════════════════════
+   LANGUAGE TOGGLE (EN / 中文) — shared localStorage key across every supplier
+   widget so a supplier's language choice persists as they move between
+   Inquiry/PO/PR/RR/Shipment (same key `supplierPortalLang` used by every one of
+   them, e.g. Tony-PO/Fenteng-PO's own copy of this exact block — DO NOT rename).
+   Static labels use [data-i18n]/[data-i18n-placeholder] attributes applied by
+   applyStaticI18n(); JS-generated strings (list rows, badges, toasts, banners)
+   call t('key') directly and get refreshed by refreshDynamicUI(). The
+   Availability <select>'s <option> tags carry explicit value="..." (the raw
+   English business value Deluge/Creator actually stores/compares — see
+   Mandatory_PR_Fields_Supplier1/2, onAvailChange, submitResponse) with
+   data-i18n only on the visible label text, so toggling language never changes
+   what gets saved. STATUS_META/priorityHtml similarly classify on the raw
+   status/priority value and only translate the on-screen label.
+════════════════════════════════ */
+const I18N = {
+  en: {
+    appTitle:'Supplier Portal', pageSubtitle:'Purchase requests assigned to you — submit pricing, availability and lead time.',
+    filterAll:'All', filterWaiting:'Waiting', filterSubmit:'Submit Response', filterSelected:'Selected',
+    searchPlaceholder:'Search Item, SKU or PR No...',
+    thPrNo:'PR No', thItemName:'Item Name', thSku:'SKU', thDescription:'Description', thQty:'Qty',
+    thTargetDelivery:'Target Delivery', thPriority:'Priority', thStatus:'Status',
+    loadingList:'Loading from Zoho Creator...', emptyList:'No purchase requests match this view.',
+    detailTitle:'Purchase Request Response', backToQueue:'← Back to queue',
+    secPrDetails:'PR Details', secYourResponse:'Your Response', secConversation:'Conversation',
+    fiItemName:'Item Name', fiSku:'SKU', fiQuantity:'Quantity', fiUnit:'Unit', fiCategory:'Category',
+    fiTargetDelivery:'Target Delivery', fiPriority:'Priority', fiDescription:'Description', fiSpecifications:'Specifications',
+    labelAvailability:'Availability', optSelect:'-Select-', optConfirmed:'Confirmed', optPending:'Pending',
+    optUnavailable:'Unavailable', optCannotProduce:'Cannot Produce',
+    labelLeadTime:'Lead Time (days)', leadPlaceholder:'e.g. 14 days',
+    labelInitialPrice:'Initial Price', labelNegotiatedPrice:'Negotiated Price', labelFinalPrice:'Final Price',
+    fpHint:'Auto-calculated — Negotiated Price if entered, otherwise Initial Price. This is the price the buyer sees when comparing suppliers.',
+    submitNote:'Fields marked', submitNoteSuffix:'are required before you can submit.',
+    submitBtn:'Submit Response', chatPlaceholder:'Message the buyer...', chatSendBtn:'Send',
+    alertOkBtn:'OK', confirmCancelBtn:'Cancel', confirmYesBtn:'Yes',
+    respondBtn:'Respond', viewBtn:'View', lockedTitle:'Locked',
+    statWaitingSub:'Not yet responded', statSubmitSub:'In progress', statSelectedSub:'Awaiting PO',
+    statusWaiting:'Waiting', statusSubmit:'Submit Response', statusSelected:'Selected', statusNotSelected:'Not Selected',
+    priorityHigh:'HIGH', priorityMedium:'MEDIUM', priorityLow:'LOW',
+    recordNotFound:'Record not found',
+    chatTypeMessageFirst:'Type a message first',
+    chatApiUnavailable:'Creator API not available — widget must be uploaded to Creator.',
+    chatSendFailedCode:'Could not send message — code {code}', chatSendError:'Error sending message — see console',
+    chatNoMessages:'No messages yet — start the conversation.', chatBuyerFallback:'Buyer',
+    bannerInqRef:"This PR came from an Inquiry — the supplier's response was already submitted there. View only.",
+    bannerLockedNotSelected:'Buyer selected another supplier for this line — response is locked.',
+    bannerLockedWaiting:"Waiting for the buyer's Purchase Request to allow a new response.",
+    bannerLockedGeneric:'This record is locked.',
+    bannerSelected:"You're the selected supplier for this line.",
+    validAvailRequired:'Availability is required.',
+    validEditingLocked:'Editing is locked. Wait for Purchase Request update.',
+    validInitialRequired:'Initial Price is required.', validLeadRequired:'Lead Time is required.',
+    declineConfirmMsg:'Mark this item as "{avail}"?\n\nThe buyer will see this response, and it will be removed from your active queue.',
+    toastSubmitting:'Submitting...', toastDeclineRemoved:'Marked as declined — removed from your queue.',
+    toastSubmitted:'Response submitted.', toastSaveFailedCode:'Save failed — code {code} {message}',
+    toastDirectUpdateFailed:'Direct update failed - trying fallback...', toastSavedFallback:'Saved via fallback.',
+    toastSaveError:'Save error — see console', toastSdkUnavailable:'Creator SDK not available',
+    toastTimeout:'Creator timeout — check widget permissions', toastLoadFail:'Could not load purchase requests — see console',
+    inqRefLocked:'This PR came from an Inquiry — already answered there. View only.',
+    /* ADDED 2026-09-11, per user ("ilagay mo rin yung eng at chinese na tonggle")
+       — wires the new PR Groups tab (Image/PR#/Item Name/SKU/Description/Qty/
+       Target Date/Availability/Lead Time/Initial Price/Action columns, Total
+       PRs header, Edit/Save/Cancel buttons) into the SAME EN/中 toggle already
+       covering the rest of this widget — those columns were hardcoded English
+       when the tab was first built. Reuses existing keys where the label is
+       identical (thItemName/thSku/thDescription/thQty/labelAvailability/
+       labelLeadTime/labelInitialPrice) instead of duplicating them. */
+    tabPrGroups:'PR Groups', tabAllPrs:'All PRs', thImage:'Image', thPrHash:'PR #', thTargetDate:'Target Date', thAction:'Action',
+    editBtn:'Edit', saveBtn:'Save', cancelBtn:'Cancel', totalPrsLabel:'Total PRs: {n}',
+    groupsSummary:'{groups} groups · {prs} PRs total',
+    prGroupSearchPlaceholder:'Search SO#, PR No, SKU...', prGroupLoading:'Loading…',
+    prGroupNoneFound:'No purchase requests found.', savedMsg:'Saved.', recordNotFoundMsg:'Record not found.',
+    notConnectedMsg:'Not connected to Zoho Creator.', saveFailedGeneric:'Save failed — see console'
+  },
+  zh: {
+    appTitle:'供应商门户', pageSubtitle:'分配给您的采购申请 — 请提交报价、供货情况和交货周期。',
+    filterAll:'全部', filterWaiting:'待处理', filterSubmit:'提交回复', filterSelected:'已选中',
+    searchPlaceholder:'搜索产品、SKU 或采购申请编号…',
+    thPrNo:'采购申请编号', thItemName:'产品名称', thSku:'SKU', thDescription:'描述', thQty:'数量',
+    thTargetDelivery:'目标交货日期', thPriority:'优先级', thStatus:'状态',
+    loadingList:'正在从 Zoho Creator 加载…', emptyList:'没有符合此视图的采购申请。',
+    detailTitle:'采购申请回复', backToQueue:'← 返回列表',
+    secPrDetails:'采购申请详情', secYourResponse:'您的回复', secConversation:'对话',
+    fiItemName:'产品名称', fiSku:'SKU', fiQuantity:'数量', fiUnit:'单位', fiCategory:'类别',
+    fiTargetDelivery:'目标交货日期', fiPriority:'优先级', fiDescription:'描述', fiSpecifications:'规格',
+    labelAvailability:'供货情况', optSelect:'-请选择-', optConfirmed:'已确认', optPending:'待定',
+    optUnavailable:'无货', optCannotProduce:'无法生产',
+    labelLeadTime:'交货周期（天）', leadPlaceholder:'例如：14天',
+    labelInitialPrice:'初始报价', labelNegotiatedPrice:'议定价格', labelFinalPrice:'最终价格',
+    fpHint:'自动计算 — 如已填写议定价格则使用议定价格，否则使用初始报价。买方比较供应商时看到的即为此价格。',
+    submitNote:'带', submitNoteSuffix:'号的字段为必填项，填写后方可提交。',
+    submitBtn:'提交回复', chatPlaceholder:'给买方留言…', chatSendBtn:'发送',
+    alertOkBtn:'确定', confirmCancelBtn:'取消', confirmYesBtn:'是',
+    respondBtn:'回复', viewBtn:'查看', lockedTitle:'已锁定',
+    statWaitingSub:'尚未回复', statSubmitSub:'处理中', statSelectedSub:'等待采购订单',
+    statusWaiting:'待处理', statusSubmit:'提交回复', statusSelected:'已选中', statusNotSelected:'未被选中',
+    priorityHigh:'高', priorityMedium:'中', priorityLow:'低',
+    recordNotFound:'未找到该记录',
+    chatTypeMessageFirst:'请先输入消息内容',
+    chatApiUnavailable:'Creator API 不可用 — 小组件必须先上传到 Creator。',
+    chatSendFailedCode:'发送失败 — 代码 {code}', chatSendError:'发送出错 — 请查看控制台',
+    chatNoMessages:'暂无消息 — 开始对话吧。', chatBuyerFallback:'买方',
+    bannerInqRef:'此采购申请来自询价单 — 供应商的回复已在询价单中提交，此处仅供查看。',
+    bannerLockedNotSelected:'买方已为此项目选择其他供应商 — 回复已锁定。',
+    bannerLockedWaiting:'等待买方的采购申请开放新的回复。',
+    bannerLockedGeneric:'此记录已锁定。',
+    bannerSelected:'您是此项目的中选供应商。',
+    validAvailRequired:'请填写供货情况。',
+    validEditingLocked:'编辑已锁定，请等待采购申请更新。',
+    validInitialRequired:'请填写初始报价。', validLeadRequired:'请填写交货周期。',
+    declineConfirmMsg:'将此项目标记为「{avail}」？\n\n买方将看到此回复，该项目将从您的待处理列表中移除。',
+    toastSubmitting:'提交中…', toastDeclineRemoved:'已标记为拒绝 — 已从您的列表中移除。',
+    toastSubmitted:'回复已提交。', toastSaveFailedCode:'保存失败 — 代码 {code} {message}',
+    toastDirectUpdateFailed:'直接更新失败 — 正在尝试备用方式…', toastSavedFallback:'已通过备用方式保存。',
+    toastSaveError:'保存出错 — 请查看控制台', toastSdkUnavailable:'Creator SDK 不可用',
+    toastTimeout:'Creator 超时 — 请检查小组件权限', toastLoadFail:'无法加载采购申请 — 请查看控制台',
+    inqRefLocked:'此采购申请来自询价单 — 已在询价单中回复，此处仅供查看。',
+    tabPrGroups:'采购申请分组', tabAllPrs:'全部采购申请', thImage:'图片', thPrHash:'采购申请编号', thTargetDate:'目标日期', thAction:'操作',
+    editBtn:'编辑', saveBtn:'保存', cancelBtn:'取消', totalPrsLabel:'采购申请总数：{n}',
+    groupsSummary:'{groups} 个分组 · 共 {prs} 项采购申请',
+    prGroupSearchPlaceholder:'搜索销售订单号、采购申请编号或 SKU…', prGroupLoading:'加载中…',
+    prGroupNoneFound:'未找到采购申请。', savedMsg:'已保存。', recordNotFoundMsg:'未找到该记录。',
+    notConnectedMsg:'未连接到 Zoho Creator。', saveFailedGeneric:'保存失败 — 请查看控制台'
+  }
+};
+let LANG = localStorage.getItem('supplierPortalLang') || 'en';
+function t(key, vars){
+  var s = (I18N[LANG] && I18N[LANG][key]) || (I18N.en && I18N.en[key]) || key;
+  if(vars){ Object.keys(vars).forEach(function(k){ s = s.replace('{'+k+'}', vars[k]); }); }
+  return s;
+}
+function availLabel(v){
+  var key = v==='Confirmed'?'optConfirmed': v==='Pending'?'optPending': v==='Unavailable'?'optUnavailable': v==='Cannot Produce'?'optCannotProduce': null;
+  return key ? t(key) : v;
+}
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){ el.placeholder = t(el.getAttribute('data-i18n-placeholder')); });
+  document.documentElement.lang = LANG;
+}
+function updateLangToggleUI(){
+  $('langOptEn').classList.toggle('active', LANG==='en');
+  $('langOptZh').classList.toggle('active', LANG==='zh');
+}
+function refreshDynamicUI(){
+  applyStaticI18n();
+  updateLangToggleUI();
+  if(currentId){
+    const r = ALL_ROWS.find(x=>String(x.id)===currentId);
+    if(r) renderDetailShell(r);
+    if(_currentRaw) renderDetailFull(_currentRaw);
+  } else if(CURRENT_MAIN_TAB==='prgroups'){
+    renderPrGroupCards();
+  } else {
+    renderList();
+  }
+}
+function toggleLang(){
+  LANG = (LANG==='en') ? 'zh' : 'en';
+  localStorage.setItem('supplierPortalLang', LANG);
+  refreshDynamicUI();
+}
+
+const STATUS_META = {
+  "Waiting": { cls:"waiting", key:"statusWaiting" },
+  "Submit Response": { cls:"submit", key:"statusSubmit" },
+  "Selected": { cls:"selected", key:"statusSelected" },
+  "Not Selected": { cls:"notselected", key:"statusNotSelected" }
+};
+function badgeHtml(status){
+  const m = STATUS_META[status] || STATUS_META["Waiting"];
+  return `<span class="badge-pill status-${m.cls}">${t(m.key)}</span>`;
+}
+function priorityHtml(p){
+  if(!p) return '<span style="color:var(--gray-400)">—</span>';
+  const cls = p==="HIGH" ? "priority-high" : p==="MEDIUM" ? "priority-medium" : "priority-low";
+  const key = p==="HIGH" ? "priorityHigh" : p==="MEDIUM" ? "priorityMedium" : "priorityLow";
+  return `<span class="priority-pill ${cls}">${t(key)}</span>`;
+}
+
+/* ════════════════════════════════
+   LIGHTBOX — ported from Fenteng-Inquiries (confirmed working there)
+════════════════════════════════ */
+function openLightbox(src){
+  if(!src) return;
+  $('lightboxImg').src = src;
+  $('lightboxOverlay').classList.add('open');
+}
+function closeLightbox(){
+  $('lightboxOverlay').classList.remove('open');
+  $('lightboxImg').src = '';
+}
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape' && $('lightboxOverlay').classList.contains('open')) closeLightbox();
+});
+
+/* ════════════════════════════════
+   ALERT MODAL — replaces the browser-native alert() (shows the ugly
+   "An embedded page at ...zappsusercontent.com says" wrapper) with an in-app modal
+   matching the rest of the widget's theme.
+════════════════════════════════ */
+function showAlertModal(msg){
+  $('alertMsg').textContent = msg;
+  $('alertOverlay').classList.add('open');
+}
+function closeAlertModal(){
+  $('alertOverlay').classList.remove('open');
+}
+$('alertOkBtn').addEventListener('click', closeAlertModal);
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape' && $('alertOverlay').classList.contains('open')) closeAlertModal();
+});
+
+/* ════════════════════════════════
+   CONFIRM MODAL — Yes/Cancel, Promise<boolean>. ADDED 2026-08-10 for the
+   Cannot Produce/Unavailable decline confirmation (see submitResponse()).
+════════════════════════════════ */
+let _confirmResolver = null;
+function askConfirmModal(msg){
+  return new Promise(function(resolve){
+    $('confirmMsg').textContent = msg;
+    _confirmResolver = resolve;
+    $('confirmOverlay').classList.add('open');
+  });
+}
+function closeConfirmModal(result){
+  $('confirmOverlay').classList.remove('open');
+  if(_confirmResolver){ _confirmResolver(result); _confirmResolver = null; }
+}
+$('confirmYesBtn').addEventListener('click', function(){ closeConfirmModal(true); });
+$('confirmCancelBtn').addEventListener('click', function(){ closeConfirmModal(false); });
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape' && $('confirmOverlay').classList.contains('open')) closeConfirmModal(false);
+});
+
+/* ════════════════════════════════
+   IMAGE HELPER — ported from Fenteng-Inquiries. Product_Image_Supplier1/2_PR is a
+   single Image field (NOT multi-image like the Inquiry side's field) — confirmed in
+   PR1_Created_Edited_Routing.txt ("assign itemRec.Image directly, no List() wrap").
+   Kept the array-unwrap defensively anyway since it's harmless if the value is ever
+   plain.
+════════════════════════════════ */
+function applyCreatorImage(imgEl, rawValue){
+  if(!imgEl || rawValue==null || rawValue==='') return;
+  var single = Array.isArray(rawValue) ? rawValue[0] : rawValue;
+  if(single==null || single===''){ return; }
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData){
+    ZOHO.CREATOR.UTIL.setImageData(imgEl, single, function(resp){
+      if(imgEl.src){
+        imgEl.style.display = 'block';
+        var ph = imgEl.parentElement && imgEl.parentElement.querySelector('.ph');
+        if(ph) ph.style.display = 'none';
+      }
+    });
+  }
+}
+
+/* Description text may carry the "|||NL|||" line-break token — written by so_to_pr.txt's
+   description sanitizer in place of a raw newline character (a raw newline breaks Deluge's
+   own JSON serialization for zoho.creator.v2_1.createRecord, confirmed live SO-16531
+   "JSON_PARSE_ERROR"). This supplier portal never decoded it, so it leaked onto screen as
+   literal "|||NL|||" text (confirmed live, PR-08035). */
+function stripNLToken(s){ return (s==null?'':String(s)).split('|||NL|||').join(' '); }
+/* Fills the Specifications block, or hides it when this PR has no specs at all. */
+function renderSpecs(r){
+  function e(v){ return String(v).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  var rows = [
+    ['Dimension', r.dimension],
+    ['Color Body', r.colorBody],
+    ['Color Temperature', r.colorTemp],
+    ['Type of Bulb', r.bulbType],
+    ['Voltage', r.voltage],
+    ['Lumens', r.lumens],
+  ].filter(function(x){ return !!(x[1] && String(x[1]).trim()); });
+  var wrap = document.getElementById('s-specswrap');
+  var box  = document.getElementById('s-specs');
+  if(!wrap || !box) return;
+  if(!rows.length){ wrap.style.display = 'none'; box.innerHTML = ''; return; }
+  wrap.style.display = '';
+  box.innerHTML = rows.map(function(x){
+    return '<div><div class="fi-lbl">' + x[0] + '</div><div class="fi-val">' + e(x[1]) + '</div></div>';
+  }).join('');
+}
+function nlTokenToBr(s){ return (s==null?'':String(s)).split('|||NL|||').join('<br>'); }
+
+/* YYYY-MM-DD → Oct 25, 2026 (same format as the buyer-side Purchase Request widget) */
+function fmtDateShort(v){
+  if(!v) return '—';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
+    var p = v.split('-');
+    var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return m[parseInt(p[1],10)-1]+' '+parseInt(p[2],10)+', '+p[0];
+  }
+  if(/^\d{2}-[A-Za-z]{3}-\d{4}$/.test(v)){
+    var dp = v.split('-');
+    return dp[1]+' '+parseInt(dp[0],10)+', '+dp[2];
+  }
+  return v;
+}
+
+/* ════════════════════════════════
+   MAPPING
+════════════════════════════════ */
+function mapRow(raw){
+  /* ADDED 2026-09-11, per user ("Pati yung PR?" — same Group [Inquiry-style]
+     row rework requested for Tony-Inquiries/Fenteng-Inquiries moments earlier,
+     applied here too) — Availability/Lead Time/Initial Price (plus Negotiated/
+     Final, needed to preserve on save, and Suppliers/Status/Selected, needed
+     because omitting them on a full-replace would silently wipe the buyer's
+     own Selected pick — see submitResponse()'s own comment on this exact
+     risk) all live on the Supplier_Selected_Supplier2 SUBFORM, not flat header
+     fields — confirmed by reading submitResponse() itself before assuming
+     otherwise (this app's own field maps can mislead: F's flat-looking key
+     names are just link names that happen to resolve inside the subform).
+     field_config:'all' on the list fetch already returns it, no extra fetch. */
+  const subRows = Array.isArray(raw[SUBFORM_NAME]) ? raw[SUBFORM_NAME] : [];
+  const qRow = subRows.length ? subRows[0] : {};
+  return {
+    id: raw.ID,
+    prNo: raw[F.prNo] || '',
+    /* FIXED 2026-08-17, same bug class as the Inquiry Response widget's own
+       same-day fix — Description1_Supplier2 (F.desc1) is the ITEM NAME
+       (SO_To_PR's own Description1=itemName), not a description. Using it as
+       the primary "desc" source meant the "Description" column/field usually
+       showed the item name instead of the real description (description_
+       Supplier2, F.desc) — split into its own Item Name field instead of
+       silently doubling up. */
+    items: raw[F.desc1] || '',
+    dimension: raw[F.dimension] || '',
+    colorBody: raw[F.colorBody] || '',
+    colorTemp: raw[F.colorTemp] || '',
+    bulbType: raw[F.bulbType] || '',
+    voltage: raw[F.voltage] || '',
+    lumens: raw[F.lumens] || '',
+    sku: raw[F.sku] || '',
+    desc: raw[F.desc] || '',
+    unit: raw[F.unit] || '',
+    qty: raw[F.qty] || 0,
+    date: raw[F.date] || '',
+    priority: raw[F.priority] || '',
+    status: raw['Response_Status'] || 'Waiting',
+    editCounter: parseInt(raw['edit_counter'], 10) || 0,
+    hasInqRef: !!(raw[F.inqRef] && String(raw[F.inqRef]).trim()),
+    photo: raw[PRODUCT_IMAGE_FIELD] || null,
+    avail: qRow[F.avail] || '',
+    lead: qRow[F.lead] || '',
+    initial: qRow[F.initial] || '',
+    negotiated: qRow[F.negotiated] || '',
+    final: qRow[F.final] || '',
+    subSuppliers: qRow[F.suppliers] || SUPPLIER_MATCH_NAME,
+    subStatus: qRow[F.status] || '',
+    subSelected: (qRow[F.selected]===true || qRow[F.selected]==='true')
+  };
+}
+
+/* ════════════════════════════════
+   LIST RENDER
+════════════════════════════════ */
+function renderStats(){
+  const counts = { Waiting:0, "Submit Response":0, Selected:0 };
+  ALL_ROWS.forEach(r => { if(counts[r.status]===undefined) counts[r.status]=0; counts[r.status]++; });
+  $('statStrip').innerHTML = `
+    <div class="stat-card"><div class="stat-label">${t('filterWaiting')}</div><div class="stat-value gray">${counts["Waiting"]}</div><div class="stat-sub">${t('statWaitingSub')}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('filterSubmit')}</div><div class="stat-value amber">${counts["Submit Response"]}</div><div class="stat-sub">${t('statSubmitSub')}</div></div>
+    <div class="stat-card"><div class="stat-label">${t('filterSelected')}</div><div class="stat-value green">${counts["Selected"]}</div><div class="stat-sub">${t('statSelectedSub')}</div></div>
+  `;
+}
+
+function setFilter(f){
+  currentFilter = f;
+  document.querySelectorAll('#filterPills .pill').forEach(p=>p.classList.toggle('active', p.dataset.filter===f));
+  renderList();
+}
+
+/* canRespond mirrors the native Report Action Item condition exactly
+   (purchase_request_scripts1.txt: "Response_Status != 'Not Selected' &&
+   Response_Status != 'Selected' && edit_counter == 1") — once Selected there's
+   nothing left to submit (no collateral step for PR, unlike Inquiry), so the list
+   only offers "Respond" while a response is actually open. */
+function renderList(){
+  renderStats();
+  const q = $('searchBox').value.trim().toLowerCase();
+  const filtered = ALL_ROWS.filter(r=>{
+    const matchFilter = currentFilter==="all" || r.status===currentFilter;
+    const matchSearch = !q || r.sku.toLowerCase().includes(q) || r.prNo.toLowerCase().includes(q) || r.items.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+  const body = $('listBody');
+  const empty = $('emptyState');
+  if(filtered.length===0){ body.innerHTML=""; empty.style.display="block"; return; }
+  empty.style.display = "none";
+  body.innerHTML = filtered.map(r=>{
+    const canRespond = (r.status!=="Not Selected" && r.status!=="Selected" && r.editCounter===1) && !r.hasInqRef && !PRHold.locked(r.prNo);
+    const m = STATUS_META[r.status] || STATUS_META["Waiting"];
+    return `<tr onclick="openDetail('${r.id}')">
+      <td class="cell-inq">${r.prNo}</td>
+      <td class="cell-desc">${r.items}</td>
+      <td><span class="cell-sku">${r.sku}</span></td>
+      <td class="cell-desc">${stripNLToken(r.desc)}</td>
+      <td>${r.qty}</td>
+      <td>${fmtDateShort(r.date)}</td>
+      <td>${priorityHtml(r.priority)}</td>
+      <td>${badgeHtml(r.status)}${PRHold.badge(r.prNo)}${canRespond?'':'<span class="lock-ico" title="'+t('lockedTitle')+'">&#128274;</span>'}</td>
+      <td><button class="btn btn-status-${m.cls} btn-sm" onclick="event.stopPropagation(); openDetail('${r.id}')">${canRespond?t('respondBtn'):t('viewBtn')}</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function showList(){
+  $('view-list').style.display = "flex";
+  $('view-detail').style.display = "none";
+  currentId = null;
+  _currentRaw = null;
+  stopChatPolling();
+  loadFromCreator();
+}
+
+/* ════════════════════════════════
+   CONVERSATION (PR_Messages) — per-PR buyer↔supplier chat, right rail on Detail view.
+   Single thread only (this supplier ↔ buyer) — mirrors UI/EndUser/INQs/app/index.html's
+   Inquiry-side chat feature, keyed by PR_No instead of INQ_No. See that file's own copy
+   of this comment for the full architecture rationale (new plain form not a subform,
+   polling not push, etc).
+════════════════════════════════ */
+let chatPollTimer = null;
+let chatCurrentPrNo = '';
+let chatLastSignature = '';
+function chatVal(v){ return (v==null) ? '' : String(v); }
+function chatEsc(s){ var d=document.createElement('div'); d.textContent=chatVal(s); return d.innerHTML; }
+function chatFmtDateTime(d){
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+}
+function startChatPolling(prNo){
+  stopChatPolling();
+  chatCurrentPrNo = prNo || '';
+  chatLastSignature = '';
+  $('chatInput').value = '';
+  $('chatSendBtn').disabled = true;
+  if(!chatCurrentPrNo) return;
+  loadChatMessages();
+  chatPollTimer = setInterval(loadChatMessages, 5000);
+}
+function stopChatPolling(){
+  if(chatPollTimer){ clearInterval(chatPollTimer); chatPollTimer = null; }
+}
+async function loadChatMessages(){
+  if(!chatCurrentPrNo || typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
+  try{
+    var criteria = 'PR_No=="'+chatCurrentPrNo.replace(/"/g,'\\"')+'" && Supplier=="'+SUPPLIER_MATCH_NAME+'"';
+    var resp = await ZOHO.CREATOR.DATA.getRecords({ app_name: REAL_APP_NAME, report_name: CHAT_REPORT, criteria: criteria, max_records: 500 });
+    var rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+    rows.sort(function(a,b){ return chatVal(a.Sent_On).localeCompare(chatVal(b.Sent_On)); });
+    var sig = rows.length + '|' + (rows.length ? chatVal(rows[rows.length-1].ID) : '');
+    if(sig === chatLastSignature) return;
+    chatLastSignature = sig;
+    renderChatMessages(rows);
+  } catch(err){
+    console.warn('[Chat] load failed:', err);
+    renderChatMessages([]);
+  }
+}
+function renderChatMessages(rows){
+  var box = $('chatMsgs');
+  var wasNearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 60;
+  if(!rows.length){
+    box.innerHTML = '<div class="chat-empty">' + t('chatNoMessages') + '</div>';
+    return;
+  }
+  box.innerHTML = rows.map(function(m){
+    var mine = chatVal(m.Sender_Role) === 'Supplier';
+    var name = chatEsc(chatVal(m.Sender_Name) || (mine ? SUPPLIER_LABEL : t('chatBuyerFallback')));
+    var time = chatEsc(chatVal(m.Sent_On));
+    return '<div class="chat-bubble '+(mine?'mine':'theirs')+'">'
+      + '<div class="chat-meta">'+name+'</div>'
+      + chatEsc(chatVal(m.Message))
+      + '<div class="chat-time">'+time+'</div>'
+      + '</div>';
+  }).join('');
+  if(wasNearBottom) box.scrollTop = box.scrollHeight;
+}
+async function sendChatMessage(){
+  var msg = $('chatInput').value.trim();
+  if(!msg){ showToast(t('chatTypeMessageFirst')); return; }
+  if(!chatCurrentPrNo) return;
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.addRecords!=='function'){
+    showToast(t('chatApiUnavailable'));
+    return;
+  }
+  var btn = $('chatSendBtn');
+  btn.disabled = true;
+  try{
+    var payload = {
+      PR_No: chatCurrentPrNo,
+      Supplier: SUPPLIER_MATCH_NAME,
+      Sender_Role: 'Supplier',
+      Sender_Name: SUPPLIER_LABEL,
+      Message: msg,
+      Sent_On: chatFmtDateTime(new Date())
+    };
+    var resp = await ZOHO.CREATOR.DATA.addRecords({ app_name: REAL_APP_NAME, form_name: 'PR_Messages', payload: { data: payload } });
+    if(resp && resp.code === 3000){
+      $('chatInput').value = '';
+      $('chatSendBtn').disabled = true;
+      chatLastSignature = '';
+      loadChatMessages();
+    } else {
+      showToast(t('chatSendFailedCode',{code:(resp && resp.code)}));
+    }
+  } catch(err){
+    console.error('[Chat] send failed:', err);
+    showToast(t('chatSendError'));
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('chatInput').addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChatMessage(); }
+});
+$('chatInput').addEventListener('input', function(){
+  $('chatSendBtn').disabled = !$('chatInput').value.trim();
+});
+$('chatSendBtn').disabled = true;
+
+/* ════════════════════════════════
+   DETAIL
+════════════════════════════════ */
+function openDetail(id){
+  currentId = String(id);
+  const r = ALL_ROWS.find(x=>String(x.id)===currentId);
+  if(!r){ showToast(t('recordNotFound')); return; }
+
+  $('view-list').style.display = "none";
+  $('view-detail').style.display = "block";
+  window.scrollTo(0,0);
+
+  renderDetailShell(r);
+  startChatPolling(r.prNo);
+
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.DATA && typeof ZOHO.CREATOR.DATA.getRecordById==='function'){
+    /* field_config defaults to 'detail_view' — confirmed live 2026-07-09 (Fenteng-
+       Inquiries saga) this silently omits subform + edit_counter for this kind of
+       report. 'all' pulls both quick_view + detail_view layout fields. Same reason
+       the Supplier_Selected_Supplier1/2 subform must be added to this report's own
+       "Configure Fields" panel in Creator before this call returns it at all. */
+    ZOHO.CREATOR.DATA.getRecordById({ report_name: REPORT_NAME, id: currentId, field_config: 'all' })
+      .then(function(resp){
+        if(resp && resp.code===3000 && resp.data){
+          _currentRaw = resp.data;
+          console.log('[PR Portal] FULL raw record (all keys):', JSON.stringify(resp.data));
+          renderDetailFull(resp.data);
+        } else {
+          console.warn('[PR Portal] getRecordById non-3000:', resp && resp.code);
+        }
+      })
+      .catch(function(err){ console.warn('[PR Portal] getRecordById error:', JSON.stringify(err)); });
+  }
+}
+
+function renderDetailShell(r){
+  $('d-prno').textContent = r.prNo;
+  $('d-sku').textContent = r.sku;
+  $('d-statstamp').innerHTML = badgeHtml(r.status) + PRHold.badge(r.prNo);
+  $('s-itemname').textContent = r.items;
+  $('s-sku').textContent = r.sku;
+  $('s-desc').innerHTML = nlTokenToBr(r.desc);
+  renderSpecs(r);
+  $('s-unit').textContent = r.unit;
+  $('s-qty').textContent = r.qty;
+  $('s-date').textContent = fmtDateShort(r.date);
+  $('s-priority').innerHTML = priorityHtml(r.priority);
+  $('s-category').textContent = '—';
+  $('s-note').style.display = 'none';
+  $('s-productimage').style.display = 'none';
+  applyFieldStates(r);
+}
+
+function renderDetailFull(raw){
+  const r = mapRow(raw);
+  $('d-statstamp').innerHTML = badgeHtml(r.status) + PRHold.badge(r.prNo);
+  $('s-category').textContent = raw[F.category] || '—';
+
+  const longDesc = raw[F.desc];
+  if(longDesc && longDesc !== r.desc){ $('s-note').innerHTML = nlTokenToBr(longDesc); $('s-note').style.display = 'block'; }
+
+  applyCreatorImage($('s-productimage'), raw[PRODUCT_IMAGE_FIELD]);
+
+  const subRows = Array.isArray(raw[SUBFORM_NAME]) ? raw[SUBFORM_NAME] : [];
+  const subRow = subRows.length ? subRows[0] : {};
+  console.log('[PR Portal] renderDetailFull — subform row being rendered:', JSON.stringify(subRow));
+  $('r-avail').value = subRow[F.avail] || '';
+  $('r-lead').value = subRow[F.lead] || '';
+  $('r-initial').value = subRow[F.initial] || '';
+  $('r-negotiated').value = subRow[F.negotiated] || '';
+  $('r-final').value = subRow[F.final] || '';
+
+  _hasInqRef = !!(raw[F.inqRef] && String(raw[F.inqRef]).trim());
+
+  loadItemRate(r.sku, function(){
+    onAvailChange();
+    applyFieldStates(r);
+  });
+}
+
+/* ════════════════════════════════
+   FIELD STATE — mirrors native Disable_PR_Details_Supplier1/2 exactly: quote fields
+   editable only while edit_counter==1 AND status != "Not Selected" (this includes
+   Selected — the native disable-script itself doesn't lock quote fields on Selected,
+   only the Report-Action-Item's own separate navigation gate does, replicated
+   instead in renderList's canRespond above). No collateral/completion step exists
+   for PR (confirmed: "no Completed state for PR (no collateral docs)").
+════════════════════════════════ */
+function currentPrNoForHold(){
+  var cur = ALL_ROWS.find(function(x){ return String(x.id)===String(currentId); });
+  return cur ? cur.prNo : '';
+}
+function computeFieldStates(status, editCounter){
+  /* ADDED 2026-07-14, per user: a PR routed from a real Inquiry (_hasInqRef) means the
+     supplier already answered via the Inquiry flow — the PR-level quote flow is
+     view-only entirely, regardless of edit_counter/status. */
+  /* PR On Hold (Phase 3): a held/cancelled PR is view-only for the supplier. */
+  return { quotesEditable: (editCounter===1 && status !== 'Not Selected') && !_hasInqRef && !PRHold.locked(currentPrNoForHold()) };
+}
+
+/* Cached at load time — reflects the SAVED record's status, read by
+   onPriceFieldInput so Negotiated's live enable/disable stays correct without
+   re-running the full status lookup on every keystroke. Matches Fenteng-
+   Inquiries/Tony-Inquiries. */
+let _quotesEditableCached = false;
+
+function recomputeFinalPrice(){
+  const initial = parseFloat($('r-initial').value)||0;
+  const negotiated = parseFloat($('r-negotiated').value)||0;
+  const fin = negotiated>0 ? negotiated : initial;
+  $('r-final').value = fin>0 ? fin : '';
+  return fin;
+}
+function onPriceFieldInput(){
+  recomputeFinalPrice();
+  const initialVal = parseFloat($('r-initial').value)||0;
+  const negotiatedVal = parseFloat($('r-negotiated').value)||0;
+  $('r-negotiated').disabled = !_quotesEditableCached || !(initialVal > 0);
+  $('r-initial').disabled = !_quotesEditableCached || (negotiatedVal > 0);
+}
+$('r-initial').addEventListener('input', onPriceFieldInput);
+$('r-negotiated').addEventListener('input', onPriceFieldInput);
+
+/* PRICE FLOW (2026-08-11, per user "make PR pricing same as inquiries") — mirrors
+   Fenteng-Inquiries/Tony-Inquiries's loadItemRate: if the catalog item's own Rate
+   is 0/unset in All_Items, there's no fallback reference price from the catalog
+   side — but PR keeps its own pre-existing SRP_Rate_PR_Supplier1/2 signal (the
+   SO-approved rate already stored on the PR record) as an ADDITIONAL, independent
+   way to skip Initial Price on Confirmed (checked separately in submitResponse/
+   onAvailChange via hasSRPRate). Fails closed (_itemRateIsZero defaults true) on
+   fetch error/no-match/no-SDK, same as the Inquiries widgets. */
+let _itemRateIsZero = true;
+function loadItemRate(sku, cb){
+  _itemRateIsZero = true;
+  if(!sku || typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){ cb(); return; }
+  const gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name:'All_Items', criteria:'SKU=="'+sku.replace(/"/g,'\\"')+'"', max_records:200, field_config:'all' })
+    .then(function(resp){
+      if(resp && resp.code===3000 && Array.isArray(resp.data) && resp.data.length){
+        const rate = parseFloat(resp.data[0]['Rate'])||0;
+        _itemRateIsZero = (rate === 0);
+      }
+      cb();
+    })
+    .catch(function(err){ console.warn('[PR Portal] Item rate fetch error:', JSON.stringify(err)); cb(); });
+}
+
+function applyFieldStates(r){
+  const { quotesEditable } = computeFieldStates(r.status, r.editCounter);
+  const initialVal = parseFloat($('r-initial').value)||0;
+  const negotiatedVal = parseFloat($('r-negotiated').value)||0;
+  _quotesEditableCached = quotesEditable;
+
+  $('r-avail').disabled = !quotesEditable;
+  $('r-lead').disabled = !quotesEditable;
+  /* Initial locks once Negotiated has a value — negotiation has started for real,
+     the original quote shouldn't be silently changeable anymore. Matches Fenteng-
+     Inquiries/Tony-Inquiries (2026-08-11, per user "make PR pricing same as
+     inquiries"). */
+  $('r-initial').disabled = !quotesEditable || (negotiatedVal > 0);
+  $('r-negotiated').disabled = !quotesEditable || !(initialVal > 0);
+  $('r-final').disabled = true; /* always computed, never manual entry */
+
+  $('submitBtn').disabled = !quotesEditable;
+
+  const banner = $('lockBanner');
+  if(PRHold.locked(currentPrNoForHold())){
+    banner.style.display = "flex";
+    banner.innerHTML = `&#9208;&nbsp; ${PRHold.text(currentPrNoForHold())}`;
+  } else if(_hasInqRef){
+    banner.style.display = "flex";
+    banner.innerHTML = `&#128274;&nbsp; ${t('bannerInqRef')}`;
+  } else if(!quotesEditable){
+    const reason = r.status==="Not Selected" ? t('bannerLockedNotSelected')
+      : r.editCounter!==1 ? t('bannerLockedWaiting')
+      : t('bannerLockedGeneric');
+    banner.style.display = "flex";
+    banner.innerHTML = `&#128274;&nbsp; ${reason}`;
+  } else if(r.status === "Selected"){
+    banner.style.display = "flex";
+    banner.innerHTML = t('bannerSelected');
+  } else {
+    banner.style.display = "none";
+  }
+
+  /* ADDED 2026-08-25 — re-apply onAvailChange()'s Cannot Produce/Unavailable
+     disable-lock on top of the quotesEditable-only disabling just set above.
+     renderDetailFull calls onAvailChange() BEFORE this function on initial
+     render (see loadItemRate's callback), so without this, a record already
+     saved as Cannot Produce/Unavailable would load with Lead Time/Initial
+     Price/Negotiated wrongly re-enabled by the quotesEditable-only logic
+     above, undoing onAvailChange()'s own disable. */
+  onAvailChange();
+}
+
+/* Mirrors Mandatory_PR_Fields_Supplier1/2's exemption rule: Initial Price and Lead
+   Time are skippable when Availability is "Cannot Produce"/"Unavailable" (always) or
+   "Confirmed" AND a reference price is already known — EITHER SRP_Rate_PR_Supplier1/2
+   (the SO-approved rate stored on this PR record) OR the catalog Items.Rate (fetched
+   live via loadItemRate, same as Fenteng-Inquiries/Tony-Inquiries). Final Price is
+   never manually required — always computed (see recomputeFinalPrice). CHANGED
+   2026-08-11, per user ("make PR pricing same as inquiries"): Confirmed used to
+   always skip price outright; now matches Inquiries' stricter rule (only skips if a
+   real reference rate exists), with SRP_Rate kept as PR's own extra signal on top.
+   hasSRPRate needs _currentRaw, not just the dropdown value, same as before. */
+function onAvailChange(){
+  const avail = $('r-avail').value;
+  const cannotOrUnavailable = (avail==="Cannot Produce" || avail==="Unavailable");
+  const hasSRPRate = _currentRaw && parseFloat(_currentRaw[F.srpRate]) > 0;
+  const skippable = cannotOrUnavailable || (avail==="Confirmed" && (hasSRPRate || !_itemRateIsZero));
+  $('ip-req').style.display = skippable ? 'none' : 'inline';
+  $('lt-req').style.display = (avail==="Confirmed" || cannotOrUnavailable) ? 'none' : 'inline';
+
+  /* ADDED 2026-08-25, per user request ("dapat madisabled yung mga ififill up...
+     hindi kailangan tanungin ng lead time. dapat pwede na isubmit") — Cannot
+     Produce/Unavailable already SKIPPED validation on Lead Time/Initial Price
+     (priceSkippable/leadSkippable in submitResponse below), but never actually
+     disabled those INPUTS — they stayed editable, and submitResponse would
+     silently save whatever leftover value was still sitting in them even on a
+     genuine decline (nothing to ship/price for a declined line). Recomputes
+     quotesEditable independently here (same pattern already used in
+     submitResponse) rather than trusting applyFieldStates' own copy, since
+     renderDetailFull calls onAvailChange() BEFORE applyFieldStates() on initial
+     render (loadItemRate's callback) — this must produce the correct final
+     disabled state regardless of which one runs last. */
+  const avStatus = _currentRaw ? (_currentRaw['Response_Status'] || 'Waiting') : 'Waiting';
+  const avEditCounter = _currentRaw ? (parseInt(_currentRaw['edit_counter'], 10) || 0) : 0;
+  const avQuotesEditable = computeFieldStates(avStatus, avEditCounter).quotesEditable;
+  _quotesEditableCached = avQuotesEditable;
+  const avInitialVal = parseFloat($('r-initial').value)||0;
+  const avNegotiatedVal = parseFloat($('r-negotiated').value)||0;
+  $('r-lead').disabled = !avQuotesEditable || cannotOrUnavailable;
+  $('r-initial').disabled = !avQuotesEditable || cannotOrUnavailable || (avNegotiatedVal > 0);
+  $('r-negotiated').disabled = !avQuotesEditable || cannotOrUnavailable || !(avInitialVal > 0);
+  if(cannotOrUnavailable){
+    $('r-lead').value = '';
+    $('r-initial').value = '';
+    $('r-negotiated').value = '';
+    $('r-final').value = '';
+  }
+}
+
+/* ════════════════════════════════
+   TOAST
+════════════════════════════════ */
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+/* ════════════════════════════════
+   SUBMIT
+════════════════════════════════ */
+/* ════════════════════════════════
+   FIELD-LEVEL ERROR HIGHLIGHT (2026-07-14, per user — same pattern as INQs/app/
+   index.html + Fenteng-Inquiries/Tony-Inquiries) — marks the specific offending
+   input red, shakes it, scrolls it into view, clears once the user edits it.
+════════════════════════════════ */
+function clearFieldErrors(){
+  document.querySelectorAll('.field-error').forEach(function(el){ el.classList.remove('field-error'); });
+}
+function highlightFieldError(id){
+  var el = $(id);
+  if(!el) return;
+  el.classList.add('field-error');
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  el.focus();
+  var clear = function(){ el.classList.remove('field-error'); el.removeEventListener('input', clear); el.removeEventListener('change', clear); };
+  el.addEventListener('input', clear);
+  el.addEventListener('change', clear);
+}
+
+/* ADDED 2026-08-10, per user request ("when supplier input = Unavailable or
+   Cannot Produce -> can skip pricing all. and when save -> confirmation -> yes
+   -> remove that INQ/PR in their view immediately"). Same re-entrant
+   confirm-flag pattern as Fenteng-Inquiries/Tony-Inquiries/Fenteng-PR. */
+let _declineConfirmed = false;
+function submitResponse(){
+  clearFieldErrors();
+  if(PRHold.locked(currentPrNoForHold())){ showToast(PRHold.text(currentPrNoForHold())); return; }
+  if(_hasInqRef){ showToast(t('inqRefLocked')); return; }
+  const status = _currentRaw ? (_currentRaw['Response_Status'] || 'Waiting') : 'Waiting';
+  const editCounter = _currentRaw ? (parseInt(_currentRaw['edit_counter'], 10) || 0) : 0;
+  const { quotesEditable } = computeFieldStates(status, editCounter);
+  if(!quotesEditable){ showToast(t('validEditingLocked')); return; }
+
+  const avail = $('r-avail').value;
+  const lead = $('r-lead').value.trim();
+  const initial = $('r-initial').value;
+  const negotiated = $('r-negotiated').value;
+  /* Final Price is never manually entered — recomputed here authoritatively rather
+     than trusting the (readonly, display-only) r-final input value. Matches
+     Fenteng-Inquiries/Tony-Inquiries (2026-08-11, per user "make PR pricing same
+     as inquiries"). */
+  const final = recomputeFinalPrice();
+
+  if(!avail){ showToast(t('validAvailRequired')); highlightFieldError('r-avail'); return; }
+  /* CHANGED 2026-08-10 — Unavailable was missing from both skip checks below
+     (only Cannot Produce/Confirmed skipped), same gap as onAvailChange() above. */
+  const cannotOrUnavailable = (avail==="Cannot Produce" || avail==="Unavailable");
+  /* CHANGED 2026-08-11, per user ("make PR pricing same as inquiries") — Confirmed
+     used to always skip price outright; now only skips when a real reference rate
+     exists (SRP_Rate_PR_Supplier1/2, PR's own stored SO-approved rate, OR the
+     catalog Items.Rate via loadItemRate/_itemRateIsZero) — same rule Inquiries
+     already enforces, SRP_Rate kept as PR's own extra signal on top. */
+  const hasSRPRate = _currentRaw && parseFloat(_currentRaw[F.srpRate]) > 0;
+  const priceSkippable = cannotOrUnavailable || (avail==="Confirmed" && (hasSRPRate || !_itemRateIsZero));
+  /* BUG found+fixed 2026-07-14 (same class already fixed in Fenteng-Inquiries/
+     Tony-Inquiries): `!initial` only catches an EMPTY string — typing "0" is a
+     non-empty, truthy string in JS, so it slipped through. Compare the parsed
+     NUMBER. Final no longer validated directly here — it's computed. */
+  const initialNum = parseFloat(initial)||0;
+  if(!priceSkippable && initialNum<=0){
+    showToast(t('validInitialRequired'));
+    highlightFieldError('r-initial');
+    return;
+  }
+  const leadSkippable = cannotOrUnavailable || avail==="Confirmed";
+  if(!leadSkippable && !lead){ showToast(t('validLeadRequired')); highlightFieldError('r-lead'); return; }
+
+  /* Confirm gate — only for a genuine decline (Cannot Produce/Unavailable), and
+     only once per submit attempt (the _declineConfirmed flag skips this on the
+     recursive re-call after the user clicks Yes). Cancel leaves the form as-is. */
+  if(cannotOrUnavailable && !_declineConfirmed){
+    askConfirmModal(t('declineConfirmMsg',{avail:availLabel(avail)})).then(function(confirmed){
+      if(confirmed){ _declineConfirmed = true; submitResponse(); }
+    });
+    return;
+  }
+  _declineConfirmed = false;
+
+  const subRows = (_currentRaw && Array.isArray(_currentRaw[SUBFORM_NAME])) ? _currentRaw[SUBFORM_NAME] : [];
+  const existingRow = subRows.length ? subRows[0] : null;
+  console.log('[PR Portal] existing subform row (raw, for full-replace field preservation):', JSON.stringify(existingRow));
+  /* Full-replace write (same platform limitation as Fenteng-Inquiries: targeting an
+     existing subform row by ID is an undocumented-broken REST operation, omitting the
+     ID makes Zoho do a full subform-content replace instead). Any field NOT included
+     here gets wiped blank on save — must re-send Suppliers_Supplier2 (or it silently
+     un-labels the row) AND Status_Supplier2/Selected_Supplier2 (system-managed —
+     Selected_Supplier2 in particular reflects the buyer's own pick; omitting it would
+     silently reset it to blank/false and undo their selection). Do NOT send an ID. */
+  const subRowPayload = {};
+  subRowPayload[F.suppliers] = existingRow ? (existingRow[F.suppliers] || SUPPLIER_MATCH_NAME) : SUPPLIER_MATCH_NAME;
+  subRowPayload[F.status] = existingRow ? (existingRow[F.status] || '') : '';
+  subRowPayload[F.selected] = existingRow ? (existingRow[F.selected] === true || existingRow[F.selected] === 'true') : false;
+  subRowPayload[F.avail] = avail;
+  subRowPayload[F.initial] = String(parseFloat(initial)||0);
+  subRowPayload[F.negotiated] = String(parseFloat(negotiated)||0);
+  subRowPayload[F.final] = String(parseFloat(final)||0);
+  subRowPayload[F.lead] = lead;
+
+  const payload = {};
+  payload[SUBFORM_NAME] = [subRowPayload];
+
+  const btn = $('submitBtn');
+  btn.textContent = t('toastSubmitting'); btn.disabled = true;
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    btn.textContent=t('submitBtn'); btn.disabled=false;
+    showToast(t('toastSdkUnavailable')); return;
+  }
+
+  console.log('[PR Portal] submitResponse payload:', JSON.stringify(payload));
+  const submittedId = currentId;
+  const wasDecline = cannotOrUnavailable;
+  const ubr = ZOHO.CREATOR.DATA.updateRecordById.bind(ZOHO.CREATOR.DATA);
+  ubr({ report_name: REPORT_NAME, id: currentId, payload: { data: payload } })
+    .then(function(resp){
+      console.log('[PR Portal] updateRecordById resp:', JSON.stringify(resp));
+      if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+        /* ADDED 2026-08-10, per user ("remove that INQ/PR in their view
+           immediately") — a decline (Cannot Produce/Unavailable) removes the
+           record from the local list right away instead of the normal
+           showList() full refetch. */
+        if(wasDecline){
+          ALL_ROWS = ALL_ROWS.filter(function(r){ return String(r.id) !== String(submittedId); });
+          $('view-list').style.display = "flex";
+          $('view-detail').style.display = "none";
+          currentId = null; _currentRaw = null;
+          stopChatPolling();
+          showToast(t('toastDeclineRemoved'));
+          renderList();
+        } else {
+          showToast(t('toastSubmitted'));
+          showList();
+        }
+      } else {
+        btn.textContent=t('submitBtn'); btn.disabled=false;
+        /* Surface the REAL native validation message (Mandatory_PR_Fields_Supplier1/2's
+           own alert text) instead of a generic "Save failed" toast. */
+        var alertMsg = null;
+        if(resp && Array.isArray(resp.error)){
+          resp.error.forEach(function(task){
+            if(task && task.task === 'alert' && task.alert_message){
+              alertMsg = Array.isArray(task.alert_message) ? task.alert_message.join(' ') : String(task.alert_message);
+            }
+          });
+        }
+        if(alertMsg){ showAlertModal(alertMsg); }
+        else { showToast(t('toastSaveFailedCode',{code:(resp && resp.code),message:(resp && resp.message||'')})); }
+      }
+    })
+    .catch(function(err){
+      console.error('[PR Portal] updateRecordById error:', JSON.stringify(err));
+      showToast(t('toastDirectUpdateFailed'));
+      ZOHO.CREATOR.DATA.invokeCustomApi({
+        url: 'https://creator.zoho.com/api/v2/'+ACCOUNT_OWNER+'/'+REAL_APP_NAME+'/report/'+REPORT_NAME+'/'+currentId,
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      }).then(function(r2){
+        console.log('[PR Portal] invokeCustomApi fallback resp:', JSON.stringify(r2));
+        showToast(t('toastSavedFallback'));
+        showList();
+      }).catch(function(e2){
+        console.error('[PR Portal] fallback also failed:', JSON.stringify(e2));
+        btn.textContent=t('submitBtn'); btn.disabled=false;
+        showToast(t('toastSaveError'));
+      });
+    });
+}
+
+/* ════════════════════════════════
+   CREATOR SDK LOAD
+════════════════════════════════ */
+function loadFromCreator(){
+  /* PR On Hold (Phase 3): refresh the held-PR map on every list load, then repaint. */
+  PRHold.load(function(){ if(ALL_ROWS.length){ renderList(); if(CURRENT_MAIN_TAB==='prgroups') renderPrGroupCards(); } });
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams==='function'){
+    ZOHO.CREATOR.UTIL.getInitParams().then(function(params){
+      if(params && params.appLinkName) REAL_APP_NAME = params.appLinkName;
+      if(params && params.scope) ACCOUNT_OWNER = params.scope;
+      console.log('[Init] Resolved app_name:', REAL_APP_NAME, 'owner:', ACCOUNT_OWNER);
+    }).catch(function(err){ console.warn('[Init] getInitParams failed, keeping defaults:', err && err.message || err); });
+  }
+
+  const _timeout = setTimeout(function(){
+    console.warn('[PR Portal] getRecords timed out');
+    showToast(t('toastTimeout'));
+    ALL_ROWS = []; renderList();
+  }, 10000);
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    clearTimeout(_timeout);
+    console.warn('[PR Portal] SDK not available');
+    ALL_ROWS = []; renderList();
+    return;
+  }
+
+  const gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: REPORT_NAME, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      clearTimeout(_timeout);
+      console.log('[PR Portal] getRecords code:', resp && resp.code, '| records:', resp && resp.data && resp.data.length);
+      if(resp && resp.code===3000){
+        const raw = Array.isArray(resp.data) ? resp.data : [];
+        // hide records where the buyer picked the OTHER supplier — supplier
+        // should never see a PR they lost, not just a locked/red badge
+        ALL_ROWS = raw.map(mapRow).filter(r => r.status !== 'Not Selected');
+        /* ADDED 2026-08-25, per user request ("yung mga PR dapat naka descend siya sa
+           viewing" / "descend dapat by PR number") — this list previously showed
+           records in whatever raw order the API returned (effectively oldest-first),
+           same gap already found+fixed in the buyer-side Purchase Request widget's
+           own queue. Sorts by the PR number's own trailing digits (e.g. "PR-00007" ->
+           7) descending — keyed off PR NUMBER specifically per the user's explicit
+           ask, not the internal Zoho record ID. */
+        ALL_ROWS.sort(function(a,b){
+          var na = parseInt(String(a.prNo).replace(/[^0-9]/g,''),10) || 0;
+          var nb = parseInt(String(b.prNo).replace(/[^0-9]/g,''),10) || 0;
+          return nb - na;
+        });
+      } else if(resp && resp.code===9220){
+        ALL_ROWS = []; // empty report, not a real error
+      } else {
+        console.warn('[PR Portal] getRecords non-3000:', resp && resp.code);
+        ALL_ROWS = [];
+      }
+      renderList();
+    })
+    .catch(function(err){
+      clearTimeout(_timeout);
+      /* A genuinely empty report (code 9220 "No records exist in this report") comes
+         back as an HTTP 400 — the SDK promise REJECTS instead of resolving, so this
+         case has to be handled here too, not just in the .then() success branch above.
+         Confirmed live 2026-07-09 (Fenteng-PR's report legitimately had 0 records, no
+         PRs assigned yet, surfacing this) — treat it as an empty list, not an error. */
+      var isEmptyReport = false;
+      try{
+        var text = err && (err.responseText || (err.content && err.content.responseText));
+        var parsed = text ? JSON.parse(text) : null;
+        if(parsed && (parsed.code === 9220 || String(parsed.code) === '9220')) isEmptyReport = true;
+      } catch(e){ /* not JSON, fall through to real-error handling */ }
+      if(isEmptyReport){
+        console.log('[PR Portal] getRecords: empty report (9220), not a real error');
+        ALL_ROWS = []; renderList();
+        return;
+      }
+      console.error('[PR Portal] getRecords error:', JSON.stringify(err));
+      showToast(t('toastLoadFail'));
+      ALL_ROWS = []; renderList();
+    });
+}
+
+/* ════════════════════════════════
+   PR GROUPS TAB — ADDED 2026-09-11, per user ("paano ba pwedeng igroup yung PR
+   para kila tony at fenteng" -> group by the buyer-side Sales Order without ever
+   exposing it as its own field/column here). Quietly cross-references the buyer
+   side's own `All_Purchase_Request` report (Purchase_Request1's report name,
+   confirmed via Widget/Proc/Purchase Request's own REPORT_GROUPING/mapGroupRow) —
+   same app, this widget's Creator.report.READ scope is unrestricted (not limited
+   to specific report names, confirmed in plugin-manifest.json before building
+   this), so no manifest/backend change was needed. Lazy-loaded only when the tab
+   is first opened. A PR whose PR_No isn't found in that report (shouldn't happen
+   in practice, but the SDK call could fail/timeout) falls back to its own
+   standalone single-row card rather than being silently dropped or mis-grouped.
+════════════════════════════════ */
+var PR_NO_TO_SO = {};
+var prSoMapLoaded = false;
+function extractSoVal(x){
+  if(x===null||x===undefined) return '';
+  if(typeof x==='object') return x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'';
+  return String(x);
+}
+function loadPrSoMap(cb){
+  if(prSoMapLoaded){ cb(); return; }
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    prSoMapLoaded = true; cb(); return;
+  }
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: 'All_Purchase_Request', page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      if(resp && resp.code===3000 && Array.isArray(resp.data)){
+        resp.data.forEach(function(r){
+          var pr = extractSoVal(r['PR_No']);
+          var so = extractSoVal(r['Sales_Order']);
+          if(pr) PR_NO_TO_SO[pr] = so || '';
+        });
+      }
+      prSoMapLoaded = true;
+      cb();
+    })
+    .catch(function(err){
+      console.warn('[PR Portal] loadPrSoMap failed (PR Groups will fall back to standalone cards):', err);
+      prSoMapLoaded = true;
+      cb();
+    });
+}
+
+var CURRENT_MAIN_TAB = 'all';
+function switchMainTab(tab){
+  CURRENT_MAIN_TAB = tab;
+  document.querySelectorAll('.tab-btn2').forEach(function(b){ b.classList.toggle('active', b.dataset.maintab===tab); });
+  $('panel-main-all').style.display = tab==='all' ? '' : 'none';
+  $('panel-main-prgroups').style.display = tab==='prgroups' ? '' : 'none';
+  if(tab==='prgroups'){
+    $('prGroupCardsWrap').innerHTML = '<div class="pr-group-empty">'+t('prGroupLoading')+'</div>';
+    loadPrSoMap(function(){ renderPrGroupCards(); });
+  }
+}
+
+/* ════════════════════════════════
+   PR GROUPS ROW — ADDED 2026-09-11, per user ("Pati yung PR?") — same rework
+   just applied to Tony-Inquiries/Fenteng-Inquiries' own "Group Inquiry" tab:
+   Image/PR#/Item Name/SKU/Description/Qty/Target Date/Availability/Lead Time
+   (days)/Initial Price columns, only the last 3 editable via a per-row
+   Edit/Save Action. Save uses the SAME full-Supplier_Selected_Supplier2-
+   replace shape submitResponse() already uses (see mapRow()'s own comment) —
+   Suppliers/Status/Selected are re-sent from the row's own last-known values
+   so the buyer's own Selected pick is never silently wiped, Negotiated/Final
+   likewise preserved/recomputed rather than shown here.
+════════════════════════════════ */
+var grpEditing = {};
+function grpThumbHtml(r){
+  return '<div class="grp-thumb">'
+    +'<img id="grpimg-'+r.id+'" style="display:none" onclick="event.stopPropagation();if(this.src)openLightbox(this.src)" />'
+    +'<span class="ph" id="grpimgph-'+r.id+'">'+(r.items?r.items.charAt(0).toUpperCase():'?')+'</span>'
+  +'</div>';
+}
+function grpLoadThumbs(rows){
+  rows.forEach(function(r){
+    if(!r.photo) return;
+    var img = document.getElementById('grpimg-'+r.id);
+    if(!img) return;
+    applyCreatorImage(img, r.photo);
+  });
+}
+function grpAvailCell(r){
+  if(!grpEditing[r.id]) return r.avail ? availLabel(r.avail) : '<span style="color:var(--gray-300)">—</span>';
+  var opts = ['', 'Confirmed', 'Pending', 'Unavailable', 'Cannot Produce'];
+  return '<select class="grp-input" id="grpavail-'+r.id+'" onclick="event.stopPropagation()" onchange="grpOnAvailChange(\''+r.id+'\')">'
+    +opts.map(function(o){ return '<option value="'+o+'"'+(o===r.avail?' selected':'')+'>'+(o?availLabel(o):t('optSelect'))+'</option>'; }).join('')
+  +'</select>';
+}
+function grpLeadCell(r){
+  if(!grpEditing[r.id]) return r.lead ? (r.lead+' days') : '<span style="color:var(--gray-300)">—</span>';
+  return '<input type="text" class="grp-input" id="grplead-'+r.id+'" value="'+(r.lead||'')+'" placeholder="'+t('leadPlaceholder')+'" onclick="event.stopPropagation()">';
+}
+function grpInitialCell(r){
+  if(!grpEditing[r.id]) return (parseFloat(r.initial)>0) ? ('¥'+parseFloat(r.initial).toLocaleString()) : '<span style="color:var(--gray-300)">—</span>';
+  return '<input type="number" class="grp-input" id="grpinitial-'+r.id+'" value="'+(r.initial||'')+'" min="0" step="0.01" placeholder="0.00" onclick="event.stopPropagation()">';
+}
+/* ADDED 2026-09-11, per user (screenshots of this row + the Detail "Your
+   Response" form side by side, "same function lang dapat sila jan") — the
+   Detail form's own onAvailChange() already disables+clears Lead Time/Initial
+   Price the moment Cannot Produce/Unavailable is picked (2026-08-25 fix); this
+   inline row editor never had an onchange handler at all, so picking
+   Unavailable here left both fields sitting open/editable with no visual cue
+   there was nothing left to fill in — inconsistent with the Detail form right
+   next to it. Mirrors that same disable-and-clear behavior, scoped to just
+   this row's own 2 inputs. Called both on the select's onchange AND once right
+   after a row first enters edit mode (from grpEditRow()) so the disabled state
+   is correct immediately if the record's saved Availability is already
+   Unavailable/Cannot Produce, not just after the user re-picks it. */
+function grpOnAvailChange(id){
+  var sel = $('grpavail-'+id);
+  var lead = $('grplead-'+id);
+  var initial = $('grpinitial-'+id);
+  if(!sel || !lead || !initial) return;
+  var cannotOrUnavailable = (sel.value==='Cannot Produce' || sel.value==='Unavailable');
+  lead.disabled = cannotOrUnavailable;
+  initial.disabled = cannotOrUnavailable;
+  if(cannotOrUnavailable){ lead.value=''; initial.value=''; }
+}
+function grpEditRow(id){
+  var holdRow = ALL_ROWS.find(function(x){ return String(x.id)===String(id); });
+  if(holdRow && PRHold.locked(holdRow.prNo)){ showToast(PRHold.text(holdRow.prNo)); return; }
+  grpEditing[id] = true;
+  renderPrGroupCards();
+  setTimeout(function(){ grpOnAvailChange(id); }, 0);
+}
+function grpCancelEdit(id){
+  delete grpEditing[id];
+  renderPrGroupCards();
+}
+async function grpSaveRow(id){
+  var r = ALL_ROWS.find(function(x){ return String(x.id)===String(id); });
+  if(!r){ showToast(t('recordNotFoundMsg')); return; }
+  var avail = $('grpavail-'+id).value;
+  var lead = $('grplead-'+id).value.trim();
+  var initial = $('grpinitial-'+id).value;
+  if(!avail){ showToast(t('validAvailRequired')); return; }
+  var cannotOrUnavailable = (avail==='Cannot Produce' || avail==='Unavailable');
+  if(!cannotOrUnavailable && (parseFloat(initial)||0)<=0){ showToast(t('validInitialRequired')); return; }
+  if(!cannotOrUnavailable && avail!=='Confirmed' && !lead){ showToast(t('validLeadRequired')); return; }
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.updateRecordById!=='function'){
+    showToast(t('notConnectedMsg')); return;
+  }
+  var negotiated = parseFloat(r.negotiated)||0;
+  var initialAmt = cannotOrUnavailable ? 0 : (parseFloat(initial)||0);
+  var finalAmt = negotiated>0 ? negotiated : initialAmt;
+  var btn = document.querySelector('[data-grpsave="'+id+'"]');
+  if(btn){ btn.disabled = true; btn.textContent = '…'; }
+  var subRowPayload = {};
+  subRowPayload[F.suppliers] = r.subSuppliers || SUPPLIER_MATCH_NAME;
+  subRowPayload[F.status] = r.subStatus || '';
+  subRowPayload[F.selected] = r.subSelected === true;
+  subRowPayload[F.avail] = avail;
+  subRowPayload[F.initial] = String(initialAmt);
+  subRowPayload[F.negotiated] = String(negotiated);
+  subRowPayload[F.final] = String(finalAmt);
+  subRowPayload[F.lead] = cannotOrUnavailable ? '' : lead;
+  var payload = {};
+  payload[SUBFORM_NAME] = [subRowPayload];
+  try{
+    var resp = await ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_NAME, id: String(id), payload: { data: payload } });
+    if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+      r.avail = avail; r.lead = cannotOrUnavailable?'':lead; r.initial = String(initialAmt); r.final = String(finalAmt);
+      delete grpEditing[id];
+      showToast(t('savedMsg'));
+      renderPrGroupCards();
+    } else {
+      showToast(t('saveFailedGeneric'));
+      console.error('[PR Groups] save non-3000:', resp);
+      if(btn){ btn.disabled=false; btn.textContent=t('saveBtn'); }
+    }
+  } catch(err){
+    showToast(t('saveFailedGeneric'));
+    console.error('[PR Groups] save error', err);
+    if(btn){ btn.disabled=false; btn.textContent=t('saveBtn'); }
+  }
+}
+
+function buildPrGroupBuckets(){
+  var map = {};
+  ALL_ROWS.forEach(function(r){
+    var so = PR_NO_TO_SO[r.prNo];
+    var key = so ? ('SO::'+so) : ('STANDALONE::'+r.prNo);
+    if(!map[key]) map[key] = { so: so || '', standalone: !so, rows: [] };
+    map[key].rows.push(r);
+  });
+  var buckets = Object.keys(map).map(function(k){ return map[k]; });
+  buckets.sort(function(a,b){
+    if(a.standalone !== b.standalone) return a.standalone ? 1 : -1;
+    return a.so.localeCompare(b.so);
+  });
+  return buckets;
+}
+
+function renderPrGroupCards(){
+  var q = (($('prGroupSearch') && $('prGroupSearch').value)||'').toLowerCase().trim();
+  var buckets = buildPrGroupBuckets();
+  if(q){
+    buckets = buckets.map(function(b){
+      var rows = b.rows.filter(function(r){
+        var hay = [b.so, r.prNo, r.sku, r.items].join(' ').toLowerCase();
+        return hay.indexOf(q)!==-1;
+      });
+      if(!rows.length) return null;
+      return { so:b.so, standalone:b.standalone, rows:rows };
+    }).filter(Boolean);
+  }
+  var multiGroupCount = buckets.filter(function(b){ return !b.standalone; }).length;
+  var totalPRs = buckets.reduce(function(s,b){ return s+b.rows.length; }, 0);
+  $('prGroupSummary').textContent = t('groupsSummary',{groups:multiGroupCount, prs:totalPRs});
+
+  var wrap = $('prGroupCardsWrap');
+  if(!buckets.length){
+    wrap.innerHTML = '<div class="pr-group-empty">'+t('prGroupNoneFound')+'</div>';
+    return;
+  }
+  /* ADDED 2026-09-11, per user ("pwedeng ihide nalang ito? Total PRS nalang tapos
+     i align mo yung row") — the SO# card header was leaking the very field this
+     whole tab was built to keep hidden from the supplier (see loadPrSoMap()'s own
+     comment); replaced with a plain "Total PRs: N" label. Same request also asked
+     for the row-misalignment fix (each card's own <table> sized its columns off
+     its own content, so PR No/Item Name/SKU/etc. landed at different x-positions
+     from one card to the next) — same table-layout:fixed + shared <colgroup>
+     pattern already used for this exact bug class elsewhere in this app (Pre
+     Order Report / SO Report / Shipment Grouping). */
+  /* UPDATED 2026-09-11, per user ("Pati yung PR?") — Image/PR#/Item Name/SKU/
+     Description/Qty/Target Date/Availability/Lead Time/Initial Price/Action,
+     replacing the old PR No/Item/SKU/Qty/Target Delivery/Status set. Only
+     Availability/Lead Time/Initial Price are editable — see grpEditRow() etc. */
+  var PRG_COLGROUP = '<colgroup><col style="width:6%"><col style="width:8%"><col style="width:16%"><col style="width:10%"><col style="width:14%"><col style="width:6%"><col style="width:10%"><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup>';
+  wrap.innerHTML = buckets.map(function(b){
+    var rowsHtml = b.rows.map(function(r){
+      var editing = !!grpEditing[r.id];
+      var actionHtml = editing
+        ? '<button type="button" class="btn btn-status-submit btn-sm" data-grpsave="'+r.id+'" onclick="event.stopPropagation();grpSaveRow(\''+r.id+'\')">'+t('saveBtn')+'</button> '
+          +'<button type="button" class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-600)" onclick="event.stopPropagation();grpCancelEdit(\''+r.id+'\')">'+t('cancelBtn')+'</button>'
+        : (PRHold.locked(r.prNo) ? PRHold.badge(r.prNo) : '<button type="button" class="btn btn-status-submit btn-sm" onclick="event.stopPropagation();grpEditRow(\''+r.id+'\')">'+t('editBtn')+'</button>');
+      return '<tr'+(editing?'':' onclick="openDetail(\''+r.id+'\')"')+'>'
+        +'<td>'+grpThumbHtml(r)+'</td>'
+        +'<td>'+r.prNo+PRHold.badge(r.prNo)+'</td>'
+        +'<td>'+r.items+'</td>'
+        +'<td><span class="cell-sku" title="'+(r.sku||'').replace(/"/g,'&quot;')+'">'+r.sku+'</span></td>'
+        +'<td class="cell-desc" title="'+stripNLToken(r.desc).replace(/"/g,'&quot;')+'">'+(r.desc?stripNLToken(r.desc):'—')+'</td>'
+        +'<td>'+r.qty+'</td>'
+        +'<td>'+fmtDateShort(r.date)+'</td>'
+        +'<td onclick="event.stopPropagation()">'+grpAvailCell(r)+'</td>'
+        +'<td onclick="event.stopPropagation()">'+grpLeadCell(r)+'</td>'
+        +'<td onclick="event.stopPropagation()">'+grpInitialCell(r)+'</td>'
+        +'<td onclick="event.stopPropagation()">'+actionHtml+'</td>'
+      +'</tr>';
+    }).join('');
+    return '<div class="pr-group-card">'
+      +'<div class="pr-group-card-hdr">'
+        +'<div class="pr-group-card-so">'+t('totalPrsLabel',{n:b.rows.length})+'</div>'
+      +'</div>'
+      +'<div class="table-wrap"><table class="pr-group-mini-table">'
+        +PRG_COLGROUP
+        +'<thead><tr><th>'+t('thImage')+'</th><th>'+t('thPrHash')+'</th><th>'+t('thItemName')+'</th><th>'+t('thSku')+'</th><th>'+t('thDescription')+'</th><th>'+t('thQty')+'</th><th>'+t('thTargetDate')+'</th><th>'+t('labelAvailability')+'</th><th>'+t('labelLeadTime')+'</th><th>'+t('labelInitialPrice')+'</th><th>'+t('thAction')+'</th></tr></thead>'
+        +'<tbody>'+rowsHtml+'</tbody>'
+      +'</table></div>'
+    +'</div>';
+  }).join('');
+  grpLoadThumbs(buckets.reduce(function(all,b){ return all.concat(b.rows); }, []));
+}
+
+applyStaticI18n();
+updateLangToggleUI();
+loadFromCreator();
+</script>
+</body>
+</html>

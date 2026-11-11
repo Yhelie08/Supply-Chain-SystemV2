@@ -1,0 +1,15 @@
+// form: Notify on supplier Inquiry response  form=Inquiry_Messages event=on add on success  [.ds line 45126]
+    if(input.Sender_Role == "Supplier")
+{
+    insert into App_Notifications
+    [
+        Recipient_Email="homecartelpacker@gmail.com"
+        Notification_Type="Supplier Inquiry Conversation"
+        Message=input.Supplier + " sent a message on " + input.INQ_No + "."
+        Created_On=zoho.currenttime
+        Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:Inquiry"
+        Source_Record_No=input.INQ_No
+        Source_Record_ID=input.ID
+        Added_User=zoho.loginuser
+    ]
+}

@@ -1,0 +1,51 @@
+{
+  "name": "Inquiry_Messages",
+  "label": "Inquiry Messages",
+  "successMessage": "Data Added Successfully!",
+  "line": 7089,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "INQ_No",
+      "label": "INQ No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Supplier",
+      "label": "Supplier",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sender_Role",
+      "label": "Sender Role",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sender_Name",
+      "label": "Sender Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Message",
+      "label": "Message",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Sent_On",
+      "label": "Sent On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

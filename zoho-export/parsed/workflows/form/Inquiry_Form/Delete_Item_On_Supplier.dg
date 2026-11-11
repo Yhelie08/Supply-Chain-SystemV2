@@ -1,0 +1,3 @@
+// form: Delete_Item_On_Supplier  form=Inquiry_Form event=on delete on success  [.ds line 37546]
+    delete from Supplier_2[INQ_No_Supplier == input.INQ_No];
+delete from Supplier_1[INQ_No_Supplier == input.INQ_No];

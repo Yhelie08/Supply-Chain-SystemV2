@@ -1,0 +1,61 @@
+// form: Damage_Missing_Details  form=Receiving event=on add or edit on success  [.ds line 40777]
+    // === Receiving_Populate_Damage_Details ===
+// Form: Receiving | Event: Created or Edited | Successful form submission
+recRec = Receiving[ID == input.ID];
+for each  ln in recRec.Receiving_Line_Items
+{
+    damaged = ifnull(ln.Damage_Qty,0);
+    missing = ifnull(ln.Missing_Qty,0);
+    if(damaged > 0 || missing > 0)
+    {
+        // Check existing rows for this PR_No to avoid duplicates
+        existingDmgCount = 0;
+        existingMisCount = 0;
+        for each  dd in recRec.Damage_Missing_Details
+        {
+            if(dd.PR_No == ln.PR_No)
+            {
+                if(dd.Type_field == "Damage")
+                {
+                    existingDmgCount = existingDmgCount + 1;
+                }
+                else if(dd.Type_field == "Missing")
+                {
+                    existingMisCount = existingMisCount + 1;
+                }
+            }
+        }
+        // Auto-insert Damage rows (only missing ones)
+        dmgNeeded = damaged - existingDmgCount;
+        dmgIdx = 1;
+        for each  dmgItem in {1,2,3,4,5,6,7,8,9,10}
+        {
+            if(dmgIdx <= dmgNeeded)
+            {
+                newDmgRow = Receiving.Damage_Missing_Details();
+                newDmgRow.PR_No=ln.PR_No;
+                newDmgRow.SKU=ln.SKU;
+                newDmgRow.Type_field="Damage";
+                newDmgRow.Qty=1;
+                recRec.Damage_Missing_Details.insert(newDmgRow);
+                dmgIdx = dmgIdx + 1;
+            }
+        }
+        // Auto-insert Missing rows (only missing ones)
+        misNeeded = missing - existingMisCount;
+        misIdx = 1;
+        for each  misItem in {1,2,3,4,5,6,7,8,9,10}
+        {
+            if(misIdx <= misNeeded)
+            {
+                newMisRow = Receiving.Damage_Missing_Details();
+                newMisRow.PR_No=ln.PR_No;
+                newMisRow.SKU=ln.SKU;
+                newMisRow.Type_field="Missing";
+                newMisRow.Qty=1;
+                recRec.Damage_Missing_Details.insert(newMisRow);
+                misIdx = misIdx + 1;
+            }
+        }
+    }
+}

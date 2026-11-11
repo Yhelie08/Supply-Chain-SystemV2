@@ -1,0 +1,454 @@
+{
+  "name": "Tony_Fan_Purchase_Request",
+  "label": "Tony Fan Purchase Request",
+  "successMessage": "Item Detail Added Successfully",
+  "line": 18016,
+  "fields": [
+    {
+      "name": "PR_Details_Supplier2",
+      "label": "PR Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "PR_No_Supplier2",
+      "label": "PR No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Items_Supplier2",
+      "label": "Items",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Items",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[item_name]"
+    },
+    {
+      "name": "Description1_Supplier2",
+      "label": "Description",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Product_Image_Supplier2_PR",
+      "label": "Product Image",
+      "type": "image",
+      "required": false
+    },
+    {
+      "name": "inquiry_reference_Supplier2",
+      "label": "INQ Reference",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "PR_Date_Supplier2",
+      "label": "PR Date",
+      "type": "date",
+      "required": false,
+      "initialValue": "${zoho.currentdate}",
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "sku_Supplier2",
+      "label": "SKU",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "unit_Supplier2",
+      "label": "Unit",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Target_Delivery_Supplier2",
+      "label": "Target  Delivery",
+      "type": "date",
+      "required": true,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "quantity_Supplier2",
+      "label": "Quantity",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "category_Supplier2",
+      "label": "Category",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "description_Supplier2",
+      "label": "Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "SRP_Rate_PR_Supplier2",
+      "label": "SRP (Hidden)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Priority_Flags_Supplier2_Supplier2",
+      "label": "Priority & Flags",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Priority_PR_Supplier2",
+      "label": "Priority",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Additional_Details_Supplier2",
+      "label": "Additional Details",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Similar_Item_Supplier2",
+      "label": "Similar Item",
+      "type": "checkbox",
+      "required": false,
+      "helpText": "Customer accepts equivalent alternatives if exact item is unavailable",
+      "initialValue": "false"
+    },
+    {
+      "name": "Attachments_Supplier2",
+      "label": "Attachments",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Supplier_Selected_Supplier2",
+      "label": "Supplier Selected",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Active",
+        "Removed"
+      ],
+      "helpText": "If the item is in stock",
+      "fields": [
+        {
+          "name": "Suppliers_Supplier2",
+          "label": "Suppliers",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Availability_Supplier2",
+          "label": "Availability",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Confirmed",
+            "Pending",
+            "Unavailable",
+            "Cannot Produce"
+          ],
+          "helpText": "If the item is in stock",
+          "maxchar": "100"
+        },
+        {
+          "name": "Initial_Price_Supplier2",
+          "label": "Initial Price",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Negotiated_Supplier2",
+          "label": "Negotiated",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Final_Price_Supplier2",
+          "label": "Final Price",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Lead_Time_Supplier2",
+          "label": "Lead Time (days)",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Status_Supplier2",
+          "label": "Status",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Active",
+            "Removed"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Selected_Supplier2",
+          "label": "Selected",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "PR_Selected_Supplier1_Supplier2",
+      "label": "Selected Supplier",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Selected_Supplier_Supplier2",
+      "label": "Selected Supplier",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Selcted_Final_Cost_Supplier2",
+      "label": "Selected Final Cost",
+      "type": "CNY",
+      "required": false,
+      "format": "commadotwestern"
+    },
+    {
+      "name": "Followed_Recommendation_Supplier2",
+      "label": "Followed Recommendation",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "plain_Supplier2",
+      "label": "plain Supplier2",
+      "type": "plaintext",
+      "required": false
+    },
+    {
+      "name": "Shipment_Mode_Supplier2",
+      "label": "Shipment Mode",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Airfreight",
+        "LCL",
+        "FCL"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Required_Days_Lead_Supplier2",
+      "label": "Required Days (Lead)",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Production_Date_Supplier2",
+      "label": "Production Date",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "supplier_target_date_Supplier2",
+      "label": "Supplier  Target Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Remaining_Days_Supplier2",
+      "label": "Remaining Days",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Delay_Status_Supplier2",
+      "label": "Delay Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "On Track",
+        "At Risk",
+        "Delayed"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Readiness_Checklist_Supplier2",
+      "label": "Readiness Checklist",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Selected_Supplier1_Supplier2",
+      "label": "Selected Supplier",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Final_price_confirmed_Supplier2",
+      "label": "Final price confirmed",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Shipping_mode_selected_Supplier2",
+      "label": "Shipping mode selected",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Target_date_exists_Supplier2",
+      "label": "Target date exists",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "PR_READY_FOR_PO_Supplier2",
+      "label": "PR READY FOR PO",
+      "type": "checkbox",
+      "required": false,
+      "helpText": "All 4 conditions passed",
+      "initialValue": "false"
+    },
+    {
+      "name": "PR_Approved_Supplier2",
+      "label": "PR Approved",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "edit_counter",
+      "label": "edit counter",
+      "type": "number",
+      "required": false,
+      "initialValue": "0"
+    },
+    {
+      "name": "Response_Status",
+      "label": "Response Status",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Specification",
+      "label": "Specification",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Dimension_Supplier",
+      "label": "Dimension",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Color_Body_Supplier",
+      "label": "Color Body",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Color_Temperature_Supplier",
+      "label": "Color Temperature",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "2700K",
+        "3000K",
+        "3500K",
+        "4000K",
+        "4500K",
+        "5000K"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Type_of_Bulb_Supplier",
+      "label": "Type of Bulb",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "A60 - E27",
+        "LED Strip",
+        "A60 - E27 Dimmable",
+        "c35 - L E14",
+        "c35 - L E14 Dimmable",
+        "Corn type E14",
+        "Corn type E14 Dimmable",
+        "Corn type E27",
+        "Corn type E27 Dimmable",
+        "E14-Candle",
+        "G4",
+        "G4 Dimmable",
+        "G4 Jelly",
+        "G9",
+        "G-95",
+        "G9 Dimmable",
+        "G45 - E27",
+        "G45 - E27 Dimmable",
+        "G80 - E27",
+        "G125 - E27",
+        "GU10",
+        "GU10 Dimmable",
+        "ST64"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Voltage_Supplier",
+      "label": "Voltage",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Lumens_Supplier",
+      "label": "Lumens",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

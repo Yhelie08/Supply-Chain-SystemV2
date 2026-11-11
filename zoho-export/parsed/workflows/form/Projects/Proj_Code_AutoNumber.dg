@@ -1,0 +1,34 @@
+// form: Proj_Code_AutoNumber  form=Projects event=on add on validate  [.ds line 36123]
+    maxNum = 0;
+for each  rec in Projects[ID != 0]
+{
+    try 
+    {
+        currentNum = rec.Project_Code.replaceAll("[^0-9]","").toLong();
+        if(currentNum > maxNum)
+        {
+            maxNum = currentNum;
+        }
+    }    catch (e)
+    {
+    }
+}
+newNum = maxNum + 1;
+newNum_str = newNum.toString();
+if(newNum < 10)
+{
+    newNum_str = "0000" + newNum_str;
+}
+else if(newNum < 100)
+{
+    newNum_str = "000" + newNum_str;
+}
+else if(newNum < 1000)
+{
+    newNum_str = "00" + newNum_str;
+}
+else if(newNum < 10000)
+{
+    newNum_str = "0" + newNum_str;
+}
+input.Project_Code = "PRJ-" + newNum_str;

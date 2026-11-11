@@ -1,0 +1,42 @@
+
+			displayName = "Service Request"
+			show all rows from Service_Request1    
+			(
+				Service_Request1 as "Service Request #"
+				RMA1 as "RMA#"
+				Original_SO as "Original SO#"
+				Reason
+				Sub as "Sub Reason"
+				Sales_Order as "Sales Order#"
+				Package_Number as "Package Number"
+				Delivery_Date as "Delivery Date"
+				If_Pull_Out as "If Pull Out"
+				Delivery_Type as "Delivery Type"
+				Item_Name as "Item Name"
+				SKU
+				Quantity
+				Priority_Level as "Priority Level"
+				Scheduled_by as "Scheduled by:"
+				Customer_Name as "Customer Name"
+				Customer_Address as "Customer Address"
+				City
+				Email
+				Phone_Number as "Phone"
+				(
+					displayformat = plainnumber 
+				)
+				Address 
+	 			(
+	      			enable = Link_to_Map,Show_As_Text
+	 			)
+				Complaint_Record_ID as "Complaint Record ID"
+				Appointment_Record_ID as "Appointment Record ID"
+				Item_Details.Item_Name as "Item Details"
+				Order_Aggregation_ID as "Order Aggregation ID"
+				Initial_Schedule_ID as "Initial Schedule ID"
+				Service_Appointment_ID as "Service Appointment ID"
+				Initial_Schedule_Time as "Initial Schedule Time"
+				SR_No as "SR No"
+				SR_Status as "SR Status"
+			)
+		

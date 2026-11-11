@@ -1,0 +1,375 @@
+
+		forms
+		{
+			form App_Notifications
+			{
+				label placement = auto
+			}
+			form Crate_Checklist
+			{
+				label placement = auto
+			}
+			form Customer
+			{
+				label placement = auto
+			}
+			form Daily_Checklist_for_Vehicle
+			{
+				label placement = auto
+			}
+			form Daily_Team_Availability
+			{
+				label placement = auto
+			}
+			form Delivery_Scheduling
+			{
+				label placement = auto
+			}
+			form DelQ_Timeline
+			{
+				label placement = auto
+			}
+			form Dispatch_Checklist
+			{
+				label placement = auto
+			}
+			form DMS_Exception_Queue
+			{
+				label placement = auto
+			}
+			form DMS_Schedule_Request
+			{
+				label placement = auto
+			}
+			form DMS_Schedule_Request_Messages
+			{
+				label placement = auto
+			}
+			form DTA_Timeline
+			{
+				label placement = auto
+			}
+			form Evidence_Photos
+			{
+				label placement = auto
+			}
+			form Exception_Control1
+			{
+				label placement = auto
+			}
+			form Exception_Control_Media
+			{
+				label placement = auto
+			}
+			form Exception_Internal_Messages
+			{
+				label placement = auto
+			}
+			form Exception_Timeline
+			{
+				label placement = auto
+			}
+			form ExceptionControl_Notifications
+			{
+				label placement = auto
+			}
+			form Exceptions
+			{
+				label placement = auto
+			}
+			form Fenteng_Lighting
+			{
+				label placement = auto
+			}
+			form Supplier_1
+			{
+				label placement = auto
+			}
+			form Fenteng_Lighting_Purchase_Order
+			{
+				label placement = auto
+			}
+			form Fenteng_Lighting_Purchase_Request
+			{
+				label placement = auto
+			}
+			form Fenteng_Lighting_Replacement_Request
+			{
+				label placement = auto
+			}
+			form Fenteng_Shipment
+			{
+				label placement = auto
+			}
+			form Fenteng_Notifications
+			{
+				label placement = auto
+			}
+			form Field_Service_Site_Visit_Form
+			{
+				label placement = auto
+			}
+			form Field_Work
+			{
+				label placement = auto
+			}
+			form Fuel_Entries
+			{
+				label placement = auto
+			}
+			form Inquiry_Form
+			{
+				label placement = auto
+			}
+			form Inquiry_Messages
+			{
+				label placement = auto
+			}
+			form Inquiry_Internal_Messages
+			{
+				label placement = auto
+			}
+			form Inquiry_Timeline
+			{
+				label placement = auto
+			}
+			form Items
+			{
+				label placement = auto
+			}
+			form Order_Aggregation1
+			{
+				label placement = auto
+			}
+			form OrderAgg_Notifications
+			{
+				label placement = auto
+			}
+			form Pack
+			{
+				label placement = auto
+			}
+			form Pack_Notifications
+			{
+				label placement = auto
+			}
+			form Package_Shipments
+			{
+				label placement = auto
+			}
+			form Pick1
+			{
+				label placement = auto
+			}
+			form Pick_Notifications
+			{
+				label placement = auto
+			}
+			form Pick_Up_Request_Form
+			{
+				label placement = auto
+			}
+			form PO_Messages
+			{
+				label placement = auto
+			}
+			form PO_Internal_Messages
+			{
+				label placement = auto
+			}
+			form Policy_Settings
+			{
+				label placement = auto
+			}
+			form PR_Messages
+			{
+				label placement = auto
+			}
+			form PR_Internal_Messages
+			{
+				label placement = auto
+			}
+			form PR_Timeline
+			{
+				label placement = auto
+			}
+			form Pre_Order_FF
+			{
+				label placement = auto
+			}
+			form PreOrder_Notifications
+			{
+				label placement = auto
+			}
+			form Projects
+			{
+				label placement = auto
+			}
+			form Purchase_Order
+			{
+				label placement = auto
+			}
+			form Purchase_Request1
+			{
+				label placement = auto
+			}
+			form QC_Notifications
+			{
+				label placement = auto
+			}
+			form Checker_Checklist
+			{
+				label placement = auto
+			}
+			form ReadinessGate_Notifications
+			{
+				label placement = auto
+			}
+			form Receiving
+			{
+				label placement = auto
+			}
+			form Receiving_Internal_Messages
+			{
+				label placement = auto
+			}
+			form Receiving_Timeline
+			{
+				label placement = auto
+			}
+			form Replacement_Request
+			{
+				label placement = auto
+			}
+			form RR_Internal_Messages
+			{
+				label placement = auto
+			}
+			form RR_Timeline
+			{
+				label placement = auto
+			}
+			form Sales_Order
+			{
+				label placement = auto
+			}
+			form Sales_Order_Fulfillment
+			{
+				label placement = auto
+			}
+			form Sales_Order_Readiness_Gate
+			{
+				label placement = auto
+			}
+			form Sales_Returns_Form
+			{
+				label placement = auto
+			}
+			form Schedule_Test_Settings
+			{
+				label placement = auto
+			}
+			form Service_Appointment_Form
+			{
+				label placement = auto
+			}
+			form Service_Entries
+			{
+				label placement = auto
+			}
+			form Service_Request1
+			{
+				label placement = auto
+			}
+			form Shipment_ID_Counter
+			{
+				label placement = auto
+			}
+			form Shipment_Order_Form
+			{
+				label placement = auto
+			}
+			form Shipment_Internal_Messages
+			{
+				label placement = auto
+			}
+			form Shipment_Timeline
+			{
+				label placement = auto
+			}
+			form Shipments
+			{
+				label placement = auto
+			}
+			form Site_Visit_Photos
+			{
+				label placement = auto
+			}
+			form SO_Notifications
+			{
+				label placement = auto
+			}
+			form SOF_Internal_Messages
+			{
+				label placement = auto
+			}
+			form SOF_Timeline
+			{
+				label placement = auto
+			}
+			form Suppliers
+			{
+				label placement = auto
+			}
+			form Supplier_2
+			{
+				label placement = auto
+			}
+			form Tony_Fan1
+			{
+				label placement = auto
+			}
+			form Tony_Fan_Purchase_Order
+			{
+				label placement = auto
+			}
+			form Tony_Fan_Purchase_Request
+			{
+				label placement = auto
+			}
+			form Tony_Fan_Replacement_Request
+			{
+				label placement = auto
+			}
+			form Tony_Shipment
+			{
+				label placement = auto
+			}
+			form Tony_Notifications
+			{
+				label placement = auto
+			}
+			form Transfer_Warehouse
+			{
+				label placement = auto
+			}
+			form Warehouse_Request
+			{
+				label placement = auto
+			}
+		}
+		customize
+		{
+			layout = slidingpane
+			font = "default"
+			style = "3"
+			color options
+			{
+				color = lightred
+			}
+			logo
+			{
+				preference = "company_logo"
+			}
+		}
+	

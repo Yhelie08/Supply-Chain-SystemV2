@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supply Chain App (Local)</title>
+<style>
+  :root { --nav: #0f1240; --nav-2: #1b2063; --line: #2b3180; --accent: #1f9d55; --text: #e8eaff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, sans-serif; background: #f4f5f9; }
+  body { display: flex; flex-direction: column; }
+  header { background: var(--nav); color: var(--text); display: flex; align-items: center; gap: 16px; padding: 8px 14px; position: relative; z-index: 2; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+  .logo b { background: #e53e3e; color: #fff; font-size: 10px; padding: 4px 5px; border-radius: 5px; }
+  .space { position: relative; }
+  .space > button { background: var(--nav-2); color: var(--text); border: 0; padding: 6px 10px; border-radius: 6px; font: inherit; font-size: 12.5px; cursor: pointer; }
+  .space > button::after { content: " \25BE"; }
+  .space ul { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 190px; list-style: none; margin: 0; padding: 6px; background: #fff; border-radius: 8px; box-shadow: 0 8px 24px rgba(10, 12, 40, .25); }
+  .space.open ul { display: block; }
+  .space li a { display: block; padding: 7px 10px; border-radius: 6px; color: #222; text-decoration: none; font-size: 13px; }
+  .space li a:hover { background: #f0f2f8; }
+  .space li a.on { background: var(--accent); color: #fff; }
+  .local { margin-left: auto; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .local .badge { background: #f6c343; color: #3b2f00; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .local input { background: var(--nav-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px; width: 210px; font-size: 12px; }
+  nav { background: var(--nav); display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 10px 10px; }
+  nav a { color: var(--text); text-decoration: none; font-size: 12.5px; padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
+  nav a:hover { background: var(--nav-2); }
+  nav a.on { background: var(--accent); color: #fff; }
+  main { flex: 1; padding: 12px 16px 16px; min-height: 0; }
+  iframe { width: 100%; height: 100%; border: 0; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><b>SCA</b> Supply Chain App</div>
+  <div class="space" id="space"><button type="button" id="spaceBtn" aria-haspopup="true" aria-expanded="false"></button><ul id="spaceList"></ul></div>
+  <div class="local">
+    <span class="badge">LOCAL</span>
+    <label for="who">Logged in as</label>
+    <input id="who" type="email" spellcheck="false">
+  </div>
+</header>
+<nav id="tabs"></nav>
+<main><iframe id="view" title="Page"></iframe></main>
+<script>
+  var sections = [];
+  var who = document.getElementById('who');
+  var space = document.getElementById('space');
+  var spaceBtn = document.getElementById('spaceBtn');
+  try { who.value = localStorage.getItem('local-app:user') || 'admin@local'; } catch (e) { who.value = 'admin@local'; }
+  who.addEventListener('change', function () {
+    try { localStorage.setItem('local-app:user', who.value.trim()); } catch (e) {}
+    route();
+  });
+  spaceBtn.addEventListener('click', function () {
+    var open = !space.classList.contains('open');
+    space.classList.toggle('open', open);
+    spaceBtn.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', function (e) { if (!space.contains(e.target)) space.classList.remove('open'); });
+
+  // Same URL shape as Zoho:  #Page:Link_Name?param=value
+  function parse(hash) {
+    var m = /#Page:([\w]+)(?:\?(.*))?/.exec(hash || '');
+    return m ? { page: m[1], query: m[2] || '' } : null;
+  }
+  function findTab(page) {
+    for (var i = 0; i < sections.length; i++)
+      for (var j = 0; j < sections[i].tabs.length; j++)
+        if (sections[i].tabs[j].page === page) return { section: sections[i], tab: sections[i].tabs[j] };
+    return null;
+  }
+  function route() {
+    var r = parse(location.hash);
+    var hit = (r && findTab(r.page)) || { section: sections[sections.length - 1], tab: sections[sections.length - 1].tabs[0] };
+    var sec = hit.section, tab = hit.tab;
+    spaceBtn.textContent = sec.label;
+    document.getElementById('spaceList').innerHTML = sections.map(function (s) {
+      return '<li><a href="#Page:' + s.tabs[0].page + '"' + (s === sec ? ' class="on"' : '') + '>' + s.label + '</a></li>';
+    }).join('');
+    document.getElementById('tabs').innerHTML = sec.tabs.filter(function (t) { return !t.hidden || t === tab; }).map(function (t) {
+      return '<a href="#Page:' + t.page + '"' + (t === tab ? ' class="on"' : '') + '>' + t.label + '</a>';
+    }).join('');
+    space.classList.remove('open');
+    document.title = tab.label + ' · ' + sec.label + ' · Supply Chain App (Local)';
+    document.getElementById('view').src = tab.src + (r && r.query ? '?' + r.query : '');
+  }
+  window.addEventListener('hashchange', route);
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'zoho-navigate') return;
+    var r = parse(e.data.url);
+    if (r) location.hash = '#Page:' + r.page + (r.query ? '?' + r.query : '');
+    else if (/^https?:/.test(e.data.url)) window.open(e.data.url, '_blank');
+  });
+  fetch('/api/pages').then(function (r) { return r.json(); }).then(function (list) { sections = list; route(); });
+</script>
+</body>
+</html>

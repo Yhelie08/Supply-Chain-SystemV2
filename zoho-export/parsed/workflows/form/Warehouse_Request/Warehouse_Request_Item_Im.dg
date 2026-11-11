@@ -1,0 +1,13 @@
+// form: Warehouse_Request_Item_Image_Backfill  form=Warehouse_Request event=on add or edit on success  [.ds line 46267]
+    for each  row in input.Item
+{
+    picStrChk = row.Image + "";
+    if(row.Image == null || picStrChk == "" || picStrChk == "{}" || picStrChk == "[]")
+    {
+        itemRec = Items[ID == row.Items];
+        if(itemRec != null && itemRec.Image != null)
+        {
+            row.Image=itemRec.Image;
+        }
+    }
+}

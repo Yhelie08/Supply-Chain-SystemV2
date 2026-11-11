@@ -1,0 +1,35 @@
+// string diagInsertThenPatch()   [.ds lines 32043-32078]
+createdId = insert into Service_Appointment_Form
+[
+    Sales_Order="DIAG-INSERT-THEN-PATCH"
+    Added_User=zoho.loginuser
+];
+createdIdStr = createdId + "";
+row1 = Map();
+row1.put("Item_Name","Diag Immediate A");
+row1.put("SKU","DIA");
+row1.put("Quantity",1);
+itemRows = List();
+itemRows.add(row1);
+patchData = Map();
+patchData.put("Item_Details",itemRows);
+patchBody = Map();
+patchBody.put("data",patchData);
+patchUrl = "https://www.zohoapis.com/creator/v2.1/data/homecartel/supply-chain-app/report/Service_Appointment/" + createdIdStr;
+result = "";
+try 
+{
+    itemPatchResp = invokeurl
+    [
+        url :patchUrl
+        type :PATCH
+        body:patchBody.toString()
+        headers:{"Content-Type":"application/json"}
+        connection:"sca_creator_write_conn"
+    ];
+    result = "createdId=" + createdIdStr + " | RESPONSE: " + itemPatchResp;
+}    catch (e)
+{
+    result = "createdId=" + createdIdStr + " | EXCEPTION: " + e;
+}
+return result;

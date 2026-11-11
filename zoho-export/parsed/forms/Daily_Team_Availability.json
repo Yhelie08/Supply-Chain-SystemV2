@@ -1,0 +1,107 @@
+{
+  "name": "Daily_Team_Availability",
+  "label": "Daily Team Availability",
+  "successMessage": "Data Added Successfully!",
+  "line": 766,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Availability_Date",
+      "label": "Availability Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Installer",
+      "label": "Installer",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "CJ",
+        "Edmon",
+        "John Dave",
+        "Nherwin",
+        "Norman"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Driver",
+      "label": "Driver",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Judy",
+        "Norman",
+        "Patrick",
+        "Petz",
+        "Zaldy",
+        "Other"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Vehicle",
+      "label": "Vehicle",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Traviz (NIB-3823)",
+        "Hino (NBX-1446)",
+        "Traviz (NKI-4969)",
+        "Innova (WOQ386)",
+        "Nissan",
+        "Rav4"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Availability_Status",
+      "label": "Availability Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Full Day",
+        "Half Day",
+        "Not Available"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Max_Capacity_Hours",
+      "label": "Max Capacity Hours",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Max_SO_Capacity",
+      "label": "Max SO Capacity",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Notes",
+      "label": "Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Added_By",
+      "label": "Added By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Start_Time1",
+      "label": "Start Time",
+      "type": "time",
+      "required": false
+    }
+  ]
+}

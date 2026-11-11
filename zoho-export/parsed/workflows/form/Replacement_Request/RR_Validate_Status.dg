@@ -1,0 +1,21 @@
+// form: RR_Validate_Status  form=Replacement_Request event=on add or edit on validate  [.ds line 40157]
+    // === RR_Validate_Status ===
+// Form: Replacement_Request | Event: Created or Edited | Validations on form submission
+// Block "Closed" if no Closure_Notes
+if(input.RR_Status == "Closed")
+{
+    if(input.Closure_Notes == null || input.Closure_Notes == "")
+    {
+        alert "Cannot close this RR — Closure Notes are required before closing a Replacement Request. Please fill in the Closure Notes field.";
+        cancel submit;
+    }
+}
+// Block "Closed" if no RR_Reason
+if(input.RR_Status == "Closed")
+{
+    if(input.RR_Reason == null || input.RR_Reason == "")
+    {
+        alert "Cannot close this RR — RR Reason is required before closing a Replacement Request. Please fill in the RR Reason field.";
+        cancel submit;
+    }
+}

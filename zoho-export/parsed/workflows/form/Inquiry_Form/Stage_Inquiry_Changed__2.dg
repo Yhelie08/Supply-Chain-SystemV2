@@ -1,0 +1,166 @@
+// form: Stage_Inquiry_Changed  form=Inquiry_Form event=on add or edit on success  [.ds line 35626]
+    rows = Supplier_2[INQ_No_Supplier == input.INQ_No];
+for each  r in rows
+{
+    if(r.Response_Status != "Completed")
+    {
+        thisSelected = false;
+        anySelected = false;
+        for each  quote in input.Supplier_Quotes
+        {
+            if(quote.Selected == true)
+            {
+                anySelected = true;
+            }
+            isMineA2 = false;
+            if(quote.Suppliers != null)
+            {
+                if(quote.Suppliers.toLowerCase().contains("tony"))
+                {
+                    isMineA2 = true;
+                }
+            }
+            sidRawA2 = quote.Supplier_ID.removeFirstOccurence("[").removeLastOccurence("]");
+            booksIdA2 = "";
+            if(sidRawA2 != "")
+            {
+                for each  supRecA2 in Suppliers
+                {
+                    if(supRecA2.ID + "" == sidRawA2)
+                    {
+                        booksIdA2 = supRecA2.Supplier_ID + "";
+                    }
+                }
+            }
+            if(booksIdA2 == "2680178000002735078")
+            {
+                isMineA2 = true;
+            }
+            if(isMineA2 == true)
+            {
+                if(quote.Selected == true)
+                {
+                    thisSelected = true;
+                }
+            }
+        }
+        hasChanges = false;
+        for each  sq in r.Supplier_quotes
+        {
+            matchingSupplierName = sq.SupplierName;
+            for each  quote in input.Supplier_Quotes
+            {
+                if(quote.Suppliers.toLowerCase().contains(matchingSupplierName.toLowerCase()) || matchingSupplierName.toLowerCase().contains(quote.Suppliers.toLowerCase()))
+                {
+                    if(sq.Availability_Supplier != quote.Availability || sq.Initial_Price_Supplier != quote.Initial_Price || sq.Negotiated_Supplier != quote.Negotiated || sq.Final_Price_Supplier != quote.Final_Price || sq.Lead_Time_Supplier != quote.Lead_Time)
+                    {
+                        hasChanges = true;
+                    }
+                }
+            }
+        }
+        newStatusA2 = r.Response_Status;
+        newCounterA2 = r.edit_counter;
+        if(newCounterA2 == null)
+        {
+            newCounterA2 = 0;
+        }
+        if(hasChanges == true)
+        {
+            newCounterA2 = 1;
+            newStatusA2 = "Submit Response";
+        }
+        if(anySelected == true)
+        {
+            newStatusA2 = "Not Selected";
+        }
+        if(thisSelected == true)
+        {
+            newStatusA2 = "Selected";
+            newCounterA2 = 1;
+        }
+        update r
+        [
+            Response_Status=newStatusA2
+            edit_counter=newCounterA2
+        ];
+        for each  sq in r.Supplier_quotes
+        {
+            matchingSupplierName = sq.SupplierName;
+            for each  quote in input.Supplier_Quotes
+            {
+                if(quote.Suppliers.toLowerCase().contains(matchingSupplierName.toLowerCase()) || matchingSupplierName.toLowerCase().contains(quote.Suppliers.toLowerCase()))
+                {
+                    sq.Availability_Supplier=quote.Availability;
+                    sq.Initial_Price_Supplier=quote.Initial_Price;
+                    sq.Negotiated_Supplier=quote.Negotiated;
+                    sq.Final_Price_Supplier=quote.Final_Price;
+                    sq.Lead_Time_Supplier=quote.Lead_Time;
+                    sq.Stage_Supplier=quote.Stage;
+                    sq.Selected_Supplier=quote.Selected;
+                }
+            }
+        }
+        newSampleA2 = r.Product_Sample_Supplier;
+        if(input.Product_Sample != "Required" && input.Product_Sample != "HideToSupplier")
+        {
+            newSampleA2 = input.Product_Sample;
+        }
+        newDImageA2 = r.D_Image_Supplier;
+        if(input.D_Image != "Required" && input.D_Image != "HideToSupplier")
+        {
+            newDImageA2 = input.D_Image;
+        }
+        newSpecA2 = r.Specification_Supplier;
+        if(input.Specification != "Required" && input.Specification != "HideToSupplier")
+        {
+            newSpecA2 = input.Specification;
+        }
+        newDrawingA2 = r.Technical_Drawing_Supplier;
+        if(input.Technical_Drawing != "Required" && input.Technical_Drawing != "HideToSupplier")
+        {
+            newDrawingA2 = input.Technical_Drawing;
+        }
+        update r
+        [
+            SKU_Supplier=input.sku
+            Target_Date_Supplier=input.target_date
+            Quantity_Supplier=input.quantity
+            Description_Supplier=input.description
+            Open_to_similar_design_Supplier=input.Open_to_similar_design
+            Additional_Description_Supplier=input.Addtional_Description
+            Product_Sample_Supplier=newSampleA2
+            D_Image_Supplier=newDImageA2
+            Specification_Supplier=newSpecA2
+            Technical_Drawing_Supplier=newDrawingA2
+            Specification_Details_Supplier=input.Specification_Details
+        ];
+        if(input.Items != null)
+        {
+            itemRec = Items[ID == input.Items];
+            if(itemRec != null)
+            {
+                if(itemRec.Image != null)
+                {
+                    r.Product_Image_Supplier2_INQ=itemRec.Image;
+                }
+            }
+        }
+        if(input.Attachments != null && input.Attachments + "" != "" && input.Attachments + "" != "[]")
+        {
+            r.Image_from_Inq=input.Attachments;
+        }
+    }
+    update r
+    [
+        Dimension_Supplier=input.Dimension
+        Color_Body_Supplier=input.Color_Body
+        Voltage_Supplier=input.Voltage
+        Lumens_Supplier=input.Lumens
+    ];
+    update r
+    [
+        Color_Temperature_Supplier=input.Color_Temperature
+        Type_of_Bulb_Supplier=input.Type_of_Bulb
+    ];
+}

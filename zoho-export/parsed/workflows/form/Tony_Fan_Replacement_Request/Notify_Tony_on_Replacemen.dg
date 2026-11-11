@@ -1,0 +1,28 @@
+// form: Notify Tony on Replacement Request Added  form=Tony_Fan_Replacement_Request event=on add on success  [.ds line 45818]
+    page_base_url = "https://creator.zoho.com/homecartel/supply-chain-app";
+ts = zoho.currenttime.toString().replaceAll(" ","").replaceAll(":","").replaceAll("-","");
+deep_link_token = "RR-" + input.ID + "-" + ts;
+insert into Tony_Notifications
+[
+    Recipient_Email="184319330@qq.com"
+    Notification_Type="Replacement Request added"
+    Message="A new replacement request " + input.RR_No + " was added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=page_base_url + "/#Page:Replacement_Request_Tony?tonyrrid=" + deep_link_token
+    Source_Record_No=input.RR_No
+    Source_Record_ID=input.ID
+    Deep_Link_Token=deep_link_token
+    Added_User=zoho.loginuser
+]
+sendmail
+[
+    from :zoho.adminuserid
+    to :"184319330@qq.com"
+    cc:""
+    bcc :""
+    reply to :zoho.adminuserid
+    subject :"Replacement Request added"
+    message :"A new replacement request has been added in your portal."
+    content type :Plain Text
+]

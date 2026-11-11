@@ -1,0 +1,27 @@
+// map addDmsScheduleRequestMessage(String cmsRecordId, String senderEmail, String senderName, String message, String sentOn)   [.ds lines 23112-23139]
+response = Map();
+cmsId = cmsRecordId.trim();
+dmsRecordId = "";
+for each  rec in DMS_Schedule_Request[CMS_Schedule_Request_ID == cmsId]
+{
+    dmsRecordId = rec.ID + "";
+}
+if(dmsRecordId == "")
+{
+    response.put("status","error");
+    response.put("message","No matching DMS_Schedule_Request found for CMS record " + cmsId + ".");
+    return response;
+}
+insert into DMS_Schedule_Request_Messages
+[
+    DMS_Schedule_Request_ID=dmsRecordId
+    Sender_Email=senderEmail
+    Sender_Name=senderName
+    Message=message
+    Sent_On=sentOn
+    Synced_To_CMS=true
+    Added_User=zoho.loginuser
+]
+response.put("status","success");
+response.put("message","Synced.");
+return response;

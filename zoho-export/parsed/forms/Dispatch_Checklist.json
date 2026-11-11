@@ -1,0 +1,136 @@
+{
+  "name": "Dispatch_Checklist",
+  "label": "Dispatch Checklist",
+  "successMessage": "Dispatch Checklist Added Successfully",
+  "line": 1314,
+  "fields": [
+    {
+      "name": "Dispatched_At",
+      "label": "Dispatched At",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Dis",
+      "label": "Dispatch ID",
+      "type": "autonumber",
+      "required": false
+    },
+    {
+      "name": "Service_Appointment_ID",
+      "label": "Service Appointment ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Order",
+      "label": "Sales Order",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Package_Number",
+      "label": "Package Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Dispatch_Status",
+      "label": "Dispatch Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Pending",
+        "Dispatched"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Dispatch_By",
+      "label": "Dispatch By",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Jhi",
+        "Flor",
+        "Queen"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Dispatched_At2",
+      "label": "Dispatched_At",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Check_Items_Complete",
+      "label": "Check Items Complete",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Check_Contact_Details",
+      "label": "Check Contact Details",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Check_Payment",
+      "label": "Check Payment",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Check_No_Exception",
+      "label": "Check No Exception",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "DR_No",
+      "label": "DR No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Check_SO_Number",
+      "label": "I-check ang Sales Order Number kung tama",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Check_SKU_Match",
+      "label": "I-check ang SKU ng box kung tugma sa item list sa Shipment Order",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Check_Box_Quality",
+      "label": "I-check ang quality ng boxes/crates",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Check_Box_Count",
+      "label": "I-check ang bilang ng boxes na ilalabas  at ang bilang mismo",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Signature_Dispatcher",
+      "label": "Signature (Dispatcher)",
+      "type": "signature",
+      "required": false
+    }
+  ]
+}

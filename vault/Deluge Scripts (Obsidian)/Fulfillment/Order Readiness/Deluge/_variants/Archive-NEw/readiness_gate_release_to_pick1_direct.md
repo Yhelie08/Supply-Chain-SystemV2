@@ -1,0 +1,209 @@
+---
+title: "readiness_gate_release_to_pick1_direct"
+source_file: "Deluge Script/readiness_gate_release_to_pick1_direct.txt"
+category: "Fulfillment/Order Readiness/Deluge/_variants/Archive-NEw"
+associated_widget: "[[Fulfillment/Order Readiness/Widget/Sales Order Readiness Gate Widget|Sales Order Readiness Gate Widget]]"
+lines: 166
+tags:
+  - crate
+  - delivery-management
+  - deluge
+  - dms
+  - fulfillment
+  - notification
+  - pack
+  - pick
+  - procurement
+  - purchase-request
+  - qc
+  - readiness-gate
+  - zoho-books
+---
+
+# readiness_gate_release_to_pick1_direct
+
+> [!INFO] Script & Widget Details
+> - **Associated Widget:** [[Fulfillment/Order Readiness/Widget/Sales Order Readiness Gate Widget|Sales Order Readiness Gate Widget]]
+> - **Category:** `Fulfillment/Order Readiness/Deluge/_variants/Archive-NEw`
+> - **Source File:** `Deluge Script/readiness_gate_release_to_pick1_direct.txt`
+> - **Lines of Code:** 166
+> - **Tags:** `#crate`, `#delivery-management`, `#deluge`, `#dms`, `#fulfillment`, `#notification`, `#pack`, `#pick`, `#procurement`, `#purchase-request`, `#qc`, `#readiness-gate`, `#zoho-books`
+
+---
+
+## ⚡ Role in Widget Architecture
+This script powers the **[[Fulfillment/Order Readiness/Widget/Sales Order Readiness Gate Widget|Sales Order Readiness Gate Widget]]**. Any changes here affect the backend workflows, data calculations, or Zoho Creator / Books sync for this widget.
+
+---
+
+## Deluge Script Code
+
+````deluge
+// ===== FULFILLMENT_STAGE SYNC — "Order Readiness": kahit hindi pa naka-Release, ang
+// pagkakaroon na ng Readiness Gate record ay nangangahulugang "Order Readiness" na ang
+// stage nito. Unconditional, tumatakbo sa BAWAT save (parehong logic na dati na sa
+// readiness_gate_release_to_picker.txt). =====
+soValStage = input.sales_order_number + "";
+skuValStage = input.SKU + "";
+itemNameForSOF = input.Item_Name + "";
+sofMatches = Sales_Order_Fulfillment[SO_No == soValStage];
+for each  sofRec in sofMatches
+{
+	sofFullList = Sales_Order_Fulfillment[ID == sofRec.ID];
+	for each  sofFull in sofFullList
+	{
+		sofFound = false;
+		for each  sofRow in sofFull.Item_Details1
+		{
+			if(sofRow.Item + "" == itemNameForSOF && sofRow.SKU + "" == skuValStage)
+			{
+				sofFound = true;
+			}
+		}
+		if(sofFound == true && sofFull.Fulfillment_Stage != "Order Readiness")
+		{
+			update sofFull
+			[
+				Fulfillment_Stage="Order Readiness"
+			];
+			info "Fulfillment_Stage updated to Order Readiness for SO " + soValStage + " / SKU " + skuValStage;
+		}
+	}
+}
+if(input.Release == true)
+{
+	soVal = input.sales_order_number + "";
+	// ===== CHANGED 2026-09-03, per direct user instruction ("per item lang ang
+	// release dapat") — real bug found live: releasing ONE item under an SO (e.g.
+	// PAC-16585's Ladale row) was pulling its SIBLING item under the SAME SO (Finn,
+	// still Pending/Unassigned, Release never checked) into Pick1 too — the old
+	// design below deliberately treated ANY one Release as "the whole SO is ready
+	// for picking." Now scoped strictly per item: only Readiness Gate records that
+	// are THEMSELVES Release==true sync to Pick1. An unreleased sibling stays
+	// exactly where it is (still Pending in Readiness Gate, never appears in Pick)
+	// until its OWN Release is checked. Still re-syncs every already-released
+	// record in the SO on each save (not just the one just edited) — that part is
+	// unchanged/harmless, it just no longer reaches into UNreleased siblings. =====
+	matchingGateRecords = Sales_Order_Readiness_Gate[sales_order_number == soVal && Release == true];
+	for each  gateRec in matchingGateRecords
+	{
+		skuVal = gateRec.SKU + "";
+		itemNameVal = gateRec.Item_Name + "";
+		rrValGate = gateRec.rr_number + "";
+		if(rrValGate == "null")
+		{
+			rrValGate = "";
+		}
+		alreadyExists = false;
+		// FIXED 2026-08-07, real bug (replacement-package redesign): matched by
+		// SO + SKU + Item_Name alone — meaning a 2nd Pick1 record for the same SKU
+		// (a replacement's own new package flowing through Readiness Gate again)
+		// would UPDATE the ORIGINAL's Pick1 record in place instead of getting its
+		// own, clobbering Package_Order/Picker/etc. Widened to also match
+		// Package_Order, same field this whole workflow already carries.
+		// WIDENED AGAIN 2026-08-13, real bug found live (SO-16468, Aqi/JF-001) — the
+		// 2026-08-07 fix above assumed a replacement always gets its OWN NEW
+		// Package_Order, which stopped being true this same day: checker_checklist_
+		// qc_sync.txt was redesigned so a replacement now deliberately REUSES the
+		// original's own Package_Order (no new Books package). That reintroduced the
+		// exact same collision this fix was meant to prevent — Package_Order alone
+		// can no longer tell an original from its RR replacement. Widened to also
+		// match RR.
+		for each  rec in Pick1[SO == soVal && SKU == skuVal && Item_Name == itemNameVal && Package_Order == gateRec.Package_Order && RR == rrValGate]
+		{
+			alreadyExists = true;
+			update rec
+			[
+				Picker=gateRec.Assign_Picker
+				Package_Order=gateRec.Package_Order
+				PR_if_any=gateRec.pr_number
+				RR=gateRec.rr_number
+				Demo=gateRec.Demo
+				Delivery_Type=gateRec.Delivery_Type
+				Order_Type=gateRec.Order_Type
+				Target_Delivery_Date=gateRec.Target_Delivery_Date
+				For_Crate=gateRec.For_Crate
+				Item_Name=gateRec.Item_Name
+				Bin_Location=gateRec.Bin_Location
+				SKU=skuVal
+				Quantity_to_Pick=gateRec.Quantity
+				Customer_Name=gateRec.customer_name
+				Customer_Address=gateRec.customer_address
+				Customer_Type=gateRec.customer_type
+			];
+		}
+		if(alreadyExists == false)
+		{
+			newPickID = insert into Pick1
+			[
+				SO=soVal
+				Picker=gateRec.Assign_Picker
+				Package_Order=gateRec.Package_Order
+				PR_if_any=gateRec.pr_number
+				RR=gateRec.rr_number
+				Demo=gateRec.Demo
+				Delivery_Type=gateRec.Delivery_Type
+				Order_Type=gateRec.Order_Type
+				Target_Delivery_Date=gateRec.Target_Delivery_Date
+				For_Crate=gateRec.For_Crate
+				Item_Name=gateRec.Item_Name
+				Bin_Location=gateRec.Bin_Location
+				SKU=skuVal
+				Quantity_to_Pick=gateRec.Quantity
+				Customer_Name=gateRec.customer_name
+				Customer_Address=gateRec.customer_address
+				Customer_Type=gateRec.customer_type
+				Added_User=zoho.loginuser
+			];
+			info "Created Pick1 record " + newPickID + " for SO " + soVal + " / SKU " + skuVal + " / Item " + itemNameVal;
+			newPickNotifId = insert into Pick_Notifications
+			[
+				Recipient_Email="homecartelff@gmail.com"
+				Notification_Type="Pick Record Created"
+				Message="New item ready for picking — " + soVal + " (" + itemNameVal + ")."
+				Created_On=zoho.currenttime
+				Read=false
+				Target_URL="https://creatorapp.zoho.com/homecartel/environment/development/supply-chain-app/#Page:Pick2?pickRecordId=" + newPickID
+				Source_Record_No=soVal
+				Source_Record_ID=newPickID
+				Added_User=zoho.loginuser
+			];
+		}
+		else
+		{
+			info "Updated existing Pick1 record for SO " + soVal + " / SKU " + skuVal + " / Item " + itemNameVal;
+		}
+		// ===== FULFILLMENT_STAGE SYNC — "Picking": dating ginagawa ito ng Picker form's
+		// sariling FULFILLMENT_STAGE SYNC block (picker_assign_to_pick_to_pick1.txt), pero
+		// dahil tinanggal na ang Picker form sa gitna, dito na ito ginagawa (parehong
+		// destinasyong stage, "Picking"). =====
+		sofMatches2 = Sales_Order_Fulfillment[SO_No == soVal];
+		for each  sofRec2 in sofMatches2
+		{
+			sofFullList2 = Sales_Order_Fulfillment[ID == sofRec2.ID];
+			for each  sofFull2 in sofFullList2
+			{
+				sofFound2 = false;
+				for each  sofRow2 in sofFull2.Item_Details1
+				{
+					if(sofRow2.Item + "" == itemNameVal && sofRow2.SKU + "" == skuVal)
+					{
+						sofFound2 = true;
+					}
+				}
+				if(sofFound2 == true && sofFull2.Fulfillment_Stage != "Picking")
+				{
+					update sofFull2
+					[
+						Fulfillment_Stage="Picking"
+					];
+					info "Fulfillment_Stage updated to Picking for SO " + soVal + " / SKU " + skuVal;
+				}
+			}
+		}
+	}
+	// ===== HINDI dinedelete ang Readiness Gate record — nananatili ito, parehong
+	// pattern gaya ng dati (sync-only, walang delete). =====
+}
+
+````

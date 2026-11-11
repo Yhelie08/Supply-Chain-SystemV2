@@ -1,0 +1,6 @@
+// form: Shipment_Lock_PO_Fields  form=Shipments event=on add or edit on load  [.ds line 38638]
+    disable PO_Shipments.PR_No;
+disable PO_Shipments.SKU;
+disable PO_Shipments.Item_Name;
+disable PO_Shipments.Ordered_QTY;
+//disable PO_Shipments.Shipping_Mode;

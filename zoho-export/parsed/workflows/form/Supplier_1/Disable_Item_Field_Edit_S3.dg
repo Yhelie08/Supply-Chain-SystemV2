@@ -1,0 +1,71 @@
+// form: Disable_Item_Field_Edit_Supplier1  form=Supplier_1 event=on add or edit on load  [.ds line 37458]
+    if(input.Response_Status == "Selected")
+{
+    if(input.Product_Sample_Supplier == "Completed" && input.D_Image_Supplier == "Completed" && input.Specification_Supplier == "Completed" && input.Technical_Drawing_Supplier == "Completed" && input.Specification_Details_Supplier != null && input.Specification_Details_Supplier != "")
+    {
+        input.Response_Status = "Completed";
+        input.edit_counter = 0;
+        recs = Supplier_2[ID == input.ID];
+        for each  rec in recs
+        {
+            rec.Response_Status="Completed";
+            rec.edit_counter=0;
+        }
+    }
+}
+disable INQ_No_Supplier;
+disable SKU_Supplier;
+disable Target_Date_Supplier;
+disable Items_Supplier;
+disable Quantity_Supplier;
+disable Unit_Supplier;
+disable Description_Supplier;
+disable Dropdown1;
+disable Dropdown2;
+disable Date_Created_Supplier;
+disable Open_to_similar_design_Supplier;
+disable Additional_Description_Supplier;
+disable Response_Status;
+disable edit_counter;
+disable Supplier_quotes.SupplierName;
+disable Supplier_quotes.Stage_Supplier;
+disable Supplier_quotes.Selected_Supplier;
+if(input.Response_Status == "Completed")
+{
+    disable Supplier_quotes.Availability_Supplier;
+    disable Supplier_quotes.Initial_Price_Supplier;
+    disable Supplier_quotes.Negotiated_Supplier;
+    disable Supplier_quotes.Final_Price_Supplier;
+    disable Supplier_quotes.Lead_Time_Supplier;
+    disable Product_Sample_Supplier;
+    disable D_Image_Supplier;
+    disable Specification_Supplier;
+    disable Specification_Details_Supplier;
+    disable Technical_Drawing_Supplier;
+    disable Similar_Design_Photo_Supplier;
+}
+if(input.Response_Status == "Not Selected")
+{
+    disable Supplier_quotes.Availability_Supplier;
+    disable Supplier_quotes.Initial_Price_Supplier;
+    disable Supplier_quotes.Negotiated_Supplier;
+    disable Supplier_quotes.Final_Price_Supplier;
+    disable Supplier_quotes.Lead_Time_Supplier;
+}
+if(input.Response_Status == "Selected")
+{
+    disable Supplier_quotes.Availability_Supplier;
+    disable Supplier_quotes.Initial_Price_Supplier;
+    disable Supplier_quotes.Negotiated_Supplier;
+    disable Supplier_quotes.Final_Price_Supplier;
+    disable Supplier_quotes.Lead_Time_Supplier;
+}
+if(input.Response_Status != "Selected" && input.Response_Status != "Completed")
+{
+    disable Product_Sample_Supplier;
+    disable D_Image_Supplier;
+    disable Specification_Supplier;
+    disable Specification_Details_Supplier;
+    disable Technical_Drawing_Supplier;
+    disable Similar_Design_Photo_Supplier;
+}

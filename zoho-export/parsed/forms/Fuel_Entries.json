@@ -1,0 +1,78 @@
+{
+  "name": "Fuel_Entries",
+  "label": "Fuel Entries",
+  "successMessage": "Fuel Entry Added Successfully",
+  "line": 6236,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Vehicle",
+      "label": "Vehicle",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Innova",
+        "NBX-1446 - Hino",
+        "NIB-3823 - Travis",
+        "NKI-4696 - Travis",
+        "Rav4"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Date_field",
+      "label": "Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Gas_Bar",
+      "label": "Gas Bar",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Odometer",
+      "label": "Odometer",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Price_Unit",
+      "label": "Price/Unit",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Vendor",
+      "label": "Vendor",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Invoice_No",
+      "label": "Invoice No#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Invoice_Receipt",
+      "label": "Invoice Receipt",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Remarks",
+      "label": "Remarks",
+      "type": "textarea",
+      "required": false
+    }
+  ]
+}

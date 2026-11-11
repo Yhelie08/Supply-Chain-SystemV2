@@ -1,0 +1,2 @@
+// functions: Submit_Response_PRbtn  form=Tony_Fan_Purchase_Request event= on start > on click  [.ds line 51236]
+openUrl("#Form:Tony_Fan_Purchase_Request?viewLinkName=Tony_Fan_Purchase_Request_Report&recLinkID=" + input.ID,"same window");

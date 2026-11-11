@@ -1,0 +1,28 @@
+
+			displayName = "Pick Report"
+			show all rows from Pick1    
+			(
+				Package_Order as "PAC #"
+				PR_if_any as "PR #"
+				RR as "RR #"
+				Order_Type as "Order Type"
+				Delivery_Type as "Delivery Type"
+				SKU
+				Bin_Location as "Bin Location"
+				Quantity_to_Pick as "Quantity to Pick"
+				Customer_Name as "Customer Name"
+				Customer_Address as "Customer Address"
+				Customer_Type as "Customer Type"
+				Demo as "Demo #"
+				Picker
+				SO as "SO #"
+				Marked as "Mark Picked"
+				Item_Name as "Item Name"
+				Added_Time as "Added Time"
+				Target_Delivery_Date as "Target Delivery Date"
+				For_Crate as "For Crate"
+				Forecast_Delivery as "Forecast Delivery"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+			)
+		

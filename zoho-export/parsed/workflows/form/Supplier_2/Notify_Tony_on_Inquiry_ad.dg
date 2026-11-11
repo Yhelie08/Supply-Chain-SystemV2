@@ -1,0 +1,17 @@
+// form: Notify Tony on Inquiry added  form=Supplier_2 event=on add on success  [.ds line 45702]
+    page_base_url = "https://creator.zoho.com/homecartel/supply-chain-app";
+ts = zoho.currenttime.toString().replaceAll(" ","").replaceAll(":","").replaceAll("-","");
+deep_link_token = "INQ-" + input.ID + "-" + ts;
+insert into Tony_Notifications
+[
+    Recipient_Email="184319330@qq.com"
+    Notification_Type="New Inquiry added"
+    Message="A new inquiry " + input.INQ_No_Supplier + " was added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=page_base_url + "/#Page:Tony_Fan_Inquiries?tonyinquiriesid=" + deep_link_token
+    Source_Record_No=input.INQ_No_Supplier
+    Source_Record_ID=input.ID
+    Deep_Link_Token=deep_link_token
+    Added_User=zoho.loginuser
+]

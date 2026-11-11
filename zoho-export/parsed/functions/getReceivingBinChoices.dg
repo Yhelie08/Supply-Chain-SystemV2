@@ -1,0 +1,120 @@
+// map getReceivingBinChoices(String receivingId)   [.ds lines 34337-34457]
+response = Map();
+orgId = "751117756";
+whId = "2680178000042173149";
+recs = Receiving[ID == receivingId.toLong()];
+found = false;
+lineResults = List();
+for each  r in recs
+{
+    found = true;
+    binLocs = List();
+    for each  page in {1,2,3,4,5,6}
+    {
+        binUrl = "https://www.zohoapis.com/books/v3/settings/warehouses/" + whId + "/storagelocations?organization_id=" + orgId + "&page=" + page + "&per_page=200";
+        binResp = invokeurl
+        [
+            url :binUrl
+            type :GET
+            connection:"zoho_books"
+        ];
+        locs = binResp.get("storage_locations");
+        if(locs == null || locs.size() == 0)
+        {
+            break;
+        }
+        for each  loc in locs
+        {
+            binLocs.add(loc);
+        }
+        hasMore = binResp.get("page_context").get("has_more_page");
+        if(hasMore == false)
+        {
+            break;
+        }
+    }
+    defaultBinNames = {"Package Area","Receiving Area","Default Area"};
+    for each  ln in r.Receiving_Line_Items
+    {
+        itemRec = Items[SKU == ln.SKU];
+        rowCategory = "";
+        itemBooksId = "";
+        if(itemRec != null)
+        {
+            rowCategory = itemRec.category;
+            itemBooksId = itemRec.ID1 + "";
+        }
+        candidateBins = List();
+        if(rowCategory != "")
+        {
+            for each  loc in binLocs
+            {
+                zName = loc.get("zone_name") + "";
+                if(zName.toLowerCase().contains(rowCategory.toLowerCase()))
+                {
+                    candidateBins.add(loc);
+                }
+            }
+        }
+        choices = List();
+        for each  dName in defaultBinNames
+        {
+            choices.add(dName);
+        }
+        if(candidateBins.size() > 0)
+        {
+            for each  cLoc in candidateBins
+            {
+                choices.add(cLoc.get("name") + "");
+            }
+        }
+        else
+        {
+            for each  aLoc in binLocs
+            {
+                choices.add(aLoc.get("name") + "");
+            }
+        }
+        stockedBinName = "";
+        if(itemBooksId != "" && itemBooksId != "null")
+        {
+            itemBinResp = invokeurl
+            [
+                url :"https://www.zohoapis.com/books/v3/settings/warehouses/" + whId + "/storagelocations?organization_id=" + orgId + "&item_id=" + itemBooksId
+                type :GET
+                connection:"zoho_books"
+            ];
+            itemBins = itemBinResp.get("storage_locations");
+            if(itemBins != null)
+            {
+                for each  ib in itemBins
+                {
+                    ibQty = ib.get("balance_quantity");
+                    if(ibQty != null && ibQty > 0 && stockedBinName == "")
+                    {
+                        stockedBinName = ib.get("name") + "";
+                    }
+                }
+            }
+        }
+        defaultBin = "Receiving Area";
+        if(stockedBinName != "")
+        {
+            defaultBin = stockedBinName;
+        }
+        lineRow = Map();
+        lineRow.put("sku",ln.SKU);
+        lineRow.put("choices",choices);
+        lineRow.put("recommendedDefault",defaultBin);
+        lineResults.add(lineRow);
+    }
+}
+if(found == false)
+{
+    response.put("status","error");
+    response.put("message","Receiving record not found: " + receivingId);
+    return response;
+}
+response.put("status","success");
+response.put("lines",lineResults);
+return response;

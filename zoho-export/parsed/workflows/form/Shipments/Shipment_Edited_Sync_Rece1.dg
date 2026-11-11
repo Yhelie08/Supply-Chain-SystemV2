@@ -1,0 +1,54 @@
+// form: Shipment_Edited_Sync_Receiving  form=Shipments event=on edit on success  [.ds line 46196]
+    recvRecs = Receiving[Shipments == input.ID];
+for each  r in recvRecs
+{
+    update r
+    [
+        SO_No=input.Sales_Order
+        PO_No=input.PO_No.PO_No
+        Customer_Name=input.Customer
+        Supplier=input.Supplier
+    ];
+    /* FIXED 2026-07-23, real bug found live ("wait why the expected here became 1
+       this is 2 right?") — this loop used to unconditionally overwrite an
+       ALREADY-EXISTING line's Expected_Qty with li.Shipment_QTY on every single
+       Shipments edit. Harmless historically (one Shipment was always 1:1 with one
+       fresh Receiving line, so Shipment_QTY genuinely WAS the expected qty) — but
+       broke for real the moment the "same RCV, same PO" replacement-recycle
+       architecture (2026-07-20) made it possible for a 2ND Shipment (the cloned
+       replacement, deliberately a SMALLER qty — only the damaged/missing units,
+       not the full original order) to point at the SAME Receiving record. Any
+       edit on that replacement Shipment (e.g. cloneShipmentForReplacement's own
+       `newShipRec.Receiving_Record_Created=true;` write, made right after
+       re-pointing Receiving.Shipments at it) fired THIS workflow, which then
+       clobbered the original line's real Expected_Qty (2) down to the
+       replacement's own smaller Shipment_QTY (1) — confirmed live via direct API
+       diff, 1+0+1 no longer equalled the record's own Expected_Qty, an invariant
+       Receiving_Validate_Qty is supposed to guarantee. This is the EXACT same
+       principle the sibling Created-trigger action (Shipment_Populate_Receiving,
+       right above this one in the same file) already got right in its own 2026-
+       07-20 fix ("Expected_Qty must stay as-is") — just never applied here too.
+       Fixed: an ALREADY-EXISTING line's Expected_Qty is never touched again once
+       set; only a genuinely NEW line (no existing PR_No+SKU match at all) gets
+       Expected_Qty initialized from Shipment_QTY, same as before. */
+    for each  li in input.PO_Shipments
+    {
+        matched = false;
+        for each  existingRow in r.Receiving_Line_Items
+        {
+            if(existingRow.PR_No == li.PR_No && existingRow.SKU == li.SKU)
+            {
+                matched = true;
+            }
+        }
+        if(matched == false)
+        {
+            newRow = Receiving.Receiving_Line_Items();
+            newRow.PR_No=li.PR_No;
+            newRow.SKU=li.SKU;
+            newRow.Item_Name=li.Item_Name;
+            newRow.Expected_Qty=li.Shipment_QTY;
+            r.Receiving_Line_Items.insert(newRow);
+        }
+    }
+}

@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Procurement Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+        colors: {
+          accent: { 50:'#eef4fc',100:'#cde2fb',200:'#9ec5f4',300:'#6da7ec',400:'#3987e5',500:'#2a78d6',600:'#1c5cab',700:'#184f95',800:'#104281',900:'#0d366b' },
+          good: '#0ca30c', warning: '#fab219', critical: '#d03b3b', orange: '#eb6834'
+        }
+      }
+    }
+  };
+</script>
+<style>
+  html,body{ background:#f4f6f9; }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:99px; }
+  .tabular{ font-variant-numeric: tabular-nums; }
+  #statusBar{ display:none; }
+  #statusBar.show{ display:flex; }
+</style>
+</head>
+<body class="font-sans text-slate-800 antialiased">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useCallback } = React;
+const {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend
+} = Recharts;
+
+/* ================= CONFIG ================= */
+const CONFIG = {
+  APP_NAME: "supply-chain-app",
+  PR_REPORT: "All_Purchase_Request",
+  PO_REPORT: "All_Purchase_Orders",
+  SUPPLIER_REPORT: "All_Suppliers",
+  EXCEPTION_REPORT: "Exceptions_Report",
+  INQUIRY_REPORT: "All_Inquiries",
+  SHIPMENT_REPORT: "All_Shipments",
+  RECEIVING_REPORT: "Receiving_Report",
+  RR_REPORT: "Replacement_Request_Report",
+  MAX_RECORDS: 1000,
+};
+
+/* Confirmed live 2026-08-27: ZOHO.CREATOR.DATA.getRecords throws a hard HTTP 400
+   (code 9220, "No records exist in this report.") for a genuinely EMPTY report —
+   not a real failure. Same pattern already proven in Widget/Fulfillment/Scoreboard. */
+function fetchReport(reportName){
+  var params = { app_name: CONFIG.APP_NAME, report_name: reportName, field_config: "all", max_records: CONFIG.MAX_RECORDS };
+  return ZOHO.CREATOR.DATA.getRecords(params).then(function(response){
+    return (response && response.data) || [];
+  }).catch(function(err){
+    var code = null;
+    try { code = JSON.parse(err && err.responseText).code; } catch (e) {}
+    if (code === 9220) return [];
+    throw err;
+  });
+}
+
+/* ================= HELPERS ================= */
+function parseCreatorDate(s){
+  if (!s || typeof s !== "string") return null;
+  var datePart = s.split(" ")[0];
+  var parts = datePart.split("-");
+  if (parts.length !== 3) return null;
+  var mm=parseInt(parts[0],10), dd=parseInt(parts[1],10), yyyy=parseInt(parts[2],10);
+  if (!mm || !dd || !yyyy) return null;
+  return new Date(yyyy, mm-1, dd);
+}
+function extractSubformRows(raw){
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") return Object.values(raw).filter(function(v){ return v && typeof v === "object"; });
+  return [];
+}
+function val(rec, field, fallback){
+  var v = rec && rec[field];
+  if (v === undefined || v === null || v === "") return fallback !== undefined ? fallback : "";
+  if (typeof v === "object") return v.zc_display_value || v.display_value || fallback || "";
+  return v;
+}
+function numVal(rec, field){ var v = parseFloat(val(rec, field, 0)); return isNaN(v) ? 0 : v; }
+function fmtMoney(n){
+  if (n >= 1000000) return "₱" + (n/1000000).toFixed(1) + "M";
+  if (n >= 1000) return "₱" + (n/1000).toFixed(1) + "K";
+  return "₱" + Math.round(n).toLocaleString("en-PH");
+}
+function fmtCompact(n){
+  if (n >= 1000000) return (n/1000000).toFixed(1) + "M";
+  if (n >= 1000) return (n/1000).toFixed(1) + "K";
+  return String(Math.round(n));
+}
+function startOfWeek(d){
+  var x = new Date(d); var day = x.getDay();
+  var diff = (day === 0 ? -6 : 1) - day;
+  x.setDate(x.getDate() + diff); x.setHours(0,0,0,0);
+  return x;
+}
+function weeklyBuckets(dates, weeks){
+  var now = new Date();
+  var thisWeekStart = startOfWeek(now);
+  var buckets = [];
+  for (var i = weeks - 1; i >= 0; i--){
+    var start = new Date(thisWeekStart); start.setDate(start.getDate() - i*7);
+    var end = new Date(start); end.setDate(end.getDate() + 7);
+    buckets.push({ start: start, end: end, label: (start.getMonth()+1) + "/" + start.getDate(), count: 0 });
+  }
+  dates.forEach(function(d){
+    if (!d) return;
+    for (var i = 0; i < buckets.length; i++){
+      if (d >= buckets[i].start && d < buckets[i].end){ buckets[i].count++; break; }
+    }
+  });
+  return buckets;
+}
+function pctChange(curr, prev){
+  if (prev === 0) return curr === 0 ? 0 : 100;
+  return Math.round(((curr - prev) / prev) * 100);
+}
+function timeAgo(d){
+  if (!d) return "";
+  var diffMs = Date.now() - d.getTime();
+  var days = Math.floor(diffMs / 86400000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return days + "d ago";
+  var weeks = Math.floor(days / 7);
+  if (weeks < 5) return weeks + "w ago";
+  return (d.getMonth()+1) + "/" + d.getDate() + "/" + d.getFullYear();
+}
+
+/* PO derived-status logic mirrors Widget/Proc/Purchase Order/POs.zip's own
+   mapPO() exactly — PO_Status is a raw picklist that alone is not authoritative;
+   real state comes from which of Sent_On/Acknowledge_On/Completed_On is set. */
+function poDerivedStatus(r){
+  var raw = val(r, "PO_Status", "Draft");
+  var sentOn = val(r, "Sent_On");
+  var ackOn = val(r, "Acknowledge_On");
+  var compOn = val(r, "Completed_On");
+  if (raw === "Cancelled") return "cancelled";
+  if (compOn) return "completed";
+  if (ackOn || raw === "Confirmed by Supplier") return "confirmed";
+  if (sentOn) return "sent";
+  return "draft";
+}
+
+/* ================= ICONS (hand-authored, Lucide-style: 24x24, stroke 2, currentColor) ================= */
+function Icon(props){
+  var children = props.children;
+  return React.createElement("svg", {
+    width: props.size||18, height: props.size||18, viewBox:"0 0 24 24", fill:"none",
+    stroke:"currentColor", strokeWidth:2, strokeLinecap:"round", strokeLinejoin:"round",
+    className: props.className
+  }, children);
+}
+const IconGrid = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("rect",{x:3,y:3,width:7,height:7,rx:1}),React.createElement("rect",{x:14,y:3,width:7,height:7,rx:1}),
+  React.createElement("rect",{x:14,y:14,width:7,height:7,rx:1}),React.createElement("rect",{x:3,y:14,width:7,height:7,rx:1})));
+const IconChart = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("line",{x1:18,y1:20,x2:18,y2:10}),React.createElement("line",{x1:12,y1:20,x2:12,y2:4}),
+  React.createElement("line",{x1:6,y1:20,x2:6,y2:14})));
+const IconUsers = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"}),React.createElement("circle",{cx:9,cy:7,r:4}),
+  React.createElement("path",{d:"M23 21v-2a4 4 0 0 0-3-3.87"}),React.createElement("path",{d:"M16 3.13a4 4 0 0 1 0 7.75"})));
+const IconSearch = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("circle",{cx:11,cy:11,r:8}),React.createElement("line",{x1:21,y1:21,x2:16.65,y2:16.65})));
+const IconFile = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"}),React.createElement("polyline",{points:"14 2 14 8 20 8"})));
+const IconPackage = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"m7.5 4.27 9 5.15"}),React.createElement("path",{d:"M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"}),
+  React.createElement("path",{d:"m3.3 7 8.7 5 8.7-5"}),React.createElement("line",{x1:12,y1:22,x2:12,y2:12})));
+const IconAlert = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"}),
+  React.createElement("line",{x1:12,y1:9,x2:12,y2:13}),React.createElement("line",{x1:12,y1:17,x2:12.01,y2:17})));
+const IconTruck = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M1 3h15v13H1z"}),React.createElement("path",{d:"M16 8h4l3 3v5h-7V8Z"}),
+  React.createElement("circle",{cx:5.5,cy:18.5,r:2.5}),React.createElement("circle",{cx:18.5,cy:18.5,r:2.5})));
+const IconUp = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("polyline",{points:"23 6 13.5 15.5 8.5 10.5 1 18"}),React.createElement("polyline",{points:"17 6 23 6 23 12"})));
+const IconDown = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("polyline",{points:"23 18 13.5 8.5 8.5 13.5 1 6"}),React.createElement("polyline",{points:"17 18 23 18 23 12"})));
+const IconClock = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("circle",{cx:12,cy:12,r:10}),React.createElement("polyline",{points:"12 6 12 12 16 14"})));
+const IconInbox = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("polyline",{points:"22 12 16 12 14 15 10 15 8 12 2 12"}),
+  React.createElement("path",{d:"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"})));
+const IconShip = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2-1"}),
+  React.createElement("path",{d:"M4 18l-1-3h18l-1 3"}),React.createElement("path",{d:"M12 3v7"}),React.createElement("path",{d:"M8 6h8l2 4H6z"})));
+const IconArchive = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("rect",{x:2,y:3,width:20,height:5,rx:1}),
+  React.createElement("path",{d:"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"}),
+  React.createElement("line",{x1:10,y1:12,x2:14,y2:12})));
+const IconRefresh = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M3 2v6h6"}),React.createElement("path",{d:"M21 12A9 9 0 0 0 6 5.3L3 8"}),
+  React.createElement("path",{d:"M21 22v-6h-6"}),React.createElement("path",{d:"M3 12a9 9 0 0 0 15 6.7l3-2.7"})));
+
+/* ================= SMALL VISUAL PRIMITIVES ================= */
+function Sparkline({ data, color }){
+  var w = 96, h = 32;
+  if (!data.length) return <svg width={w} height={h} />;
+  var max = Math.max.apply(null, data.concat([1]));
+  var min = Math.min.apply(null, data.concat([0]));
+  var range = (max - min) || 1;
+  var step = w / Math.max(data.length - 1, 1);
+  var pts = data.map(function(v, i){ return (i*step).toFixed(1) + "," + (h - ((v-min)/range) * (h-4) - 2).toFixed(1); }).join(" ");
+  var last = data[data.length-1];
+  var lastX = ((data.length-1)*step).toFixed(1);
+  var lastY = (h - ((last-min)/range) * (h-4) - 2).toFixed(1);
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastY} r="3" fill="white" stroke={color} strokeWidth="2" />
+    </svg>
+  );
+}
+
+function KpiCard({ icon, label, value, deltaPct, deltaGoodWhen, sparkData, sparkColor, sub }){
+  var deltaKnown = typeof deltaPct === "number";
+  var isUp = deltaPct > 0, isDown = deltaPct < 0;
+  var isGood = deltaGoodWhen === "up" ? isUp : deltaGoodWhen === "down" ? isDown : null;
+  var deltaColor = deltaPct === 0 ? "text-slate-400" : (isGood === false ? "text-critical" : isGood === true ? "text-good" : "text-slate-500");
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">{label}</p>
+          <p className="text-2xl font-extrabold text-slate-800 tabular">{value}</p>
+          {sub ? <p className="text-[11px] text-slate-400 mt-1">{sub}</p> : null}
+        </div>
+        <div className="w-9 h-9 rounded-xl bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">{icon}</div>
+      </div>
+      <div className="flex items-center justify-between mt-4">
+        {deltaKnown ? (
+          <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${deltaColor}`}>
+            {isUp ? <IconUp size={12} /> : isDown ? <IconDown size={12} /> : null}
+            {deltaPct === 0 ? "No change" : `${Math.abs(deltaPct)}% vs last 4wk`}
+          </span>
+        ) : <span />}
+        {sparkData ? <Sparkline data={sparkData} color={sparkColor} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, action, children, className }){
+  return (
+    <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col ${className||""}`}>
+      <div className="flex items-center justify-between px-5 pt-5 pb-1 shrink-0">
+        <h3 className="text-[13px] font-bold text-slate-700">{title}</h3>
+        {action}
+      </div>
+      <div className="px-5 pb-5 flex-1 min-h-0">{children}</div>
+    </div>
+  );
+}
+
+function EmptyState({ text }){
+  return <div className="h-full min-h-[120px] flex items-center justify-center text-[12.5px] text-slate-400">{text}</div>;
+}
+
+/* ================= MAIN CHART ================= */
+function VolumeChart({ data }){
+  if (!data.some(function(d){ return d.PR>0 || d.PO>0; })) return <EmptyState text="No PR/PO activity in this window yet." />;
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart data={data} barCategoryGap="28%" barGap={2} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+        <CartesianGrid vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={{ stroke:"#e2e8f0" }} tickLine={false} />
+        <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} allowDecimals={false} />
+        <Tooltip
+          cursor={{ fill: "#f1f5f9" }}
+          contentStyle={{ borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12.5, boxShadow: "0 4px 16px rgba(15,23,42,.08)" }}
+        />
+        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} iconType="circle" iconSize={8} />
+        <Bar dataKey="PR" name="Purchase Requests" fill="#eb6834" radius={[4,4,0,0]} maxBarSize={22} />
+        <Bar dataKey="PO" name="Purchase Orders" fill="#2a78d6" radius={[4,4,0,0]} maxBarSize={22} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ================= TOP SUPPLIERS ================= */
+function TopSuppliers({ rows }){
+  if (!rows.length) return <EmptyState text="No supplier activity yet this period." />;
+  var max = Math.max.apply(null, rows.map(function(r){ return r.count; }).concat([1]));
+  return (
+    <div className="space-y-4">
+      {rows.map(function(r, i){
+        var pct = Math.round((r.count / max) * 100);
+        return (
+          <div key={r.name}>
+            <div className="flex items-center justify-between text-[12.5px] mb-1.5">
+              <span className="font-semibold text-slate-700">{i+1}. {r.name}</span>
+              <span className="text-slate-400 tabular">{r.count} line{r.count===1?"":"s"} &middot; {fmtMoney(r.spend)}</span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-full rounded-full bg-accent-500" style={{ width: pct + "%" }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ================= STATUS BREAKDOWN (PO pipeline / Exception status) ================= */
+function StatusBreakdown({ rows }){
+  var total = rows.reduce(function(s,r){ return s+r.count; }, 0);
+  if (!total) return <EmptyState text="No records yet." />;
+  return (
+    <div className="space-y-3.5">
+      {rows.map(function(r){
+        var pct = Math.round((r.count / total) * 100);
+        return (
+          <div key={r.key}>
+            <div className="flex items-center justify-between text-[12.5px] mb-1.5">
+              <span className="flex items-center gap-2 font-semibold text-slate-700">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: r.color }} />
+                {r.label}
+              </span>
+              <span className="text-slate-400 tabular">{r.count}</span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: pct + "%", background: r.color }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ================= SUPPLIERS TABLE (real, all suppliers — folds "Users" into this page) ================= */
+function SuppliersTable({ rows }){
+  if (!rows.length) return <EmptyState text="No suppliers found." />;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[12.5px]">
+        <thead>
+          <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 border-b border-slate-100">
+            <th className="pb-2 font-semibold">Supplier</th>
+            <th className="pb-2 font-semibold text-right">PO Lines</th>
+            <th className="pb-2 font-semibold text-right">Active Lines</th>
+            <th className="pb-2 font-semibold text-right">Total Spend</th>
+            <th className="pb-2 font-semibold text-right">Avg Line Value</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-50">
+          {rows.map(function(r){
+            return (
+              <tr key={r.name} className="hover:bg-slate-50">
+                <td className="py-2.5 font-semibold text-slate-700 flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-accent-100 text-accent-700 flex items-center justify-center text-[10.5px] font-bold shrink-0">
+                    {r.name.slice(0,2).toUpperCase()}
+                  </div>
+                  {r.name}
+                </td>
+                <td className="py-2.5 text-right tabular text-slate-600">{r.count}</td>
+                <td className="py-2.5 text-right tabular text-slate-600">{r.active}</td>
+                <td className="py-2.5 text-right tabular text-slate-700 font-semibold">{fmtMoney(r.spend)}</td>
+                <td className="py-2.5 text-right tabular text-slate-500">{r.count ? fmtMoney(r.spend / r.count) : "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ================= RECENT ACTIVITY ================= */
+function ActivityFeed({ items }){
+  if (!items.length) return <EmptyState text="No recent procurement activity." />;
+  return (
+    <div className="divide-y divide-slate-100">
+      {items.map(function(it, i){
+        return (
+          <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${it.tint}`}>{it.icon}</div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] text-slate-700 truncate"><span className="font-semibold">{it.title}</span> {it.desc}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{it.when}</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ================= APP ================= */
+function App(){
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+  const [raw, setRaw] = useState(null);
+
+  useEffect(function(){
+    Promise.all([
+      fetchReport(CONFIG.PR_REPORT),
+      fetchReport(CONFIG.PO_REPORT),
+      fetchReport(CONFIG.SUPPLIER_REPORT),
+      fetchReport(CONFIG.EXCEPTION_REPORT),
+      fetchReport(CONFIG.INQUIRY_REPORT),
+      fetchReport(CONFIG.SHIPMENT_REPORT),
+      fetchReport(CONFIG.RECEIVING_REPORT),
+      fetchReport(CONFIG.RR_REPORT),
+    ]).then(function(results){
+      setRaw({
+        pr: results[0], po: results[1], suppliers: results[2], exceptions: results[3],
+        inquiries: results[4], shipments: results[5], receiving: results[6], rr: results[7],
+      });
+      setLoading(false);
+    }).catch(function(err){
+      console.error("[ProcurementDashboard] load failed:", err);
+      setError("Could not load live data. Please reopen this widget inside Zoho Creator.");
+      setLoading(false);
+    });
+  }, []);
+
+  const computed = useMemo(function(){
+    if (!raw) return null;
+    var prDates = raw.pr.map(function(r){ return parseCreatorDate(val(r,"Added_Time")); });
+    var poDates = raw.po.map(function(r){ return parseCreatorDate(val(r,"PO_Date") || val(r,"Added_Time")); });
+    var excDates = raw.exceptions.map(function(r){ return parseCreatorDate(val(r,"Opened_On") || val(r,"Added_Time")); });
+
+    var prBuckets = weeklyBuckets(prDates, 8);
+    var poBuckets = weeklyBuckets(poDates, 8);
+    var chartData = prBuckets.map(function(b, i){ return { label: b.label, PR: b.count, PO: poBuckets[i].count }; });
+
+    var prLast4 = prBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var prPrev4 = prBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+
+    var poActive = raw.po.filter(function(r){ var s = poDerivedStatus(r); return s !== "completed" && s !== "cancelled"; });
+    var poActiveDates = poActive.map(function(r){ return parseCreatorDate(val(r,"PO_Date") || val(r,"Added_Time")); });
+    var poActiveBuckets = weeklyBuckets(poActiveDates, 8);
+    var poActiveLast4 = poActiveBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var poActivePrev4 = poActiveBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+
+    var openExc = raw.exceptions.filter(function(r){ var s = val(r,"Exception_Status","Open"); return s !== "Resolved" && s !== "Closed"; });
+    var excBuckets = weeklyBuckets(excDates.filter(function(_, i){ var s = val(raw.exceptions[i],"Exception_Status","Open"); return s !== "Resolved" && s !== "Closed"; }), 8);
+    var excLast4 = excBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var excPrev4 = excBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+
+    /* Inquiry List — per-line Supplier_Quotes subform carries the real "Stage"
+       (Final/Negotiating/Not Selected/Declined); a quote-less row means the
+       inquiry hasn't gotten a supplier response yet. */
+    var inqDates = raw.inquiries.map(function(r){ return parseCreatorDate(val(r,"Added_Time")); });
+    var inqBuckets = weeklyBuckets(inqDates, 8);
+    var inqLast4 = inqBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var inqPrev4 = inqBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var INQ_STAGE_ORDER = ["Final","Negotiating","Not Selected","Declined","Awaiting Quote"];
+    var INQ_STAGE_COLOR = { "Final":"#0ca30c","Negotiating":"#3987e5","Not Selected":"#94a3b8","Declined":"#d03b3b","Awaiting Quote":"#fab219" };
+    var inqStageCounts = {}; INQ_STAGE_ORDER.forEach(function(s){ inqStageCounts[s] = 0; });
+    raw.inquiries.forEach(function(r){
+      var quotes = extractSubformRows(r["Supplier_Quotes"]);
+      if (!quotes.length){ inqStageCounts["Awaiting Quote"]++; return; }
+      quotes.forEach(function(q){
+        var stage = val(q,"Stage","Awaiting Quote");
+        if (inqStageCounts[stage] === undefined) stage = "Awaiting Quote";
+        inqStageCounts[stage]++;
+      });
+    });
+    var inqStageBreakdown = INQ_STAGE_ORDER.map(function(s){ return { key:s, label:s, count:inqStageCounts[s], color:INQ_STAGE_COLOR[s] }; });
+
+    /* Shipments — real Shipment_Status vocabulary confirmed live: Pending/In
+       Transit/Delivered/Delayed (Widget/Proc/Shipment's own CONFIG comment). */
+    var shipDates = raw.shipments.map(function(r){ return parseCreatorDate(val(r,"Ship_Out_Date") || val(r,"Added_Time")); });
+    var shipInTransit = raw.shipments.filter(function(r){ var s = val(r,"Shipment_Status","Pending"); return s !== "Delivered"; });
+    var shipInTransitDates = shipInTransit.map(function(r){ return parseCreatorDate(val(r,"Ship_Out_Date") || val(r,"Added_Time")); });
+    var shipBuckets = weeklyBuckets(shipInTransitDates, 8);
+    var shipLast4 = shipBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var shipPrev4 = shipBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var SHIP_STATUS_ORDER = ["Pending","In Transit","Delivered","Delayed"];
+    var SHIP_STATUS_COLOR = { "Pending":"#9ec5f4","In Transit":"#3987e5","Delivered":"#0ca30c","Delayed":"#d03b3b" };
+    var shipStatusCounts = {}; SHIP_STATUS_ORDER.forEach(function(s){ shipStatusCounts[s] = 0; });
+    raw.shipments.forEach(function(r){ var s = val(r,"Shipment_Status","Pending"); if (shipStatusCounts[s]===undefined) s="Pending"; shipStatusCounts[s]++; });
+    var shipStatusBreakdown = SHIP_STATUS_ORDER.map(function(s){ return { key:s, label:s, count:shipStatusCounts[s], color:SHIP_STATUS_COLOR[s] }; });
+
+    /* Receiving — Books_Receive_ID set means it's already been sent to Books
+       (Widget/Proc/Receiving's own statusOf() convention); Total_Missing_Qty is
+       a real quality signal (short-shipped units caught at the dock). */
+    var recvDates = raw.receiving.map(function(r){ return parseCreatorDate(val(r,"Added_Time")); });
+    var recvPending = raw.receiving.filter(function(r){ return !val(r,"Books_Receive_ID"); });
+    var recvPendingDates = recvPending.map(function(r){ return parseCreatorDate(val(r,"Added_Time")); });
+    var recvBuckets = weeklyBuckets(recvPendingDates, 8);
+    var recvLast4 = recvBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var recvPrev4 = recvBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var totalMissingQty = raw.receiving.reduce(function(s,r){ return s+numVal(r,"Total_Missing_Qty"); }, 0);
+    var recvStatusBreakdown = [
+      { key:"sent", label:"Sent to Books", count: raw.receiving.length - recvPending.length, color:"#0ca30c" },
+      { key:"pending", label:"Pending", count: recvPending.length, color:"#fab219" },
+    ];
+
+    /* Replacement Request — real RR_Status vocabulary confirmed live: Open/
+       Acknowledged/In Production/Shipped/Received/Closed/Cancelled. Delay_Status
+       lives on the Replacement_Summary subform per-line, not the header — take
+       the worst line per RR (Delayed > At Risk > On Track) as that RR's flag. */
+    var rrDates = raw.rr.map(function(r){ return parseCreatorDate(val(r,"RR_Date") || val(r,"Added_Time")); });
+    var rrOpen = raw.rr.filter(function(r){ var s = val(r,"RR_Status","Open"); return s !== "Closed" && s !== "Cancelled"; });
+    var rrOpenDates = rrOpen.map(function(r){ return parseCreatorDate(val(r,"RR_Date") || val(r,"Added_Time")); });
+    var rrBuckets = weeklyBuckets(rrOpenDates, 8);
+    var rrLast4 = rrBuckets.slice(-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var rrPrev4 = rrBuckets.slice(-8,-4).reduce(function(s,b){ return s+b.count; }, 0);
+    var RR_STATUS_ORDER = ["Open","Acknowledged","In Production","Shipped","Received","Closed","Cancelled"];
+    var RR_STATUS_COLOR = { "Open":"#d03b3b","Acknowledged":"#fab219","In Production":"#6da7ec","Shipped":"#3987e5","Received":"#2a78d6","Closed":"#0ca30c","Cancelled":"#94a3b8" };
+    var rrStatusCounts = {}; RR_STATUS_ORDER.forEach(function(s){ rrStatusCounts[s] = 0; });
+    raw.rr.forEach(function(r){ var s = val(r,"RR_Status","Open"); if (rrStatusCounts[s]===undefined) s="Open"; rrStatusCounts[s]++; });
+    var rrStatusBreakdown = RR_STATUS_ORDER.map(function(s){ return { key:s, label:s, count:rrStatusCounts[s], color:RR_STATUS_COLOR[s] }; });
+
+    var supplierAgg = {};
+    function ensureSupplier(name){
+      if (!supplierAgg[name]) supplierAgg[name] = { name: name, count: 0, active: 0, spend: 0 };
+      return supplierAgg[name];
+    }
+    raw.suppliers.forEach(function(s){
+      var nm = val(s,"Supplier_Name") || val(s,"Name") || val(s,"Supplier") || ("Supplier #" + s.ID);
+      ensureSupplier(nm);
+    });
+    raw.po.forEach(function(po){
+      var isActive = poDerivedStatus(po) !== "completed" && poDerivedStatus(po) !== "cancelled";
+      var lines = extractSubformRows(po["PO_Line_Items"]);
+      lines.forEach(function(l){
+        var sup = val(l,"Supplier","Unassigned");
+        var agg = ensureSupplier(sup);
+        agg.count += 1;
+        if (isActive) agg.active += 1;
+        agg.spend += numVal(l,"Line_Total");
+      });
+    });
+    var supplierTable = Object.values(supplierAgg).sort(function(a,b){ return b.spend - a.spend; });
+    var topSuppliers = supplierTable.filter(function(s){ return s.count > 0; }).slice(0,5);
+    var totalSpend = supplierTable.reduce(function(s,x){ return s+x.spend; }, 0);
+
+    var PO_STATUS_ORDER = ["draft","sent","confirmed","completed","cancelled"];
+    var PO_STATUS_LABEL = { draft:"Draft", sent:"Sent — Awaiting Confirm", confirmed:"Confirmed", completed:"Completed", cancelled:"Cancelled" };
+    var PO_STATUS_COLOR = { draft:"#9ec5f4", sent:"#6da7ec", confirmed:"#3987e5", completed:"#0ca30c", cancelled:"#94a3b8" };
+    var poStatusCounts = {}; PO_STATUS_ORDER.forEach(function(s){ poStatusCounts[s] = 0; });
+    raw.po.forEach(function(r){ var s = poDerivedStatus(r); poStatusCounts[s] = (poStatusCounts[s]||0) + 1; });
+    var poStatusBreakdown = PO_STATUS_ORDER.map(function(s){ return { key:s, label:PO_STATUS_LABEL[s], count:poStatusCounts[s], color:PO_STATUS_COLOR[s] }; });
+
+    var EXC_STATUS_ORDER = ["Open","Under Review","Waiting","Resolved","Closed"];
+    var EXC_STATUS_COLOR = { "Open":"#d03b3b", "Under Review":"#fab219", "Waiting":"#fab219", "Resolved":"#0ca30c", "Closed":"#94a3b8" };
+    var excStatusCounts = {}; EXC_STATUS_ORDER.forEach(function(s){ excStatusCounts[s] = 0; });
+    raw.exceptions.forEach(function(r){ var s = val(r,"Exception_Status","Open"); excStatusCounts[s] = (excStatusCounts[s]||0) + 1; });
+    var excStatusBreakdown = EXC_STATUS_ORDER.map(function(s){ return { key:s, label:s, count:excStatusCounts[s], color:EXC_STATUS_COLOR[s] }; });
+
+    var activity = [];
+    raw.pr.forEach(function(r,i){ activity.push({ type:"pr", date: prDates[i], title: val(r,"PR_No","PR"), desc: "was submitted", icon: <IconFile size={14}/>, tint:"bg-slate-100 text-slate-500" }); });
+    raw.po.forEach(function(r,i){ activity.push({ type:"po", date: poDates[i], title: val(r,"PO_No","PO"), desc: "— " + poDerivedStatus(r), icon: <IconPackage size={14}/>, tint:"bg-accent-50 text-accent-600" }); });
+    raw.exceptions.forEach(function(r,i){ activity.push({ type:"exc", date: excDates[i], title: val(r,"Exception_No","Exception"), desc: "opened — " + val(r,"Exception_Title",""), icon: <IconAlert size={14}/>, tint:"bg-red-50 text-critical" }); });
+    raw.inquiries.forEach(function(r,i){ activity.push({ type:"inq", date: inqDates[i], title: val(r,"INQ_No","Inquiry"), desc: "was submitted", icon: <IconInbox size={14}/>, tint:"bg-slate-100 text-slate-500" }); });
+    raw.shipments.forEach(function(r,i){ activity.push({ type:"ship", date: shipDates[i], title: val(r,"Shipment_No","Shipment"), desc: "— " + val(r,"Shipment_Status","Pending"), icon: <IconShip size={14}/>, tint:"bg-accent-50 text-accent-600" }); });
+    raw.receiving.forEach(function(r,i){ activity.push({ type:"recv", date: recvDates[i], title: val(r,"Receive_No1","Receiving"), desc: val(r,"Books_Receive_ID") ? "sent to Books" : "pending", icon: <IconArchive size={14}/>, tint:"bg-slate-100 text-slate-500" }); });
+    raw.rr.forEach(function(r,i){ activity.push({ type:"rr", date: rrDates[i], title: val(r,"RR_No","RR"), desc: "— " + val(r,"RR_Status","Open"), icon: <IconRefresh size={14}/>, tint:"bg-red-50 text-critical" }); });
+    activity = activity.filter(function(a){ return a.date; }).sort(function(a,b){ return b.date - a.date; }).slice(0,9)
+      .map(function(a){ return Object.assign({}, a, { when: timeAgo(a.date) }); });
+
+    return {
+      prCount: raw.pr.length, prLast4: prLast4, prPrev4: prPrev4,
+      prSpark: prBuckets.map(function(b){ return b.count; }),
+      poActiveCount: poActive.length, poActiveLast4: poActiveLast4, poActivePrev4: poActivePrev4,
+      poActiveSpark: poActiveBuckets.map(function(b){ return b.count; }),
+      openExcCount: openExc.length, excLast4: excLast4, excPrev4: excPrev4,
+      excSpark: excBuckets.map(function(b){ return b.count; }),
+      supplierCount: supplierTable.length,
+      totalSpend: totalSpend,
+      chartData: chartData, topSuppliers: topSuppliers, supplierTable: supplierTable, activity: activity,
+      poStatusBreakdown: poStatusBreakdown, excStatusBreakdown: excStatusBreakdown,
+      inqCount: raw.inquiries.length, inqLast4: inqLast4, inqPrev4: inqPrev4,
+      inqSpark: inqBuckets.map(function(b){ return b.count; }), inqStageBreakdown: inqStageBreakdown,
+      shipInTransitCount: shipInTransit.length, shipLast4: shipLast4, shipPrev4: shipPrev4,
+      shipSpark: shipBuckets.map(function(b){ return b.count; }), shipStatusBreakdown: shipStatusBreakdown,
+      recvPendingCount: recvPending.length, recvLast4: recvLast4, recvPrev4: recvPrev4,
+      recvSpark: recvBuckets.map(function(b){ return b.count; }), recvStatusBreakdown: recvStatusBreakdown,
+      totalMissingQty: totalMissingQty,
+      rrOpenCount: rrOpen.length, rrLast4: rrLast4, rrPrev4: rrPrev4,
+      rrSpark: rrBuckets.map(function(b){ return b.count; }), rrStatusBreakdown: rrStatusBreakdown,
+    };
+  }, [raw]);
+
+  const filteredActivity = useMemo(function(){
+    if (!computed) return [];
+    if (!search.trim()) return computed.activity;
+    var q = search.trim().toLowerCase();
+    return computed.activity.filter(function(a){ return (a.title + a.desc).toLowerCase().indexOf(q) >= 0; });
+  }, [computed, search]);
+
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center max-w-sm">
+          <IconAlert size={28} className="mx-auto text-critical mb-3" />
+          <p className="text-[13.5px] text-slate-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  function jumpTo(id){
+    var el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  var navItems = [
+    { key:"overview", label:"Overview" },
+    { key:"analytics", label:"Analytics" },
+    { key:"suppliers", label:"Suppliers" },
+  ];
+
+  return (
+    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+      <main className="flex-1 overflow-y-auto p-6">
+        {loading || !computed ? (
+          <div className="h-full flex items-center justify-center text-slate-400 text-[13px]">Loading live procurement data&hellip;</div>
+        ) : (
+          <div className="w-full space-y-10">
+              <section id="overview" className="space-y-6 scroll-mt-4">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-500 mb-1">Supply Chain App &middot; Procurement</p>
+                    <h1 className="text-xl font-extrabold text-slate-800">Procurement Overview</h1>
+                    <p className="text-[12.5px] text-slate-400 mt-0.5">Live data across every Procurement module — Inquiries, Purchase Requests, Purchase Orders, Shipments, Receiving, Exceptions, Replacement Requests &amp; Suppliers.</p>
+                  </div>
+                  <nav className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shrink-0">
+                    {navItems.map(function(it){
+                      return (
+                        <button key={it.key} onClick={function(){ jumpTo(it.key); }}
+                          className="px-3 py-1.5 rounded-lg text-[12.5px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors">
+                          {it.label}
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+                  <KpiCard label="Purchase Requests" icon={<IconFile size={17}/>} value={computed.prCount}
+                    sub="last 4 weeks vs prior 4"
+                    deltaPct={pctChange(computed.prLast4, computed.prPrev4)} deltaGoodWhen={null}
+                    sparkData={computed.prSpark} sparkColor="#eb6834" />
+                  <KpiCard label="Active Purchase Orders" icon={<IconPackage size={17}/>} value={computed.poActiveCount}
+                    sub="not yet completed / cancelled"
+                    deltaPct={pctChange(computed.poActiveLast4, computed.poActivePrev4)} deltaGoodWhen={null}
+                    sparkData={computed.poActiveSpark} sparkColor="#2a78d6" />
+                  <KpiCard label="Open Exceptions" icon={<IconAlert size={17}/>} value={computed.openExcCount}
+                    sub="not resolved / closed"
+                    deltaPct={pctChange(computed.excLast4, computed.excPrev4)} deltaGoodWhen="down"
+                    sparkData={computed.excSpark} sparkColor="#d03b3b" />
+                  <KpiCard label="Open Inquiries" icon={<IconInbox size={17}/>} value={computed.inqCount}
+                    sub="last 4 weeks vs prior 4"
+                    deltaPct={pctChange(computed.inqLast4, computed.inqPrev4)} deltaGoodWhen={null}
+                    sparkData={computed.inqSpark} sparkColor="#3987e5" />
+                  <KpiCard label="Shipments In Transit" icon={<IconShip size={17}/>} value={computed.shipInTransitCount}
+                    sub="not yet delivered"
+                    deltaPct={pctChange(computed.shipLast4, computed.shipPrev4)} deltaGoodWhen={null}
+                    sparkData={computed.shipSpark} sparkColor="#2a78d6" />
+                  <KpiCard label="Pending Receiving" icon={<IconArchive size={17}/>} value={computed.recvPendingCount}
+                    sub={computed.totalMissingQty > 0 ? computed.totalMissingQty + " units short-shipped total" : "not yet sent to Books"}
+                    deltaPct={pctChange(computed.recvLast4, computed.recvPrev4)} deltaGoodWhen="down"
+                    sparkData={computed.recvSpark} sparkColor="#fab219" />
+                  <KpiCard label="Open Replacement Requests" icon={<IconRefresh size={17}/>} value={computed.rrOpenCount}
+                    sub="not closed / cancelled"
+                    deltaPct={pctChange(computed.rrLast4, computed.rrPrev4)} deltaGoodWhen="down"
+                    sparkData={computed.rrSpark} sparkColor="#d03b3b" />
+                  <KpiCard label="Total Suppliers" icon={<IconTruck size={17}/>} value={computed.supplierCount}
+                    sub={fmtMoney(computed.totalSpend) + " total PO spend"} />
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+                  <SectionCard title="Purchase Requests vs Purchase Orders — last 8 weeks" className="xl:col-span-8">
+                    <VolumeChart data={computed.chartData} />
+                  </SectionCard>
+                  <SectionCard title="Top Suppliers by Spend" className="xl:col-span-4">
+                    <TopSuppliers rows={computed.topSuppliers} />
+                  </SectionCard>
+                </div>
+
+                <SectionCard
+                  title="Recent Activity"
+                  action={
+                    <div className="relative">
+                      <IconSearch size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        value={search}
+                        onChange={function(e){ setSearch(e.target.value); }}
+                        placeholder="Search PR#, PO#, supplier..."
+                        className="pl-7 pr-3 py-1.5 text-[12px] w-52 bg-slate-100 rounded-lg border border-transparent focus:border-accent-400 focus:bg-white focus:outline-none transition-colors"
+                      />
+                    </div>
+                  }
+                >
+                  <ActivityFeed items={filteredActivity} />
+                </SectionCard>
+              </section>
+
+              <section id="analytics" className="space-y-4 scroll-mt-4">
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-800">Analytics</h2>
+                  <p className="text-[12.5px] text-slate-400 mt-0.5">Where every Procurement module currently stands, by stage.</p>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                  <SectionCard title="Purchase Order Pipeline">
+                    <StatusBreakdown rows={computed.poStatusBreakdown} />
+                  </SectionCard>
+                  <SectionCard title="Exception Status">
+                    <StatusBreakdown rows={computed.excStatusBreakdown} />
+                  </SectionCard>
+                  <SectionCard title="Inquiry Quote Stage">
+                    <StatusBreakdown rows={computed.inqStageBreakdown} />
+                  </SectionCard>
+                  <SectionCard title="Shipment Status">
+                    <StatusBreakdown rows={computed.shipStatusBreakdown} />
+                  </SectionCard>
+                  <SectionCard title="Receiving — Books Status">
+                    <StatusBreakdown rows={computed.recvStatusBreakdown} />
+                  </SectionCard>
+                  <SectionCard title="Replacement Request Status">
+                    <StatusBreakdown rows={computed.rrStatusBreakdown} />
+                  </SectionCard>
+                </div>
+              </section>
+
+              <section id="suppliers" className="space-y-4 scroll-mt-4">
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-800">Suppliers</h2>
+                  <p className="text-[12.5px] text-slate-400 mt-0.5">All suppliers with real PO line volume and spend.</p>
+                </div>
+                <SectionCard title={`All Suppliers (${computed.supplierTable.length})`}>
+                  <SuppliersTable rows={computed.supplierTable} />
+                </SectionCard>
+              </section>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+/* ================= MOUNT ================= */
+function SdkMissing(){
+  return (
+    <div className="h-screen flex items-center justify-center bg-slate-50">
+      <div className="text-center max-w-sm">
+        <IconAlert size={28} className="mx-auto text-critical mb-3" />
+        <p className="text-[13.5px] text-slate-600">This widget must be opened inside Zoho Creator to load live data.</p>
+      </div>
+    </div>
+  );
+}
+var _root = ReactDOM.createRoot(document.getElementById("root"));
+(function waitForSdk(attempt){
+  var ready = typeof window.ZOHO !== "undefined" && window.ZOHO.CREATOR && window.ZOHO.CREATOR.DATA;
+  if (ready){ _root.render(<App />); return; }
+  if (attempt >= 30){ _root.render(<SdkMissing />); return; }
+  setTimeout(function(){ waitForSdk(attempt + 1); }, 200);
+})(0);
+</script>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+</body>
+</html>

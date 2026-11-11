@@ -1,0 +1,3 @@
+// form: PREORDER_Instant_Forecast  form=Pre_Order_FF event=on add or edit on success  [.ds line 46954]
+    /* `SO` ang baybay dito. Gawin MUNA ang 3 Forecast field sa form na ito. */
+info thisapp.fcStampBySoNo(input.SO + "");

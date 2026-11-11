@@ -1,0 +1,2234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warehouse Request &amp; Transfer Warehouse — Kanban</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  MERGED WIDGET, 2026-08-18. Two independent single-page apps combined into
+  one file behind a top-level tab switcher, per explicit user request:
+  "Widget\Fulfillment\Warehouse Request migrate this to ->
+  Widget\Fulfillment\Transfer Warehouse it should 2 tabs there."
+
+  Tab 1 "Warehouse Request" — Kanban over All_Warehouse_Requests (form:
+  Warehouse_Request). Was previously its own standalone widget
+  (Widget\Fulfillment\Warehouse Request\app\index.html, built earlier the
+  same day) — see that file's own git history / this file's own CLAUDE.md
+  entry for its build notes. REPORT_NAME was originally a guess
+  ("Warehouse_Request_Report", following this app's usual FormName_Report
+  convention) — CONFIRMED WRONG live 2026-08-18 (board showed 0/0 despite
+  records existing in Zoho) and corrected to the real link name
+  "All_Warehouse_Requests" per the user's own report definition export.
+
+  Tab 2 "Transfer Warehouse" — Kanban over Transfer_Warehouse_Report (form:
+  Transfer_Warehouse). This is the ORIGINAL widget this file used to be,
+  unchanged in behavior — only its element ids stayed exactly as before
+  (unprefixed: boardView/detailView/formView/board/etc.) since it's the
+  "host" half of the merge. Gained ONE new feature as part of this merge:
+  the "+ Add item by ID (not in catalog yet)" sticky row in its own item
+  picker dropdown (previously Warehouse-Request-only, now on both tabs,
+  since the underlying Add-Item-by-ID modal + shared item cache made this a
+  one-line addition once merged into the same page).
+
+  MERGE ARCHITECTURE — why this file is shaped the way it is:
+  Both source widgets independently declared nearly-identical utility
+  functions (displayVal/escapeHtml/toast/badgePill/fetchAllPaginated/the
+  item-search combobox helpers/otherSelectMarkup/etc.) and several
+  IDENTICALLY-NAMED DOM ids (#boardView, #detailView, #formView, #board,
+  #globalSearch, #toastContainer, #confirmModal, #col-pending/#count-pending,
+  ...). Concatenating the two files as-is would collide on every one of
+  those ids (HTML ids must be page-unique) and — for anything called via an
+  inline onclick= attribute — on global function names too.
+
+  Fix: this file has THREE tiers —
+    1. Shared, page-level DOM: ONE toast container, ONE confirm modal, ONE
+       Add-Item-by-ID modal, ONE image lightbox, ONE video lightbox, plus the
+       new tab switcher — genuinely singleton UI, no reason to duplicate it.
+    2. Shared, outer-scope JS (in the single big IIFE, before either app's
+       own code runs): every *stateless* helper that was byte-for-byte (or
+       near enough) duplicated between the two source files — date/format
+       helpers, escapeHtml/badgePill/PALETTE, toast/confirm-modal control,
+       lightbox/video-lightbox control, file-attach parsing +
+       renderImageThumbs/renderVideoList, the multi-fallback uploadFilesTo,
+       fetchAllPaginated, and — because both forms read from the exact same
+       All_Items report — ONE SHARED itemsCache plus its
+       lookup/search/merge helpers and the Add-Item-by-ID modal's own
+       control functions (openNewItemModal/closeNewItemModal/saveNewItem).
+       Sharing itemsCache instead of keeping two copies means one fetch (not
+       two) warms both tabs' item pickers, and an item added via
+       Add-Item-by-ID or live-search-merged from either tab is immediately
+       visible in the other tab's picker too.
+    3. Two nested IIFEs, one per tab, each keeping its OWN CONFIG, COLUMNS,
+       record state (allRecords/orderedRows/currentDetailRecord/
+       editingRecordId), board/detail/form render functions, and item-row
+       markup (the two forms' item grids have different column shapes — WR
+       is Item+SKU only, TW is Item+SKU+Qty+SO#+PAC#) — kept fully separate
+       since these are NOT interchangeable between the two forms. Only the
+       Warehouse Request tab's own DOM ids were renamed (wr-prefixed:
+       wrBoardView/wrDetailView/wrFormView/wrBoard/wrGlobalSearch/etc.) to
+       avoid colliding with Transfer Warehouse's untouched originals — since
+       function names inside each own IIFE are closure-scoped, they never
+       collide with each other even when identically named (each app's own
+       "openDetail"/"renderBoard"/"resetForm"/etc. is private to its own
+       IIFE), only page-wide DOM ids needed disambiguating.
+
+  Upload as a Zoho Creator widget (zip this file + plugin-manifest.json +
+  app/translations/en.json). CONFIG.APP_NAME = "supply-chain-app" (each
+  tab's own CONFIG still carries its own copy, used directly by that tab's
+  own addRecords/updateRecords calls). Uses JS API v2
+  (ZOHO.CREATOR.DATA.getRecords/addRecords/updateRecords,
+  ZOHO.CREATOR.FILE.uploadFile, field_config: "all").
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'ui-monospace', 'monospace'] },
+        boxShadow: { card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)' }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { height: 100%; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  .field-input {
+    width: 100%; font-size: 0.875rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;
+    background: #f8fafc; padding: 0.5rem 0.75rem; transition: all .15s ease;
+  }
+  .field-input:focus { outline: none; background: white; box-shadow: 0 0 0 2px #cbd5e1; }
+  .checkbox-row { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8125rem; color: #334155; padding: 0.25rem 0; }
+
+  .kb-board { scroll-snap-type: x proximity; }
+  .kb-col { flex: 1 1 320px; min-width: 300px; scroll-snap-align: start; }
+  .kb-col-body { flex: 1; min-height: 140px; overflow-y: auto; }
+  .kb-card { transition: transform .12s ease, box-shadow .12s ease; }
+  .kb-card:hover { transform: translateY(-1px); box-shadow: 0 6px 14px 0 rgb(0 0 0 / 0.10); }
+  .kb-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* File chips (staged, pre-upload) — Warehouse Request tab only */
+  .file-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 6px 3px 3px; border-radius:6px; background:#f8fafc; border:1px solid #e2e8f0; font-size:11.5px; color:#334155; }
+  .file-chip img { width:26px; height:26px; object-fit:cover; border-radius:4px; background:#e2e8f0; flex-shrink:0; }
+  .file-chip-del { color:#e11d48; font-weight:700; cursor:pointer; background:none; border:none; font-size:13px; line-height:1; }
+
+  /* Photo grid (already-uploaded, detail view) — Warehouse Request tab only */
+  .photo-thumb { width:64px; height:64px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #e2e8f0; }
+  .photo-thumb.hidden { display:none; }
+  .vid-spinner { display:inline-block; width:12px; height:12px; border:2px solid #e2e8f0; border-top-color:#2563eb; border-radius:50%; animation:wr-spin .7s linear infinite; margin-right:6px; vertical-align:middle; }
+  @keyframes wr-spin { to { transform: rotate(360deg); } }
+
+  /* Lightbox (image/video preview) — shared, used by Warehouse Request tab */
+  .lightbox-overlay { display:none; position:fixed; inset:0; z-index:8000; align-items:center; justify-content:center; background:rgba(15,23,42,.85); }
+  .lightbox-overlay.open { display:flex; }
+  .lightbox-img { max-width:90vw; max-height:85vh; border-radius:8px; }
+  .lightbox-nav { position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.15); border:none; color:#fff; font-size:26px; width:42px; height:42px; border-radius:50%; cursor:pointer; }
+  .lightbox-nav.prev { left:20px; }
+  .lightbox-nav.next { right:20px; }
+  .lightbox-close { position:absolute; top:18px; right:20px; background:none; border:none; color:#fff; font-size:28px; cursor:pointer; }
+  .lightbox-counter { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); color:#fff; font-size:13px; }
+
+  /* Tab switcher */
+  .tab-btn { cursor: pointer; }
+</style>
+</head>
+<body class="min-h-full bg-slate-100 text-slate-800 antialiased">
+
+  <!-- ===================================================================
+       TAB SWITCHER (shared, page-level)
+       =================================================================== -->
+  <div class="px-4 sm:px-6 pt-4 pb-1 bg-slate-100">
+    <div class="inline-flex bg-white border border-slate-200 rounded-full p-1 shadow-sm gap-1">
+      <button id="tabBtnWR" type="button" class="tab-btn px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition">📋 Warehouse Request</button>
+      <button id="tabBtnTW" type="button" class="tab-btn px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition">🚚 Transfer Warehouse</button>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       TAB 1 — WAREHOUSE REQUEST  (ids wr-prefixed to avoid colliding with
+       the Transfer Warehouse tab below)
+       =================================================================== -->
+  <div id="wrRoot">
+
+  <!-- BOARD VIEW -->
+  <div id="wrBoardView" class="w-full px-4 sm:px-6 py-5 flex flex-col h-screen">
+    <header class="shrink-0 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-4">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Warehouse Request</h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Pending → Done ·
+          <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+          </span>
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="relative">
+          <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+          </svg>
+          <input id="wrGlobalSearch" type="text" placeholder="Search type, requester, item, SKU…"
+            class="w-64 sm:w-80 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+        </div>
+        <button id="newRequestBtn" class="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-full px-4 py-2 transition">+ New Request</button>
+      </div>
+    </header>
+
+    <div id="wrBoard" class="kb-board flex flex-1 min-h-0 gap-4 overflow-x-auto pb-4"></div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="wrDetailView" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="wrDetailBackBtn" class="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Back to Board</button>
+      <span class="text-slate-300">|</span>
+      <span id="wrDetailBreadcrumb" class="text-slate-500"></span>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="wrDetailTitle" class="text-xl font-bold text-slate-900"></h2>
+            <p id="wrDetailSubline" class="text-sm text-slate-600 mt-0.5"></p>
+          </div>
+          <button id="wrDetailEditBtn" class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">✏️ Edit</button>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Request Details</h3>
+          <div id="wrDetailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+          <div class="mt-4">
+            <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">Request Description</dt>
+            <dd id="wrDetailDescription" class="text-sm text-slate-700 whitespace-pre-line"></dd>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4" id="wrDetailUploadImageCard">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🖼️ Uploaded Images</h3>
+          <div id="wrDetailUploadImageThumbs" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📦 Items</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-[11px] uppercase tracking-wide text-slate-400 border-b border-slate-100">
+                  <th class="py-2 pr-3 font-semibold">Photo</th>
+                  <th class="py-2 pr-3 font-semibold">Item</th>
+                  <th class="py-2 font-semibold">SKU</th>
+                </tr>
+              </thead>
+              <tbody id="wrDetailItemsBody" class="divide-y divide-slate-50"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🛠️ Fulfillment (to be edited by Fulfillment)</h3>
+          <div id="wrDetailFulfillmentFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 mb-4"></div>
+          <div class="mb-4">
+            <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">Remarks</dt>
+            <dd id="wrDetailRemarks" class="text-sm text-slate-700 whitespace-pre-line"></dd>
+          </div>
+          <div class="mb-4">
+            <div class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Actual Photo Upload</div>
+            <div id="wrDetailActualPhotoThumbs" class="flex flex-wrap gap-2"></div>
+          </div>
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Actual Video Upload</div>
+            <div id="wrDetailActualVideoExisting" class="text-sm text-slate-500"></div>
+          </div>
+        </div>
+      </div>
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4">📌 Status</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Request Status</span>
+              <span id="wrDetailStatusBadge"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE / EDIT VIEW -->
+  <div id="wrFormView" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="max-w-4xl">
+      <div class="flex items-center justify-between mb-4">
+        <button id="wrFormCancelBtn" class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Cancel</button>
+      </div>
+      <h2 id="wrFormTitle" class="text-lg font-bold text-slate-900 mb-4">New Warehouse Request</h2>
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Request Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="text-xs text-slate-500">Type of Request
+              <span id="wr_TypeOfRequest_wrap"></span>
+            </label>
+            <label class="text-xs text-slate-500">Date Requested:<input id="wr_DateRequested" type="datetime-local" step="1" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Request By
+              <span id="wr_RequestBy_wrap"></span>
+            </label>
+            <div></div>
+          </div>
+          <label class="text-xs text-slate-500 block mt-4">Request Description
+            <textarea id="wr_Request" rows="3" class="field-input mt-1" placeholder="What's being requested…"></textarea>
+          </label>
+          <div class="mt-4">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs text-slate-500">Upload Image</span>
+            </div>
+            <input id="wr_UploadImage_input" type="file" accept="image/*" multiple class="field-input">
+            <div id="wr_UploadImage_chips" class="flex flex-wrap gap-2 mt-2"></div>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase">📦 Items</h3>
+            <div class="flex items-center gap-3">
+              <span id="wr_ItemsLoadedNote" class="text-[11px] text-slate-400"></span>
+              <button id="wrAddItemRowBtn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition">+ Add row</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-12 gap-2 px-2 mb-1.5 text-[10px] uppercase tracking-wide text-slate-400 font-bold">
+            <span class="col-span-2">Photo</span>
+            <span class="col-span-5">Item</span>
+            <span class="col-span-4">SKU</span>
+          </div>
+          <div id="wr_ItemRows" class="space-y-2"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-1">🛠️ Fulfillment (filled in later by Fulfillment staff)</h3>
+          <p class="text-[11px] text-slate-400 mb-4">These fields are usually left blank when a request is first submitted — Fulfillment fills them in as the request is worked.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <label class="text-xs text-slate-500">Picker
+              <span id="wr_Picker_wrap"></span>
+            </label>
+            <label class="text-xs text-slate-500">Request Status
+              <select id="wr_RequestStatus" class="field-input mt-1">
+                <option value="Pending">Pending</option>
+                <option value="Done">Done</option>
+              </select>
+            </label>
+          </div>
+          <label class="text-xs text-slate-500 block mb-4">Remarks
+            <textarea id="wr_Remarks" rows="2" class="field-input mt-1"></textarea>
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <span class="text-xs text-slate-500 block mb-1">Actual Photo Upload</span>
+              <input id="wr_ActualPhoto_input" type="file" accept="image/*" multiple class="field-input">
+              <div id="wr_ActualPhoto_chips" class="flex flex-wrap gap-2 mt-2"></div>
+            </div>
+            <div>
+              <span class="text-xs text-slate-500 block mb-1">Actual Video Upload</span>
+              <input id="wr_ActualVideo_input" type="file" accept="video/*" multiple class="field-input">
+              <div id="wr_ActualVideo_chips" class="flex flex-wrap gap-2 mt-2"></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pb-8">
+          <button id="wrFormCancelBtn2" class="text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-4 py-2 transition">Cancel</button>
+          <button id="wrFormSaveBtn2" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /#wrRoot -->
+
+  <!-- ===================================================================
+       TAB 2 — TRANSFER WAREHOUSE  (ids unchanged from the original
+       standalone widget — this is the "host" half of the merge)
+       =================================================================== -->
+  <div id="twRoot" class="hidden">
+
+  <!-- BOARD VIEW -->
+  <div id="boardView" class="w-full px-4 sm:px-6 py-5 flex flex-col h-screen">
+    <header class="shrink-0 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-4">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Transfer Warehouse</h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Pending Dispatch → Dispatched ·
+          <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+          </span>
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="relative">
+          <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+          </svg>
+          <input id="globalSearch" type="text" placeholder="Search warehouse, item, SKU, SO#, PAC#…"
+            class="w-64 sm:w-80 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+        </div>
+        <button id="newTransferBtn" class="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-full px-4 py-2 transition">+ New Transfer</button>
+      </div>
+    </header>
+
+    <div id="board" class="kb-board flex flex-1 min-h-0 gap-4 overflow-x-auto pb-4"></div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="detailBackBtn" class="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Back to Board</button>
+      <span class="text-slate-300">|</span>
+      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="detailRoute" class="text-xl font-bold text-slate-900"></h2>
+            <p id="detailSubline" class="text-sm text-slate-600 mt-0.5"></p>
+          </div>
+          <button id="detailEditBtn" class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">✏️ Edit</button>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Transfer Details</h3>
+          <div id="detailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📦 Items to Transfer</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-[11px] uppercase tracking-wide text-slate-400 border-b border-slate-100">
+                  <th class="py-2 pr-3 font-semibold">Item</th>
+                  <th class="py-2 pr-3 font-semibold">SKU</th>
+                  <th class="py-2 pr-3 font-semibold text-right">Qty</th>
+                  <th class="py-2 pr-3 font-semibold">SO #</th>
+                  <th class="py-2 font-semibold">PAC #</th>
+                </tr>
+              </thead>
+              <tbody id="detailItemsBody" class="divide-y divide-slate-50"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4">🚚 Transfer Status</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Status</span>
+              <span id="detailDispatchStatus"></span>
+            </div>
+            <div id="detailMarkDispatched"></div>
+            <div id="detailMarkReceived"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE / EDIT VIEW -->
+  <div id="formView" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="max-w-4xl">
+      <div class="flex items-center justify-between mb-4">
+        <button id="formCancelBtn" class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Cancel</button>
+      </div>
+      <h2 id="formTitle" class="text-lg font-bold text-slate-900 mb-4">New Transfer</h2>
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Transfer Warehouse</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="text-xs text-slate-500">Initiated At:<input id="tf_Initiated_At1" type="datetime-local" step="1" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Initiated By:
+              <select id="tf_Initiated_By" class="field-input mt-1">
+                <option value="">— Select —</option>
+                <option value="Edwin">Edwin</option>
+                <option value="Andrea">Andrea</option>
+              </select>
+            </label>
+            <label class="text-xs text-slate-500">From Warehouse
+              <span id="tf_From_Warehouse_wrap"></span>
+            </label>
+            <label class="text-xs text-slate-500">To Warehouse
+              <span id="tf_To_Warehouse_wrap"></span>
+            </label>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase">📦 Item to transfer</h3>
+            <div class="flex items-center gap-3">
+              <span id="tf_ItemsLoadedNote" class="text-[11px] text-slate-400"></span>
+              <button id="addItemRowBtn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition">+ Add row</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-12 gap-2 px-2 mb-1.5 text-[10px] uppercase tracking-wide text-slate-400 font-bold">
+            <span class="col-span-3">Item</span>
+            <span class="col-span-2">SKU</span>
+            <span class="col-span-2">Qty</span>
+            <span class="col-span-2">SO # (Optional)</span>
+            <span class="col-span-2">PAC # (Optional)</span>
+          </div>
+          <div id="tf_ItemRows" class="space-y-2"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-3">🚦 Status</h3>
+          <div class="flex items-center gap-2">
+            <button type="button" id="tf_Dispatch_btn" class="text-xs font-semibold rounded-lg px-3 py-2 border transition"></button>
+            <button type="button" id="tf_Received_btn" class="text-xs font-semibold rounded-lg px-3 py-2 border transition"></button>
+          </div>
+          <input type="checkbox" id="tf_Dispatch" class="hidden">
+          <input type="checkbox" id="tf_Received" class="hidden">
+        </div>
+        <div class="flex items-center justify-end gap-2 pb-8">
+          <button id="formCancelBtn2" class="text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-4 py-2 transition">Cancel</button>
+          <button id="formSaveBtn2" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /#twRoot -->
+
+  <!-- ===================================================================
+       SHARED, PAGE-LEVEL UI (singleton — used by both tabs)
+       =================================================================== -->
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+  <!-- Generic confirm modal — replaces native confirm(), which inside a Zoho
+       Creator widget iframe shows the raw embedded-page origin in its chrome. -->
+  <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+      <h3 id="confirmModalTitle" class="text-sm font-bold text-slate-900 mb-1">Are you sure?</h3>
+      <p id="confirmModalBody" class="text-xs text-slate-500 mb-4"></p>
+      <div class="flex items-center justify-end gap-2">
+        <button id="confirmModalCancelBtn" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 transition">No</button>
+        <button id="confirmModalConfirmBtn" class="text-xs font-semibold bg-slate-900 text-white rounded-lg px-3 py-2 hover:bg-slate-800 transition">Yes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Item by ID — shared by BOTH tabs' item pickers. Ported from the
+       Purchase Request widget's own copy of this feature, same shared Zoho
+       Books-backed Custom API. -->
+  <div id="newItemModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-slate-900">Add Item by ID</h3>
+        <button onclick="closeNewItemModal()" class="text-slate-400 hover:text-slate-700 text-lg leading-none" title="Close">✕</button>
+      </div>
+      <label class="text-xs text-slate-500">Zoho Books Item ID
+        <input id="niItemId" type="text" class="field-input mt-1" placeholder="e.g. 2680178000024629990">
+      </label>
+      <p class="text-[11px] text-slate-400 mt-2">Pulls the item's full details (name, SKU, rate, unit, category, warehouse, bin location) straight from Zoho Books and adds/updates it in the item catalog.</p>
+      <div class="flex items-center justify-end gap-2 mt-4">
+        <button onclick="closeNewItemModal()" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 transition">Cancel</button>
+        <button id="niSaveBtn" onclick="saveNewItem()" class="text-xs font-semibold bg-slate-900 text-white rounded-lg px-3 py-2 hover:bg-slate-800 transition">Add Item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox (photo preview) -->
+  <div class="lightbox-overlay" id="lightboxOverlay">
+    <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+    <button class="lightbox-nav prev" id="lbPrev" onclick="lightboxStep(-1)">&#8249;</button>
+    <img class="lightbox-img" id="lightboxImg">
+    <button class="lightbox-nav next" id="lbNext" onclick="lightboxStep(1)">&#8250;</button>
+    <div class="lightbox-counter" id="lbCounter"></div>
+  </div>
+  <div class="lightbox-overlay" id="videoLightboxOverlay">
+    <button class="lightbox-close" onclick="closeVideoLightbox()">&times;</button>
+    <div id="videoLightboxSlot"></div>
+  </div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // =====================================================================
+  // SHARED — used by both tabs. See the file's own header comment for why
+  // this tier exists (dedupes what used to be two nearly-identical copies).
+  // =====================================================================
+  const $ = (id) => document.getElementById(id);
+  const APP_NAME = "supply-chain-app";
+  const ITEMS_REPORT = "All_Items";
+  const MAX_RECORDS = 1000;
+  const OTHER_VALUE = "__other__";
+  const CUSTOM_API_ADD_ITEM = "add_item_by_id";
+  const CUSTOM_API_ADD_ITEM_KEY = "yjWf2kbeuBRHJpEDzKy8RuQyR";
+  /* Used by uploadFilesTo's REST fallback only. */
+  let REAL_APP_NAME = APP_NAME;
+  let ACCOUNT_OWNER = "homecartel";
+
+  const PALETTE = {
+    amber:   { border: "border-amber-400",   text: "text-amber-600",   badgeBg: "bg-amber-50",   badgeText: "text-amber-700",   badgeBorder: "border-amber-200",   dot: "bg-amber-500" },
+    emerald: { border: "border-emerald-400", text: "text-emerald-600", badgeBg: "bg-emerald-50", badgeText: "text-emerald-700", badgeBorder: "border-emerald-200", dot: "bg-emerald-500" },
+    blue:    { border: "border-blue-400",    text: "text-blue-600",    badgeBg: "bg-blue-50",    badgeText: "text-blue-700",    badgeBorder: "border-blue-200",    dot: "bg-blue-500" },
+    violet:  { border: "border-violet-400",  text: "text-violet-600",  badgeBg: "bg-violet-50",  badgeText: "text-violet-700",  badgeBorder: "border-violet-200",  dot: "bg-violet-500" },
+    slate:   { border: "border-slate-300",   text: "text-slate-500",   badgeBg: "bg-slate-50",   badgeText: "text-slate-500",   badgeBorder: "border-slate-200",   dot: "bg-slate-400" },
+  };
+
+  function displayVal(v) {
+    if (v === null || v === undefined || v === "" || v === "null") return "—";
+    if (typeof v === "object" && !Array.isArray(v)) return v.zc_display_value || v.display_value || v.ID || "—";
+    return String(v);
+  }
+  function textVal(v) {
+    if (v === null || v === undefined || v === "null") return "";
+    if (typeof v === "object" && !Array.isArray(v)) return v.zc_display_value || v.display_value || v.ID || "";
+    return String(v);
+  }
+  function isBlank(v) {
+    return v === null || v === undefined || v === "" || v === "null" || (Array.isArray(v) && v.length === 0);
+  }
+  function isTrue(v) {
+    return v === true || v === "true";
+  }
+  function parseZohoDateTime(str) {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const mon = months[m[2]];
+      if (mon !== undefined) return new Date(+m[3], mon, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  }
+  function formatDateTime(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${datePart} ${timePart}`;
+  }
+  function toDateTimeInputValue(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "";
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+  function fromDateTimeInputValue(val) {
+    if (!val) return "";
+    const [datePart, timePart] = val.split("T");
+    if (!datePart || !timePart) return "";
+    const time = timePart.length === 5 ? `${timePart}:00` : timePart;
+    return `${datePart} ${time}`;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+  function badgePill(text, colorKey) {
+    const p = PALETTE[colorKey] || PALETTE.slate;
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${p.badgeBg} ${p.badgeText} ${p.badgeBorder}">
+      <span class="h-1.5 w-1.5 rounded-full ${p.dot}"></span>${escapeHtml(text)}
+    </span>`;
+  }
+  function toast(message, type) {
+    const container = $("toastContainer");
+    const el = document.createElement("div");
+    const styles = { success: "bg-slate-900 text-white", error: "bg-rose-600 text-white" };
+    el.className = `px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${styles[type] || styles.success}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  let confirmModalResolver = null;
+  const confirmModal = $("confirmModal");
+  function askConfirm(title, body, confirmLabel) {
+    $("confirmModalTitle").textContent = title;
+    $("confirmModalBody").textContent = body;
+    $("confirmModalConfirmBtn").textContent = confirmLabel || "Yes";
+    confirmModal.classList.remove("hidden");
+    return new Promise((resolve) => { confirmModalResolver = resolve; });
+  }
+  function closeConfirmModal(result) {
+    confirmModal.classList.add("hidden");
+    if (confirmModalResolver) { confirmModalResolver(result); confirmModalResolver = null; }
+  }
+  $("confirmModalCancelBtn").addEventListener("click", () => closeConfirmModal(false));
+  $("confirmModalConfirmBtn").addEventListener("click", () => closeConfirmModal(true));
+
+  // ---------------------------------------------------------------------
+  // Paginated fetch — pulls a report past the JS API v2 1000-record
+  // single-call ceiling using Zoho's documented record_cursor continuation.
+  // ---------------------------------------------------------------------
+  async function fetchAllPaginated(reportName, fieldConfig) {
+    let all = [];
+    let cursor = null;
+    let guard = 0;
+    do {
+      const config = { app_name: APP_NAME, report_name: reportName, max_records: MAX_RECORDS };
+      if (fieldConfig) config.field_config = fieldConfig;
+      if (cursor) config.record_cursor = cursor;
+      let response;
+      try {
+        response = await ZOHO.CREATOR.DATA.getRecords(config);
+      } catch (err) {
+        console.warn(`[fetchAllPaginated] ${reportName} failed:`, err);
+        break;
+      }
+      if (!(response && response.code === 3000 && Array.isArray(response.data))) break;
+      all = all.concat(response.data);
+      cursor = response.record_cursor || null;
+      guard++;
+    } while (cursor && guard < 20);
+    return all;
+  }
+
+  // ---------------------------------------------------------------------
+  // Shared item cache (All_Items) — feeds BOTH tabs' item pickers. Sharing
+  // this instead of keeping two separate caches means one fetch warms both
+  // tabs, and anything merged in via live-search or Add-Item-by-ID from
+  // either tab is immediately available to the other.
+  // ---------------------------------------------------------------------
+  let itemsCache = [];
+  function itemDisplayName(itemRecord) {
+    if (!itemRecord) return "";
+    return !isBlank(itemRecord.item_name) ? textVal(itemRecord.item_name) : textVal(itemRecord.ID);
+  }
+  function itemSkuGuess(itemRecord) {
+    if (!itemRecord) return "";
+    return textVal(itemRecord.SKU);
+  }
+  function findItemById(id) {
+    return itemsCache.find((it) => String(it.ID) === String(id));
+  }
+  function findItemByExactName(name) {
+    const typed = String(name || "").trim().toLowerCase();
+    if (!typed) return null;
+    return itemsCache.find((it) => itemDisplayName(it).trim().toLowerCase() === typed) || null;
+  }
+  function mergeIntoItemsCache(newItems) {
+    const existingIds = new Set(itemsCache.map((it) => String(it.ID)));
+    const additions = newItems.filter((it) => !existingIds.has(String(it.ID)));
+    if (additions.length) itemsCache = itemsCache.concat(additions);
+    return additions.length;
+  }
+  function liveSearchItems(query) {
+    const safe = query.replace(/"/g, "").trim();
+    if (!safe) return Promise.resolve([]);
+    return ZOHO.CREATOR.DATA.getRecords({
+      app_name: APP_NAME,
+      report_name: ITEMS_REPORT,
+      criteria: `(item_name.startsWith("${safe}"))`,
+      max_records: MAX_RECORDS,
+    }).then((response) => (response && response.data) || []).catch((err) => {
+      console.error(`[liveSearchItems] query "${safe}" failed:`, err);
+      return [];
+    });
+  }
+  async function fetchItems() {
+    try {
+      const rows = await fetchAllPaginated(ITEMS_REPORT);
+      const byId = new Map();
+      rows.forEach((r) => { if (!byId.has(String(r.ID))) byId.set(String(r.ID), r); });
+      return Array.from(byId.values());
+    } catch (err) {
+      console.error(err);
+      toast(`Couldn't load "${ITEMS_REPORT}" — item picker will be empty.`, "error");
+      return [];
+    }
+  }
+  // The bulk fetchItems() above deliberately skips field_config so the
+  // 2000+-record catalog fetch stays light — that means it does NOT carry
+  // each item's own Image field. When a row actually needs an item's photo
+  // (Warehouse Request tab, on item selection), this does one small
+  // single-record lookup with field_config:"all" instead of bloating the
+  // bulk fetch for every item just for the rare row that needs a photo.
+  async function fetchItemFull(itemId) {
+    try {
+      const resp = await ZOHO.CREATOR.DATA.getRecords({
+        app_name: APP_NAME,
+        report_name: ITEMS_REPORT,
+        criteria: `(ID == ${itemId})`,
+        field_config: "all",
+        max_records: 1,
+      });
+      return (resp && resp.code === 3000 && Array.isArray(resp.data) && resp.data[0]) || null;
+    } catch (err) {
+      console.warn("[fetchItemFull] failed for", itemId, err);
+      return null;
+    }
+  }
+  // Sticky "+ Add item by ID" row appended to the bottom of every item
+  // dropdown on both tabs.
+  function addItemByIdRowHtml() {
+    return `<div class="row-item-option-add sticky bottom-0 bg-white border-t border-slate-100 h-9 flex items-center px-3 cursor-pointer text-orange-600 font-semibold truncate">+ Add item by ID (not in catalog yet)</div>`;
+  }
+
+  // ---------------------------------------------------------------------
+  // File helpers — attach-value parsing, multi-fallback upload, lightbox +
+  // video-lightbox. Only the Warehouse Request tab has upload fields today,
+  // but these are stateless and harmless to share.
+  // ---------------------------------------------------------------------
+  function attachRawToString(raw) {
+    if (!raw) return "";
+    if (typeof raw === "object") return raw.url || raw.download_url || raw.value || raw.filepath || raw.filePath || "";
+    return String(raw);
+  }
+  function attachFileName(raw) {
+    if (raw && typeof raw === "object" && (raw.file_name || raw.name)) return raw.file_name || raw.name;
+    const s = attachRawToString(raw);
+    if (!s) return "File";
+    const m = s.match(/[?&]filepath=([^&]+)/);
+    if (m) { const name = decodeURIComponent(m[1]); return name.replace(/^\d+_/, ""); }
+    return s.split("/").pop().split("?")[0] || "File";
+  }
+  function normalizeFileList(rawValue) {
+    if (!rawValue) return [];
+    if (Array.isArray(rawValue)) return rawValue.filter(Boolean);
+    return [rawValue];
+  }
+  function applyImgPreview(imgEl, rawValue) {
+    if (!rawValue) { imgEl.classList.add("hidden"); imgEl.src = ""; return; }
+    imgEl.classList.remove("hidden");
+    if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData) {
+      ZOHO.CREATOR.UTIL.setImageData(imgEl, rawValue, function () {});
+    } else {
+      imgEl.src = rawValue;
+    }
+  }
+  function resolveBridgeSrc(url) {
+    return new Promise(function (resolve) {
+      if (!(typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.setImageData === "function")) { resolve(null); return; }
+      const img = new Image();
+      ZOHO.CREATOR.UTIL.setImageData(img, url, function () {
+        const src = img.src || "";
+        resolve((src.indexOf("blob:") === 0 || src.indexOf("data:") === 0) ? src : null);
+      });
+    });
+  }
+  function collThumbFallback(imgEl) {
+    const name = imgEl.getAttribute("data-name") || "file";
+    const chip = document.createElement("span");
+    chip.className = "text-[11.5px] text-slate-400 italic";
+    chip.textContent = name;
+    imgEl.replaceWith(chip);
+  }
+
+  let LIGHTBOX_URLS = [];
+  let LIGHTBOX_IDX = 0;
+  window.openLightbox = function (urls, idx) {
+    LIGHTBOX_URLS = Array.isArray(urls) ? urls : [urls];
+    LIGHTBOX_IDX = idx || 0;
+    if (!LIGHTBOX_URLS.length) return;
+    $("lightboxOverlay").classList.add("open");
+    renderLightboxImage();
+  };
+  function renderLightboxImage() {
+    const url = LIGHTBOX_URLS[LIGHTBOX_IDX];
+    if (!url) return;
+    applyImgPreview($("lightboxImg"), url);
+    $("lbCounter").textContent = (LIGHTBOX_IDX + 1) + " / " + LIGHTBOX_URLS.length;
+    $("lbPrev").style.visibility = LIGHTBOX_IDX > 0 ? "visible" : "hidden";
+    $("lbNext").style.visibility = LIGHTBOX_IDX < LIGHTBOX_URLS.length - 1 ? "visible" : "hidden";
+  }
+  window.lightboxStep = function (delta) {
+    const next = LIGHTBOX_IDX + delta;
+    if (next < 0 || next >= LIGHTBOX_URLS.length) return;
+    LIGHTBOX_IDX = next;
+    renderLightboxImage();
+  };
+  window.closeLightbox = function () {
+    $("lightboxOverlay").classList.remove("open");
+    $("lightboxImg").src = "";
+    LIGHTBOX_URLS = [];
+  };
+  let VIDEO_LIGHTBOX_HOME = null;
+  window.openVideoLightbox = function (videoEl, homeParent) {
+    VIDEO_LIGHTBOX_HOME = homeParent;
+    videoEl.style.width = "auto";
+    videoEl.style.maxWidth = "90vw";
+    videoEl.style.maxHeight = "85vh";
+    $("videoLightboxSlot").appendChild(videoEl);
+    $("videoLightboxOverlay").classList.add("open");
+  };
+  window.closeVideoLightbox = function () {
+    const overlay = $("videoLightboxOverlay");
+    if (!overlay.classList.contains("open")) return;
+    overlay.classList.remove("open");
+    const slot = $("videoLightboxSlot");
+    const videoEl = slot.firstElementChild;
+    if (videoEl && VIDEO_LIGHTBOX_HOME) {
+      videoEl.pause();
+      videoEl.style.width = "100%"; videoEl.style.maxWidth = "320px"; videoEl.style.maxHeight = "";
+      VIDEO_LIGHTBOX_HOME.insertBefore(videoEl, VIDEO_LIGHTBOX_HOME.firstChild);
+    }
+    VIDEO_LIGHTBOX_HOME = null;
+  };
+  document.addEventListener("keydown", function (e) {
+    if ($("lightboxOverlay").classList.contains("open")) {
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft") lightboxStep(-1);
+      else if (e.key === "ArrowRight") lightboxStep(1);
+    }
+    if ($("videoLightboxOverlay").classList.contains("open") && e.key === "Escape") closeVideoLightbox();
+  });
+
+  function renderImageThumbs(containerId, rawValue) {
+    const container = $(containerId);
+    const items = normalizeFileList(rawValue);
+    container.innerHTML = "";
+    if (!items.length) { container.innerHTML = '<span class="text-sm text-slate-400">No images uploaded.</span>'; return; }
+    const urls = items.map(attachRawToString).filter(Boolean);
+    items.forEach(function (raw, idx) {
+      const url = attachRawToString(raw);
+      if (!url) return;
+      const img = document.createElement("img");
+      img.className = "photo-thumb";
+      img.setAttribute("data-name", attachFileName(raw));
+      img.onclick = function () { openLightbox(urls, idx); };
+      img.onerror = function () { collThumbFallback(img); };
+      applyImgPreview(img, url);
+      container.appendChild(img);
+    });
+  }
+  function renderVideoList(containerId, rawValue) {
+    const container = $(containerId);
+    const items = normalizeFileList(rawValue);
+    if (!items.length) { container.textContent = "No video uploaded."; return; }
+    container.innerHTML = "";
+    items.forEach(function (raw) {
+      const url = attachRawToString(raw);
+      const label = attachFileName(raw);
+      if (!url) return;
+      const row = document.createElement("div");
+      row.style.marginBottom = "8px";
+      const video = document.createElement("video");
+      video.controls = true;
+      video.preload = "metadata";
+      video.style.cssText = "width:100%;max-width:320px;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:4px;display:none";
+      const meta = document.createElement("div");
+      meta.style.cssText = "display:flex;align-items:center;gap:8px;font-size:12px";
+      meta.innerHTML = "<span>🎬 " + escapeHtml(label) + "</span>"
+        + '<a data-dl download="' + escapeHtml(label) + '" style="display:none;color:#2563eb">Download</a>'
+        + '<button type="button" data-fs style="display:none;color:#2563eb;background:none;border:none;cursor:pointer;text-decoration:underline">Fullscreen</button>'
+        + '<span data-loading><span class="vid-spinner"></span>Loading preview…</span>';
+      row.appendChild(video);
+      row.appendChild(meta);
+      container.appendChild(row);
+      meta.querySelector("[data-fs]").onclick = function () { openVideoLightbox(video, row); };
+      resolveBridgeSrc(url).then(function (resolvedSrc) {
+        const loadingEl = meta.querySelector("[data-loading]");
+        if (loadingEl) loadingEl.remove();
+        if (resolvedSrc) {
+          video.src = resolvedSrc;
+          video.style.display = "block";
+          const dlEl = meta.querySelector("[data-dl]");
+          dlEl.href = resolvedSrc;
+          dlEl.style.display = "inline";
+          meta.querySelector("[data-fs]").style.display = "inline";
+        } else {
+          const span = document.createElement("span");
+          span.style.color = "#94a3b8";
+          span.textContent = "Preview unavailable — download to view.";
+          meta.appendChild(span);
+        }
+      });
+    });
+  }
+
+  // Multi-fallback file upload: SDK -> alt SDK namespace -> REST -> base64,
+  // first success wins. reportName is passed explicitly since this is now
+  // shared across tabs with different REPORT_NAMEs.
+  async function uploadFilesTo(reportName, recordId, fieldName, files) {
+    var allOk = true;
+    for (var i = 0; i < files.length; i++) {
+      var file = files[i];
+      var ok = false;
+      if (!ok && typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.FILE && typeof ZOHO.CREATOR.FILE.uploadFile === "function") {
+        try {
+          var r1 = await ZOHO.CREATOR.FILE.uploadFile({ app_name: REAL_APP_NAME, report_name: reportName, id: String(recordId), field_name: fieldName, file: file });
+          ok = (r1 && r1.code === 3000);
+        } catch (e) { console.warn("[Upload-1 SDK] failed:", e.message || e); }
+      }
+      if (!ok && typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.uploadFile === "function") {
+        try {
+          var r2 = await ZOHO.CREATOR.UTIL.uploadFile({ app_name: REAL_APP_NAME, report_name: reportName, id: String(recordId), field_name: fieldName, file: file });
+          ok = (r2 && r2.code === 3000);
+        } catch (e) { console.warn("[Upload-2 UTIL] failed:", e.message || e); }
+      }
+      if (!ok) {
+        try {
+          var fd = new FormData();
+          fd.append(fieldName, file, file.name);
+          var url = "https://creator.zoho.com/api/v2/" + ACCOUNT_OWNER + "/" + REAL_APP_NAME + "/report/" + reportName + "/" + String(recordId) + "/" + fieldName + "/upload";
+          var r3 = await fetch(url, { method: "POST", body: fd, credentials: "include" });
+          var d3 = await r3.json();
+          ok = (d3 && d3.code === 3000);
+        } catch (e) { console.warn("[Upload-3 REST] failed:", e.message || e); }
+      }
+      if (!ok) {
+        try {
+          var b64 = await new Promise(function (res, rej) { var rd = new FileReader(); rd.onload = function (e) { res(e.target.result); }; rd.onerror = rej; rd.readAsDataURL(file); });
+          var p4 = {}; p4[fieldName] = b64;
+          var r4 = await ZOHO.CREATOR.DATA.updateRecordById({ app_name: REAL_APP_NAME, report_name: reportName, id: String(recordId), payload: { data: p4 } });
+          ok = (r4 && r4.code === 3000);
+        } catch (e) { console.warn("[Upload-4 B64] failed:", e.message || e); }
+      }
+      if (!ok) { console.error("[Upload] All methods failed for", fieldName, file.name); allOk = false; }
+    }
+    return allOk;
+  }
+
+  // ---------------------------------------------------------------------
+  // "Other…" select pattern — used by both tabs' warehouse/type/requester
+  // dropdowns.
+  // ---------------------------------------------------------------------
+  function otherSelectMarkup(idPrefix, options, currentValue, placeholder) {
+    const val = currentValue || "";
+    const isCustom = val !== "" && !options.includes(val);
+    return `
+      <select id="${idPrefix}" class="field-input mt-1">
+        <option value="">— Select —</option>
+        ${options.map((o) => `<option value="${escapeHtml(o)}" ${o === val ? "selected" : ""}>${escapeHtml(o)}</option>`).join("")}
+        <option value="${OTHER_VALUE}" ${isCustom ? "selected" : ""}>Other…</option>
+      </select>
+      <input id="${idPrefix}_other" type="text" placeholder="${escapeHtml(placeholder || "Enter value")}" class="field-input mt-2 ${isCustom ? "" : "hidden"}" value="${isCustom ? escapeHtml(val) : ""}">`;
+  }
+  function wireOtherSelect(idPrefix) {
+    const select = $(idPrefix);
+    const other = $(`${idPrefix}_other`);
+    select.addEventListener("change", () => {
+      if (select.value === OTHER_VALUE) {
+        other.classList.remove("hidden");
+        other.focus();
+      } else {
+        other.classList.add("hidden");
+        other.value = "";
+      }
+    });
+  }
+  function otherSelectValue(idPrefix) {
+    const select = $(idPrefix);
+    const other = $(`${idPrefix}_other`);
+    return select.value === OTHER_VALUE ? other.value.trim() : select.value;
+  }
+
+  // ---------------------------------------------------------------------
+  // Add Item by ID — shared modal, used by both tabs' item-row dropdowns.
+  // _addItemTargetRow tracks which row's search box/SKU input to fill on
+  // success; itemsCache is shared, so no per-tab callback is needed.
+  // ---------------------------------------------------------------------
+  let _addItemTargetRow = null;
+  function openNewItemModal(rowEl) {
+    _addItemTargetRow = rowEl;
+    $("niItemId").value = "";
+    $("newItemModal").classList.remove("hidden");
+  }
+  function closeNewItemModal() {
+    $("newItemModal").classList.add("hidden");
+    _addItemTargetRow = null;
+  }
+  window.closeNewItemModal = closeNewItemModal;
+  window.saveNewItem = async function () {
+    var itemId = $("niItemId").value.trim();
+    if (!itemId) { toast("Item ID is required", "error"); return; }
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi !== "function") {
+      toast("Creator API not available — widget must be uploaded to Creator.", "error");
+      return;
+    }
+    var btn = $("niSaveBtn");
+    btn.disabled = true; btn.textContent = "Fetching…";
+    try {
+      var resp = await ZOHO.CREATOR.DATA.invokeCustomApi({
+        api_name: CUSTOM_API_ADD_ITEM,
+        http_method: "POST",
+        content_type: "application/json",
+        payload: { itemBooksId: itemId },
+        public_key: CUSTOM_API_ADD_ITEM_KEY,
+      });
+      var result = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+      console.log("[WarehouseTransfer] addItemByIdBooks result:", JSON.stringify(result));
+      if (result && result.status === "success") {
+        var newItem = { ID: result.recordId, item_name: result.item_name || "(unnamed item)", SKU: result.SKU || "" };
+        var existingIdx = -1;
+        for (var i = 0; i < itemsCache.length; i++) { if (String(itemsCache[i].ID) === String(newItem.ID)) { existingIdx = i; break; } }
+        if (existingIdx > -1) itemsCache[existingIdx] = newItem; else itemsCache.push(newItem);
+        if (_addItemTargetRow) {
+          var searchInput = _addItemTargetRow.querySelector(".row-item-search");
+          var skuInput = _addItemTargetRow.querySelector(".row-sku");
+          searchInput.value = itemDisplayName(newItem);
+          if (skuInput && !skuInput.value.trim()) skuInput.value = itemSkuGuess(newItem);
+          var dropdown = _addItemTargetRow.querySelector(".row-item-dropdown");
+          if (dropdown) dropdown.classList.add("hidden");
+        }
+        closeNewItemModal();
+        toast(result.message || "Item added", "success");
+      } else {
+        toast((result && result.message) || "Could not add item — see console", "error");
+      }
+    } catch (err) {
+      console.error("[WarehouseTransfer] addItemByIdBooks call failed:", err);
+      toast("Error adding item — see console", "error");
+    } finally {
+      btn.disabled = false; btn.textContent = "Add Item";
+    }
+  };
+
+  // ---------------------------------------------------------------------
+  // Tab switcher
+  // ---------------------------------------------------------------------
+  function activateTab(tab) {
+    const isWR = tab === "wr";
+    $("wrRoot").classList.toggle("hidden", !isWR);
+    $("twRoot").classList.toggle("hidden", isWR);
+    $("tabBtnWR").className = "tab-btn px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition " + (isWR ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900");
+    $("tabBtnTW").className = "tab-btn px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition " + (!isWR ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900");
+    window.scrollTo(0, 0);
+  }
+  $("tabBtnWR").addEventListener("click", () => activateTab("wr"));
+  $("tabBtnTW").addEventListener("click", () => activateTab("tw"));
+
+  // =====================================================================
+  // TAB 1 — WAREHOUSE REQUEST
+  // =====================================================================
+  (function () {
+    const CONFIG = {
+      APP_NAME: "supply-chain-app",
+      FORM_NAME: "Warehouse_Request",
+      REPORT_NAME: "All_Warehouse_Requests",
+      ITEMS_REPORT: "All_Items",
+      MAX_RECORDS: 1000,
+      TYPE_OF_REQUEST_OPTIONS: ["Actual Photo", "Measurement", "Stock Availability"],
+      REQUEST_BY_OPTIONS: ["Emily", "Julia", "Vanessa", "Lovely", "Ellen"],
+      PICKER_OPTIONS: ["Hendel", "Jayvon"],
+    };
+
+    const COLUMNS = [
+      { key: "pending", label: "Pending", color: "amber" },
+      { key: "done",    label: "Done",    color: "emerald" },
+    ];
+
+    let allRecords = [];
+    let orderedRows = [];
+    let currentDetailRecord = null;
+    let editingRecordId = null;
+    let stagedUploadImage = [];
+    let stagedActualPhoto = [];
+    let stagedActualVideo = [];
+
+    const ALL_VIEW_IDS = ["wrBoardView", "wrDetailView", "wrFormView"];
+    function showView(id) {
+      ALL_VIEW_IDS.forEach((v) => {
+        const el = $(v);
+        if (el) el.classList.toggle("hidden", v !== id);
+      });
+      window.scrollTo(0, 0);
+    }
+    function showBoard() { showView("wrBoardView"); }
+
+    function toItemRows(raw) {
+      if (!Array.isArray(raw)) return [];
+      return raw.map((row) => ({
+        itemId: (row.Items && typeof row.Items === "object") ? row.Items.ID : (row.Items || ""),
+        itemLabel: displayVal(row.Items),
+        sku: textVal(row.SKU),
+        imageRaw: row.Image || null,
+      }));
+    }
+
+    function computeOrderedRows(records) {
+      return records.slice().sort((a, b) =>
+        (parseZohoDateTime(b.Date_Requested) || new Date(0)) - (parseZohoDateTime(a.Date_Requested) || new Date(0)));
+    }
+    const globalSearchEl = $("wrGlobalSearch");
+    function searchQuery() { return globalSearchEl.value.trim().toLowerCase(); }
+    function matchesSearch(r) {
+      const q = searchQuery();
+      if (!q) return true;
+      const items = toItemRows(r.Item);
+      const hay = [
+        displayVal(r.Type_of_Request), displayVal(r.Request_By), displayVal(r.Picker),
+        ...items.map((it) => `${it.itemLabel} ${it.sku}`),
+      ].join(" ").toLowerCase();
+      return hay.includes(q);
+    }
+
+    function renderColumnShells() {
+      const board = $("wrBoard");
+      board.innerHTML = COLUMNS.map((c) => {
+        const p = PALETTE[c.color];
+        return `
+          <section class="kb-col bg-white rounded-2xl border-t-4 ${p.border} border-x border-b border-slate-200 shadow-card overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+              <span class="text-xs font-bold tracking-wide ${p.text} uppercase">${escapeHtml(c.label)}</span>
+              <span id="wrcount-${c.key}" class="text-xs font-semibold ${p.text} ${p.badgeBg} rounded-full px-2 py-0.5 min-w-[1.5rem] text-center">0</span>
+            </div>
+            <div id="wrcol-${c.key}" class="kb-col-body p-3 space-y-2.5"></div>
+          </section>`;
+      }).join("");
+    }
+    function setColumn(key, rows, cardFn, emptyLabel) {
+      const body = $(`wrcol-${key}`);
+      const count = $(`wrcount-${key}`);
+      if (!body) return;
+      body.innerHTML = rows.length ? rows.map(cardFn).join("") : `<div class="py-8 text-center text-xs text-slate-300">${escapeHtml(emptyLabel)}</div>`;
+      if (count) count.textContent = rows.length;
+      body.querySelectorAll(".wr-card").forEach((el) => {
+        el.addEventListener("click", () => openDetail(el.dataset.id));
+      });
+    }
+    function requestCardHtml(r) {
+      const items = toItemRows(r.Item);
+      const itemCount = items.length;
+      const firstLine = itemCount ? items[0].itemLabel : "No items";
+      const moreLabel = itemCount > 1 ? ` +${itemCount - 1} more` : "";
+      return `
+        <div class="wr-card kb-card bg-white rounded-xl border border-slate-200 shadow-card p-3 cursor-pointer" data-id="${r.ID}">
+          <p class="text-xs font-bold text-slate-800 truncate mb-1.5">${escapeHtml(displayVal(r.Type_of_Request))}</p>
+          <div class="flex items-center gap-1.5 flex-wrap mb-2">
+            ${badgePill(displayVal(r.Request_By), "blue")}
+            <span class="text-[11px] text-slate-400">${escapeHtml(formatDateTime(r.Date_Requested))}</span>
+          </div>
+          <p class="text-xs text-slate-500 truncate">${escapeHtml(firstLine)}${escapeHtml(moreLabel)}</p>
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+            <span class="text-[10px] text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</span>
+            <span class="text-[11px] font-semibold text-slate-600">${itemCount} item${itemCount === 1 ? "" : "s"}</span>
+          </div>
+        </div>`;
+    }
+    function renderBoard() {
+      const rows = orderedRows.filter(matchesSearch);
+      const done = rows.filter((r) => textVal(r.Request_Status) === "Done");
+      const pending = rows.filter((r) => textVal(r.Request_Status) !== "Done");
+      setColumn("pending", pending, requestCardHtml, "No pending requests");
+      setColumn("done", done, requestCardHtml, "Nothing marked Done yet");
+    }
+
+    function openDetail(recordId) {
+      const r = allRecords.find((rec) => String(rec.ID) === String(recordId));
+      if (!r) return;
+      currentDetailRecord = r;
+
+      $("wrDetailBreadcrumb").textContent = `${displayVal(r.Type_of_Request)} · ${displayVal(r.Request_By)}`;
+      $("wrDetailTitle").textContent = displayVal(r.Type_of_Request);
+      $("wrDetailSubline").textContent = `Requested by ${displayVal(r.Request_By)} · ${formatDateTime(r.Date_Requested)}`;
+
+      const fieldsHtml = [
+        ["Type of Request", displayVal(r.Type_of_Request)],
+        ["Date Requested", formatDateTime(r.Date_Requested)],
+        ["Request By", displayVal(r.Request_By)],
+        ["Added Time", formatDateTime(r.Added_Time)],
+      ];
+      $("wrDetailFields").innerHTML = fieldsHtml.map(([label, val]) => `
+        <div>
+          <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+          <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+        </div>`).join("");
+      $("wrDetailDescription").textContent = textVal(r.Request) || "—";
+
+      renderImageThumbs("wrDetailUploadImageThumbs", r.Upload_Image);
+
+      const items = toItemRows(r.Item);
+      $("wrDetailItemsBody").innerHTML = items.length ? items.map((it, idx) => `
+        <tr>
+          <td class="py-2 pr-3"><img class="detail-item-thumb hidden w-10 h-10 rounded object-cover border border-slate-200" data-idx="${idx}"></td>
+          <td class="py-2 pr-3 text-slate-800 font-medium">${escapeHtml(it.itemLabel)}</td>
+          <td class="py-2 text-slate-500">${escapeHtml(it.sku || "—")}</td>
+        </tr>`).join("") : `<tr><td colspan="3" class="py-6 text-center text-sm text-slate-400">No items on this request</td></tr>`;
+      if (items.length) {
+        const thumbUrls = items.map((it) => it.imageRaw ? attachRawToString(it.imageRaw) : "");
+        $("wrDetailItemsBody").querySelectorAll(".detail-item-thumb").forEach((img) => {
+          const idx = Number(img.dataset.idx);
+          const url = thumbUrls[idx];
+          if (!url) return;
+          img.classList.remove("hidden");
+          img.style.cursor = "zoom-in";
+          applyImgPreview(img, url);
+          const gallery = thumbUrls.filter(Boolean);
+          img.onclick = () => openLightbox(gallery, gallery.indexOf(url));
+        });
+      }
+
+      const fulfillFieldsHtml = [
+        ["Picker", displayVal(r.Picker)],
+      ];
+      $("wrDetailFulfillmentFields").innerHTML = fulfillFieldsHtml.map(([label, val]) => `
+        <div>
+          <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+          <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+        </div>`).join("");
+      $("wrDetailRemarks").textContent = textVal(r.Remarks) || "—";
+      renderImageThumbs("wrDetailActualPhotoThumbs", r.Actual_Photo_Upload);
+      renderVideoList("wrDetailActualVideoExisting", r.Actual_Video_Upload);
+
+      $("wrDetailStatusBadge").innerHTML = textVal(r.Request_Status) === "Done" ? badgePill("Done", "emerald") : badgePill("Pending", "amber");
+
+      showView("wrDetailView");
+    }
+    $("wrDetailBackBtn").addEventListener("click", showBoard);
+    $("wrDetailEditBtn").addEventListener("click", () => {
+      if (currentDetailRecord) openForm(currentDetailRecord);
+    });
+
+    // Item lookup/search combobox — bulk itemsCache + debounced live-search
+    // merge (shared cache), PLUS the sticky "+ Add item by ID" row. Also
+    // carries a per-row Photo cell — shows the SELECTED ITEM's own catalog
+    // photo (All_Items.Image) as a live preview only. The actual saved
+    // value comes from a server-side Deluge backfill after submit, not from
+    // this widget's own payload — Zoho's Data API rejects Image-type field
+    // values in a plain JSON create/update payload outright (confirmed via
+    // the same restriction already documented for Inquiry_Form.Product_Image
+    // in DelugeScripts\inquiry_autofill_product_image.txt). See
+    // wireItemRow/fetchItemFull below for the preview, and
+    // Widget\Fulfillment\Deluge script\warehouse_request_item_image_backfill.txt
+    // for the actual save-side fix.
+    function itemRowMarkup(existing) {
+      const label = existing ? existing.itemLabel : "";
+      const imageUrl = existing && existing.imageRaw ? attachRawToString(existing.imageRaw) : "";
+      return `
+        <div class="wr-item-row grid grid-cols-12 gap-2 items-center bg-slate-50 rounded-lg p-2">
+          <div class="col-span-2 flex items-center justify-center">
+            <img class="row-item-image-thumb w-9 h-9 rounded object-cover border border-slate-200 ${imageUrl ? "" : "hidden"}">
+            <span class="row-item-image-empty text-[10px] text-slate-300 italic ${imageUrl ? "hidden" : ""}">No photo</span>
+          </div>
+          <div class="item-combobox relative col-span-5">
+            <input type="text" class="row-item-search field-input" placeholder="Search item…" autocomplete="off" value="${escapeHtml(label)}">
+            <div class="row-item-dropdown hidden absolute left-0 right-0 z-20 mt-1 max-h-[180px] overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg text-sm"></div>
+          </div>
+          <input class="row-sku field-input col-span-4" placeholder="SKU" value="${escapeHtml(existing ? existing.sku : "")}">
+          <button type="button" class="row-remove-btn col-span-1 text-rose-500 hover:text-rose-700 text-lg leading-none" title="Remove row">✕</button>
+        </div>`;
+    }
+    function itemOptionHtml(it) {
+      const sku = textVal(it.SKU);
+      const label = itemDisplayName(it) + (sku ? ` — ${sku}` : "");
+      return `<div class="row-item-option h-9 flex items-center px-3 hover:bg-slate-100 cursor-pointer text-slate-800 truncate" data-id="${escapeHtml(it.ID)}">${escapeHtml(label)}</div>`;
+    }
+
+    function wireItemRow(rowEl, existing) {
+      const searchInput = rowEl.querySelector(".row-item-search");
+      const dropdown = rowEl.querySelector(".row-item-dropdown");
+      const skuInput = rowEl.querySelector(".row-sku");
+      const removeBtn = rowEl.querySelector(".row-remove-btn");
+      const imageThumb = rowEl.querySelector(".row-item-image-thumb");
+      const imageEmpty = rowEl.querySelector(".row-item-image-empty");
+      let liveSearchTimer = null;
+      let liveSearchPending = false;
+
+      // rowEl._existingImageRaw preserves whatever photo is already saved
+      // on THIS specific request row, shown until the user actively
+      // (re)selects an item — both are display-only now (see
+      // collectFormData's own note on why Photo isn't submitted from here).
+      rowEl._itemImageRaw = null;
+      rowEl._existingImageRaw = existing ? existing.imageRaw : null;
+      if (rowEl._existingImageRaw) {
+        const url = attachRawToString(rowEl._existingImageRaw);
+        applyImgPreview(imageThumb, url);
+        imageThumb.classList.remove("hidden");
+        imageEmpty.classList.add("hidden");
+        imageThumb.style.cursor = "zoom-in";
+        imageThumb.onclick = () => openLightbox([url], 0);
+      }
+
+      async function applyItemImage(itemId) {
+        const full = await fetchItemFull(itemId);
+        const raw = full ? full.Image : null;
+        rowEl._itemImageRaw = raw || null;
+        if (raw) {
+          const url = attachRawToString(raw);
+          applyImgPreview(imageThumb, url);
+          imageThumb.classList.remove("hidden");
+          imageEmpty.classList.add("hidden");
+          imageThumb.style.cursor = "zoom-in";
+          imageThumb.onclick = () => openLightbox([url], 0);
+        } else {
+          imageThumb.classList.add("hidden");
+          imageThumb.onclick = null;
+          imageEmpty.classList.remove("hidden");
+        }
+      }
+      function selectItemForRow(item) {
+        if (!item) return;
+        searchInput.value = itemDisplayName(item);
+        if (!skuInput.value.trim()) {
+          const guess = itemSkuGuess(item);
+          if (guess) skuInput.value = guess;
+        }
+        if (String(rowEl.dataset.lastImagePullId || "") !== String(item.ID)) {
+          rowEl.dataset.lastImagePullId = String(item.ID);
+          applyItemImage(item.ID);
+        }
+      }
+
+      function renderDropdown() {
+        const q = searchInput.value.trim().toLowerCase();
+        const matches = itemsCache
+          .filter((it) => itemDisplayName(it).toLowerCase().startsWith(q))
+          .sort((a, b) => itemDisplayName(a).localeCompare(itemDisplayName(b)));
+        const emptyLabel = liveSearchPending ? "Searching…" : (itemsCache.length ? "No matching items" : "Loading items…");
+        const optionsHtml = matches.length
+          ? matches.map(itemOptionHtml).join("")
+          : `<div class="px-3 py-2 text-slate-400">${emptyLabel}</div>`;
+        dropdown.innerHTML = optionsHtml + addItemByIdRowHtml();
+        dropdown.classList.remove("hidden");
+      }
+      function triggerLiveSearch() {
+        clearTimeout(liveSearchTimer);
+        const q = searchInput.value.trim();
+        if (!q) { liveSearchPending = false; return; }
+        liveSearchTimer = setTimeout(() => {
+          liveSearchPending = true;
+          renderDropdown();
+          liveSearchItems(q).then((found) => {
+            liveSearchPending = false;
+            mergeIntoItemsCache(found);
+            if (searchInput.value.trim() === q) renderDropdown();
+          });
+        }, 300);
+      }
+
+      searchInput.addEventListener("input", () => { renderDropdown(); triggerLiveSearch(); });
+      searchInput.addEventListener("focus", renderDropdown);
+      searchInput.addEventListener("blur", () => {
+        setTimeout(() => {
+          dropdown.classList.add("hidden");
+          // Covers the "typed the exact name, never clicked a suggestion"
+          // path so the photo pull isn't limited to dropdown clicks.
+          selectItemForRow(findItemByExactName(searchInput.value));
+        }, 120);
+      });
+      searchInput.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape") { dropdown.classList.add("hidden"); searchInput.blur(); }
+      });
+      dropdown.addEventListener("mousedown", (ev) => {
+        const addOption = ev.target.closest(".row-item-option-add");
+        if (addOption) {
+          ev.preventDefault();
+          dropdown.classList.add("hidden");
+          openNewItemModal(rowEl);
+          return;
+        }
+        const option = ev.target.closest(".row-item-option");
+        if (!option) return;
+        ev.preventDefault();
+        dropdown.classList.add("hidden");
+        selectItemForRow(findItemById(option.dataset.id));
+      });
+      removeBtn.addEventListener("click", () => rowEl.remove());
+    }
+    function addItemRow(existing) {
+      const container = $("wr_ItemRows");
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = itemRowMarkup(existing);
+      const rowEl = wrapper.firstElementChild;
+      container.appendChild(rowEl);
+      wireItemRow(rowEl, existing);
+    }
+    $("wrAddItemRowBtn").addEventListener("click", () => addItemRow(null));
+
+    // Staged file chips — renderStagedChips takes the getter/setter pair so
+    // its own remove-button handler can re-invoke itself by name (no
+    // arguments.callee, which throws in "use strict").
+    function renderStagedChips(chipsId, arrGetter, arrSetter) {
+      const files = arrGetter();
+      const el = $(chipsId);
+      el.innerHTML = files.map((f, i) => {
+        const isImg = f.type.startsWith("image/");
+        const thumb = isImg ? `<img src="${URL.createObjectURL(f)}" />` : "📎";
+        return `<span class="file-chip"><span>${thumb}</span><span title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span><button type="button" class="file-chip-del" data-i="${i}" title="Remove">×</button></span>`;
+      }).join("");
+      el.querySelectorAll(".file-chip-del").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const next = arrGetter().slice();
+          next.splice(Number(btn.dataset.i), 1);
+          arrSetter(next);
+          renderStagedChips(chipsId, arrGetter, arrSetter);
+        });
+      });
+    }
+    function wireStagedFileInput(inputId, chipsId, arrGetter, arrSetter) {
+      $(inputId).addEventListener("change", function () {
+        const files = arrGetter().concat(Array.prototype.slice.call(this.files));
+        arrSetter(files);
+        renderStagedChips(chipsId, arrGetter, arrSetter);
+        this.value = "";
+      });
+    }
+    wireStagedFileInput("wr_UploadImage_input", "wr_UploadImage_chips",
+      () => stagedUploadImage, (v) => { stagedUploadImage = v; });
+    wireStagedFileInput("wr_ActualPhoto_input", "wr_ActualPhoto_chips",
+      () => stagedActualPhoto, (v) => { stagedActualPhoto = v; });
+    wireStagedFileInput("wr_ActualVideo_input", "wr_ActualVideo_chips",
+      () => stagedActualVideo, (v) => { stagedActualVideo = v; });
+
+    function resetForm() {
+      $("wr_TypeOfRequest_wrap").innerHTML = otherSelectMarkup("wr_TypeOfRequest", CONFIG.TYPE_OF_REQUEST_OPTIONS, "", "Type of request");
+      wireOtherSelect("wr_TypeOfRequest");
+      $("wr_DateRequested").value = toDateTimeInputValue(nowZohoLikeString());
+      $("wr_RequestBy_wrap").innerHTML = otherSelectMarkup("wr_RequestBy", CONFIG.REQUEST_BY_OPTIONS, "", "Requester name");
+      wireOtherSelect("wr_RequestBy");
+      $("wr_Request").value = "";
+      $("wr_Picker_wrap").innerHTML = otherSelectMarkup("wr_Picker", CONFIG.PICKER_OPTIONS, "", "Picker name");
+      wireOtherSelect("wr_Picker");
+      $("wr_RequestStatus").value = "Pending";
+      $("wr_Remarks").value = "";
+      stagedUploadImage = []; stagedActualPhoto = []; stagedActualVideo = [];
+      renderStagedChips("wr_UploadImage_chips", () => stagedUploadImage, (v) => { stagedUploadImage = v; });
+      renderStagedChips("wr_ActualPhoto_chips", () => stagedActualPhoto, (v) => { stagedActualPhoto = v; });
+      renderStagedChips("wr_ActualVideo_chips", () => stagedActualVideo, (v) => { stagedActualVideo = v; });
+      $("wr_ItemRows").innerHTML = "";
+      addItemRow(null);
+    }
+    function nowZohoLikeString() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, "0");
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${p(d.getDate())}-${months[d.getMonth()]}-${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    }
+
+    async function openForm(existingRecord) {
+      editingRecordId = existingRecord ? existingRecord.ID : null;
+      $("wrFormTitle").textContent = existingRecord ? "Edit Warehouse Request" : "New Warehouse Request";
+      $("wrFormSaveBtn2").textContent = existingRecord ? "Save Changes" : "Submit";
+
+      showView("wrFormView");
+      $("wr_ItemRows").innerHTML = `<p class="text-xs text-slate-400 px-2 py-3">Loading items…</p>`;
+
+      const freshItems = await fetchItems();
+      if (freshItems.length) itemsCache = freshItems;
+      if (!itemsCache.length) {
+        toast(`No items loaded from "${ITEMS_REPORT}" — item dropdown will be empty.`, "error");
+      }
+      $("wr_ItemsLoadedNote").textContent = `${itemsCache.length} item${itemsCache.length === 1 ? "" : "s"} loaded`;
+
+      stagedUploadImage = []; stagedActualPhoto = []; stagedActualVideo = [];
+      renderStagedChips("wr_UploadImage_chips", () => stagedUploadImage, (v) => { stagedUploadImage = v; });
+      renderStagedChips("wr_ActualPhoto_chips", () => stagedActualPhoto, (v) => { stagedActualPhoto = v; });
+      renderStagedChips("wr_ActualVideo_chips", () => stagedActualVideo, (v) => { stagedActualVideo = v; });
+
+      if (existingRecord) {
+        $("wr_TypeOfRequest_wrap").innerHTML = otherSelectMarkup("wr_TypeOfRequest", CONFIG.TYPE_OF_REQUEST_OPTIONS, textVal(existingRecord.Type_of_Request), "Type of request");
+        wireOtherSelect("wr_TypeOfRequest");
+        $("wr_DateRequested").value = toDateTimeInputValue(existingRecord.Date_Requested);
+        $("wr_RequestBy_wrap").innerHTML = otherSelectMarkup("wr_RequestBy", CONFIG.REQUEST_BY_OPTIONS, textVal(existingRecord.Request_By), "Requester name");
+        wireOtherSelect("wr_RequestBy");
+        $("wr_Request").value = textVal(existingRecord.Request);
+        $("wr_Picker_wrap").innerHTML = otherSelectMarkup("wr_Picker", CONFIG.PICKER_OPTIONS, textVal(existingRecord.Picker), "Picker name");
+        wireOtherSelect("wr_Picker");
+        $("wr_RequestStatus").value = textVal(existingRecord.Request_Status) === "Done" ? "Done" : "Pending";
+        $("wr_Remarks").value = textVal(existingRecord.Remarks);
+
+        const rows = toItemRows(existingRecord.Item);
+        $("wr_ItemRows").innerHTML = "";
+        if (rows.length) rows.forEach((row) => addItemRow(row));
+        else addItemRow(null);
+      } else {
+        resetForm();
+      }
+    }
+    $("newRequestBtn").addEventListener("click", () => openForm(null));
+    $("wrFormCancelBtn").addEventListener("click", () => showView(editingRecordId ? "wrDetailView" : "wrBoardView"));
+    $("wrFormCancelBtn2").addEventListener("click", () => showView(editingRecordId ? "wrDetailView" : "wrBoardView"));
+
+    // Photo is intentionally NOT sent from here. Confirmed 2026-08-18 (see
+    // this file's own CLAUDE.md + DelugeScripts\inquiry_autofill_product_
+    // image.txt's own root-cause writeup, same restriction hit earlier for
+    // Inquiry_Form.Product_Image): Zoho's Data API rejects Image/File-type
+    // field values inside a plain JSON addRecords/updateRecords payload
+    // outright — no client-side trick (base64, a fresh blob fetch, resending
+    // Zoho's own attachment reference) gets around that; it's a hard API
+    // restriction, not a timing or data issue. A prior version of this
+    // function tried the base64-embed route anyway and it never actually
+    // landed. The real fix is server-side: a Warehouse_Request "Successful
+    // Form Submission" Deluge workflow backfills each row's Image from its
+    // matched Items record after save, same pattern as the confirmed-working
+    // Inquiry one — see Widget\Fulfillment\Deluge script\
+    // warehouse_request_item_image_backfill.txt. The live in-form preview
+    // (selectItemForRow/applyItemImage) is kept purely as UI feedback so
+    // staff can see which item's photo they're about to attach — it was
+    // never the save path to begin with.
+    async function collectFormData() {
+      const rowEls = Array.from(document.querySelectorAll("#wr_ItemRows .wr-item-row"));
+      const rows = [];
+      for (const rowEl of rowEls) {
+        const matchedItem = findItemByExactName(rowEl.querySelector(".row-item-search").value);
+        let sku = rowEl.querySelector(".row-sku").value.trim();
+        if (!sku && matchedItem) sku = itemSkuGuess(matchedItem);
+        if (!matchedItem && !sku) continue;
+        rows.push({
+          Items: matchedItem ? matchedItem.ID : "",
+          SKU: sku,
+        });
+      }
+
+      return {
+        Type_of_Request: otherSelectValue("wr_TypeOfRequest"),
+        Date_Requested: fromDateTimeInputValue($("wr_DateRequested").value),
+        Request_By: otherSelectValue("wr_RequestBy"),
+        Request: $("wr_Request").value.trim(),
+        Item: rows,
+        Picker: otherSelectValue("wr_Picker"),
+        Request_Status: $("wr_RequestStatus").value || "Pending",
+        Remarks: $("wr_Remarks").value.trim(),
+      };
+    }
+    function validateFormData(data) {
+      if (!data.Type_of_Request) return "Select the Type of Request.";
+      if (!data.Date_Requested) return "Set the Date Requested.";
+      if (!data.Request_By) return "Select who's requesting.";
+      if (!data.Item.length) return "Add at least one item.";
+      for (const row of data.Item) {
+        if (!row.Items) return "Every item row needs an item selected.";
+      }
+      return null;
+    }
+
+    async function saveRequestForm() {
+      const saveBtn = $("wrFormSaveBtn2");
+      saveBtn.disabled = true; saveBtn.textContent = "Saving…";
+
+      let data;
+      try {
+        data = await collectFormData();
+      } catch (err) {
+        console.error(err);
+        toast("Couldn't read one of the item photos — try re-selecting it.", "error");
+        saveBtn.disabled = false; saveBtn.textContent = editingRecordId ? "Save Changes" : "Submit";
+        return;
+      }
+      const error = validateFormData(data);
+      if (error) {
+        toast(error, "error");
+        saveBtn.disabled = false; saveBtn.textContent = editingRecordId ? "Save Changes" : "Submit";
+        return;
+      }
+
+      const request = editingRecordId
+        ? ZOHO.CREATOR.DATA.updateRecords({
+            app_name: CONFIG.APP_NAME,
+            report_name: CONFIG.REPORT_NAME,
+            payload: { criteria: `(ID == ${editingRecordId})`, data: data },
+          })
+        : ZOHO.CREATOR.DATA.addRecords({
+            app_name: CONFIG.APP_NAME,
+            form_name: CONFIG.FORM_NAME,
+            payload: { data: data },
+          });
+
+      request.then(async (response) => {
+        if (response && response.code === 3000) {
+          const savedId = editingRecordId || (response.data && response.data.ID);
+          const uploadJobs = [];
+          if (savedId) {
+            if (stagedUploadImage.length) uploadJobs.push(uploadFilesTo(CONFIG.REPORT_NAME, savedId, "Upload_Image", stagedUploadImage));
+            if (stagedActualPhoto.length) uploadJobs.push(uploadFilesTo(CONFIG.REPORT_NAME, savedId, "Actual_Photo_Upload", stagedActualPhoto));
+            if (stagedActualVideo.length) uploadJobs.push(uploadFilesTo(CONFIG.REPORT_NAME, savedId, "Actual_Video_Upload", stagedActualVideo));
+          }
+          if (uploadJobs.length) {
+            const results = await Promise.all(uploadJobs);
+            if (results.some((ok) => !ok)) toast("Saved, but some file(s) failed to upload — see console.", "error");
+          }
+          toast(editingRecordId ? "Request updated." : "Request created.", "success");
+          loadLive().then(showBoard);
+        } else {
+          toast("Couldn't save request.", "error");
+        }
+      }).catch((err) => {
+        console.error(err);
+        toast("Couldn't save request.", "error");
+      }).finally(() => {
+        saveBtn.disabled = false; saveBtn.textContent = editingRecordId ? "Save Changes" : "Submit";
+      });
+    }
+    $("wrFormSaveBtn2").addEventListener("click", saveRequestForm);
+
+    function fetchAllRecords() {
+      return fetchAllPaginated(CONFIG.REPORT_NAME, "all");
+    }
+    function loadLive() {
+      return Promise.all([fetchAllRecords(), fetchItems()]).then(([records, items]) => {
+        allRecords = records;
+        if (items.length) itemsCache = items;
+        orderedRows = computeOrderedRows(allRecords);
+        renderBoard();
+      }).catch((err) => {
+        console.error(err);
+        toast("Failed to load Warehouse Request records from Zoho Creator.", "error");
+      });
+    }
+
+    globalSearchEl.addEventListener("input", renderBoard);
+    renderColumnShells();
+
+    if (typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams === "function") {
+      ZOHO.CREATOR.UTIL.getInitParams().then(function (params) {
+        if (params && params.appLinkName) REAL_APP_NAME = params.appLinkName;
+        if (params && params.scope) ACCOUNT_OWNER = params.scope;
+      }).catch(function () {});
+    }
+
+    const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+    if (sdkReady) {
+      loadLive();
+    } else {
+      toast("This widget must be opened inside Zoho Creator to load data.", "error");
+    }
+  })();
+
+  // =====================================================================
+  // TAB 2 — TRANSFER WAREHOUSE
+  // =====================================================================
+  (function () {
+    const CONFIG = {
+      APP_NAME: "supply-chain-app",
+      FORM_NAME: "Transfer_Warehouse",
+      REPORT_NAME: "Transfer_Warehouse_Report",
+      ITEMS_REPORT: "All_Items",
+      MAX_RECORDS: 1000,
+      INITIATED_BY_OPTIONS: ["Edwin", "Andrea"],
+      WAREHOUSE_OPTIONS: ["HC WH3 BAESA", "HC WH1 BANAWE"],
+    };
+
+    const COLUMNS = [
+      { key: "pending",    label: "Pending Dispatch", color: "amber" },
+      { key: "dispatched", label: "Dispatched",       color: "emerald" },
+      { key: "received",   label: "Received",         color: "violet" },
+    ];
+
+    let allRecords = [];
+    let orderedRows = [];
+    let currentDetailRecord = null;
+    let editingRecordId = null;
+
+    const ALL_VIEW_IDS = ["boardView", "detailView", "formView"];
+    function showView(id) {
+      ALL_VIEW_IDS.forEach((v) => {
+        const el = document.getElementById(v);
+        if (el) el.classList.toggle("hidden", v !== id);
+      });
+      window.scrollTo(0, 0);
+    }
+    function showBoard() { showView("boardView"); }
+
+    function toItemRows(raw) {
+      if (!Array.isArray(raw)) return [];
+      return raw.map((row) => ({
+        itemId: (row.Items && typeof row.Items === "object") ? row.Items.ID : (row.Items || ""),
+        itemLabel: displayVal(row.Items),
+        sku: textVal(row.SKU),
+        qty: textVal(row.Quantity),
+        so: textVal(row.SO_Optional),
+        pac: textVal(row.PAC_Optional),
+      }));
+    }
+    function itemLineLabel(row) {
+      return row.qty ? `${row.itemLabel} × ${row.qty}` : row.itemLabel;
+    }
+
+    function computeOrderedRows(records) {
+      return records.slice().sort((a, b) =>
+        (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+    }
+
+    const globalSearch = document.getElementById("globalSearch");
+    function searchQuery() { return globalSearch.value.trim().toLowerCase(); }
+    function matchesSearch(r) {
+      const q = searchQuery();
+      if (!q) return true;
+      const items = toItemRows(r.Item_to_transfer);
+      const hay = [
+        displayVal(r.From_Warehouse), displayVal(r.To_Warehouse), displayVal(r.Initiated_By),
+        ...items.map((it) => `${it.itemLabel} ${it.sku} ${it.so} ${it.pac}`),
+      ].join(" ").toLowerCase();
+      return hay.includes(q);
+    }
+
+    function renderColumnShells() {
+      const board = document.getElementById("board");
+      board.innerHTML = COLUMNS.map((c) => {
+        const p = PALETTE[c.color];
+        return `
+          <section class="kb-col bg-white rounded-2xl border-t-4 ${p.border} border-x border-b border-slate-200 shadow-card overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+              <span class="text-xs font-bold tracking-wide ${p.text} uppercase">${escapeHtml(c.label)}</span>
+              <span id="count-${c.key}" class="text-xs font-semibold ${p.text} ${p.badgeBg} rounded-full px-2 py-0.5 min-w-[1.5rem] text-center">0</span>
+            </div>
+            <div id="col-${c.key}" class="kb-col-body p-3 space-y-2.5"></div>
+          </section>`;
+      }).join("");
+    }
+
+    function setColumn(key, rows, cardFn, emptyLabel) {
+      const body = document.getElementById(`col-${key}`);
+      const count = document.getElementById(`count-${key}`);
+      if (!body) return;
+      body.innerHTML = rows.length ? rows.map(cardFn).join("") : `<div class="py-8 text-center text-xs text-slate-300">${escapeHtml(emptyLabel)}</div>`;
+      if (count) count.textContent = rows.length;
+      body.querySelectorAll(".transfer-card").forEach((el) => {
+        el.addEventListener("click", () => openDetail(el.dataset.id));
+      });
+    }
+
+    function transferCardHtml(r) {
+      const items = toItemRows(r.Item_to_transfer);
+      const itemCount = items.length;
+      const firstLine = itemCount ? itemLineLabel(items[0]) : "No items";
+      const moreLabel = itemCount > 1 ? ` +${itemCount - 1} more` : "";
+      return `
+        <div class="transfer-card kb-card bg-white rounded-xl border border-slate-200 shadow-card p-3 cursor-pointer" data-id="${r.ID}">
+          <p class="text-xs font-bold text-slate-800 truncate mb-1.5">${escapeHtml(displayVal(r.From_Warehouse))} → ${escapeHtml(displayVal(r.To_Warehouse))}</p>
+          <div class="flex items-center gap-1.5 flex-wrap mb-2">
+            ${badgePill(displayVal(r.Initiated_By), "blue")}
+            <span class="text-[11px] text-slate-400">${escapeHtml(formatDateTime(r.Initiated_At1))}</span>
+          </div>
+          <p class="text-xs text-slate-500 truncate">${escapeHtml(firstLine)}${escapeHtml(moreLabel)}</p>
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+            <span class="text-[10px] text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</span>
+            <span class="text-[11px] font-semibold text-slate-600">${itemCount} item${itemCount === 1 ? "" : "s"}</span>
+          </div>
+        </div>`;
+    }
+
+    function renderBoard() {
+      const rows = orderedRows.filter(matchesSearch);
+      const received = rows.filter((r) => isTrue(r.Received));
+      const dispatched = rows.filter((r) => isTrue(r.Dispatch) && !isTrue(r.Received));
+      const pending = rows.filter((r) => !isTrue(r.Dispatch) && !isTrue(r.Received));
+      setColumn("pending", pending, transferCardHtml, "No pending transfers");
+      setColumn("dispatched", dispatched, transferCardHtml, "Nothing dispatched yet");
+      setColumn("received", received, transferCardHtml, "Nothing received yet");
+    }
+
+    function dispatchStatusHtml(r) {
+      if (isTrue(r.Received)) return badgePill("Received", "violet");
+      if (isTrue(r.Dispatch)) return badgePill("Dispatched", "emerald");
+      return badgePill("Pending Dispatch", "amber");
+    }
+
+    function markDispatchedControlHtml(r) {
+      if (isTrue(r.Dispatch)) {
+        return `<button class="w-full text-xs font-semibold text-slate-400 bg-slate-100 rounded-lg px-3 py-2 cursor-not-allowed" disabled>Already Dispatched</button>`;
+      }
+      return `<button id="markDispatchedBtn" class="w-full text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">🚚 Mark as Dispatched</button>`;
+    }
+
+    function markReceivedControlHtml(r) {
+      if (isTrue(r.Received)) {
+        return `<button class="w-full text-xs font-semibold text-slate-400 bg-slate-100 rounded-lg px-3 py-2 cursor-not-allowed" disabled>Already Received</button>`;
+      }
+      if (!isTrue(r.Dispatch)) {
+        return `<button class="w-full text-xs font-semibold text-slate-400 bg-slate-100 rounded-lg px-3 py-2 cursor-not-allowed" disabled title="Dispatch it first">📥 Mark as Received</button>`;
+      }
+      return `<button id="markReceivedBtn" class="w-full text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">📥 Mark as Received</button>`;
+    }
+
+    function refreshTransferStatusControls(r) {
+      document.getElementById("detailDispatchStatus").innerHTML = dispatchStatusHtml(r);
+      document.getElementById("detailMarkDispatched").innerHTML = markDispatchedControlHtml(r);
+      document.getElementById("detailMarkReceived").innerHTML = markReceivedControlHtml(r);
+      wireMarkDispatchedBtn(r);
+      wireMarkReceivedBtn(r);
+    }
+
+    function wireMarkDispatchedBtn(r) {
+      const btn = document.getElementById("markDispatchedBtn");
+      if (!btn) return;
+      btn.addEventListener("click", () => {
+        askConfirm("Mark as dispatched?", "This marks the transfer as dispatched and can't be easily undone from here.", "Yes, Dispatch").then((confirmed) => {
+          if (!confirmed) return;
+          btn.disabled = true;
+          btn.textContent = "…";
+          ZOHO.CREATOR.DATA.updateRecords({
+            app_name: CONFIG.APP_NAME,
+            report_name: CONFIG.REPORT_NAME,
+            payload: { criteria: `(ID == ${r.ID})`, data: { Dispatch: true } },
+          }).then((response) => {
+            if (response && response.code === 3000) {
+              r.Dispatch = true;
+              toast("Marked as dispatched.", "success");
+              refreshTransferStatusControls(r);
+              renderBoard();
+            } else {
+              btn.disabled = false;
+              btn.textContent = "🚚 Mark as Dispatched";
+              toast("Couldn't update dispatch status.", "error");
+            }
+          }).catch((err) => {
+            console.error(err);
+            btn.disabled = false;
+            btn.textContent = "🚚 Mark as Dispatched";
+            toast("Couldn't update dispatch status.", "error");
+          });
+        });
+      });
+    }
+
+    function wireMarkReceivedBtn(r) {
+      const btn = document.getElementById("markReceivedBtn");
+      if (!btn) return;
+      btn.addEventListener("click", () => {
+        askConfirm("Mark as received?", "This marks the transfer as received and can't be easily undone from here.", "Yes, Received").then((confirmed) => {
+          if (!confirmed) return;
+          btn.disabled = true;
+          btn.textContent = "…";
+          ZOHO.CREATOR.DATA.updateRecords({
+            app_name: CONFIG.APP_NAME,
+            report_name: CONFIG.REPORT_NAME,
+            payload: { criteria: `(ID == ${r.ID})`, data: { Received: true } },
+          }).then((response) => {
+            if (response && response.code === 3000) {
+              r.Received = true;
+              toast("Marked as received.", "success");
+              refreshTransferStatusControls(r);
+              renderBoard();
+            } else {
+              btn.disabled = false;
+              btn.textContent = "📥 Mark as Received";
+              toast("Couldn't update received status.", "error");
+            }
+          }).catch((err) => {
+            console.error(err);
+            btn.disabled = false;
+            btn.textContent = "📥 Mark as Received";
+            toast("Couldn't update received status.", "error");
+          });
+        });
+      });
+    }
+
+    function openDetail(recordId) {
+      const r = allRecords.find((rec) => String(rec.ID) === String(recordId));
+      if (!r) return;
+      currentDetailRecord = r;
+
+      document.getElementById("detailBreadcrumb").textContent = `${displayVal(r.From_Warehouse)} → ${displayVal(r.To_Warehouse)}`;
+      document.getElementById("detailRoute").textContent = `${displayVal(r.From_Warehouse)} → ${displayVal(r.To_Warehouse)}`;
+      document.getElementById("detailSubline").textContent = `Initiated by ${displayVal(r.Initiated_By)} · ${formatDateTime(r.Initiated_At1)}`;
+
+      const fieldsHtml = [
+        ["Initiated By", displayVal(r.Initiated_By)],
+        ["Initiated At", formatDateTime(r.Initiated_At1)],
+        ["From Warehouse", displayVal(r.From_Warehouse)],
+        ["To Warehouse", displayVal(r.To_Warehouse)],
+        ["Added Time", formatDateTime(r.Added_Time)],
+      ];
+      document.getElementById("detailFields").innerHTML = fieldsHtml.map(([label, val]) => `
+        <div>
+          <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+          <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+        </div>`).join("");
+
+      const items = toItemRows(r.Item_to_transfer);
+      document.getElementById("detailItemsBody").innerHTML = items.length ? items.map((it) => `
+        <tr>
+          <td class="py-2 pr-3 text-slate-800 font-medium">${escapeHtml(it.itemLabel)}</td>
+          <td class="py-2 pr-3 text-slate-500">${escapeHtml(it.sku || "—")}</td>
+          <td class="py-2 pr-3 text-slate-700 text-right">${escapeHtml(it.qty || "—")}</td>
+          <td class="py-2 pr-3 text-slate-500">${escapeHtml(it.so || "—")}</td>
+          <td class="py-2 text-slate-500">${escapeHtml(it.pac || "—")}</td>
+        </tr>`).join("") : `<tr><td colspan="5" class="py-6 text-center text-sm text-slate-400">No items on this transfer</td></tr>`;
+
+      refreshTransferStatusControls(r);
+
+      showView("detailView");
+    }
+    document.getElementById("detailBackBtn").addEventListener("click", showBoard);
+    document.getElementById("detailEditBtn").addEventListener("click", () => {
+      if (currentDetailRecord) openForm(currentDetailRecord);
+    });
+
+    function itemRowMarkup(existing) {
+      const label = existing ? existing.itemLabel : "";
+      return `
+        <div class="transfer-item-row grid grid-cols-12 gap-2 items-center bg-slate-50 rounded-lg p-2">
+          <div class="item-combobox relative col-span-3">
+            <input type="text" class="row-item-search field-input" placeholder="Search item…" autocomplete="off" value="${escapeHtml(label)}">
+            <div class="row-item-dropdown hidden absolute left-0 right-0 z-20 mt-1 max-h-[180px] overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg text-sm"></div>
+          </div>
+          <input class="row-sku field-input col-span-2" placeholder="SKU" value="${escapeHtml(existing ? existing.sku : "")}">
+          <input class="row-qty field-input col-span-2" placeholder="Qty" value="${escapeHtml(existing ? existing.qty : "")}">
+          <input class="row-so field-input col-span-2" placeholder="SO # (optional)" value="${escapeHtml(existing ? existing.so : "")}">
+          <input class="row-pac field-input col-span-2" placeholder="PAC # (optional)" value="${escapeHtml(existing ? existing.pac : "")}">
+          <button type="button" class="row-remove-btn col-span-1 text-rose-500 hover:text-rose-700 text-lg leading-none" title="Remove row">✕</button>
+        </div>`;
+    }
+
+    function itemOptionHtml(it) {
+      const sku = textVal(it.SKU);
+      const label = itemDisplayName(it) + (sku ? ` — ${sku}` : "");
+      return `<div class="row-item-option h-9 flex items-center px-3 hover:bg-slate-100 cursor-pointer text-slate-800 truncate" data-id="${escapeHtml(it.ID)}">${escapeHtml(label)}</div>`;
+    }
+
+    function wireItemRow(rowEl) {
+      const searchInput = rowEl.querySelector(".row-item-search");
+      const dropdown = rowEl.querySelector(".row-item-dropdown");
+      const skuInput = rowEl.querySelector(".row-sku");
+      const removeBtn = rowEl.querySelector(".row-remove-btn");
+      let liveSearchTimer = null;
+      let liveSearchPending = false;
+
+      // Same "+ Add item by ID" sticky row as the Warehouse Request tab —
+      // new as of this merge (Transfer Warehouse didn't have it standalone).
+      function renderDropdown() {
+        const q = searchInput.value.trim().toLowerCase();
+        const matches = itemsCache
+          .filter((it) => itemDisplayName(it).toLowerCase().startsWith(q))
+          .sort((a, b) => itemDisplayName(a).localeCompare(itemDisplayName(b)));
+        const emptyLabel = liveSearchPending ? "Searching…" : (itemsCache.length ? "No matching items" : "Loading items…");
+        const optionsHtml = matches.length
+          ? matches.map(itemOptionHtml).join("")
+          : `<div class="px-3 py-2 text-slate-400">${emptyLabel}</div>`;
+        dropdown.innerHTML = optionsHtml + addItemByIdRowHtml();
+        dropdown.classList.remove("hidden");
+      }
+
+      function triggerLiveSearch() {
+        clearTimeout(liveSearchTimer);
+        const q = searchInput.value.trim();
+        if (!q) { liveSearchPending = false; return; }
+        liveSearchTimer = setTimeout(() => {
+          liveSearchPending = true;
+          renderDropdown();
+          liveSearchItems(q).then((found) => {
+            liveSearchPending = false;
+            mergeIntoItemsCache(found);
+            if (searchInput.value.trim() === q) renderDropdown();
+          });
+        }, 300);
+      }
+
+      searchInput.addEventListener("input", () => { renderDropdown(); triggerLiveSearch(); });
+      searchInput.addEventListener("focus", renderDropdown);
+      searchInput.addEventListener("blur", () => {
+        setTimeout(() => dropdown.classList.add("hidden"), 120);
+      });
+      searchInput.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape") { dropdown.classList.add("hidden"); searchInput.blur(); }
+      });
+      dropdown.addEventListener("mousedown", (ev) => {
+        const addOption = ev.target.closest(".row-item-option-add");
+        if (addOption) {
+          ev.preventDefault();
+          dropdown.classList.add("hidden");
+          openNewItemModal(rowEl);
+          return;
+        }
+        const option = ev.target.closest(".row-item-option");
+        if (!option) return;
+        ev.preventDefault();
+        const item = findItemById(option.dataset.id);
+        if (!item) return;
+        searchInput.value = itemDisplayName(item);
+        dropdown.classList.add("hidden");
+        if (!skuInput.value.trim()) {
+          const guess = itemSkuGuess(item);
+          if (guess) skuInput.value = guess;
+        }
+      });
+      removeBtn.addEventListener("click", () => rowEl.remove());
+    }
+
+    function addItemRow(existing) {
+      const container = document.getElementById("tf_ItemRows");
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = itemRowMarkup(existing);
+      const rowEl = wrapper.firstElementChild;
+      container.appendChild(rowEl);
+      wireItemRow(rowEl);
+    }
+    document.getElementById("addItemRowBtn").addEventListener("click", () => addItemRow(null));
+
+    function statusToggleLabel(kind, active) {
+      if (kind === "dispatch") return active ? "🚚 Dispatched" : "🚚 Mark as Dispatched";
+      return active ? "📥 Received" : "📥 Mark as Received";
+    }
+    function renderStatusToggleBtn(kind) {
+      const btn = document.getElementById(kind === "dispatch" ? "tf_Dispatch_btn" : "tf_Received_btn");
+      const checkbox = document.getElementById(kind === "dispatch" ? "tf_Dispatch" : "tf_Received");
+      const active = checkbox.checked;
+      btn.textContent = statusToggleLabel(kind, active);
+      btn.className = `text-xs font-semibold rounded-lg px-3 py-2 border transition ${active ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`;
+    }
+    function wireStatusToggleBtn(kind) {
+      const btn = document.getElementById(kind === "dispatch" ? "tf_Dispatch_btn" : "tf_Received_btn");
+      const checkbox = document.getElementById(kind === "dispatch" ? "tf_Dispatch" : "tf_Received");
+      btn.addEventListener("click", () => {
+        checkbox.checked = !checkbox.checked;
+        renderStatusToggleBtn(kind);
+      });
+      renderStatusToggleBtn(kind);
+    }
+    wireStatusToggleBtn("dispatch");
+    wireStatusToggleBtn("received");
+
+    function resetForm() {
+      document.getElementById("tf_Initiated_At1").value = "";
+      document.getElementById("tf_Initiated_By").value = "";
+      document.getElementById("tf_From_Warehouse_wrap").innerHTML = otherSelectMarkup("tf_From_Warehouse", CONFIG.WAREHOUSE_OPTIONS, "");
+      document.getElementById("tf_To_Warehouse_wrap").innerHTML = otherSelectMarkup("tf_To_Warehouse", CONFIG.WAREHOUSE_OPTIONS, "");
+      wireOtherSelect("tf_From_Warehouse");
+      wireOtherSelect("tf_To_Warehouse");
+      document.getElementById("tf_Dispatch").checked = false;
+      document.getElementById("tf_Received").checked = false;
+      renderStatusToggleBtn("dispatch");
+      renderStatusToggleBtn("received");
+      document.getElementById("tf_ItemRows").innerHTML = "";
+      addItemRow(null);
+    }
+
+    async function openForm(existingRecord) {
+      editingRecordId = existingRecord ? existingRecord.ID : null;
+      document.getElementById("formTitle").textContent = existingRecord ? "Edit Transfer" : "New Transfer";
+      const saveLabel = existingRecord ? "Save Changes" : "Submit";
+      document.getElementById("formSaveBtn2").textContent = saveLabel;
+
+      showView("formView");
+      document.getElementById("tf_ItemRows").innerHTML = `<p class="text-xs text-slate-400 px-2 py-3">Loading items…</p>`;
+
+      const freshItems = await fetchItems();
+      if (freshItems.length) itemsCache = freshItems;
+      if (!itemsCache.length) {
+        toast(`No items loaded from "${ITEMS_REPORT}" — item dropdown will be empty.`, "error");
+      }
+      document.getElementById("tf_ItemsLoadedNote").textContent = `${itemsCache.length} item${itemsCache.length === 1 ? "" : "s"} loaded`;
+
+      if (existingRecord) {
+        document.getElementById("tf_Initiated_At1").value = toDateTimeInputValue(existingRecord.Initiated_At1);
+        document.getElementById("tf_Initiated_By").value = textVal(existingRecord.Initiated_By);
+        document.getElementById("tf_From_Warehouse_wrap").innerHTML = otherSelectMarkup("tf_From_Warehouse", CONFIG.WAREHOUSE_OPTIONS, textVal(existingRecord.From_Warehouse));
+        document.getElementById("tf_To_Warehouse_wrap").innerHTML = otherSelectMarkup("tf_To_Warehouse", CONFIG.WAREHOUSE_OPTIONS, textVal(existingRecord.To_Warehouse));
+        wireOtherSelect("tf_From_Warehouse");
+        wireOtherSelect("tf_To_Warehouse");
+        document.getElementById("tf_Dispatch").checked = isTrue(existingRecord.Dispatch);
+        document.getElementById("tf_Received").checked = isTrue(existingRecord.Received);
+        renderStatusToggleBtn("dispatch");
+        renderStatusToggleBtn("received");
+
+        const rows = toItemRows(existingRecord.Item_to_transfer);
+        document.getElementById("tf_ItemRows").innerHTML = "";
+        if (rows.length) rows.forEach((row) => addItemRow(row));
+        else addItemRow(null);
+      } else {
+        resetForm();
+      }
+    }
+    document.getElementById("newTransferBtn").addEventListener("click", () => openForm(null));
+    document.getElementById("formCancelBtn").addEventListener("click", () => showView(editingRecordId ? "detailView" : "boardView"));
+    document.getElementById("formCancelBtn2").addEventListener("click", () => showView(editingRecordId ? "detailView" : "boardView"));
+
+    function collectFormData() {
+      const rows = Array.from(document.querySelectorAll("#tf_ItemRows .transfer-item-row")).map((rowEl) => {
+        const matchedItem = findItemByExactName(rowEl.querySelector(".row-item-search").value);
+        return {
+          Items: matchedItem ? matchedItem.ID : "",
+          SKU: rowEl.querySelector(".row-sku").value.trim(),
+          Quantity: rowEl.querySelector(".row-qty").value.trim(),
+          SO_Optional: rowEl.querySelector(".row-so").value.trim(),
+          PAC_Optional: rowEl.querySelector(".row-pac").value.trim(),
+        };
+      }).filter((row) => row.Items || row.SKU || row.Quantity || row.SO_Optional || row.PAC_Optional);
+
+      return {
+        Initiated_At1: fromDateTimeInputValue(document.getElementById("tf_Initiated_At1").value),
+        Initiated_By: document.getElementById("tf_Initiated_By").value,
+        From_Warehouse: otherSelectValue("tf_From_Warehouse"),
+        To_Warehouse: otherSelectValue("tf_To_Warehouse"),
+        Item_to_transfer: rows,
+        Dispatch: document.getElementById("tf_Dispatch").checked,
+        Received: document.getElementById("tf_Received").checked,
+      };
+    }
+
+    function validateFormData(data) {
+      if (!data.Initiated_At1) return "Set the Initiated At date and time.";
+      if (!data.Initiated_By) return "Select who initiated this transfer.";
+      if (!data.From_Warehouse) return "Select the From Warehouse.";
+      if (!data.To_Warehouse) return "Select the To Warehouse.";
+      if (!data.Item_to_transfer.length) return "Add at least one item to transfer.";
+      for (const row of data.Item_to_transfer) {
+        if (!row.Items) return "Every item row needs an item selected.";
+        if (!row.Quantity) return "Every item row needs a quantity.";
+      }
+      if (data.Received && !data.Dispatch) return "Can't mark as Received before it's Dispatched.";
+      return null;
+    }
+
+    function saveTransferForm() {
+      const data = collectFormData();
+      const error = validateFormData(data);
+      if (error) { toast(error, "error"); return; }
+
+      const saveBtns = [document.getElementById("formSaveBtn2")];
+      saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
+
+      const request = editingRecordId
+        ? ZOHO.CREATOR.DATA.updateRecords({
+            app_name: CONFIG.APP_NAME,
+            report_name: CONFIG.REPORT_NAME,
+            payload: { criteria: `(ID == ${editingRecordId})`, data: data },
+          })
+        : ZOHO.CREATOR.DATA.addRecords({
+            app_name: CONFIG.APP_NAME,
+            form_name: CONFIG.FORM_NAME,
+            payload: { data: data },
+          });
+
+      request.then((response) => {
+        if (response && response.code === 3000) {
+          toast(editingRecordId ? "Transfer updated." : "Transfer created.", "success");
+          loadLive().then(showBoard);
+        } else {
+          toast("Couldn't save transfer.", "error");
+        }
+      }).catch((err) => {
+        console.error(err);
+        toast("Couldn't save transfer.", "error");
+      }).finally(() => {
+        saveBtns.forEach((b) => { b.disabled = false; b.textContent = editingRecordId ? "Save Changes" : "Submit"; });
+      });
+    }
+    document.getElementById("formSaveBtn2").addEventListener("click", saveTransferForm);
+
+    function fetchAllRecords() {
+      return fetchAllPaginated(CONFIG.REPORT_NAME, "all");
+    }
+
+    function loadLive() {
+      return Promise.all([fetchAllRecords(), fetchItems()]).then(([records, items]) => {
+        allRecords = records;
+        if (items.length) itemsCache = items;
+        orderedRows = computeOrderedRows(allRecords);
+        renderBoard();
+      }).catch((err) => {
+        console.error(err);
+        toast("Failed to load Transfer Warehouse records from Zoho Creator.", "error");
+      });
+    }
+
+    globalSearch.addEventListener("input", renderBoard);
+    renderColumnShells();
+
+    const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+    if (sdkReady) {
+      loadLive();
+    } else {
+      toast("This widget must be opened inside Zoho Creator to load data.", "error");
+    }
+  })();
+
+  // Default tab on load.
+  activateTab("wr");
+})();
+</script>
+</body>
+</html>

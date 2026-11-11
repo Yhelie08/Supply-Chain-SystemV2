@@ -1,0 +1,2 @@
+// form: Disable_Item_Field_Supplier  form=Supplier_2 event=on add field rules  [.ds line 35179]
+disable Additional_Description_Supplier,Date_Created_Supplier,Description_Supplier,Dropdown1,Dropdown2,INQ_No_Supplier,Items_Supplier,Open_to_similar_design_Supplier,Quantity_Supplier,SKU_Supplier,Target_Date_Supplier,Unit_Supplier,Response_Status;

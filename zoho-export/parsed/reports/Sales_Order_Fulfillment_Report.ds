@@ -1,0 +1,34 @@
+
+			displayName = "Sales Order Fulfillment Report"
+			show all rows from Sales_Order_Fulfillment    
+			(
+				PR_No as "PR No."
+				RR_No as "RR No."
+				Package as "Package#"
+				order_type as "Order Type"
+				target_delivery_date as "Target Delivery Date"
+				SO_No as "SO No."
+				Billing_Address as "Billing Address"
+				SO_Created_Date as "SO Created Date"
+				For_Crate as "For Crate"
+				Customer
+				Customer_Type as "Customer Type"
+				Shipping_Address as "Shipping Address"
+				Package_Date as "Package Date"
+				Contact_No as "Contact No"
+				Shipment_Mode as "Shipment Mode"
+				Delivery_Type as "Delivery Type"
+				Status
+				SO_Status as "SO Status"
+				Fulfillment_Stage as "Fulfillment Stage"
+				Added_Time as "Added Time"
+				Item_Details1 as "Item Details"
+				(
+					field = Item_Details1.Item + " " + Item_Details1.SKU + " " + Item_Details1.Bin_Location + " " + Item_Details1.Quantity
+				)
+				SO_SKU_Key
+				Forecast_Delivery as "Forecast Delivery"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+			)
+		

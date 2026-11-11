@@ -1,0 +1,14 @@
+{
+  "service": "CREATOR",
+  "scope": [
+    "Creator.report.READ",
+    "Creator.forms.CREATE",
+    "Creator.forms.UPDATE"
+  ],
+  "cspDomains": {
+    "connect-src": [],
+    "font-src": ["https://fonts.gstatic.com"],
+    "style-src": ["https://fonts.googleapis.com"]
+  },
+  "config": []
+}

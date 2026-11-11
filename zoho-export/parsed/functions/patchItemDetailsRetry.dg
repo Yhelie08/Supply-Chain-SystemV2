@@ -1,0 +1,71 @@
+// map patchItemDetailsRetry(String saIdStr, String itemRowsJson, String attemptsLeftStr)   [.ds lines 34459-34530]
+response = Map();
+attemptsLeft = attemptsLeftStr.toLong();
+itemRows = List();
+rawList = itemRowsJson.toJSONList();
+for each  rawItem in rawList
+{
+    itemRows.add(rawItem.toMap());
+}
+patchData = Map();
+patchData.put("Item_Details",itemRows);
+patchBody = Map();
+patchBody.put("data",patchData);
+patchUrl = "https://www.zohoapis.com/creator/v2.1/data/homecartel/supply-chain-app/report/Service_Appointment/" + saIdStr;
+// No native sleep/wait exists in this Deluge dialect. A freshly-inserted
+// record needs real wall-clock time to propagate before this connection's
+// own PATCH can see it — confirmed live 2026-08-28 (5 rapid-fire retries
+// with no delay all failed with code 3100 "No Data Available"). This
+// harmless, read-only Books call (already-proven zhbooks3 connection)
+// buys genuine elapsed time via a real network round trip, unlike a
+// CPU busy-wait loop (which the Deluge community explicitly warns
+// against as unreliable/non-portable across server load).
+try 
+{
+    delayResp = invokeurl
+    [
+        url :"https://www.zohoapis.com/books/v3/salesorders?organization_id=751117756&per_page=200"
+        type :GET
+        connection:"zhbooks3"
+    ];
+}    catch (delayErr)
+{
+}
+try 
+{
+    resp = invokeurl
+    [
+        url :patchUrl
+        type :PATCH
+        body:patchBody.toString()
+        headers:{"Content-Type":"application/json"}
+        connection:"sca_creator_write_conn"
+    ];
+    respCode = resp.get("code");
+    if(respCode == 3000)
+    {
+        response.put("status","success");
+        response.put("detail",resp + "");
+        return response;
+    }
+    if(attemptsLeft > 1)
+    {
+        leftoverStr = (attemptsLeft - 1) + "";
+        return thisapp.patchItemDetailsRetry(saIdStr,itemRowsJson,leftoverStr);
+    }
+    response.put("status","gave_up");
+    response.put("detail",resp + "");
+    return response;
+}    catch (e)
+{
+    if(attemptsLeft > 1)
+    {
+        leftoverStr = (attemptsLeft - 1) + "";
+        return thisapp.patchItemDetailsRetry(saIdStr,itemRowsJson,leftoverStr);
+    }
+    response.put("status","gave_up_exception");
+    response.put("detail","" + e);
+    return response;
+}
+response.put("status","unreachable");
+return response;

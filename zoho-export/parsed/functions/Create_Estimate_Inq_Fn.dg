@@ -1,0 +1,374 @@
+// string Create_Estimate_Inq_Fn(string record_id)   [.ds lines 31634-32008]
+DRY_RUN = false;
+inqRecs = Inquiry_Form[ID == record_id.toLong()];
+inqRec = null;
+for each  r in inqRecs
+{
+    inqRec = r;
+}
+if(inqRec == null)
+{
+    return "Record not found: " + record_id;
+}
+if(inqRec.Ready_for_Estimates != true)
+{
+    return "Hindi pa kumpleto ang Readiness Checklist. Hindi maaaring gawa ng Estimate.";
+}
+else
+{
+    if(inqRec.Projects == null || inqRec.Projects == 0)
+    {
+        return "No project assigned. Assign a project first.";
+    }
+    else
+    {
+        projRecs = Projects[ID == inqRec.Projects];
+        projName = "";
+        projEstID = "";
+        projEstNo = "";
+        for each  p in projRecs
+        {
+            projName = p.Project_Name;
+            projEstID = p.Books_Estimate_ID;
+            projEstNo = p.Books_Estimate_No;
+        }
+        custRecs = Customer[ID == inqRec.Customer];
+        custBookID = "";
+        for each  c in custRecs
+        {
+            custBookID = c.ID1;
+        }
+        if(custBookID == null || custBookID == "")
+        {
+            return "Walang Zoho Books Customer ID (ID1) na nakalink sa Customer record. I-check ang Customer module.";
+        }
+        else if(projEstID != null && projEstID != "")
+        {
+            getUrl = "https://www.zohoapis.com/books/v3/estimates/" + projEstID + "?organization_id=751117756";
+            fullEstimate = invokeurl
+            [
+                url :getUrl
+                type :GET
+                connection:"zhbooks3"
+            ];
+            if(fullEstimate == null || fullEstimate.get("estimate") == null)
+            {
+                projRec2 = Projects[ID == inqRec.Projects];
+                for each  p2 in projRec2
+                {
+                    p2.Books_Estimate_ID="";
+                    p2.Books_Estimate_No="";
+                }
+                return thisapp.Create_Estimate_Inq_Fn(record_id);
+            }
+            else
+            {
+                currentItems = fullEstimate.get("estimate").get("line_items");
+                lineItems = List();
+                allINQNos = "";
+                missingSKU = "";
+                allInq = Inquiry_Form[quote_group == inqRec.quote_group];
+                for each  inq in allInq
+                {
+                    if(inq.Ready_for_Estimates == true)
+                    {
+                        if(allINQNos != "")
+                        {
+                            allINQNos = allINQNos + ", ";
+                        }
+                        allINQNos = allINQNos + inq.INQ_No;
+                        sibItems = Items[SKU == inq.sku];
+                        sibBookID = "";
+                        for each  si in sibItems
+                        {
+                            sibBookID = si.ID1;
+                        }
+                        if(sibBookID == null || sibBookID == "")
+                        {
+                            if(missingSKU != "")
+                            {
+                                missingSKU = missingSKU + ", ";
+                            }
+                            missingSKU = missingSKU + inq.sku + "";
+                        }
+                        sibLine = Map();
+                        sibLine.put("item_id",sibBookID);
+                        sibLine.put("quantity",inq.quantity.toLong());
+                        sibLine.put("rate",inq.SRP_Approved1.toDecimal());
+                        existingLIID = "";
+                        for each  item in currentItems
+                        {
+                            if(item.get("item_id") + "" == sibBookID + "")
+                            {
+                                existingLIID = item.get("line_item_id");
+                            }
+                        }
+                        if(existingLIID != "")
+                        {
+                            sibLine.put("line_item_id",existingLIID);
+                        }
+                        lineItems.add(sibLine);
+                    }
+                }
+                if(missingSKU != "")
+                {
+                    return "Walang Zoho Books Item ID (ID1) para sa SKU: " + missingSKU + ". I-check ang Items module.";
+                }
+                else
+                {
+                    ucfList = List();
+                    ucf1 = Map();
+                    ucf1.put("label","Sales Agent");
+                    ucf1.put("value",inqRec.Sales_Owner + "");
+                    ucfList.add(ucf1);
+                    ucf2 = Map();
+                    ucf2.put("label","Project Name");
+                    ucf2.put("value",projName + "");
+                    ucfList.add(ucf2);
+                    ucf3 = Map();
+                    ucf3.put("label","Design Company");
+                    ucf3.put("value",inqRec.Design_Company + "");
+                    ucfList.add(ucf3);
+                    ucf4 = Map();
+                    ucf4.put("label","Designer/ Architect");
+                    ucf4.put("value",inqRec.Designer_Architect + "");
+                    ucfList.add(ucf4);
+                    ucf5 = Map();
+                    ucf5.put("label","Design Partner");
+                    ucf5.put("value",inqRec.Design_Partner + "");
+                    ucfList.add(ucf5);
+                    ucf6 = Map();
+                    ucf6.put("label","Commission ");
+                    ucf6.put("value",inqRec.Commission + "");
+                    ucfList.add(ucf6);
+                    ucf7 = Map();
+                    ucf7.put("label","Customer Type");
+                    ucf7.put("value",inqRec.Customer_Type + "");
+                    ucfList.add(ucf7);
+                    ucf8 = Map();
+                    ucf8.put("label","Order Type");
+                    ucf8.put("value",inqRec.Order_Type + "");
+                    ucfList.add(ucf8);
+                    ucf9 = Map();
+                    ucf9.put("label","Project Type:");
+                    ucf9.put("value",inqRec.Project_Type + "");
+                    ucfList.add(ucf9);
+                    ucf10 = Map();
+                    ucf10.put("label","For Bidding? (✓ if yes)");
+                    ucf10.put("value",inqRec.For_Bidding + "");
+                    ucfList.add(ucf10);
+                    ucf11 = Map();
+                    ucf11.put("label","Additional discount needed");
+                    ucf11.put("value",inqRec.Addtl_Disc_Needed1 + "");
+                    ucfList.add(ucf11);
+                    ucf12 = Map();
+                    ucf12.put("label","Target Delivery Date");
+                    ucf12.put("value",inqRec.target_date + "");
+                    ucfList.add(ucf12);
+                    ucf13 = Map();
+                    ucf13.put("label","INQ No");
+                    ucf13.put("value",allINQNos);
+                    ucfList.add(ucf13);
+                    updateBody = Map();
+                    updateBody.put("line_items",lineItems);
+                    updateBody.put("custom_fields",ucfList);
+                    updateBody.put("expiry_date",inqRec.target_date + "");
+                    bodyStr = updateBody.toString();
+                    putUrl = "https://www.zohoapis.com/books/v3/estimates/" + projEstID + "?organization_id=751117756";
+                    if(DRY_RUN)
+                    {
+                        return "[DRY RUN] Would UPDATE estimate " + projEstID + " with body: " + bodyStr;
+                    }
+                    else
+                    {
+                        updateResp = invokeurl
+                        [
+                            url :putUrl
+                            type :PUT
+                            parameters:bodyStr
+                            headers:{"Content-Type":"application/json"}
+                            connection:"zhbooks3"
+                        ];
+                        if(updateResp != null && updateResp.get("code") == 0)
+                        {
+                            allInq2 = Inquiry_Form[quote_group == inqRec.quote_group];
+                            for each  inq in allInq2
+                            {
+                                if(inq.Books_Estimate_ID == null || inq.Books_Estimate_ID == "")
+                                {
+                                    recs = Inquiry_Form[INQ_No == inq.INQ_No];
+                                    for each  r in recs
+                                    {
+                                        r.Books_Estimate_ID=projEstID;
+                                        r.Books_Estimate_No=projEstNo;
+                                        r.Estimate_Created=true;
+                                    }
+                                }
+                            }
+                            return "Estimate " + projEstNo + " updated";
+                        }
+                        else
+                        {
+                            return "FAILED update sa Books. Response: " + updateResp.toString();
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            itemRecs = Items[ID == inqRec.Items];
+            itemBookID = "";
+            for each  i in itemRecs
+            {
+                itemBookID = i.ID1;
+            }
+            if(itemBookID == null || itemBookID == "")
+            {
+                return "Walang Zoho Books Item ID (ID1) para sa item na ito. I-check ang Items module.";
+            }
+            else
+            {
+                lineItems = List();
+                lineItem = Map();
+                lineItem.put("item_id",itemBookID);
+                lineItem.put("quantity",inqRec.quantity.toLong());
+                lineItem.put("rate",inqRec.SRP_Approved1.toDecimal());
+                lineItems.add(lineItem);
+                allINQNos = inqRec.INQ_No + "";
+                allInq = Inquiry_Form[quote_group == inqRec.quote_group];
+                for each  inq in allInq
+                {
+                    if(inq.INQ_No != inqRec.INQ_No && inq.Ready_for_Estimates == true)
+                    {
+                        sibItems = Items[SKU == inq.sku];
+                        sibBookID = "";
+                        for each  si in sibItems
+                        {
+                            sibBookID = si.ID1;
+                        }
+                        sibLine = Map();
+                        sibLine.put("item_id",sibBookID);
+                        sibLine.put("quantity",inq.quantity.toLong());
+                        sibLine.put("rate",inq.SRP_Approved1.toDecimal());
+                        lineItems.add(sibLine);
+                        allINQNos = allINQNos + ", " + inq.INQ_No;
+                    }
+                }
+                cfList = List();
+                cf1 = Map();
+                cf1.put("label","Sales Agent");
+                cf1.put("value",inqRec.Sales_Owner + "");
+                cfList.add(cf1);
+                cf2 = Map();
+                cf2.put("label","Project Name");
+                cf2.put("value",projName + "");
+                cfList.add(cf2);
+                cf3 = Map();
+                cf3.put("label","Design Company");
+                cf3.put("value",inqRec.Design_Company + "");
+                cfList.add(cf3);
+                cf4 = Map();
+                cf4.put("label","Designer/ Architect");
+                cf4.put("value",inqRec.Designer_Architect + "");
+                cfList.add(cf4);
+                cf5 = Map();
+                cf5.put("label","Design Partner");
+                cf5.put("value",inqRec.Design_Partner + "");
+                cfList.add(cf5);
+                cf6 = Map();
+                cf6.put("label","Commission ");
+                cf6.put("value",inqRec.Commission + "");
+                cfList.add(cf6);
+                cf7 = Map();
+                cf7.put("label","Customer Type");
+                cf7.put("value",inqRec.Customer_Type + "");
+                cfList.add(cf7);
+                cf8 = Map();
+                cf8.put("label","Order Type");
+                cf8.put("value",inqRec.Order_Type + "");
+                cfList.add(cf8);
+                cf9 = Map();
+                cf9.put("label","Project Type:");
+                cf9.put("value",inqRec.Project_Type + "");
+                cfList.add(cf9);
+                cf10 = Map();
+                cf10.put("label","For Bidding? (✓ if yes)");
+                cf10.put("value",inqRec.For_Bidding + "");
+                cfList.add(cf10);
+                cf11 = Map();
+                cf11.put("label","Additional discount needed");
+                cf11.put("value",inqRec.Addtl_Disc_Needed1 + "");
+                cfList.add(cf11);
+                cf12 = Map();
+                cf12.put("label","Target Delivery Date");
+                cf12.put("value",inqRec.target_date + "");
+                cfList.add(cf12);
+                cf13 = Map();
+                cf13.put("label","INQ No");
+                cf13.put("value",allINQNos);
+                cfList.add(cf13);
+                estimateBody = Map();
+                estimateBody.put("customer_id",custBookID);
+                estimateBody.put("line_items",lineItems);
+                estimateBody.put("custom_fields",cfList);
+                estimateBody.put("date",zoho.currentdate.toString("yyyy-MM-dd"));
+                estimateBody.put("expiry_date",inqRec.target_date + "");
+                bodyStr = estimateBody.toString();
+                createUrl = "https://www.zohoapis.com/books/v3/estimates?organization_id=751117756";
+                if(DRY_RUN)
+                {
+                    return "[DRY RUN] Would CREATE estimate with body: " + bodyStr;
+                }
+                else
+                {
+                    createResp = invokeurl
+                    [
+                        url :createUrl
+                        type :POST
+                        parameters:bodyStr
+                        headers:{"Content-Type":"application/json"}
+                        connection:"zhbooks3"
+                    ];
+                    if(createResp != null && createResp.get("code") == 0 && createResp.get("estimate") != null)
+                    {
+                        newEstID = createResp.get("estimate").get("estimate_id") + "";
+                        newEstNo = createResp.get("estimate").get("estimate_number") + "";
+                        rec = Inquiry_Form[ID == inqRec.ID];
+                        for each  r in rec
+                        {
+                            r.Books_Estimate_ID=newEstID;
+                            r.Books_Estimate_No=newEstNo;
+                            r.Estimate_Created=true;
+                        }
+                        allInq2 = Inquiry_Form[quote_group == inqRec.quote_group];
+                        for each  inq in allInq2
+                        {
+                            if(inq.INQ_No != inqRec.INQ_No)
+                            {
+                                recs = Inquiry_Form[INQ_No == inq.INQ_No];
+                                for each  r in recs
+                                {
+                                    r.Books_Estimate_ID=newEstID;
+                                    r.Books_Estimate_No=newEstNo;
+                                    r.Estimate_Created=true;
+                                }
+                            }
+                        }
+                        projRec = Projects[ID == inqRec.Projects];
+                        for each  p in projRec
+                        {
+                            p.Books_Estimate_ID=newEstID;
+                            p.Books_Estimate_No=newEstNo;
+                        }
+                        return "Estimate " + newEstNo + " created with " + lineItems.size() + " items";
+                    }
+                    else
+                    {
+                        return "FAILED create sa Books. Response: " + createResp.toString();
+                    }
+                }
+            }
+        }
+    }
+}

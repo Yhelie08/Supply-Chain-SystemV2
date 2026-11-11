@@ -1,0 +1,221 @@
+// form: SA_Scheduling_Engine  form=Service_Appointment_Form event=on add or edit on success  [.ds line 41498]
+    if(input.Confirmed_Schedule_Date != null && input.Calendar_Entry_Created != true)
+{
+    rec2 = Service_Appointment_Form[ID == input.ID];
+    // FIX 1 - normalize ang delivery type (parehong mapping sa dmsScheduleSlot)
+    dType2Raw = input.Type_of_Delivery;
+    if(dType2Raw == null)
+    {
+        dType2Raw = "";
+    }
+    dType2 = dType2Raw;
+    if(dType2Raw == "Delivery and Installation")
+    {
+        dType2 = "With Installation";
+    }
+    if(dType2Raw == "Pull Out")
+    {
+        dType2 = "Pullout";
+    }
+    // FIX 6 - null-safe na oras. Dati diretsong .toString() ito kaya
+    // nag-e-error ang buong confirm kapag may Date pero walang Time.
+    timeSlotStr = "";
+    if(rec2.Confirmed_Time_Slot != null)
+    {
+        timeSlotStr = rec2.Confirmed_Time_Slot.toString();
+    }
+    // Null-safe na pangalan. Ang Deluge ay nagsusulat ng literal na "null"
+    // kapag blangko ang field - totoong bug ito noong 2026-07-28.
+    fNameEv = "";
+    lNameEv = "";
+    if(rec2.Customer_Name != null)
+    {
+        fNameEv = rec2.Customer_Name.first_name;
+        lNameEv = rec2.Customer_Name.last_name;
+    }
+    if(fNameEv == null)
+    {
+        fNameEv = "";
+    }
+    if(lNameEv == null)
+    {
+        lNameEv = "";
+    }
+    custNameEv = (fNameEv + " " + lNameEv).trim();
+    // ---------- PICK UP: walang team, i-confirm agad ----------
+    if(dType2 == "Pick Up")
+    {
+        rec2.Fleet_Assignment="Customer Pickup";
+        rec2.Calendar_Event_Summary="Title: " + rec2.Sales_Order + " - " + custNameEv + " | Date: " + rec2.Confirmed_Schedule_Date + " | Time: " + timeSlotStr + " | Type: Pick Up | Notes: Customer/dispatcher-scheduled pickup, no delivery team assigned";
+        rec2.Calendar_Entry_Created=true;
+        rec2.Appointment_Status="Scheduled";
+        return;
+    }
+    // ---------- 3RD PARTY: desisyon na ng dispatcher, i-confirm agad ----------
+    if(input.Fleet_Decision == "3rd Party")
+    {
+        fleetLabel3P = rec2.Fleet_Assignment;
+        if(fleetLabel3P == null || fleetLabel3P == "")
+        {
+            fleetLabel3P = "3rd Party";
+        }
+        rec2.Calendar_Event_Summary="Title: " + rec2.Sales_Order + " - " + custNameEv + " | Date: " + rec2.Confirmed_Schedule_Date + " | Time: " + timeSlotStr + " | Fleet: " + fleetLabel3P + " | Notes: 3rd-party courier, no internal team assigned";
+        rec2.Calendar_Entry_Created=true;
+        rec2.Appointment_Status="Scheduled";
+        return;
+    }
+    // ---------- OVERRIDE BA O APPROVE? ----------
+    isOverride = input.Suggested_Schedule_Date == null || input.Confirmed_Schedule_Date != input.Suggested_Schedule_Date || input.Confirmed_Time_Slot != input.Suggested_Time_Slot;
+    if(isOverride)
+    {
+        rec2.Override_Applied=true;
+        rec2.Override_Timestamp=zoho.currenttime;
+        // Ang Override_By at Override_Reason ay pinipilit na ng hiwalay na
+        // Validations workflow (SA_Scheduling_Override_Validate) - kung wala
+        // sila, hindi na nakarating dito ang save.
+    }
+    // ---------- CAPACITY CHECK ----------
+    teamCap = 8;
+    availRecs = Daily_Team_Availability[Availability_Date == input.Confirmed_Schedule_Date && Installer == input.Installer];
+    if(availRecs != null)
+    {
+        for each  a in availRecs
+        {
+            aCap = a.Max_Capacity_Hours;
+            if(aCap != null && aCap > 0)
+            {
+                teamCap = aCap;
+            }
+        }
+    }
+    bufferPctD = 15;
+    pBufD = Policy_Settings[Policy_Key == "traffic_buffer_percent"];
+    if(pBufD != null && pBufD.Value != null && pBufD.Value != "")
+    {
+        bufferPctD = pBufD.Value.toLong();
+    }
+    // FIX 7 - type-aware na default, pareho na sa dmsScheduleSlot.
+    // Dati flat 2 oras ito kaya magkaiba ang kinakalkula ng Action 1 at 2
+    // para sa IISANG record.
+    myDuration = input.Estimated_Duration;
+    if(myDuration == null || myDuration == 0)
+    {
+        myDuration = 2;
+        if(dType2 == "With Installation")
+        {
+            myDuration = 4;
+        }
+        if(dType2 == "Full-Day Install")
+        {
+            myDuration = 8;
+        }
+        if(dType2 == "Site Visit")
+        {
+            myDuration = 1;
+        }
+    }
+    myBuffered = myDuration * (1 + bufferPctD / 100.0);
+    if(dType2 == "Full-Day Install")
+    {
+        myBuffered = 8;
+    }
+    otherConfirmed = Service_Appointment_Form[Installer == input.Installer && Confirmed_Schedule_Date == input.Confirmed_Schedule_Date && Calendar_Entry_Created == true && ID != input.ID];
+    otherHours = 0;
+    if(otherConfirmed != null)
+    {
+        for each  o in otherConfirmed
+        {
+            od = o.Estimated_Duration;
+            if(od == null)
+            {
+                od = 0;
+            }
+            oBuffered = od * (1 + bufferPctD / 100.0);
+            if(o.Type_of_Delivery == "Full-Day Install")
+            {
+                oBuffered = 8;
+            }
+            otherHours = otherHours + oBuffered;
+        }
+    }
+    projectedTeamTotal = otherHours + myBuffered;
+    capacityExceeded = projectedTeamTotal > teamCap;
+    // Puno na ANG ARAW at WALANG override = tunay na aksidente (hal. dalawang
+    // officer sabay nag-book) - naka-block pa rin ito.
+    // Puno na pero MAY override (may Override By/Reason) = sinadya, ASAP -
+    // papayagan, may tatak na lang sa Calendar Event Summary.
+    if(capacityExceeded && !isOverride)
+    {
+        rec2.Exception_Status="Flagged";
+        rec2.Exception_Reason="Calendar Conflict";
+        // FIX 5 - dedup
+        dupC = DMS_Exception_Queue[Sales_Order_Reference == rec2.ID && Exception_Reason == "Calendar Conflict" && Status == "Open"];
+        dupCountC = 0;
+        if(dupC != null)
+        {
+            for each  dc in dupC
+            {
+                dupCountC = dupCountC + 1;
+            }
+        }
+        if(dupCountC == 0)
+        {
+            insert into DMS_Exception_Queue
+            [
+                Sales_Order_Reference=rec2.ID
+                Customer_Name=custNameEv
+                Exception_Stage="Calendar"
+                Exception_Reason="Calendar Conflict"
+                Severity="High"
+                Raised_By="System"
+                Date_Raised=zoho.currenttime
+                Status="Open"
+                Added_User=zoho.loginuser
+            ]
+        }
+        return;
+    }
+    // ---------- CALENDAR WRITE ----------
+    typeEv = dType2Raw;
+    if(typeEv == null || typeEv == "")
+    {
+        typeEv = "-";
+    }
+    locationEv = rec2.Customer_Address;
+    if(locationEv == null)
+    {
+        locationEv = "";
+    }
+    if(rec2.City != null && rec2.City != "")
+    {
+        locationEv = locationEv + ", " + rec2.City;
+    }
+    notesEv = "";
+    if(isOverride)
+    {
+        ovrReason = rec2.Override_Reason;
+        if(ovrReason == null)
+        {
+            ovrReason = "";
+        }
+        notesEv = "Override: " + ovrReason;
+    }
+    if(capacityExceeded)
+    {
+        if(notesEv != "")
+        {
+            notesEv = notesEv + " | ";
+        }
+        notesEv = notesEv + "ASAP - Exceeds Daily Capacity (" + projectedTeamTotal + " / " + teamCap + " hrs)";
+    }
+    rec2.Calendar_Event_Summary="Title: " + rec2.Sales_Order + " - " + custNameEv + " | Date: " + rec2.Confirmed_Schedule_Date + " | Time: " + timeSlotStr + " (" + myBuffered + " hrs) | Team: " + rec2.Installer + " / " + rec2.Assigned_to_Driver + " | Fleet: " + rec2.Fleet_Assignment + " | Type: " + typeEv + " | Location: " + locationEv + " | Notes: " + notesEv;
+    // Linisin ang lumang Flagged badge na galing sa dating naka-block na
+    // attempt - pero YUNG MGA GALING SA ENGINE LANG, para hindi tahimik na
+    // ma-resolve ang exception na galing sa iba.
+    if(rec2.Exception_Status == "Flagged" && rec2.Exception_Reason == "Calendar Conflict" || rec2.Exception_Reason == "Calendar Full" || rec2.Exception_Reason == "Slot Pushed — Overtime Declined")
+    {
+        rec2.Exception_Status="Resolved";
+    }
+    rec2.Calendar_Entry_Created=true;
+    rec2.Appointment_Status="Scheduled";
+}

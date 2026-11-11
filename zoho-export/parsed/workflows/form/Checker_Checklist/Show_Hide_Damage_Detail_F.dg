@@ -1,0 +1,21 @@
+// form: Show/Hide Damage Detail Fields  form=Checker_Checklist event=on add or edit on user input of Item_to_Replace  [.ds line 44263]
+    // "On User Input" ito sa SARILI niyang field (Item_to_Replace) — bare field name
+// (walang "input." prefix), gaya ng opisyal na halimbawa sa Zoho Deluge docs para sa
+// ganitong uri ng workflow. "show"/"hide" ay mga STATEMENT/task, hindi function na may
+// parenthesis, at walang quotes ang pangalan ng field (link name, hindi displayname).
+if(Item_to_Replace == "Whole Fixture")
+{
+    show Quantity_of_Damage_Items;
+    hide Spare_part_type;
+}
+else if(Item_to_Replace == "Spare Parts")
+{
+    hide Quantity_of_Damage_Items;
+    show Spare_part_type;
+}
+else
+{
+    // Kasama dito ang "No damage" AT ang blangkong/wala pang napiling state.
+    hide Quantity_of_Damage_Items;
+    hide Spare_part_type;
+}

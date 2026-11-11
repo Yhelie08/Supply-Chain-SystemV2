@@ -1,0 +1,12 @@
+
+			displayName = "Receiving_Timeline Report"
+			show all rows from Receiving_Timeline    
+			(
+				Receive_No1 as "Receive #"
+				Action_Title as "Action"
+				Action_Type as "Action Type"
+				Changes
+				Actor
+				Logged_On as "Logged On"
+			)
+		

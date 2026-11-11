@@ -1,0 +1,82 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   TIMELINE HISTORY COMPONENT — styles
+   Drop-in per-record activity log card for any widget in this app family.
+   See README.md in this folder for integration steps.
+
+   Every color/spacing token is a two-level fallback: --tlhc-X first tries the
+   host widget's own --X variable (this app family's shared design tokens —
+   --blue, --gray-200, --radius, etc.), then falls back to a hardcoded value.
+   That means dropping this into a widget that already defines those tokens
+   (which every widget in this family does) matches its theme automatically,
+   while a widget that doesn't still renders something reasonable.
+   ══════════════════════════════════════════════════════════════════════════ */
+.tlhc-card{
+  --tlhc-blue: var(--blue, #2563EB);
+  --tlhc-blue-mid: var(--blue-mid, #BFDBFE);
+  --tlhc-blue-light: var(--blue-light, #EFF6FF);
+  --tlhc-green: var(--green, #16A34A);
+  --tlhc-green-mid: var(--green-mid, #86EFAC);
+  --tlhc-amber: var(--amber, #D97706);
+  --tlhc-amber-mid: var(--amber-mid, #FCD34D);
+  --tlhc-amber-light: var(--amber-light, #FEF3C7);
+  --tlhc-red: var(--red, #DC2626);
+  --tlhc-red-mid: var(--red-mid, #FCA5A5);
+  --tlhc-gray-50: var(--gray-50, #F8FAFC);
+  --tlhc-gray-100: var(--gray-100, #F1F5F9);
+  --tlhc-gray-200: var(--gray-200, #E2E8F0);
+  --tlhc-gray-300: var(--gray-300, #CBD5E1);
+  --tlhc-gray-400: var(--gray-400, #94A3B8);
+  --tlhc-gray-500: var(--gray-500, #64748B);
+  --tlhc-gray-600: var(--gray-600, #475569);
+  --tlhc-gray-800: var(--gray-800, #1E293B);
+  --tlhc-white: var(--white, #fff);
+  --tlhc-radius: var(--radius, 8px);
+  --tlhc-radius-lg: var(--radius-lg, 12px);
+  --tlhc-shadow: var(--shadow, 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04));
+  --tlhc-t: var(--t, 150ms ease);
+
+  font-family: inherit;
+  background: var(--tlhc-white);
+  border: 1px solid var(--tlhc-gray-200);
+  border-radius: var(--tlhc-radius-lg);
+  box-shadow: var(--tlhc-shadow);
+  overflow: hidden;
+}
+.tlhc-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--tlhc-gray-100);border-left:4px solid var(--tlhc-blue);background:var(--tlhc-blue-light)}
+.tlhc-title{font-size:12px;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:.06em;min-width:0}
+.tlhc-header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tlhc-count{font-size:11px;font-weight:600;color:var(--tlhc-gray-500);text-transform:none;letter-spacing:0;white-space:nowrap}
+/* ADDED — per user request: collapsed by default, header (title/count/toggle)
+   always visible, only the body hides. Sits right beside the count. */
+.tlhc-toggle-btn{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;border:1.5px solid var(--tlhc-gray-200);background:var(--tlhc-white);color:var(--tlhc-gray-600);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all var(--tlhc-t);white-space:nowrap}
+.tlhc-toggle-btn:hover{border-color:var(--tlhc-blue);color:var(--tlhc-blue)}
+
+/* max-height/overflow-y are set inline by the component's JS (measured against
+   cfg.maxVisible/cfg.maxHeight, whichever cap bites first), never here — that's
+   what makes "scroll after N entries or after this many px" exact regardless of
+   how tall any individual entry's chip list happens to render. */
+.tlhc-body{}
+.tlhc-list{position:relative;padding:16px 20px 18px 40px}
+/* The rail is inset from the first/last dot centers so it reads as connecting
+   the entries rather than running off the top and bottom of the card. */
+.tlhc-list::before{content:'';position:absolute;left:18px;top:24px;bottom:24px;width:2px;background:var(--tlhc-gray-200);border-radius:1px}
+.tlhc-item{position:relative;padding-bottom:16px}
+.tlhc-item:last-child{padding-bottom:0}
+.tlhc-dot{position:absolute;left:-27px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--tlhc-blue);border:2.5px solid var(--tlhc-white);box-shadow:0 0 0 1.5px var(--tlhc-blue-mid)}
+.tlhc-item.t-created .tlhc-dot,.tlhc-item.t-approval .tlhc-dot{background:var(--tlhc-green);box-shadow:0 0 0 1.5px var(--tlhc-green-mid)}
+.tlhc-item.t-estimate .tlhc-dot{background:var(--tlhc-amber);box-shadow:0 0 0 1.5px var(--tlhc-amber-mid)}
+.tlhc-item.t-deleted .tlhc-dot{background:var(--tlhc-red);box-shadow:0 0 0 1.5px var(--tlhc-red-mid)}
+.tlhc-item.t-message .tlhc-dot{background:var(--tlhc-gray-400);box-shadow:0 0 0 1.5px var(--tlhc-gray-300)}
+.tlhc-title-line{font-size:13.5px;font-weight:600;color:var(--tlhc-gray-800);line-height:1.35}
+.tlhc-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:3px;font-size:11px;color:var(--tlhc-gray-400)}
+.tlhc-meta .tlhc-actor{font-weight:600;color:var(--tlhc-gray-500)}
+.tlhc-meta .tlhc-sep{color:var(--tlhc-gray-300)}
+.tlhc-pending{display:inline-flex;align-items:center;padding:1px 7px;border-radius:999px;background:var(--tlhc-amber-light);color:var(--tlhc-amber);border:1px solid var(--tlhc-amber-mid);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.tlhc-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.tlhc-chip{display:flex;flex-wrap:wrap;align-items:center;gap:3px 5px;max-width:100%;padding:3px 10px;border-radius:12px;background:var(--tlhc-gray-50);border:1px solid var(--tlhc-gray-200);font-size:11.5px;color:var(--tlhc-gray-600);line-height:1.5}
+.tlhc-chip b{font-size:10px;font-weight:700;color:var(--tlhc-gray-400);text-transform:uppercase;letter-spacing:.05em;overflow-wrap:break-word;word-break:break-word}
+.tlhc-chip .tlhc-old{color:var(--tlhc-gray-400);text-decoration:line-through;overflow-wrap:break-word;word-break:break-word;white-space:normal}
+.tlhc-chip .tlhc-arrow{color:var(--tlhc-gray-300);flex-shrink:0}
+.tlhc-chip .tlhc-new{color:var(--tlhc-gray-800);font-weight:600;overflow-wrap:break-word;word-break:break-word;white-space:normal}
+.tlhc-empty{padding:28px;text-align:center;color:var(--tlhc-gray-400);font-size:13px}
+.tlhc-note{margin:12px 12px 0;padding:8px 12px;border-radius:var(--tlhc-radius);background:var(--tlhc-amber-light);border:1px solid var(--tlhc-amber-mid);color:var(--tlhc-amber);font-size:11.5px;line-height:1.45}

@@ -1,0 +1,164 @@
+// form: PACK SEND TO QC  form=Pack event=on add or edit on success  [.ds line 42804]
+    // ===== FULFILLMENT_STAGE SYNC (dinagdag 2026-07-28): kahit hindi pa naka-Send to QC,
+// ang pagkakaroon na ng Pack record para dito ay nangangahulugang "Pack" na ang stage
+// nito sa Sales_Order_Fulfillment — i-update agad. Isang Sales_Order_Fulfillment record
+// per item (see so_fulfillment_sync.txt), kaya SO + Item + SKU ang batayan ng pagtugma. =====
+soValStage = input.SO + "";
+skuValStage = input.SKU + "";
+itemNameForSOF = input.Item_Name + "";
+sofMatches = Sales_Order_Fulfillment[SO_No == soValStage];
+for each  sofRec in sofMatches
+{
+    sofFullList = Sales_Order_Fulfillment[ID == sofRec.ID];
+    for each  sofFull in sofFullList
+    {
+        sofFound = false;
+        for each  sofRow in sofFull.Item_Details1
+        {
+            if(sofRow.Item + "" == itemNameForSOF && sofRow.SKU + "" == skuValStage)
+            {
+                sofFound = true;
+            }
+        }
+        if(sofFound == true && sofFull.Fulfillment_Stage != "Pack")
+        {
+            update sofFull
+            [
+                Fulfillment_Stage="Pack"
+            ];
+            info "Fulfillment_Stage updated to Pack for SO " + soValStage + " / SKU " + skuValStage;
+        }
+    }
+}
+// Ang Form Event ay tatakbo lang PAGKATAPOS ma-save ang record — kaya kailangan pa rin
+// ng sariling check dito kung TALAGANG naka-check na ang Send_to_QC, para hindi ito
+// tumakbo kapag ibang field lang ang na-edit.
+if(input.Send_to_QC != true)
+{
+    info "Send to QC is not checked — skipping Checker_Checklist sync.";
+    return;
+}
+soVal = input.SO + "";
+skuVal = input.SKU + "";
+pacVal = input.PAC + "";
+// ADDED 2026-08-13, real bug found live (SO-16468, Aqi/JF-001) — same collision as
+// pick1_to_pack_sync.txt's own 2026-08-13 fix (see that file's comment for the full
+// writeup): an RR replacement now deliberately reuses the ORIGINAL item's own
+// Package_Order, so SO+SKU+PAC alone can no longer tell the original's Pack->QC row
+// apart from its RR replacement's. Widened to also match RR. Guards the "null" +
+// "" -> literal string "null" gotcha (see [[deluge_creator_gotchas]]) so a
+// genuinely blank RR normalizes to "" here, matching how existing records read.
+rrVal = input.RR + "";
+if(rrVal == "null")
+{
+    rrVal = "";
+}
+// FIXED 2026-08-13, real bug found live (user's own words: "pag nasa pack na and
+// isesend na sa qc, iuupdate niya lang yung data na existing na... dapat mangyari
+// mag create ng new QC pag kagaling sa Pack") — SO+SKU+PAC+RR alone still wasn't
+// enough for an RR item that loops back through Pick/Pack a SECOND time (per
+// checker_checklist_qc_sync.txt's own RR-redirect design, this same day): the
+// SO+SKU+PAC+RR key is IDENTICAL between the first Checker_Checklist record (the
+// one already Approved, which is what triggered the redirect to Order Readiness
+// in the first place) and this second Send-to-QC. Matching it just re-updated the
+// already-Approved record in place — QC_Status stayed "Approved" with nothing
+// fresh for the quality checker to actually review, which is what looked like the
+// whole cycle "umiikot lang" (going in circles) with no real second QC checkpoint.
+// Added QC_Status=="" to the match: an existing record only counts as "the same
+// one" if it's STILL Pending (never reviewed yet) — a record that's already been
+// Approved/Rejected is treated as a closed, historical record, not something to
+// reopen, so a fresh Send-to-QC always gets its own brand-new Checker_Checklist
+// record to actually review.
+// ===== UPDATE-or-CREATE — same SO + SKU + PAC + RR + still-Pending QC_Status
+// already has a Checker_Checklist record: UPDATE it (lahat ng field) imbes na basta
+// i-skip, dahil possible na ma-edit ulit ang Pack record (hal. ituwid ang
+// Bin_Location o Quality_Checker) pagkatapos nang unang pag-Send to QC, bago pa ito
+// ma-review. Parehong pattern gaya ng pick1_to_pack_sync.txt. =====
+alreadyExists = false;
+for each  existingRec in Checker_Checklist[SO == soVal && SKU == skuVal && PAC == pacVal && RR == rrVal && QC_Status == ""]
+{
+    alreadyExists = true;
+    update existingRec
+    [
+        PR=input.PR
+        Demo=input.Demo
+        RR=input.RR
+        Delivery_Type=input.Delivery_Type
+        Order_Type=input.Order_Type
+        Target_Delivery_Date=input.Target_Delivery_Date
+        For_Crate=input.For_Crate
+        Customer_Name=input.Customer_Name
+        Customer_Address=input.Customer_Address
+        Customer_Type=input.Customer_Type
+        Item_Name=input.Item_Name
+        Quantity=input.Quantity
+        Bin_Location=input.Bin_Location
+        Quality_Checker=input.Assign_Packer
+    ];
+    info "Updated existing Checker_Checklist record for SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal;
+}
+if(alreadyExists == false)
+{
+    // ===== CREATE Checker_Checklist RECORD =====
+    newId = insert into Checker_Checklist
+    [
+        SO=soVal
+        PAC=pacVal
+        PR=input.PR
+        Demo=input.Demo
+        RR=input.RR
+        Delivery_Type=input.Delivery_Type
+        Order_Type=input.Order_Type
+        Target_Delivery_Date=input.Target_Delivery_Date
+        For_Crate=input.For_Crate
+        Customer_Name=input.Customer_Name
+        Customer_Address=input.Customer_Address
+        Customer_Type=input.Customer_Type
+        Item_Name=input.Item_Name
+        Quantity=input.Quantity
+        SKU=skuVal
+        Bin_Location=input.Bin_Location
+        Quality_Checker=input.Assign_Packer
+        Added_User=zoho.loginuser
+    ];
+    info "Checker_Checklist record created from Pack (SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + "), new ID: " + newId;
+}
+// ===== FULFILLMENT_STAGE SYNC — "Quality Checking", ADDED 2026-09-02 per direct user
+// instruction ("if true na yung pack dapat maupdate yung fulfillment stage ng Quality
+// Checking") — mirrors the "Pack" sync block at the top of this same file exactly, just
+// placed here so it only runs once Send_to_QC is genuinely true AND the
+// Checker_Checklist record above has actually been created/updated (this workflow
+// already returned early above if Send_to_QC wasn't checked). Same SO+Item+SKU match
+// against Sales_Order_Fulfillment's Item_Details1 subform, same "only bump if not
+// already at this stage" guard so a later unrelated edit to this same Pack record can't
+// re-fire this needlessly. =====
+sofMatches2 = Sales_Order_Fulfillment[SO_No == soVal];
+for each  sofRec2 in sofMatches2
+{
+    sofFullList2 = Sales_Order_Fulfillment[ID == sofRec2.ID];
+    for each  sofFull2 in sofFullList2
+    {
+        sofFound2 = false;
+        for each  sofRow2 in sofFull2.Item_Details1
+        {
+            if(sofRow2.Item + "" == input.Item_Name + "" && sofRow2.SKU + "" == skuVal)
+            {
+                sofFound2 = true;
+            }
+        }
+        if(sofFound2 == true && sofFull2.Fulfillment_Stage != "Quality Checking")
+        {
+            update sofFull2
+            [
+                Fulfillment_Stage="Quality Checking"
+            ];
+            info "Fulfillment_Stage updated to Quality Checking for SO " + soVal + " / SKU " + skuVal;
+        }
+    }
+}
+// ===== HINDI na dinedelete ang Pack record. Nananatili ito bilang record — ang
+// Send_to_QC checkbox mismo (naka-TRUE na dahil ito na ang nag-trigger ng workflow na
+// ito) ang siyang ginagamit bilang Report Criteria sa Pack report para itago/i-hide ito
+// sa view kapag na-send to QC na, kahit nasa database pa rin ito. Setup ng criteria ay
+// sa Report Designer mismo ng Zoho Creator (hindi kaya ng Deluge script), see WORKFLOW
+// notes sa taas.

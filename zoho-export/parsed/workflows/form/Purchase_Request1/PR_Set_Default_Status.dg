@@ -1,0 +1,11 @@
+// form: PR_Set_Default_Status  form=Purchase_Request1 event=on add or edit on validate  [.ds line 37134]
+    // === PR_Set_Default_Status ===
+// Form: Purchase_Request1 | Event: Created or Edited | Validations on form submission
+if(input.Link_PO_No == null || input.Link_PO_No == "")
+{
+    input.PR_Status = "Open";
+}
+else
+{
+    input.PR_Status = "Converted to PO";
+}

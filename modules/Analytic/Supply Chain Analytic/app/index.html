@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Supply Chain Conversion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+        colors: {
+          ink: { 900:'#f4f6f9', 800:'#eef1f6', 700:'#ffffff', 600:'#f1f5f9', 500:'#e2e8f0', 400:'#cbd5e1' },
+          cyan: { 400:'#22d3ee', 500:'#06b6d4' },
+          blue: { 400:'#3987e5', 500:'#2a78d6' },
+          orange: { 400:'#fb923c', 500:'#eb6834' },
+          good: '#22c55e', warning: '#fbbf24', critical: '#ef4444', violet:'#a78bfa'
+        }
+      }
+    }
+  };
+</script>
+<style>
+  html,body{ background:#f4f6f9; }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:99px; }
+  .tabular{ font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body class="font-sans text-slate-800 antialiased">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+const {
+  ResponsiveContainer, ComposedChart, BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  PieChart, Pie, Cell, RadialBarChart, RadialBar, PolarAngleAxis
+} = Recharts;
+
+/* ================= CONFIG ================= */
+const CONFIG = {
+  APP_NAME: "supply-chain-app",
+  SOF_REPORT: "Sales_Order_Fulfillment_Report",
+  PR_REPORT: "All_Purchase_Request",
+  PO_REPORT: "All_Purchase_Orders",
+  EXCEPTION_REPORT: "Exceptions_Report",
+  FF_EXCEPTION_REPORT: "Exception_Control_Report",
+  DMS_EXCEPTION_REPORT: "All_DMS_Exception_Queue",
+  DELIVERY_REPORT: "Service_Appointment",
+  MAX_RECORDS: 1000,
+};
+
+const STAGE_ORDER = ["Waiting For Package","Order Readiness","Picking","Pack","Quality Checking","Crate","For Delivery"];
+
+function fetchReport(reportName){
+  var params = { app_name: CONFIG.APP_NAME, report_name: reportName, field_config: "all", max_records: CONFIG.MAX_RECORDS };
+  return ZOHO.CREATOR.DATA.getRecords(params).then(function(response){
+    return (response && response.data) || [];
+  }).catch(function(err){
+    var code = null;
+    try { code = JSON.parse(err && err.responseText).code; } catch (e) {}
+    if (code === 9220) return [];
+    throw err;
+  });
+}
+
+/* ================= HELPERS ================= */
+function parseCreatorDate(s){
+  if (!s || typeof s !== "string") return null;
+  var datePart = s.split(" ")[0];
+  var parts = datePart.split("-");
+  if (parts.length !== 3) return null;
+  var mm=parseInt(parts[0],10), dd=parseInt(parts[1],10), yyyy=parseInt(parts[2],10);
+  if (!mm || !dd || !yyyy) return null;
+  return new Date(yyyy, mm-1, dd);
+}
+function extractSubformRows(raw){
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") return Object.values(raw).filter(function(v){ return v && typeof v === "object"; });
+  return [];
+}
+function val(rec, field, fallback){
+  var v = rec && rec[field];
+  if (v === undefined || v === null || v === "") return fallback !== undefined ? fallback : "";
+  if (typeof v === "object") return v.zc_display_value || v.display_value || fallback || "";
+  return v;
+}
+function numVal(rec, field){ var v = parseFloat(val(rec, field, 0)); return isNaN(v) ? 0 : v; }
+function fmtMoney(n){
+  if (n >= 1000000) return "₱" + (n/1000000).toFixed(1) + "M";
+  if (n >= 1000) return "₱" + (n/1000).toFixed(1) + "K";
+  return "₱" + Math.round(n).toLocaleString("en-PH");
+}
+function pct(n){ return (isFinite(n) ? n : 0).toFixed(1) + "%"; }
+function startOfWeek(d){
+  var x = new Date(d); var day = x.getDay();
+  var diff = (day === 0 ? -6 : 1) - day;
+  x.setDate(x.getDate() + diff); x.setHours(0,0,0,0);
+  return x;
+}
+function weeklyBuckets(rows, dateFn, weeks){
+  var now = new Date();
+  var thisWeekStart = startOfWeek(now);
+  var buckets = [];
+  for (var i = weeks - 1; i >= 0; i--){
+    var start = new Date(thisWeekStart); start.setDate(start.getDate() - i*7);
+    var end = new Date(start); end.setDate(end.getDate() + 7);
+    buckets.push({ start: start, end: end, label: "W" + (start.getMonth()+1) + "/" + start.getDate(), rows: [] });
+  }
+  rows.forEach(function(r){
+    var d = dateFn(r);
+    if (!d) return;
+    for (var i = 0; i < buckets.length; i++){
+      if (d >= buckets[i].start && d < buckets[i].end){ buckets[i].rows.push(r); break; }
+    }
+  });
+  return buckets;
+}
+var MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function monthlyBuckets(rows, dateFn, months){
+  var now = new Date();
+  var buckets = [];
+  for (var i = months - 1; i >= 0; i--){
+    var start = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    var end = new Date(now.getFullYear(), now.getMonth()-i+1, 1);
+    buckets.push({ start: start, end: end, label: MONTH_ABBR[start.getMonth()], rows: [] });
+  }
+  rows.forEach(function(r){
+    var d = dateFn(r);
+    if (!d) return;
+    for (var i = 0; i < buckets.length; i++){
+      if (d >= buckets[i].start && d < buckets[i].end){ buckets[i].rows.push(r); break; }
+    }
+  });
+  return buckets;
+}
+function poDerivedStatus(r){
+  var raw = val(r, "PO_Status", "Draft");
+  var sentOn = val(r, "Sent_On");
+  var ackOn = val(r, "Acknowledge_On");
+  var compOn = val(r, "Completed_On");
+  if (raw === "Cancelled") return "cancelled";
+  if (compOn) return "completed";
+  if (ackOn || raw === "Confirmed by Supplier") return "confirmed";
+  if (sentOn) return "sent";
+  return "draft";
+}
+
+/* ================= ICONS (hand-authored, Lucide-style: 24x24, stroke 2, currentColor) ================= */
+function Icon(props){
+  return React.createElement("svg", {
+    width: props.size||18, height: props.size||18, viewBox:"0 0 24 24", fill:"none",
+    stroke:"currentColor", strokeWidth:2, strokeLinecap:"round", strokeLinejoin:"round",
+    className: props.className
+  }, props.children);
+}
+const IconPackage = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"m7.5 4.27 9 5.15"}),React.createElement("path",{d:"M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"}),
+  React.createElement("path",{d:"m3.3 7 8.7 5 8.7-5"}),React.createElement("line",{x1:12,y1:22,x2:12,y2:12})));
+const IconTruck = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M1 3h15v13H1z"}),React.createElement("path",{d:"M16 8h4l3 3v5h-7V8Z"}),
+  React.createElement("circle",{cx:5.5,cy:18.5,r:2.5}),React.createElement("circle",{cx:18.5,cy:18.5,r:2.5})));
+const IconAlert = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"}),
+  React.createElement("line",{x1:12,y1:9,x2:12,y2:13}),React.createElement("line",{x1:12,y1:17,x2:12.01,y2:17})));
+const IconCheck = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("path",{d:"M22 11.08V12a10 10 0 1 1-5.93-9.14"}),React.createElement("polyline",{points:"22 4 12 14.01 9 11.01"})));
+const IconInfo = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("circle",{cx:12,cy:12,r:10}),React.createElement("line",{x1:12,y1:16,x2:12,y2:12}),React.createElement("line",{x1:12,y1:8,x2:12.01,y2:8})));
+const IconClock = (p) => React.createElement(Icon, p, React.createElement("g",null,
+  React.createElement("circle",{cx:12,cy:12,r:10}),React.createElement("polyline",{points:"12 6 12 12 16 14"})));
+
+/* ================= RING GAUGE ================= */
+function RingGauge({ value, color, size }){
+  size = size || 68; var stroke = 7; var r = (size-stroke)/2; var c = size/2;
+  var circ = 2*Math.PI*r;
+  var offset = circ * (1 - Math.max(0, Math.min(1, value/100)));
+  return (
+    <svg width={size} height={size} className="shrink-0">
+      <circle cx={c} cy={c} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} />
+      <circle cx={c} cy={c} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={circ} strokeDashoffset={offset} transform={`rotate(-90 ${c} ${c})`} />
+    </svg>
+  );
+}
+
+function RingKpi({ label, value, deltaLabel, deltaGood, color }){
+  return (
+    <div className="bg-ink-700 border border-ink-500 rounded-2xl p-4 flex flex-col items-center text-center gap-2 hover:border-ink-400 transition-colors">
+      <p className="text-[10.5px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+      <div className="relative flex items-center justify-center">
+        <RingGauge value={value} color={color} />
+        <span className="absolute text-[13px] font-extrabold tabular" style={{color:color}}>{value.toFixed(1)}%</span>
+      </div>
+      {deltaLabel ? (
+        <p className={`text-[11px] font-semibold ${deltaGood ? "text-good" : "text-critical"}`}>{deltaLabel}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function StatKpi({ label, value, sub, icon, color }){
+  return (
+    <div className="bg-ink-700 border border-ink-500 rounded-2xl p-4 flex flex-col justify-between hover:border-ink-400 transition-colors">
+      <div className="flex items-start justify-between">
+        <p className="text-[10.5px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background: color+"22", color: color}}>{icon}</div>
+      </div>
+      <p className="text-xl font-extrabold text-slate-800 tabular mt-2">{value}</p>
+      {sub ? <p className="text-[11px] mt-1" style={{color: sub.good===undefined ? "#64748b" : sub.good ? "#22c55e" : "#ef4444"}}>{sub.text}</p> : null}
+    </div>
+  );
+}
+
+function Panel({ title, subtitle, action, children, className }){
+  return (
+    <div className={`bg-ink-700 border border-ink-500 rounded-2xl flex flex-col ${className||""}`}>
+      <div className="flex items-start justify-between px-5 pt-4 pb-1 shrink-0">
+        <div>
+          <h3 className="text-[11.5px] font-extrabold uppercase tracking-wide text-slate-700">{title}</h3>
+          {subtitle ? <p className="text-[10.5px] text-slate-500 mt-0.5">{subtitle}</p> : null}
+        </div>
+        {action}
+      </div>
+      <div className="px-5 pb-5 pt-3 flex-1 min-h-0">{children}</div>
+    </div>
+  );
+}
+function EmptyState({ text }){
+  return <div className="h-full min-h-[120px] flex items-center justify-center text-[12px] text-slate-500">{text}</div>;
+}
+
+/* ================= FUNNEL ================= */
+const FUNNEL_COLORS = ["#3987e5","#22d3ee","#a78bfa","#fbbf24","#fb923c","#f472b6","#22c55e"];
+function Funnel({ stages }){
+  var base = stages[0] ? stages[0].count : 0;
+  var max = base || 1;
+  return (
+    <div className="space-y-3">
+      {stages.map(function(s, i){
+        var widthPct = Math.max(4, Math.round((s.count / max) * 100));
+        var retention = i===0 ? 100 : Math.round((s.count / max) * 100);
+        var dropFromPrev = i===0 ? 0 : Math.round(((stages[i-1].count - s.count) / (stages[i-1].count || 1)) * 100);
+        return (
+          <div key={s.label}>
+            <div className="flex items-center justify-between text-[11.5px] mb-1">
+              <span className="text-slate-700 font-semibold">{i+1}. {s.label}</span>
+              <span className="text-slate-500 tabular">{s.count.toLocaleString()}</span>
+            </div>
+            <div className="h-6 rounded-md bg-ink-600 overflow-hidden">
+              <div className="h-full rounded-md flex items-center justify-end pr-2" style={{ width: widthPct+"%", background: FUNNEL_COLORS[i % FUNNEL_COLORS.length] }}>
+                <span className="text-[10px] font-bold text-slate-900">{retention}%</span>
+              </div>
+            </div>
+            {i>0 ? <p className="text-[10px] text-slate-500 mt-0.5">Drop {dropFromPrev}% from previous stage</p> : <p className="text-[10px] text-slate-500 mt-0.5">Base — 100% of active orders</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ================= WEEKLY TREND (Recharts combo) ================= */
+function TrendChart({ data }){
+  if (!data.some(function(d){ return d.Orders>0; })) return <EmptyState text="No order activity in this window yet." />;
+  return (
+    <ResponsiveContainer width="100%" height={230}>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+        <CartesianGrid vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="label" tick={{ fontSize: 10.5, fill: "#64748b" }} axisLine={{ stroke:"#e2e8f0" }} tickLine={false} />
+        <YAxis yAxisId="left" tick={{ fontSize: 10.5, fill: "#64748b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10.5, fill: "#64748b" }} axisLine={false} tickLine={false} unit="%" />
+        <Tooltip contentStyle={{ background:"#ffffff", border:"1px solid #e2e8f0", borderRadius:10, fontSize:12, color:"#1e293b" }} />
+        <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} iconType="circle" iconSize={8} />
+        <Bar yAxisId="left" dataKey="Orders" name="Orders Entering Pipeline" fill="#3987e5" radius={[4,4,0,0]} maxBarSize={22} />
+        <Line yAxisId="right" type="monotone" dataKey="FulfillRate" name="Fulfillment Rate %" stroke="#fb923c" strokeWidth={2} dot={{ r:3, fill:"#fb923c" }} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ================= MONTHLY PO PROCUREMENT (Recharts combo) ================= */
+function MonthlyPOChart({ data }){
+  if (!data.some(function(d){ return d.POCount>0; })) return <EmptyState text="No PO activity in this window yet." />;
+  return (
+    <ResponsiveContainer width="100%" height={230}>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+        <CartesianGrid vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="label" tick={{ fontSize: 10.5, fill: "#64748b" }} axisLine={{ stroke:"#e2e8f0" }} tickLine={false} />
+        <YAxis yAxisId="left" tick={{ fontSize: 10.5, fill: "#64748b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10.5, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={fmtMoney} />
+        <Tooltip contentStyle={{ background:"#ffffff", border:"1px solid #e2e8f0", borderRadius:10, fontSize:12, color:"#1e293b" }} formatter={function(v,name){ return name==="Spend" ? fmtMoney(v) : v; }} />
+        <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} iconType="circle" iconSize={8} />
+        <Bar yAxisId="left" dataKey="POCount" name="POs Issued" fill="#22d3ee" radius={[4,4,0,0]} maxBarSize={26} />
+        <Line yAxisId="right" type="monotone" dataKey="Spend" name="Spend" stroke="#22c55e" strokeWidth={2} dot={{ r:3, fill:"#22c55e" }} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ================= EXCEPTION IMPACT BY DOMAIN ================= */
+function ExceptionDomainBreakdown({ rows, overallRate }){
+  var data = rows.map(function(r){ return { label: r.label, rate: Math.round(r.rate*10)/10, open: r.open, total: r.total, fill: r.color }; });
+  return (
+    <div>
+      <div className="rounded-xl p-3 mb-3" style={{ background:"#ef444422", border:"1px solid #ef444455" }}>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Overall Impact</p>
+        <p className="text-xl font-extrabold tabular" style={{color:"#ef4444"}}>{pct(overallRate)}</p>
+        <p className="text-[10.5px] text-slate-500 mt-0.5">of all orders carry an open exception somewhere in the chain</p>
+      </div>
+      <ResponsiveContainer width="100%" height={140}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 28, left: 0, bottom: 0 }}>
+          <CartesianGrid horizontal={false} stroke="#e2e8f0" />
+          <XAxis type="number" tick={{ fontSize: 10.5, fill: "#64748b" }} axisLine={false} tickLine={false} unit="%" />
+          <YAxis type="category" dataKey="label" tick={{ fontSize: 11.5, fill: "#cbd5e1" }} axisLine={false} tickLine={false} width={80} />
+          <Tooltip
+            cursor={{ fill: "#f1f5f9" }}
+            contentStyle={{ background:"#ffffff", border:"1px solid #e2e8f0", borderRadius:10, fontSize:12, color:"#1e293b" }}
+            formatter={function(v, name, props){ return [pct(v) + " (" + props.payload.open + " open / " + props.payload.total + " logged)", "Impact"]; }}
+          />
+          <Bar dataKey="rate" radius={[0,4,4,0]} maxBarSize={18}>
+            {data.map(function(d,i){ return <Cell key={i} fill={d.fill} />; })}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ================= DONUT (Delivery Type Split) ================= */
+const DONUT_COLORS = ["#3987e5","#22d3ee","#a78bfa","#fbbf24","#fb923c","#f472b6","#22c55e","#94a3c4"];
+function DeliveryDonut({ rows, total }){
+  if (!total) return <EmptyState text="No delivery records yet." />;
+  return (
+    <div>
+      <ResponsiveContainer width="100%" height={170}>
+        <PieChart>
+          <Pie data={rows} dataKey="count" nameKey="label" innerRadius={48} outerRadius={70} paddingAngle={2} stroke="none">
+            {rows.map(function(r,i){ return <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />; })}
+          </Pie>
+          <Tooltip contentStyle={{ background:"#ffffff", border:"1px solid #e2e8f0", borderRadius:10, fontSize:12, color:"#1e293b" }} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="space-y-1.5 mt-2">
+        {rows.map(function(r,i){
+          return (
+            <div key={r.label} className="flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full" style={{background:DONUT_COLORS[i%DONUT_COLORS.length]}}/>{r.label}</span>
+              <span className="text-slate-500 tabular">{r.count} &middot; {pct(r.count/total*100)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ================= SUPPLIER BREAKDOWN (Tony Fan / Fenteng, named per user request) ================= */
+function SupplierBreakdown({ rows }){
+  if (!rows.length) return <EmptyState text="No supplier PO activity yet." />;
+  var chartData = rows.map(function(r){ return { name: r.name, "PO Lines": r.count, Completed: r.completed }; });
+  return (
+    <div>
+      <ResponsiveContainer width="100%" height={140}>
+        <BarChart data={chartData} margin={{ top: 4, right: 8, left: -18, bottom: 0 }} barGap={4}>
+          <CartesianGrid vertical={false} stroke="#e2e8f0" />
+          <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke:"#e2e8f0" }} tickLine={false} />
+          <YAxis tick={{ fontSize: 10.5, fill: "#64748b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip cursor={{ fill: "#f1f5f9" }} contentStyle={{ background:"#ffffff", border:"1px solid #e2e8f0", borderRadius:10, fontSize:12, color:"#1e293b" }} />
+          <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} iconType="circle" iconSize={8} />
+          <Bar dataKey="PO Lines" fill="#3987e5" radius={[4,4,0,0]} maxBarSize={36} />
+          <Bar dataKey="Completed" fill="#22c55e" radius={[4,4,0,0]} maxBarSize={36} />
+        </BarChart>
+      </ResponsiveContainer>
+    <div className="overflow-x-auto mt-3">
+      <table className="w-full text-[11.5px]">
+        <thead>
+          <tr className="text-left text-[10px] uppercase tracking-wide text-slate-500 border-b border-ink-500">
+            <th className="pb-2 font-semibold">Supplier</th>
+            <th className="pb-2 font-semibold text-right">PO Lines</th>
+            <th className="pb-2 font-semibold text-right">Completed</th>
+            <th className="pb-2 font-semibold text-right">Completion %</th>
+            <th className="pb-2 font-semibold text-right">Spend</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-ink-600">
+          {rows.map(function(r){
+            var compPct = r.count ? (r.completed/r.count*100) : 0;
+            return (
+              <tr key={r.name}>
+                <td className="py-2 font-semibold text-slate-700">{r.name}</td>
+                <td className="py-2 text-right tabular text-slate-500">{r.count}</td>
+                <td className="py-2 text-right tabular text-slate-500">{r.completed}</td>
+                <td className="py-2 text-right tabular font-semibold" style={{color: compPct>=70?"#22c55e":compPct>=40?"#fbbf24":"#ef4444"}}>{pct(compPct)}</td>
+                <td className="py-2 text-right tabular text-slate-700 font-semibold">{fmtMoney(r.spend)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+    </div>
+  );
+}
+
+/* ================= TOP REASONS (Exceptions, frequency-sorted) ================= */
+function HorizontalBarChart({ rows, total, height }){
+  if (!rows.length) return <EmptyState text="No records yet." />;
+  var data = rows.map(function(r){ return { label: r.label, count: r.count, sharePct: total ? Math.round(r.count/total*1000)/10 : 0 }; });
+  var rowH = 30;
+  return (
+    <ResponsiveContainer width="100%" height={height || Math.max(140, data.length*rowH)}>
+      <BarChart data={data} layout="vertical" margin={{ top: 0, right: 28, left: 0, bottom: 0 }}>
+        <CartesianGrid horizontal={false} stroke="#e2e8f0" />
+        <XAxis type="number" tick={{ fontSize: 10.5, fill: "#64748b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+        <YAxis type="category" dataKey="label" tick={{ fontSize: 11.5, fill: "#cbd5e1" }} axisLine={false} tickLine={false} width={110} />
+        <Tooltip
+          cursor={{ fill: "#f1f5f9" }}
+          contentStyle={{ background:"#ffffff", border:"1px solid #e2e8f0", borderRadius:10, fontSize:12, color:"#1e293b" }}
+          formatter={function(v, name, props){ return [v + " (" + props.payload.sharePct + "%)", "Count"]; }}
+        />
+        <Bar dataKey="count" radius={[0,4,4,0]} maxBarSize={16} label={{ position:"right", fill:"#64748b", fontSize:10.5 }}>
+          {data.map(function(_,i){ return <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />; })}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function CategoryRadial({ rows }){
+  if (!rows.length) return <EmptyState text="No purchase requests logged yet." />;
+  var top = rows.slice(0,5).map(function(r,i){ return { name: r.label, value: r.count, fill: DONUT_COLORS[i % DONUT_COLORS.length] }; });
+  return (
+    <div>
+      <ResponsiveContainer width="100%" height={200}>
+        <RadialBarChart data={top} innerRadius="24%" outerRadius="100%" startAngle={90} endAngle={-270}>
+          <PolarAngleAxis type="number" domain={[0, top[0].value]} tick={false} />
+          <RadialBar dataKey="value" background={{ fill:"#f1f5f9" }} cornerRadius={6} />
+          <Tooltip contentStyle={{ background:"#ffffff", border:"1px solid #e2e8f0", borderRadius:10, fontSize:12, color:"#1e293b" }} />
+        </RadialBarChart>
+      </ResponsiveContainer>
+      <div className="space-y-1.5 mt-1">
+        {top.map(function(r){
+          return (
+            <div key={r.name} className="flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full" style={{background:r.fill}}/>{r.name}</span>
+              <span className="text-slate-500 tabular">{r.value} PRs</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ================= INSIGHTS & ALERTS ================= */
+function InsightCard({ kind, title, detail, when }){
+  var meta = {
+    alert: { border:"#ef4444", bg:"#ef444422", icon:<IconAlert size={14}/>, color:"#ef4444" },
+    success: { border:"#22c55e", bg:"#22c55e22", icon:<IconCheck size={14}/>, color:"#22c55e" },
+    info: { border:"#2a78d6", bg:"#2a78d61a", icon:<IconInfo size={14}/>, color:"#2a78d6" },
+  }[kind];
+  return (
+    <div className="rounded-xl p-3 border-l-4" style={{ borderColor: meta.border, background: meta.bg }}>
+      <div className="flex items-start gap-2">
+        <span style={{color:meta.color}} className="mt-0.5">{meta.icon}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-bold" style={{color:meta.color}}>{title}</p>
+          <p className="text-[11.5px] text-slate-600 mt-0.5">{detail}</p>
+          {when ? <p className="text-[10px] text-slate-500 mt-1">{when}</p> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= APP ================= */
+function App(){
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [raw, setRaw] = useState(null);
+
+  useEffect(function(){
+    Promise.all([
+      fetchReport(CONFIG.SOF_REPORT),
+      fetchReport(CONFIG.PR_REPORT),
+      fetchReport(CONFIG.PO_REPORT),
+      fetchReport(CONFIG.EXCEPTION_REPORT),
+      fetchReport(CONFIG.FF_EXCEPTION_REPORT),
+      fetchReport(CONFIG.DMS_EXCEPTION_REPORT),
+      fetchReport(CONFIG.DELIVERY_REPORT),
+    ]).then(function(results){
+      setRaw({
+        sof: results[0], pr: results[1], po: results[2], exceptions: results[3],
+        ffExceptions: results[4], dmsExceptions: results[5], delivery: results[6],
+      });
+      setLoading(false);
+    }).catch(function(err){
+      console.error("[SupplyChainConversion] load failed:", err);
+      setError("Could not load live data. Please reopen this widget inside Zoho Creator.");
+      setLoading(false);
+    });
+  }, []);
+
+  const computed = useMemo(function(){
+    if (!raw) return null;
+
+    /* Funnel — SOF's own Fulfillment_Stage models the whole SO journey end to
+       end (Procurement feeds it via package creation, Fulfillment IS it,
+       "For Delivery" is the hand-off to Delivery/DMS) — cumulative "at or
+       beyond stage N" out of the total, same shape as the reference funnel. */
+    var totalOrders = raw.sof.length;
+    var stageIndex = {};
+    STAGE_ORDER.forEach(function(s,i){ stageIndex[s] = i; });
+    var stageOf = raw.sof.map(function(r){ var s = val(r,"Fulfillment_Stage",""); return stageIndex[s]!==undefined ? stageIndex[s] : 0; });
+    var funnelStages = STAGE_ORDER.map(function(label, i){
+      var count = stageOf.filter(function(idx){ return idx >= i; }).length;
+      return { label: label, count: count };
+    });
+    var deliveredCount = funnelStages[funnelStages.length-1].count;
+    var overallFulfillRate = totalOrders ? (deliveredCount/totalOrders*100) : 0;
+
+    /* Weekly trend: orders entering the pipeline (Added_Time) vs. that
+       week's own snapshot fulfillment rate (delivered / entered that week). */
+    var soDates = raw.sof.map(function(r){ return parseCreatorDate(val(r,"Added_Time")); });
+    var sofWithDates = raw.sof.map(function(r,i){ return { r:r, date: soDates[i] }; });
+    var buckets = weeklyBuckets(sofWithDates, function(x){ return x.date; }, 8);
+    var trendData = buckets.map(function(b){
+      var entered = b.rows.length;
+      var delivered = b.rows.filter(function(x){ var idx = stageIndex[val(x.r,"Fulfillment_Stage","")]; return idx === STAGE_ORDER.length-1; }).length;
+      return { label: b.label, Orders: entered, FulfillRate: entered ? Math.round(delivered/entered*100) : 0 };
+    });
+
+    /* Procurement conversion — PO completion rate, same derivation as the
+       Procurement Dashboard's own poDerivedStatus(). */
+    var poCompleted = raw.po.filter(function(r){ return poDerivedStatus(r)==="completed"; }).length;
+    var poCancelled = raw.po.filter(function(r){ return poDerivedStatus(r)==="cancelled"; }).length;
+    var poConversionRate = raw.po.length ? (poCompleted/raw.po.length*100) : 0;
+
+    /* Pick-to-pack — of orders that reached Picking, how many made it to
+       Pack or beyond (a real mid-pipeline conversion step, not the whole
+       funnel). */
+    var reachedPicking = stageOf.filter(function(idx){ return idx >= stageIndex["Picking"]; }).length;
+    var reachedPack = stageOf.filter(function(idx){ return idx >= stageIndex["Pack"]; }).length;
+    var pickToPackRate = reachedPicking ? (reachedPack/reachedPicking*100) : 0;
+
+    /* Delivery — Service_Appointment's own Appointment_Status (Completed/
+       Failed are the only 2 terminal states, confirmed via Widget/DMS/
+       DeliveryQueue's own isTerminalStatus()). On-time rate = success among
+       CONCLUDED appointments (denominator excludes still-in-flight ones). */
+    var deliveryConcluded = raw.delivery.filter(function(r){ var s = val(r,"Appointment_Status"); return s==="Completed" || s==="Failed"; });
+    var deliveryCompleted = deliveryConcluded.filter(function(r){ return val(r,"Appointment_Status")==="Completed"; }).length;
+    var onTimeRate = deliveryConcluded.length ? (deliveryCompleted/deliveryConcluded.length*100) : 0;
+
+    var TYPE_ORDER = ["Delivery Only","With Installation","Full-Day Install","Multi-Day Install","Replacement","Site Visit","Pullout"];
+    var typeCounts = {};
+    raw.delivery.forEach(function(r){ var t = val(r,"Type_of_Delivery","Delivery Only"); typeCounts[t] = (typeCounts[t]||0)+1; });
+    var deliveryTypeBreakdown = Object.keys(typeCounts).sort(function(a,b){ return typeCounts[b]-typeCounts[a]; })
+      .map(function(t){ return { label:t, count: typeCounts[t] }; });
+
+    /* Exceptions — Exception Rate (analog to Cart Abandonment): open
+       exceptions as a % of total order volume this period. Top Reasons —
+       Impact_Type, frequency-sorted (real field, no fixed vocabulary
+       assumed since it's presented purely by rank here). */
+    var openExc = raw.exceptions.filter(function(r){ var s = val(r,"Exception_Status","Open"); return s !== "Resolved" && s !== "Closed"; });
+    var exceptionRate = totalOrders ? (openExc.length/totalOrders*100) : 0;
+    var reasonCounts = {};
+    raw.exceptions.forEach(function(r){ var t = val(r,"Impact_Type","Other"); reasonCounts[t] = (reasonCounts[t]||0)+1; });
+    var topReasons = Object.keys(reasonCounts).sort(function(a,b){ return reasonCounts[b]-reasonCounts[a]; })
+      .map(function(t){ return { label:t, count: reasonCounts[t] }; }).slice(0,6);
+
+    /* Exception impact BY DOMAIN — 3 real, separate reports (each domain
+       tracks exceptions in its own form with its own status vocabulary,
+       confirmed live: Procurement=Exceptions_Report/Exception_Status
+       Open-Under Review-Waiting-Resolved-Closed; Fulfillment=
+       Exception_Control_Report/Status Pending-In Rework-Completed-
+       Unrepairable; Delivery=All_DMS_Exception_Queue/Status Open-Resolved-
+       Dismissed). Each rate is open-in-that-domain / total orders, so the
+       3 numbers are directly comparable — "Overall Impact" sums all 3 open
+       counts over the same denominator for one combined headline number. */
+    var ffOpenExc = raw.ffExceptions.filter(function(r){ var s = val(r,"Status","Pending"); return s !== "Completed"; });
+    var dmsOpenExc = raw.dmsExceptions.filter(function(r){ return val(r,"Status","Open") === "Open"; });
+    var excByDomain = [
+      { key:"procurement", label:"Procurement", open: openExc.length, total: raw.exceptions.length, rate: totalOrders ? openExc.length/totalOrders*100 : 0, color:"#3987e5" },
+      { key:"fulfillment", label:"Fulfillment", open: ffOpenExc.length, total: raw.ffExceptions.length, rate: totalOrders ? ffOpenExc.length/totalOrders*100 : 0, color:"#a78bfa" },
+      { key:"delivery", label:"Delivery", open: dmsOpenExc.length, total: raw.dmsExceptions.length, rate: totalOrders ? dmsOpenExc.length/totalOrders*100 : 0, color:"#fb923c" },
+    ];
+    var overallImpactOpen = openExc.length + ffOpenExc.length + dmsOpenExc.length;
+    var overallImpactRate = totalOrders ? (overallImpactOpen/totalOrders*100) : 0;
+
+    /* Item category breakdown ("which category orders more") — All_Purchase_
+       Request carries a plain header-level `category` field (one PR = one
+       line item in this app's data model, confirmed via Widget/Proc/
+       Purchase Request's own create-PR payload). */
+    var categoryCounts = {};
+    raw.pr.forEach(function(r){ var c = val(r,"category","Uncategorized"); categoryCounts[c] = (categoryCounts[c]||0)+1; });
+    var categoryBreakdown = Object.keys(categoryCounts).sort(function(a,b){ return categoryCounts[b]-categoryCounts[a]; })
+      .map(function(c){ return { label:c, count: categoryCounts[c] }; }).slice(0,8);
+
+    /* Monthly PO Procurement trend — same PO_Date-or-Added_Time source as
+       the weekly chart, bucketed by calendar month instead of by week, for
+       a longer-horizon executive view. */
+    var poDates = raw.po.map(function(r){ return parseCreatorDate(val(r,"PO_Date") || val(r,"Added_Time")); });
+    var poWithDates = raw.po.map(function(r,i){ return { r:r, date: poDates[i] }; });
+    var poMonthBuckets = monthlyBuckets(poWithDates, function(x){ return x.date; }, 6);
+    var monthlyPOTrend = poMonthBuckets.map(function(b){
+      var spend = b.rows.reduce(function(s,x){ return s + extractSubformRows(x.r["PO_Line_Items"]).reduce(function(s2,l){ return s2+numVal(l,"Line_Total"); }, 0); }, 0);
+      return { label: b.label, POCount: b.rows.length, Spend: Math.round(spend) };
+    });
+
+    /* Supplier breakdown — named per user request (Tony Fan / Fenteng),
+       same PO_Line_Items aggregation pattern as the Procurement Dashboard,
+       extended with a per-supplier completion rate. */
+    var supplierAgg = {};
+    function ensureSupplier(name){ if (!supplierAgg[name]) supplierAgg[name] = { name:name, count:0, completed:0, spend:0 }; return supplierAgg[name]; }
+    ensureSupplier("Fenteng"); ensureSupplier("Tony Fan");
+    raw.po.forEach(function(po){
+      var isCompleted = poDerivedStatus(po) === "completed";
+      var lines = extractSubformRows(po["PO_Line_Items"]);
+      lines.forEach(function(l){
+        var sup = val(l,"Supplier","Unassigned");
+        if (sup === "Tony") sup = "Tony Fan";
+        var agg = ensureSupplier(sup);
+        agg.count += 1;
+        if (isCompleted) agg.completed += 1;
+        agg.spend += numVal(l,"Line_Total");
+      });
+    });
+    var supplierBreakdown = Object.values(supplierAgg).sort(function(a,b){ return b.spend - a.spend; });
+    var totalSpend = supplierBreakdown.reduce(function(s,x){ return s+x.spend; }, 0);
+
+    /* Insights & Alerts — thresholds computed from the same real numbers
+       above, not fabricated. */
+    var insights = [];
+    var bottleneckStage = null, bottleneckDrop = 0;
+    for (var i=1;i<funnelStages.length;i++){
+      var drop = funnelStages[i-1].count - funnelStages[i].count;
+      var dropPct = funnelStages[i-1].count ? drop/funnelStages[i-1].count*100 : 0;
+      if (dropPct > bottleneckDrop){ bottleneckDrop = dropPct; bottleneckStage = funnelStages[i].label; }
+    }
+    if (bottleneckStage && bottleneckDrop > 15) insights.push({ kind:"alert", title:"Bottleneck Detected", detail: bottleneckStage + " is losing " + Math.round(bottleneckDrop) + "% of orders vs. the previous stage.", when:"This period" });
+    if (onTimeRate >= 80) insights.push({ kind:"success", title:"Delivery On-Time Rate Strong", detail: pct(onTimeRate) + " of concluded deliveries completed successfully.", when:"This period" });
+    else if (deliveryConcluded.length > 0) insights.push({ kind:"alert", title:"Delivery On-Time Rate Needs Attention", detail: pct(onTimeRate) + " of concluded deliveries completed successfully.", when:"This period" });
+    if (topReasons.length) insights.push({ kind:"info", title:"Top Exception Driver", detail: "\"" + topReasons[0].label + "\" accounts for " + pct(topReasons[0].count/openExc.length*100 || 0) + " of open exceptions.", when:"This period" });
+    if (exceptionRate > 10) insights.push({ kind:"alert", title:"Elevated Exception Rate", detail: pct(exceptionRate) + " of orders currently have an open exception.", when:"This period" });
+    var topSupplier = supplierBreakdown.slice().sort(function(a,b){ return (b.completed/(b.count||1)) - (a.completed/(a.count||1)); })[0];
+    if (topSupplier && topSupplier.count > 0) insights.push({ kind:"info", title:"Best Completion Rate", detail: topSupplier.name + " leads at " + pct(topSupplier.completed/topSupplier.count*100) + " PO completion.", when:"This period" });
+    var worstDomain = excByDomain.slice().sort(function(a,b){ return b.rate-a.rate; })[0];
+    if (worstDomain && worstDomain.rate > 0) insights.push({ kind: worstDomain.rate>15?"alert":"info", title: worstDomain.label + " Carries the Most Exception Impact", detail: worstDomain.label + " accounts for " + pct(worstDomain.rate) + " of orders with an open exception — the highest of the 3 stages.", when:"This period" });
+    if (categoryBreakdown.length) insights.push({ kind:"info", title:"Top Ordered Category", detail: "\"" + categoryBreakdown[0].label + "\" leads with " + categoryBreakdown[0].count + " purchase requests.", when:"This period" });
+
+    return {
+      totalOrders: totalOrders, funnelStages: funnelStages, overallFulfillRate: overallFulfillRate,
+      trendData: trendData, poConversionRate: poConversionRate, poCompleted: poCompleted, poCancelled: poCancelled, poTotal: raw.po.length,
+      pickToPackRate: pickToPackRate, onTimeRate: onTimeRate, deliveryConcluded: deliveryConcluded.length, deliveryTotal: raw.delivery.length,
+      deliveryTypeBreakdown: deliveryTypeBreakdown, exceptionRate: exceptionRate, openExcCount: openExc.length,
+      topReasons: topReasons, totalExc: raw.exceptions.length, supplierBreakdown: supplierBreakdown, totalSpend: totalSpend,
+      excByDomain: excByDomain, overallImpactRate: overallImpactRate, overallImpactOpen: overallImpactOpen,
+      categoryBreakdown: categoryBreakdown, monthlyPOTrend: monthlyPOTrend,
+      insights: insights,
+    };
+  }, [raw]);
+
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-ink-900">
+        <div className="text-center max-w-sm">
+          <IconAlert size={28} className="mx-auto text-critical mb-3" />
+          <p className="text-[13.5px] text-slate-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-ink-900 p-6">
+      {loading || !computed ? (
+        <div className="h-[80vh] flex items-center justify-center text-slate-500 text-[13px]">Loading live supply chain data&hellip;</div>
+      ) : (
+        <div className="w-full space-y-6">
+          <div>
+            <p className="text-[10.5px] font-bold uppercase tracking-wide text-blue-500 mb-1">Supply Chain App &middot; Procurement + Fulfillment + Delivery</p>
+            <h1 className="text-xl font-extrabold text-slate-800">Supply Chain Conversion</h1>
+            <p className="text-[12px] text-slate-500 mt-0.5">End-to-end order journey — from sourcing through last-mile delivery, live.</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-4">
+            <RingKpi label="Overall Fulfillment" value={computed.overallFulfillRate} color="#0e7490" />
+            <RingKpi label="PO Completion" value={computed.poConversionRate} color="#2a78d6" />
+            <RingKpi label="Pick-to-Pack" value={computed.pickToPackRate} color="#7c3aed" />
+            <RingKpi label="On-Time Delivery" value={computed.onTimeRate} color="#c2410c" />
+            <StatKpi label="Total Orders" value={computed.totalOrders.toLocaleString()} icon={<IconPackage size={14}/>} color="#3987e5"
+              sub={{ text: computed.poTotal + " POs issued", good: undefined }} />
+            <StatKpi label="Overall Impact Rate" value={pct(computed.overallImpactRate)} icon={<IconAlert size={14}/>} color="#ef4444"
+              sub={{ text: computed.overallImpactOpen + " open across all 3 stages", good: computed.overallImpactRate < 10 }} />
+            <StatKpi label="Total PO Spend" value={fmtMoney(computed.totalSpend)} icon={<IconTruck size={14}/>} color="#22c55e"
+              sub={{ text: "Fenteng + Tony Fan", good: undefined }} />
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <Panel title="Order Fulfillment Funnel" subtitle="Cumulative stage progression — Procurement to Delivery" className="xl:col-span-4">
+              <Funnel stages={computed.funnelStages} />
+            </Panel>
+            <Panel title="Weekly Order Volume & Fulfillment Rate" subtitle="Last 8 weeks" className="xl:col-span-5">
+              <TrendChart data={computed.trendData} />
+              <p className="text-[11px] text-slate-500 mt-2">Total orders this window: <span className="text-slate-700 font-semibold">{computed.trendData.reduce(function(s,d){return s+d.Orders;},0)}</span></p>
+            </Panel>
+            <Panel title="Delivery Type Split" subtitle="Service_Appointment &middot; live" className="xl:col-span-3">
+              <DeliveryDonut rows={computed.deliveryTypeBreakdown} total={computed.deliveryTotal} />
+            </Panel>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <Panel title="Supplier Breakdown" subtitle="Fenteng vs. Tony Fan — PO volume &amp; completion" className="xl:col-span-4">
+              <SupplierBreakdown rows={computed.supplierBreakdown} />
+            </Panel>
+            <Panel title="Top Exception Reasons" subtitle="By Impact_Type &middot; this period" className="xl:col-span-4">
+              <HorizontalBarChart rows={computed.topReasons} total={computed.totalExc || 1} />
+            </Panel>
+            <Panel title="Insights &amp; Alerts" subtitle="Computed from live thresholds" className="xl:col-span-4">
+              <div className="space-y-2.5">
+                {computed.insights.length ? computed.insights.map(function(ins,i){ return <InsightCard key={i} {...ins} />; }) : <EmptyState text="No notable signals this period." />}
+              </div>
+            </Panel>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <Panel title="Item Category Performance" subtitle="Which category orders more &middot; by Purchase Request" className="xl:col-span-4">
+              <CategoryRadial rows={computed.categoryBreakdown} />
+            </Panel>
+            <Panel title="Monthly PO Procurement" subtitle="Last 6 months — PO volume &amp; spend" className="xl:col-span-5">
+              <MonthlyPOChart data={computed.monthlyPOTrend} />
+            </Panel>
+            <Panel title="Exception Impact by Stage" subtitle="Procurement &middot; Fulfillment &middot; Delivery" className="xl:col-span-3">
+              <ExceptionDomainBreakdown rows={computed.excByDomain} overallRate={computed.overallImpactRate} />
+            </Panel>
+          </div>
+
+          <footer className="text-center text-[10.5px] text-slate-400 pt-2">SUPPLY_CHAIN_CONVERSION &middot; SUPPLY_CHAIN_APP &middot; Live</footer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ================= MOUNT ================= */
+function SdkMissing(){
+  return (
+    <div className="h-screen flex items-center justify-center bg-ink-900">
+      <div className="text-center max-w-sm">
+        <IconAlert size={28} className="mx-auto text-critical mb-3" />
+        <p className="text-[13.5px] text-slate-600">This widget must be opened inside Zoho Creator to load live data.</p>
+      </div>
+    </div>
+  );
+}
+var _root = ReactDOM.createRoot(document.getElementById("root"));
+(function waitForSdk(attempt){
+  var ready = typeof window.ZOHO !== "undefined" && window.ZOHO.CREATOR && window.ZOHO.CREATOR.DATA;
+  if (ready){ _root.render(<App />); return; }
+  if (attempt >= 30){ _root.render(<SdkMissing />); return; }
+  setTimeout(function(){ waitForSdk(attempt + 1); }, 200);
+})(0);
+</script>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+</body>
+</html>

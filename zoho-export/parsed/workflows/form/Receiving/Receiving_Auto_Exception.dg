@@ -1,0 +1,115 @@
+// form: Receiving_Auto_Exception  form=Receiving event=on add or edit on validate  [.ds line 39906]
+    if(input.Create_Exception_Requested == true)
+{
+    for each  ln in input.Receiving_Line_Items
+    {
+        damaged = ifnull(ln.Damage_Qty,0);
+        missing = ifnull(ln.Missing_Qty,0);
+        if(damaged > 0 || missing > 0)
+        {
+            excExists = false;
+            existingEXCId = 0;
+            /* CHANGED 2026-10-12, real bug reported live: saving a Receiving without a photo
+               raised EXC-00002, and re-saving after attaching the photo raised EXC-00003 for the
+               same receiving line instead of updating the first one.
+               Cause: this dedup was keyed on ln.PR_No. A Receiving made through the widget's own
+               "Create From Scratch" has no originating PR at all, so its lines carry no PR_No and
+               the criteria matches nothing — the script falls straight through to the insert below
+               on EVERY save.
+               Fix: key on Receive_No + SKU instead, which is always present and always identifies
+               the line. Receiving_Line_ID keeps holding ln.PR_No exactly as before, so everything
+               downstream that reads it (RR_PR_No, Replacement_Summary.PR_No, Shipments) is
+               untouched. Deliberately NOT solved by inventing a PR_No for scratch receivings —
+               that would put a fabricated purchase-request number into records read as real.
+               The old criteria is kept as a fallback so Exceptions raised before this field
+               existed still match, and each one gets stamped with its key on first touch. */
+            lineKeyEX = input.Receive_No1 + "||" + ln.SKU;
+            for each  excByKey in Exceptions[Exception_Line_Key == lineKeyEX]
+            {
+                excExists = true;
+                existingEXCId = excByKey.ID;
+            }
+            if(excExists == false)
+            {
+                prNoEX = ifnull(ln.PR_No,"") + "";
+                if(prNoEX.trim() != "")
+                {
+                    existingEXC = Exceptions[Receiving_Line_ID == prNoEX && Receive_No == input.Receive_No1];
+                    for each  exc in existingEXC
+                    {
+                        excExists = true;
+                        existingEXCId = exc.ID;
+                        exc.Exception_Line_Key=lineKeyEX;
+                    }
+                }
+            }
+            if(excExists == false)
+            {
+                maxNum = 0;
+                existingEXCs = Exceptions[ID != 0];
+                for each  exc in existingEXCs
+                {
+                    excNoStr = exc.Exception_No;
+                    if(excNoStr != null && excNoStr != "")
+                    {
+                        numPart = excNoStr.removeFirstOccurence("EXC-");
+                        num = numPart.toLong();
+                        if(num > maxNum)
+                        {
+                            maxNum = num;
+                        }
+                    }
+                }
+                newNum = maxNum + 1;
+                if(newNum < 10)
+                {
+                    newEXCNo = "EXC-0000" + newNum;
+                }
+                else if(newNum < 100)
+                {
+                    newEXCNo = "EXC-000" + newNum;
+                }
+                else if(newNum < 1000)
+                {
+                    newEXCNo = "EXC-00" + newNum;
+                }
+                else if(newNum < 10000)
+                {
+                    newEXCNo = "EXC-0" + newNum;
+                }
+                else
+                {
+                    newEXCNo = "EXC-" + newNum;
+                }
+                existingEXCId = insert into Exceptions
+                [
+                    Exception_No=newEXCNo
+                    Source_Module="Receiving"
+                    Exception_Status="Open"
+                    Sales_Order=input.SO_No
+                    PO_No=input.PO_No
+                    Shipment_No=input.Shipments.Shipment_No
+                    Receive_No=input.Receive_No1
+                    Receiving_Line_ID=ln.PR_No
+                    Exception_Line_Key=lineKeyEX
+                    Opened_On=zoho.currentdate.toString("dd-MMM-yyyy")
+                    Added_User=zoho.loginuser
+                ];
+            }
+            ln.Has_Exceptions=true;
+        }
+    }
+    /* One-shot: clear the request so the NEXT ordinary Save does not create again. */
+    input.Create_Exception_Requested = false;
+}
+/* OUTSIDE the gate on purpose — Has_Exceptions is persisted on the line, so the count
+   stays correct on every plain Save without re-running any creation. */
+excCount = 0;
+for each  ln in input.Receiving_Line_Items
+{
+    if(ln.Has_Exceptions == true)
+    {
+        excCount = excCount + 1;
+    }
+}
+input.Exception_Count = excCount;

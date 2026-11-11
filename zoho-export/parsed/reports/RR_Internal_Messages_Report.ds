@@ -1,0 +1,11 @@
+
+			displayName = "RR_Internal_Messages Report"
+			show all rows from RR_Internal_Messages    
+			(
+				RR_No as "RR No"
+				Sender_Email as "Sender Email"
+				Sender_Role as "Sender Role"
+				Message
+				Sent_On as "Sent On"
+			)
+		

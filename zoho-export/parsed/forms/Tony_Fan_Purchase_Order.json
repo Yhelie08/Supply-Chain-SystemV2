@@ -1,0 +1,278 @@
+{
+  "name": "Tony_Fan_Purchase_Order",
+  "label": "Tony Fan Purchase Order",
+  "successMessage": "Purchase Order Added Successfully",
+  "line": 17695,
+  "fields": [
+    {
+      "name": "PO_Summary_Supplier2",
+      "label": "PO Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "PO_Date_Supplier2",
+      "label": "PO Date",
+      "type": "date",
+      "required": false,
+      "initialValue": "${zoho.currentdate}",
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "PO_No_Supplier2",
+      "label": "PO No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Total_PO_Value_Supplier2",
+      "label": "Total PO Value",
+      "type": "CNY",
+      "required": false,
+      "format": "commadotwestern"
+    },
+    {
+      "name": "Total_Lines_Supplier2",
+      "label": "Total Lines",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Supplier_Load_At_PO_Supplier2",
+      "label": "Supplier Load At PO",
+      "type": "decimal",
+      "required": false
+    },
+    {
+      "name": "Mixed_Shipping_Supplier2",
+      "label": "Mixed Shipping",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Is_Locked_Supplier2",
+      "label": "Is Locked",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Notes_Supplier2",
+      "label": "Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Override_Reason_Supplier2",
+      "label": "Override Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Followed_Recommendation_Supplier2",
+      "label": "Followed Recommendation",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "RR_Reference_No_Supplier2",
+      "label": "RR Reference No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Missing_SKUs_Supplier2",
+      "label": "Missing SKUs",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Damage_SKUs_Supplier2",
+      "label": "Damage SKUs Supplier2",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Status_Audit_Supplier2",
+      "label": "Status & Audit",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "PO_Status_Supplier2",
+      "label": "PO Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Draft",
+        "Confirmed",
+        "Locked",
+        "Cancelled",
+        "Replacement - Missing"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Sent_On_Supplier2",
+      "label": "Sent On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Acknowledge_On_Supplier2",
+      "label": "Acknowledge On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Completed_On_Supplier2",
+      "label": "Completed On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "PO_Line_Items_Supplier2",
+      "label": "PO Line Items",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Airfreight",
+        "LCL",
+        "FCL"
+      ],
+      "fields": [
+        {
+          "name": "Item_Status_Supplier2",
+          "label": "Status",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Missing"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Override_Reason_Supplier2",
+          "label": "Override Reason",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "name": "Followed_Recommendation_Supplier2",
+          "label": "Followed Recommendation",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Supplier_Supplier2",
+          "label": "Supplier",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "PR_No_Supplier2",
+          "label": "PR No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Single_Line_Supplier2",
+          "label": "Single Line",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_Supplier2",
+          "label": "Item",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU_Supplier2",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "QTY_Supplier2",
+          "label": "QTY",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Unit_Supplier2",
+          "label": "Unit",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_Price_Supplier2",
+          "label": "Item Price",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Final_Price_Supplier2",
+          "label": "Final Price",
+          "type": "CNY",
+          "required": false,
+          "format": "commadotwestern"
+        },
+        {
+          "name": "Line_Total_Supplier2",
+          "label": "Line Total",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Target_Delivery_Supplier2",
+          "label": "Target Delivery",
+          "type": "date",
+          "required": false,
+          "alloweddays": "0,1,2,3,4,5,6"
+        },
+        {
+          "name": "supplier_target_date_Supplier2",
+          "label": "Supplier Target Date",
+          "type": "date",
+          "required": false,
+          "alloweddays": "0,1,2,3,4,5,6"
+        },
+        {
+          "name": "Shipping_Mode_Supplier2",
+          "label": "Shipping Mode",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Airfreight",
+            "LCL",
+            "FCL"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Delay_Status_Supplier2",
+          "label": "Delay Status",
+          "type": "text",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

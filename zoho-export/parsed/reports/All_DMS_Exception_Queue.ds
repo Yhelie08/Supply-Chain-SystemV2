@@ -1,0 +1,20 @@
+
+			displayName = "DMS Exception Queue Report"
+			show all rows from DMS_Exception_Queue    
+			(
+				Exception_ID as "Exception ID"
+				Sales_Order_Reference
+				Customer_Name as "Customer Name"
+				Exception_Stage as "Exception Stage"
+				Exception_Reason
+				Severity
+				Raised_By as "Raised By"
+				Date_Raised as "Date Raised"
+				Assigned_To as "Assigned To"
+				Status
+				Resolution_Action as "Resolution Action"
+				Resolution_Date as "Resolution Date"
+				Revert_to_System as "Revert to System"
+				Requeue_Processed
+			)
+		

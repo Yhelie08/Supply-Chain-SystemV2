@@ -1,0 +1,103 @@
+// map createReceivingFromShipmentWidget(String shipmentId)   [.ds lines 30312-30415]
+response = Map();
+ships = Shipments[ID == shipmentId.toLong()];
+shipFound = false;
+for each  ship in ships
+{
+    shipFound = true;
+    already = Receiving[Shipments == ship.ID];
+    alreadyExists = false;
+    existingRecvId = 0;
+    for each  ex in already
+    {
+        alreadyExists = true;
+        existingRecvId = ex.ID;
+    }
+    if(alreadyExists == true)
+    {
+        response.put("status","already");
+        response.put("message","Receiving already exists for this Shipment.");
+        response.put("receivingId",existingRecvId);
+        return response;
+    }
+    maxRecvNum = 0;
+    existingRecvs = Receiving[ID != 0];
+    for each  rc in existingRecvs
+    {
+        recvNoStr = rc.Receive_No1;
+        if(recvNoStr != null && recvNoStr != "")
+        {
+            numPart = recvNoStr.removeFirstOccurence("RCV-");
+            num = numPart.toLong();
+            if(num > maxRecvNum)
+            {
+                maxRecvNum = num;
+            }
+        }
+    }
+    newRecvNum = maxRecvNum + 1;
+    if(newRecvNum < 10)
+    {
+        newRecvNo = "RCV-0000" + newRecvNum;
+    }
+    else if(newRecvNum < 100)
+    {
+        newRecvNo = "RCV-000" + newRecvNum;
+    }
+    else if(newRecvNum < 1000)
+    {
+        newRecvNo = "RCV-00" + newRecvNum;
+    }
+    else if(newRecvNum < 10000)
+    {
+        newRecvNo = "RCV-0" + newRecvNum;
+    }
+    else
+    {
+        newRecvNo = "RCV-" + newRecvNum;
+    }
+    newRecvId = insert into Receiving
+    [
+        Receive_No1=newRecvNo
+        Shipments=ship.ID
+        SO_No=ship.Sales_Order
+        PO_No=ship.PO_No.PO_No
+        Customer_Name=ship.Customer
+        Supplier=ship.Supplier
+        Added_User=zoho.loginuser
+    ];
+    newRecv = Receiving[ID == newRecvId];
+    for each  li in ship.PO_Shipments
+    {
+        row = Receiving.Receiving_Line_Items();
+        row.PR_No=li.PR_No;
+        row.SKU=li.SKU;
+        row.Item_Name=li.Item_Name;
+        row.Expected_Qty=li.Shipment_QTY;
+        row.Bin_location="Receiving Area";
+        if(li.PR_No != null && li.PR_No != "")
+        {
+            prLine = Purchase_Request1[PR_No == li.PR_No];
+            if(prLine != null)
+            {
+                newRecv.Sales_Owner=prLine.Sales_Owner;
+            }
+        }
+        else
+        {
+            newRecv.Sales_Owner=ship.Sales_Owner;
+        }
+        newRecv.Receiving_Line_Items.insert(row);
+    }
+    shipSelf = Shipments[ID == ship.ID];
+    shipSelf.Receiving_Record_Created=true;
+    response.put("status","success");
+    response.put("receivingId",newRecvId);
+    response.put("receiveNo",newRecvNo);
+}
+if(shipFound == false)
+{
+    response.put("status","error");
+    response.put("message","Shipment not found: " + shipmentId);
+}
+return response;

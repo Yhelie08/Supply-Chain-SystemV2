@@ -1,0 +1,128 @@
+// form: Receiving_Populate_From_Shipment  form=Receiving event=on add or edit on user input of Shipments  [.ds line 39264]
+    if(input.Shipments != null)
+{
+    shipRec = Shipments[ID == input.Shipments];
+    if(shipRec != null)
+    {
+        input.SO_No = shipRec.Sales_Order;
+        input.PO_No = shipRec.PO_No.PO_No;
+        input.Customer_Name = shipRec.Customer;
+        input.Supplier = shipRec.Supplier;
+        orgId = "751117756";
+        whId = "2680178000042173149";
+        binLocs = List();
+        for each  page in {1,2,3,4,5,6}
+        {
+            binUrl = "https://www.zohoapis.com/books/v3/settings/warehouses/" + whId + "/storagelocations?organization_id=" + orgId + "&page=" + page + "&per_page=200";
+            binResp = invokeurl
+            [
+                url :binUrl
+                type :GET
+                connection:"zoho_books"
+            ];
+            locs = binResp.get("storage_locations");
+            if(locs == null || locs.size() == 0)
+            {
+                break;
+            }
+            for each  loc in locs
+            {
+                binLocs.add(loc);
+            }
+            hasMore = binResp.get("page_context").get("has_more_page");
+            if(hasMore == false)
+            {
+                break;
+            }
+        }
+        defaultBinNames = {"Package Area","Receiving Area","Default Area"};
+        input.Receiving_Line_Items.clear();
+        for each  li in shipRec.PO_Shipments
+        {
+            row = Receiving.Receiving_Line_Items();
+            row.PR_No=li.PR_No;
+            row.SKU=li.SKU;
+            row.Item_Name=li.Item_Name;
+            row.Expected_Qty=li.Shipment_QTY;
+            input.Receiving_Line_Items.insert(row);
+        }
+        for each  r in input.Receiving_Line_Items
+        {
+            itemRecBin = Items[SKU == r.SKU];
+            rowCategory = "";
+            if(itemRecBin != null)
+            {
+                rowCategory = itemRecBin.category;
+            }
+            candidateBins = List();
+            if(rowCategory != "")
+            {
+                for each  loc in binLocs
+                {
+                    zName = loc.get("zone_name") + "";
+                    if(zName.toLowerCase().contains(rowCategory.toLowerCase()))
+                    {
+                        candidateBins.add(loc);
+                    }
+                }
+            }
+            clear r.Bin_location;
+            for each  dName in defaultBinNames
+            {
+                r.Bin_location:ui.add(dName);
+            }
+            if(candidateBins.size() > 0)
+            {
+                for each  cLoc in candidateBins
+                {
+                    r.Bin_location:ui.add(cLoc.get("name"));
+                }
+            }
+            else
+            {
+                for each  aLoc in binLocs
+                {
+                    r.Bin_location:ui.add(aLoc.get("name"));
+                }
+            }
+            stockedBinName = "";
+            if(itemRecBin != null && itemRecBin.ID1 != null && itemRecBin.ID1 != "")
+            {
+                itemBinResp = invokeurl
+                [
+                    url :"https://www.zohoapis.com/books/v3/settings/warehouses/" + whId + "/storagelocations?organization_id=" + orgId + "&item_id=" + itemRecBin.ID1
+                    type :GET
+                    connection:"zoho_books"
+                ];
+                itemBins = itemBinResp.get("storage_locations");
+                if(itemBins != null)
+                {
+                    for each  ib in itemBins
+                    {
+                        ibQty = ib.get("balance_quantity");
+                        if(ibQty != null && ibQty > 0 && stockedBinName == "")
+                        {
+                            stockedBinName = ib.get("name") + "";
+                        }
+                    }
+                }
+            }
+            if(stockedBinName != "")
+            {
+                r.Bin_location=stockedBinName;
+            }
+            else
+            {
+                r.Bin_location="Receiving Area";
+            }
+        }
+    }
+}
+else
+{
+    input.SO_No = "";
+    input.PO_No = "";
+    input.Customer_Name = "";
+    input.Supplier = "";
+    input.Receiving_Line_Items.clear();
+}

@@ -1,0 +1,62 @@
+{
+  "name": "Policy_Settings",
+  "label": "Policy Settings",
+  "successMessage": "Data Added Successfully!",
+  "line": 8962,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Policy_Key",
+      "label": "Policy Key",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Description",
+      "label": "Description",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Value",
+      "label": "Value",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Type_field",
+      "label": "Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Time",
+        "Number",
+        "Boolean",
+        "Percentage",
+        "Text",
+        "Dropdown List"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Last_Updated_By",
+      "label": "Last Updated By",
+      "type": "picklist",
+      "required": false,
+      "personalData": "true",
+      "displayformat": "[username]"
+    },
+    {
+      "name": "Last_Updated_Date",
+      "label": "Last Updated Date",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

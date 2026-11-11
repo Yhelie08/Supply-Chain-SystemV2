@@ -1,0 +1,80 @@
+// schedule: DMS_Site_Confirmation_FollowUp  form=null event= on start > on load  [.ds line 47178]
+followupWaitDays = 3;
+                maxAttempts = 2;
+                p1 = Policy_Settings[Policy_Key == "followup_wait_days"];
+                if(p1 != null && p1.Value != null && p1.Value != "")
+                {
+                    followupWaitDays = p1.Value.toLong();
+                }
+                p2 = Policy_Settings[Policy_Key == "max_followup_attempts"];
+                if(p2 != null && p2.Value != null && p2.Value != "")
+                {
+                    maxAttempts = p2.Value.toLong();
+                }
+                pendingRecs = Service_Appointment_Form[Site_Confirmation_Status == "Pending" || Site_Confirmation_Status == "Not Ready" && Outreach_Sent_Date != null];
+                for each  r in pendingRecs
+                {
+                    daysSince = zoho.currentdate.daysBetween(r.Outreach_Sent_Date);
+                    if(daysSince >= followupWaitDays)
+                    {
+                        if(r.Followup_Count >= maxAttempts)
+                        {
+                            r.Site_Confirmation_Status="Unreachable";
+                            r.Exception_Status="Flagged";
+                            custNameU = "";
+                            if(r.Customer_Name != null)
+                            {
+                                custNameU = r.Customer_Name.first_name + " " + r.Customer_Name.last_name;
+                            }
+                            // No dedup guard needed — this branch is self-terminating: once status
+                            // flips to Unreachable, the record falls out of pendingRecs' own filter
+                            // (Pending/Not Ready only) on every future daily run.
+                            insert into DMS_Exception_Queue
+                            [
+                                Sales_Order_Reference=r.ID
+                                Customer_Name=custNameU
+                                Exception_Stage="Site Confirmation"
+                                Exception_Reason="Customer unreachable after max attempts"
+                                Severity="High"
+                                Raised_By="System"
+                                Date_Raised=zoho.currenttime
+                                Status="Open"
+                                Added_User=zoho.loginuser
+                            ]
+                        }
+                        else
+                        {
+                            custName = "";
+                            if(r.Customer_Name != null)
+                            {
+                                custName = r.Customer_Name.first_name + " " + r.Customer_Name.last_name;
+                            }
+                            followupMsg = "Hi " + custName + ", just checking if your delivery site is now ready for " + r.Sales_Order + ". Please let us know.";
+                            // CHANGED 2026-08-26, per user ("use email only for now") — same email-first
+                            // flip as Action 1 above. A phone-only record can only reach this scan if it
+                            // already has an Outreach_Sent_Date (i.e. it got here with an email at least
+                            // once before) — a phone-only record with NO email never enters pendingRecs
+                            // at all (that query requires Outreach_Sent_Date != null), so there's no
+                            // phone-only branch to handle here the way Action 1 needed one.
+                            if(r.Email != null && r.Email != "")
+                            {
+                                sendmail
+                                [
+                                    from :zoho.adminuserid
+                                    to :r.Email
+                                    subject :"Delivery Confirmation Follow-Up — " + r.Sales_Order
+                                    message :followupMsg
+                                ]
+                                info "[Email FOLLOWUP] Sent to: " + r.Email;
+                            }
+                            else
+                            {
+                                // Shouldn't normally happen (see comment above) but fail safe rather than
+                                // silently burning a Followup_Count attempt with no real send.
+                                info "[SITE CONFIRMATION FOLLOWUP] No email on file for record " + r.ID + " (" + r.Sales_Order + ") — skipping this cycle.";
+                            }
+                            r.Outreach_Sent_Date=zoho.currentdate;
+                            r.Followup_Count=r.Followup_Count + 1;
+                        }
+                    }
+                }

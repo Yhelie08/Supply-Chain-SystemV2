@@ -1,0 +1,23 @@
+// schedule: Daily Shipment 10-Day Check  form=null event= on start > on load  [.ds line 47274]
+shipments = Shipments[Notified_10d == false];
+                for each  s in shipments
+                {
+                    if(s.Remaining_Days <= 10)
+                    {
+                        insert into App_Notifications
+                        [
+                            Recipient_Email="homecartelpacker@gmail.com"
+                            Notification_Type="Shipment"
+                            Message="Shipment " + s.Shipment_No + " has " + s.Remaining_Days + " day(s) left on its timeline."
+                            Created_On=zoho.currenttime
+                            Target_URL="https://creatorapp.zoho.com/homecartel/environment/development/supply-chain-app/#Page:Shipments1"
+                            Source_Record_No=s.Shipment_No
+                            Source_Record_ID=s.ID
+                            Added_User=zoho.loginuser
+                        ]
+                        update s
+                        [
+                            Notified_10d=true
+                        ];
+                    }
+                }

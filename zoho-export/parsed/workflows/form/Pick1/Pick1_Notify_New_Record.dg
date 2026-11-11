@@ -1,0 +1,13 @@
+// form: Pick1_Notify_New_Record  form=Pick1 event=on add on success  [.ds line 44967]
+    insert into Pick_Notifications
+[
+    Recipient_Email="homecartelff@gmail.com"
+    Notification_Type="Pick Record Created"
+    Message="New item ready for picking — " + input.SO + " (" + input.Item_Name + "). Click to open it."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:Pick2?pickRecordId=" + input.ID
+    Source_Record_No=input.SO
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]

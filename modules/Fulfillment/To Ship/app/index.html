@@ -1,0 +1,2729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Aggregation</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  Reads rows from the "Order_Aggregation1_Report" report (form: Order_Aggregation1),
+  latest activity first. The report has no "group by" clause — one row here IS
+  one order (Item_Details is a subform/grid *inside* that one record, not
+  separate report rows), so this list is naturally one card per order already.
+
+  1. Zoho Creator → Settings → Widgets → New Widget → "Upload HTML". Zip this file and upload.
+  2. CONFIG.APP_NAME below is already set to "supply-chain-app" to match the other
+     widgets in this app. Change it if this ever moves to a different app.
+  3. Add the widget to a page.
+  4. This widget always attempts to load live data — there's no standalone preview
+     mode. Opening this file outside Zoho Creator will just show a "must be opened
+     inside Zoho Creator" toast.
+
+  Uses JS API v2 (ZOHO.CREATOR.DATA.getRecords/updateRecords, field_config: "all")
+  — same approach as the other widgets in this app.
+
+  SUBFORM DATA: field_config: "all" does NOT make bulk getRecords return real
+  Item_Details rows — CONFIRMED against live data (2026-07-27, same finding as
+  the QC Checklist widget's Spare_part_type field) that subform/grid fields
+  always come back summarized to [{ID, zc_display_value}] from bulk
+  getRecords, no matter the field_config. (This comment previously claimed the
+  opposite — that was an untested assumption, written before anyone actually
+  checked the raw response.) Every record's Item_Details is instead hydrated
+  via a separate ZOHO.CREATOR.DATA.getRecordById call per record, which does
+  return full child-field data — see fetchFullItemDetails/hydrateItemDetails/
+  hydrateAllItemDetails near fetchAllRecords.
+
+  DESIGN: the user shared a screenshot of a different native Zoho Creator page
+  (a three-column Pending/Partial/Done kanban board) purely as a look-and-feel
+  reference and left the actual UI/UX decision to this widget's author. Built
+  as a kanban board with three columns:
+    - Pending: no item rows selected yet.
+    - Partial: some (not all) item rows selected — an order can be picked
+      incrementally before final dispatch.
+    - Done: Dispatch_Selected is checked (the one-way final confirmation).
+  Per-item "selected" state reads Item_Details.Select1 (form displayname
+  "Select", type=checkbox — the single decision box per row: is this item
+  picked or not). An earlier version of the form also had a generic
+  Item_Details.Select (type=checkboxes, placeholder values "Choice 1/2/3")
+  which has since been removed from the form — all references to it were
+  removed from this widget too. Card badge shows "selected/total items"
+  (dispatchState()/selectedItemCount()).
+
+  List → detail → edit are three views inside this one file, same pattern
+  established in the other widgets here (QC Checklist, Crate Checklist, etc.).
+
+  DISPATCH — RE-TARGETED 2026-10-27. READ THIS BEFORE THE HISTORY BELOW.
+  ----------------------------------------------------------------------
+  Per user ("Initial Scheduling — dito papasok lahat nang galing sa Order
+  Aggregation"), a dispatch now creates a `Delivery_Scheduling` record — STAGE 1
+  of the DMS chain — NOT a Service_Appointment_Form record. The full chain:
+
+      Order Aggregation -> Initial Scheduling (Delivery_Scheduling)
+                        -> Service Request    (Service_Request1)
+                        -> Service Appointment (Service_Appointment_Form)
+                        -> Ongoing Service     (Field_Work)
+
+  The appointment is created later, by the SR_Created_Make_Appointment workflow
+  on Service_Request1, which also inserts the per-package Package_Shipments rows
+  this file used to create (they need a Service_Appointment_ID, which does not
+  exist yet at dispatch time). Spec: Proposals/DMS_Chain_Build_2026-10-27.md.
+
+  So in everything below, wherever the old notes say the target is
+  Service_Appointment_Form, the target is now Delivery_Scheduling. The field
+  mapping notes are kept because they still document the APPOINTMENT's shape,
+  which the step-3 Deluge needs — but this file no longer writes any of it.
+  What this file writes now is the `isData` payload in dispatchRecord().
+
+  --- history below, accurate up to 2026-10-26 ---
+
+  DISPATCH: REWORKED 2026-07-28, per user ("dispatch -> dispatch button instead
+  with confirmation. then send to our existing DMS (only selected items.)") —
+  Dispatch is no longer a no-op flag flip. Clicking it (behind the same
+  askDispatchConfirm Yes/No modal) creates ONE real DMS record —
+  Service_Appointment_Form (the DMS's own core booking record, confirmed via
+  Temp1.txt's live AppIDE source dump — Sales_Order/Sales_Order_Display/
+  Customer_Name(compound)/Customer_Address/Type_of_Delivery/Appointment_Status/
+  Item_Details subform) — carrying ONLY the rows whose Select1 checkbox is
+  checked, per direct user instruction. Confirmed via AskUserQuestion before
+  building: (1) target is a new Service_Appointment, not some other DMS entry
+  point; (2) items NOT selected this round stay behind on this same
+  Order_Aggregation1 record for a later separate Dispatch click — dispatching
+  is a repeatable, partial action, not an all-or-nothing one.
+  Field mapping (only what Order_Aggregation1 actually has data for):
+    Sales_Order / Sales_Order_Display = SO
+    Customer_Name = { last_name: Customer_Name, first_name: "" } — Order_
+      Aggregation1's own Customer_Name is a single plain-text field, DMS's is
+      a real compound Name field with no natural split point; putting the
+      whole string in last_name keeps zc_display_value readable, a deliberate
+      judgment call, not a guess at a "real" first/last split.
+    Customer_Address = Customer_Address (flat text on both sides)
+    Type_of_Delivery = DELIVERY_TYPE, ONLY if it exactly matches one of the
+      DMS's real 8 picklist choices (see DMS_DELIVERY_TYPES below) — a
+      mismatched value would reject the WHOLE addRecords call (Zoho picklist
+      validation), so an unrecognized value is silently omitted rather than
+      risking the entire dispatch failing over one cosmetic field.
+      ADDED 2026-08-26 — "Pick Up" is now a real 8th choice (was previously
+      missing entirely; a raw Books value like "Pick Up" silently resolved to
+      blank on dispatch, a real pre-existing gap found while wiring the
+      delivery-type-branched outreach email below).
+    Requested_Delivery_Date = ADDED 2026-08-26, per user request — officer-given
+      target date from the dispatch confirm modal's new optional date field.
+      NEW FIELD, needs manual creation on Service_Appointment_Form (Date type) —
+      not yet confirmed live. Consumed by dms_site_confirmation.txt's outreach
+      email (shows the customer a target date if one was given at dispatch;
+      omits that line entirely if blank — no date exists yet at Site
+      Confirmation/Step 1, since Scheduling/Step 2 which actually picks a real
+      confirmed date happens strictly after).
+    Appointment_Status = "Queued" (DMS's own real starting state)
+    Appointment_Record_ID = this Order_Aggregation1 record's own ID (existing
+      DMS field, previously always blank in every sample record — repurposed
+      as a plain back-reference, no new field needed)
+    Item_Details = selected rows only, Item_Name/SKU/QTY -> Item_Name/SKU/
+      Quantity (QTY -> Quantity is the only field name that actually differs
+      between the two forms' subforms)
+    Package_Number = PAC — ADDED 2026-07-29, real gap found live (user: "every
+      records in dms no idea about the original package? needs patch
+      everytime? let's fix that") — Service_Appointment_Form's own
+      Package_Number field was confirmed to exist all along (via a live
+      schema pull), just never populated by Dispatch even though the source
+      Order_Aggregation1 record has a real PAC the whole time. This is what
+      feeds UI/DMS WIDGET/SalesReturns' own "Create Sales Return" deep-link
+      prefill (see that widget's row) — every dispatch from now on carries it
+      automatically, no more manual per-record patching needed.
+  Real gap, flagged not silently skipped: DMS's own City field has no
+  Order_Aggregation1 equivalent at all — left blank on the new Service_
+  Appointment, same as every other DMS-side field this record has no source
+  data for (PR/DEMO/Sub_Reason/etc — none of those map either).
+  On success, this record's OWN Item_Details is rebuilt to drop the just-
+  dispatched rows (full-array replace, no IDs — same proven pattern used
+  throughout this app for subform writes) — the unselected rows are
+  untouched. If nothing remains, Dispatch_Selected is also set true (this
+  order has nothing left to dispatch); if rows remain, Dispatch_Selected
+  stays whatever it already was, matching the "repeatable" design above.
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="notification_component/notification.css">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+        boxShadow: { card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)' }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { height: 100%; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  .field-input {
+    width: 100%; font-size: 0.875rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;
+    background: #f8fafc; padding: 0.5rem 0.75rem; transition: all .15s ease;
+  }
+  .field-input:focus { outline: none; background: white; box-shadow: 0 0 0 2px #cbd5e1; }
+  /* ADDED 2026-09-03, per user ("pag naka edit dapat hindi naiedit ito") — Sales
+     Order/Customer Details are pass-through reference data, not meant to be
+     retyped from this Edit form. Plain `readonly` (text inputs) keeps the text
+     selectable/copyable; the "For Crate" checkbox uses `disabled` instead since
+     `readonly` has no effect on checkboxes per the HTML spec — same visual
+     "locked" look either way. */
+  .field-input[readonly] { background: #f1f5f9; color: #64748b; cursor: default; }
+  .field-input[readonly]:focus { outline: none; background: #f1f5f9; box-shadow: none; }
+  input[type="checkbox"]:disabled { cursor: default; opacity: .6; }
+  /* ADDED 2026-09-03, per user ("gawin mong bilog yung select") — the per-row
+     dispatch-select checkbox was a plain square checkbox; styled as a round
+     toggle instead (appearance:none + hand-drawn circle/checkmark) so it reads
+     as a distinct "select to dispatch" action, not a generic form checkbox. */
+  .item-selected-cb {
+    appearance: none; -webkit-appearance: none; width: 18px; height: 18px;
+    border: 2px solid #cbd5e1; border-radius: 50%; cursor: pointer; position: relative;
+    vertical-align: middle; margin: 0; transition: all .15s ease; flex-shrink: 0;
+  }
+  .item-selected-cb:hover { border-color: #94a3b8; }
+  .item-selected-cb:checked { background: #0f172a; border-color: #0f172a; }
+  .item-selected-cb:checked::after {
+    content: ""; position: absolute; left: 5px; top: 1px; width: 5px; height: 9px;
+    border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+  }
+
+  /* ADDED 2026-11-05 — Board/List tabs + list filter pills + table cells.
+     Self-styled rather than Tailwind-classed so they survive a stale
+     precompiled CSS build (the same trap documented for the Next Step pills). */
+  .view-tab { color: #475569; background: transparent; border: 0; cursor: pointer; }
+  .view-tab:hover { color: #0f172a; }
+  .view-tab.is-active { background: #0f172a; color: #fff; }
+  .list-filter-btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font-size: 11px; font-weight: 700; line-height: 1.25; padding: 5px 11px;
+    border-radius: 9999px; border: 1px solid #e2e8f0; background: #fff; color: #475569;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .list-filter-btn:hover { background: #f8fafc; }
+  .list-filter-btn.is-active { background: #0f172a; border-color: #0f172a; color: #fff; }
+  .list-filter-btn .lf-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9999px;
+    background: rgba(100,116,139,.14); font-size: 10px;
+  }
+  .list-filter-btn.is-active .lf-count { background: rgba(255,255,255,.22); }
+  .list-th { padding: 9px 12px; white-space: nowrap; }
+  .list-th.sortable { cursor: pointer; user-select: none; }
+  .list-th.sortable:hover { color: #0f172a; }
+  .list-td { padding: 10px 12px; vertical-align: top; }
+  .list-row { cursor: pointer; }
+  .list-row:hover { background: #f8fafc; }
+</style>
+</head>
+<body class="min-h-full bg-slate-100 text-slate-800 antialiased">
+
+  <!-- CHANGED 2026-08-20, per user report ("pati yang dalawa") — same missing-
+       border/unframed-page fix already applied same day to several other widgets.
+       Different shape here (a 3-column Kanban board, not a single table+card), but
+       same root cause: with few items per column, the grid row (and therefore all
+       3 cards) sized to the shortest natural content height instead of filling the
+       page, leaving a tall blank area below. Each column's own body div used a
+       fixed max-h-[70vh] cap rather than growing/shrinking to match its card's own
+       (now page-filling) height — swapped for flex-1/min-h-0 so it fills whatever
+       height the card actually ends up with instead of an arbitrary viewport guess,
+       still scrolling internally via overflow-y-auto if a column's items overflow. -->
+  <div id="listView" class="w-full px-4 sm:px-6 py-5 min-h-screen flex flex-col">
+
+    <!-- Top header -->
+    <header id="topHeader" class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5 shrink-0">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Order Aggregation</h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Group orders by dispatch status ·
+          <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+          </span>
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+
+        <!-- ADDED 2026-11-05, per user request ("dapat may list view rin to") —
+             a Board / List switch. List paints the SAME filtered rows as a
+             sortable table for staff who want to scan many orders at once
+             instead of scrolling 3 columns; the board itself is unchanged.
+             CHANGED same day, per user ("dapat unang makikita yung list hindi
+             yung naka KANBAN style") — List is now what opens by default. The
+             chosen view is remembered per browser in localStorage (wrapped in
+             try/catch — Creator iframes can block storage). -->
+        <div class="inline-flex rounded-full border border-slate-200 bg-white p-0.5 shrink-0">
+          <button id="viewBoardBtn" type="button"
+            class="view-tab inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 5h5v14H4zM10 5h5v9h-5zM16 5h4v6h-4z" />
+            </svg>Board
+          </button>
+          <button id="viewListBtn" type="button"
+            class="view-tab inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>List
+          </button>
+        </div>
+
+        <div class="relative">
+          <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+          </svg>
+          <input id="searchInput" type="text" placeholder="Search SO #, PAC #, Customer…"
+            class="w-64 sm:w-72 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+        </div>
+      </div>
+    </header>
+
+    <div id="boardWrap" class="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
+      <!-- Pending column -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
+          <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-amber-500"></span>Pending
+          </h2>
+          <span id="pendingCount" class="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold">0</span>
+        </div>
+        <div id="pendingColumn" class="p-3 space-y-2.5 flex-1 min-h-0 overflow-y-auto"></div>
+      </div>
+
+      <!-- Partial column -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
+          <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-blue-500"></span>Partial
+          </h2>
+          <span id="partialCount" class="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">0</span>
+        </div>
+        <div id="partialColumn" class="p-3 space-y-2.5 flex-1 min-h-0 overflow-y-auto"></div>
+      </div>
+
+      <!-- Done column -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
+          <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Done
+          </h2>
+          <span id="doneCount" class="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold">0</span>
+        </div>
+        <div id="doneColumn" class="p-3 space-y-2.5 flex-1 min-h-0 overflow-y-auto"></div>
+      </div>
+    </div>
+
+    <!-- ADDED 2026-11-05 — List view. Hidden until the List tab is picked. Same
+         rows, same search, same click-through to the detail view as the board;
+         only the shape differs. The status pills double as a filter so the list
+         can do what the board's 3 columns do. -->
+    <div id="listWrap" class="hidden flex-1 min-h-0 flex-col">
+
+      <div class="flex flex-wrap items-center gap-2 mb-3 shrink-0">
+        <button type="button" class="list-filter-btn" data-filter="all"></button>
+        <button type="button" class="list-filter-btn" data-filter="pending"></button>
+        <button type="button" class="list-filter-btn" data-filter="partial"></button>
+        <button type="button" class="list-filter-btn" data-filter="done"></button>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-card flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div class="flex-1 min-h-0 overflow-auto">
+          <table class="w-full text-sm border-collapse">
+            <thead class="sticky top-0 z-10 bg-slate-50">
+              <tr id="listHead" class="text-left text-[11px] font-bold uppercase tracking-wide text-slate-500"></tr>
+            </thead>
+            <tbody id="listBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <div id="listFooter" class="shrink-0 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Detail view -->
+  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+      <div class="flex items-center gap-2 font-semibold text-slate-600">
+        <span>HC Systems</span><span class="text-slate-300">/</span><span>Order Aggregation Detail</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
+        ← Back to Order Board
+      </button>
+      <span class="text-slate-300">|</span>
+      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    </div>
+
+    <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+    <div id="nsBanner"></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="detailSoNo" class="text-xl font-bold text-slate-900"></h2>
+            <p id="detailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+            <p id="detailSubline" class="text-xs text-slate-400 mt-1"></p>
+          </div>
+          <div class="shrink-0 flex items-center gap-2">
+            <button id="archiveRecordBtn" class="hidden inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg px-3 py-2 transition">
+              🗄 Archive
+            </button>
+            <button id="editRecordBtn" class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">
+              ✏️ Edit
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="detailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div id="detailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
+                  <th class="py-2 pr-3 font-bold">PAC #</th>
+                  <th class="py-2 pr-3 font-bold">Item Name</th>
+                  <th class="py-2 pr-3 font-bold">SKU</th>
+                  <th class="py-2 pr-3 font-bold text-right">Qty</th>
+                  <th class="py-2 pr-3 font-bold">Bin Location</th>
+                  <th class="py-2 font-bold">Status</th>
+                </tr>
+              </thead>
+              <tbody id="detailItemRows" class="divide-y divide-slate-50"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ADDED 2026-07-30 — "Awaiting Items" indicator, detail view. Hidden
+             entirely (via inline style set in renderAwaitingItemsPanel) when
+             this SO has nothing pending/rejected. -->
+        <div id="awaitingItemsCard" class="bg-white rounded-2xl border border-amber-200 shadow-card px-5 py-4" style="display:none">
+          <h3 class="text-xs font-bold tracking-wide text-amber-700 uppercase mb-3">⏳ Awaiting Items</h3>
+          <div id="awaitingItemsList"></div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4">🚚 Dispatch</h3>
+          <div class="space-y-3 mb-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Payment Status</span>
+              <span id="detailDispatchStatus"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">For Crate</span>
+              <span id="detailForCrate"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Added Time</span>
+              <span id="detailAddedTime" class="text-sm text-slate-800 font-medium"></span>
+            </div>
+          </div>
+          <p id="dispatchHint" class="text-[11px] text-slate-400 mb-2"></p>
+          <button id="dispatchBtn" class="w-full text-sm font-semibold bg-indigo-600 text-white rounded-lg px-4 py-2.5 hover:bg-indigo-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            🚚 Dispatch Selected Items
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Edit view -->
+  <div id="editView" class="hidden w-full px-4 sm:px-6 py-5">
+
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+      <div class="flex items-center gap-2 font-semibold text-slate-600">
+        <span>HC Systems</span><span class="text-slate-300">/</span><span>Edit Order Aggregation</span>
+      </div>
+    </div>
+
+    <div class="max-w-4xl">
+      <div class="flex items-center justify-between mb-4">
+        <button id="cancelEditBtn" class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">
+          ← Cancel
+        </button>
+        <button id="saveEditBtn" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">
+          Save Changes
+        </button>
+      </div>
+
+      <h2 id="editTitle" class="text-lg font-bold text-slate-900 mb-4"></h2>
+
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">SO #<input id="f_SO" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">PAC #<input id="f_PAC" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">PR #<input id="f_PR" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">DEMO #<input id="f_DEMO" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Order Type<input id="f_ORDER_TYPE" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Delivery Type<input id="f_DELIVERY_TYPE" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Target Delivery Date<input id="f_Target_Date" type="date" class="field-input mt-1" readonly></label>
+            <label class="flex items-center gap-2 text-sm text-slate-700 mt-5">
+              <input type="checkbox" id="f_For_Crate" disabled> For Crate
+            </label>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">Customer Name<input id="f_Customer_Name" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Customer Type<input id="f_Customer_Type" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Customer Address<input id="f_Customer_Address" class="field-input mt-1" readonly></label>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase">🧾 Item Details</h3>
+            <button id="addItemRowBtn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition">+ Add row</button>
+          </div>
+          <div id="itemRows" class="space-y-3"></div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pb-8">
+          <button id="cancelEditBtn2" class="text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-4 py-2 transition">Cancel</button>
+          <button id="saveEditBtn2" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dispatch confirm modal — replaces native confirm() (raw iframe origin looks broken in that dialog) -->
+  <div id="dispatchModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+      <h3 class="text-sm font-bold text-slate-900 mb-1">Dispatch selected items to DMS?</h3>
+      <p id="dispatchModalMessage" class="text-xs text-slate-500 mb-4"></p>
+      <!-- ADDED 2026-08-26, per user request — the Site Confirmation outreach email
+           (dms_site_confirmation.txt) fires immediately at dispatch, before any date
+           is ever picked in Scheduling (Step 2, strictly after Step 1) — so there's
+           no confirmed date to show the customer at send time unless the dispatching
+           officer gives a target one here. Optional (blank is a real, valid choice —
+           the email's own Delivery Date line just omits itself when this is blank). -->
+      <label class="block text-xs font-semibold text-slate-600 mb-4">
+        Target Delivery Date <span class="font-normal text-slate-400">(optional — shown to the customer in the outreach email, if given)</span>
+        <div class="mt-1 flex items-center gap-1.5">
+          <input type="date" id="fDispatchDeliveryDate" class="flex-1 text-xs rounded-md border border-slate-200 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-colors">
+          <button type="button" id="btnClearDispatchDeliveryDate" title="Clear" class="shrink-0 text-slate-400 hover:text-slate-700 bg-white border border-slate-200 rounded-md w-7 h-7 flex items-center justify-center transition">&times;</button>
+        </div>
+      </label>
+      <div class="flex items-center justify-end gap-2">
+        <button id="dispatchModalCancelBtn" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 transition">Cancel</button>
+        <button id="dispatchModalConfirmBtn" class="text-xs font-semibold bg-indigo-600 text-white rounded-lg px-3 py-2 hover:bg-indigo-500 transition">Yes, Dispatch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Archive confirm modal — same custom-modal reasoning as Dispatch's own -->
+  <div id="archiveModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+      <h3 class="text-sm font-bold text-slate-900 mb-1">Archive this order?</h3>
+      <p id="archiveModalMessage" class="text-xs text-slate-500 mb-4"></p>
+      <div class="flex items-center justify-end gap-2">
+        <button id="archiveModalCancelBtn" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 transition">Cancel</button>
+        <button id="archiveModalConfirmBtn" class="text-xs font-semibold bg-slate-900 text-white rounded-lg px-3 py-2 hover:bg-slate-800 transition">Yes, Archive</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+<div id="notifMount"></div>
+<script src="notification_component/notification.js"></script>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // CONFIG
+  // ---------------------------------------------------------------------
+  const CONFIG = {
+    APP_NAME: "supply-chain-app",
+    REPORT_NAME: "Order_Aggregation1_Report",
+    MAX_RECORDS: 1000,   // JS API v2 single-call ceiling; add cursor pagination if this app ever exceeds it
+    // CHANGED 2026-10-27, per user ("Initial Scheduling — dito papasok lahat nang
+    // galing sa Order Aggregation") — a dispatch now lands in STAGE 1 of the DMS
+    // chain, not straight into the appointment. The chain is
+    //   Order Aggregation -> Initial Scheduling -> Service Request
+    //                     -> Service Appointment -> Ongoing Service
+    // and the appointment is created later, by the Deluge workflow on
+    // Service_Request1. See Proposals/DMS_Chain_Build_2026-10-27.md §3.
+    INITIAL_SCHEDULING_FORM: "Delivery_Scheduling",
+    // KEPT for reference only — nothing in this file writes the appointment or
+    // the per-package shipment rows any more. Both moved to the
+    // SR_Created_Make_Appointment workflow on Service_Request1, because
+    // Package_Shipments rows need a Service_Appointment_ID and the appointment
+    // no longer exists at dispatch time. Do not re-point a dispatch at these.
+    DMS_FORM_NAME: "Service_Appointment_Form",
+    PACKAGE_SHIPMENTS_FORM: "Package_Shipments",
+    // ADDED 2026-07-30 — "Awaiting Items" indicator. Both are real, already-used
+    // report names elsewhere in this app: Pre_Order1_Report is the same one
+    // UI/FF Widget/PreOrderReport reads; Exception_Control_Report is the same
+    // one UI/FF Widget/ExceptionControl reads (its own CONFIG.REPORT_NAME).
+    PRE_ORDER_REPORT: "Pre_Order1_Report",
+    EXCEPTION_CONTROL_REPORT: "Exception_Control_Report",
+    // ADDED 2026-07-31 — payment gate on Dispatch. Same report
+    // UI/FF Widget/ReadinessGate reads (CONFIG.REPORT_NAME there).
+    READINESS_GATE_REPORT: "Sales_Order_Readiness_Gate_Report",
+    // ADDED 2026-08-17 — "Awaiting Items" gap #4 (same lineage as the
+    // 2026-08-07 packaged/2026-08-14 unpackaged gaps below): an RR (replacement
+    // request) rework unit sitting in QC Checklist waiting for recheck is even
+    // further upstream than "packaged" — it has no Order_Aggregation1 row at
+    // all yet — and was completely invisible to this whole awaiting-items
+    // system, since it only ever fetched Pre_Order1_Report/Exception_Control_
+    // Report. Same real report UI/FF Widget/QC Checklist reads (CONFIG.
+    // REPORT_NAME there).
+    QC_REPORT: "All_Qc_Reports1",
+  };
+
+  // Notification bell — same pattern as UI/FF Widget/SO/PreOrderReport/
+  // ReadinessGate/QCChecklist, its own isolated report (OrderAgg_Notifications_Report).
+  let CURRENT_USER_EMAIL = "";
+  let ZC_ENV = "development";
+
+  // Stored payment_status value -> display label. Matches
+  // UI/FF Widget/ReadinessGate/app/index.html's own PAYMENT_STATUS_LABEL exactly
+  // (Yes=Paid/No=Pending/Partial=Partial) so the wording agrees across widgets.
+  const PAYMENT_STATUS_LABEL = { Yes: "Paid", No: "Pending", Partial: "Partial" };
+
+  // Real live Type_of_Delivery picklist choices on Service_Appointment_Form,
+  // confirmed via Temp1.txt — sending anything outside this exact list would
+  // reject the WHOLE addRecords call (Zoho picklist validation), so a
+  // DELIVERY_TYPE that doesn't match one of these exactly is omitted rather
+  // than risking the entire dispatch.
+  const DMS_DELIVERY_TYPES = ["Delivery Only", "With Installation", "Full-Day Install", "Multi-Day Install", "Replacement", "Site Visit", "Pullout", "Pick Up"];
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  let allRecords = [];
+  let orderedRows = [];
+  let currentEditRecord = null;
+  let currentDetailRecord = null;
+  let itemRowCount = 0;
+  const hydratedItemDetailIds = new Set();
+  // ADDED 2026-07-30 — "Awaiting Items" indicator. Map<SO string, {pending:[],
+  // rejected:[]}>, populated once per loadLive() by fetchAwaitingItems() below.
+  // pending[] entries: {sku, itemName}. rejected[] entries: {sku, itemName, status}.
+  let awaitingBySO = new Map();
+  // ADDED 2026-07-31 — payment gate + per-item PAC lookup. Map<"SO|SKU",
+  // {pac, paymentStatus}>, built once per loadLive() from
+  // Sales_Order_Readiness_Gate_Report — see buildReadinessIndex()'s own
+  // comment for why this is keyed by SO+SKU and not by the header r.PAC field
+  // (an Order_Aggregation1 record can span more than one real package).
+  let readinessBySOSKU = new Map();
+  // ADDED 2026-08-06 — exception hard-block on Dispatch (Order Readiness
+  // Dispatch Override feature, see docs/superpowers/specs/2026-08-06-order-
+  // readiness-dispatch-override-design.md). Map<"SO|SKU", {status,
+  // overrideApproved}>, built alongside awaitingBySO from the SAME
+  // Exception_Control_Report fetch in fetchAwaitingItems() below — no new
+  // network call. Exceptions were informational-only before this (the
+  // "Awaiting Items" badge, still unchanged) — this is a NEW, separate hard
+  // block, parallel to the existing payment gate.
+  let exceptionBySOSKU = new Map();
+
+  const searchInput = document.getElementById("searchInput");
+
+  // ---------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------
+  function displayVal(v) {
+    if (v === null || v === undefined || v === "" || v === "null") return "—";
+    if (typeof v === "object" && !Array.isArray(v)) return v.zc_display_value || v.display_value || v.ID || "—";
+    return String(v);
+  }
+
+  function isBlank(v) {
+    return v === null || v === undefined || v === "" || v === "null" || (Array.isArray(v) && v.length === 0);
+  }
+
+  function isTrue(v) {
+    return v === true || v === "true";
+  }
+
+  function toArray(v) {
+    if (v === null || v === undefined || v === "") return [];
+    if (Array.isArray(v)) return v.map((x) => (typeof x === "object" ? displayVal(x) : String(x))).filter(Boolean);
+    if (typeof v === "string") return v.split(",").map((s) => s.trim()).filter(Boolean);
+    return [String(v)];
+  }
+
+  function parseZohoDateTime(str) {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const mon = months[m[2]];
+      if (mon !== undefined) {
+        return new Date(+m[3], mon, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+      }
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  }
+
+  function formatDate(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function formatDateTime(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${datePart} ${timePart}`;
+  }
+
+  // Zoho date fields come back as "YYYY-MM-DD" (v2.1) or "DD-MMM-YYYY" (older) — <input type="date"> needs YYYY-MM-DD.
+  function toDateInputValue(str) {
+    if (!str) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const m = String(str).match(/^(\d{2})-(\w{3})-(\d{4})/);
+    if (m) {
+      const months = { Jan:"01",Feb:"02",Mar:"03",Apr:"04",May:"05",Jun:"06",Jul:"07",Aug:"08",Sep:"09",Oct:"10",Nov:"11",Dec:"12" };
+      const mon = months[m[2]];
+      if (mon) return `${m[3]}-${mon}-${m[1]}`;
+    }
+    return "";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  function textVal(v) {
+    if (v === null || v === undefined || v === "null") return "";
+    return String(v);
+  }
+
+  function badgePill(text, colorClasses) {
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClasses}">${escapeHtml(text)}</span>`;
+  }
+
+  function toast(message, type) {
+    const container = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    const styles = { success: "bg-slate-900 text-white", error: "bg-rose-600 text-white" };
+    el.className = `px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${styles[type] || styles.success}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  function itemRowCount_(r) {
+    return Array.isArray(r.Item_Details) ? r.Item_Details.length : 0;
+  }
+
+  // CHANGED 2026-07-30, per user request ("display items in that SO label the
+  // dispatched one as 'Dispatched'") — dispatch used to REMOVE a row from
+  // Item_Details once sent; now it stays permanently, marked via a new real
+  // Dispatched subform column (user creates manually) instead of deleted.
+  // selectedItemCount only ever means "currently checked, about to be
+  // dispatched" — an already-Dispatched row is excluded even if some stale
+  // Select1=true value is still sitting on it, since that checkbox no longer
+  // even renders for a dispatched row (see itemRowHtml).
+  function selectedItemCount(r) {
+    const items = Array.isArray(r.Item_Details) ? r.Item_Details : [];
+    return items.filter((row) => isTrue(row.Select1) && !isTrue(row.Dispatched)).length;
+  }
+
+  function dispatchedItemCount(r) {
+    const items = Array.isArray(r.Item_Details) ? r.Item_Details : [];
+    return items.filter((row) => isTrue(row.Dispatched)).length;
+  }
+
+  function dispatchState(r) {
+    const total = itemRowCount_(r);
+    // Every row this SO currently has is marked Dispatched — genuinely nothing
+    // left to send, so this SO is as done as it can be right now. A sibling
+    // item appended LATER (QC-Approved sync) shows up as a fresh, non-
+    // Dispatched row and naturally falls out of this check on its own — no
+    // stale-flag problem anymore, since Dispatched is tracked per row instead
+    // of one header flag for the whole record.
+    if (total > 0 && dispatchedItemCount(r) === total) {
+      // ADDED 2026-07-30, per user request — a card can't be truly Done while
+      // a sibling item on the same SO is still awaiting arrival (Pre_Order_FF
+      // Pending) or stuck in an open Exception (Exception_Control1), even
+      // once every CURRENT row has been dispatched. Stays Partial
+      // (dispatched-so-far, not fully done) until awaitingInfoForSO() reports
+      // zero for this SO.
+      const awaiting = awaitingInfoForSO(displayVal(r.SO));
+      // FIXED 2026-08-07, real live gap found during Task 10 verification — see
+      // fetchAwaitingItems()'s own "packaged" bucket comment. A packaged-but-
+      // not-yet-dispatched replacement (mid Order Readiness/Pick/Pack/QC, no
+      // Item_Details row here yet) was invisible to this check entirely, so a
+      // card could flip to "Done" the moment every item it CURRENTLY had was
+      // dispatched, even with a whole separate package still in flight. Cross-
+      // check each packaged entry against THIS record's own Item_Details (same
+      // record already in hand, no extra fetch) — if no matching SKU+PAC row
+      // exists yet, or it exists but isn't Dispatched yet, it still counts.
+      const items = Array.isArray(r.Item_Details) ? r.Item_Details : [];
+      const stillInFlight = awaiting.packaged.some((pkg) => {
+        const match = items.find((row) => displayVal(row.SKU) === pkg.sku && displayVal(row.PAC) === pkg.pac);
+        return !match || !isTrue(match.Dispatched);
+      });
+      // EXTENDED 2026-08-14, real live bug (SO-16476/PR-00006) — awaiting.unpackaged
+      // (see fetchAwaitingItems()'s own comment) now counts too, same as pending/
+      // rejected already did.
+      // EXTENDED 2026-08-17, real live bug (SO-16489, RR-00001/RR-00002) —
+      // awaiting.qcRecheck now counts too, same reasoning: a rework unit still
+      // sitting in QC hasn't even reached this record yet, so "every row I
+      // currently have is Dispatched" isn't the same as "this SO is done".
+      if (awaiting.pending.length + awaiting.rejected.length + awaiting.unpackaged.length + awaiting.qcRecheck.length > 0 || stillInFlight) return "partial";
+      return "done";
+    }
+    if (dispatchedItemCount(r) > 0 || selectedItemCount(r) > 0) return "partial";
+    return "pending";
+  }
+
+  // ---------------------------------------------------------------------
+  // Ordering — flat list (the report has no "group by" clause).
+  // ---------------------------------------------------------------------
+  function isEmptyRecord(r) {
+    return isBlank(r.SO) && isBlank(r.PR) && isBlank(r.Customer_Name);
+  }
+
+  function computeOrderedRows(records) {
+    // Archived (Decision Box, ADDED 2026-08-03 per user request — an Archive
+    // button on Done cards to hide a completed order from the board without
+    // deleting it) filtered out here, at the single point every list/search
+    // view already reads from — no other code needs to know about it.
+    return records.filter((r) => !isEmptyRecord(r) && !isTrue(r.Archived)).slice().sort((a, b) =>
+      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+  }
+
+  // ---------------------------------------------------------------------
+  // Kanban board rendering
+  // ---------------------------------------------------------------------
+  function getFilteredRows() {
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) return orderedRows;
+    return orderedRows.filter((r) => {
+      const hay = [r.SO, r.PAC, r.Customer_Name].map(displayVal).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  const CARD_STATE_STYLES = {
+    pending: { border: "border-slate-200 bg-white", banner: "" },
+    partial: { border: "border-blue-200 bg-blue-50/40", banner: `<div class="mt-2 -mx-4 -mb-3 px-4 py-1.5 bg-blue-100 text-blue-700 text-[11px] font-medium rounded-b-xl">◐ Partially selected</div>` },
+    done: { border: "border-emerald-200 bg-emerald-50/40", banner: `<div class="mt-2 -mx-4 -mb-3 px-4 py-1.5 bg-emerald-100 text-emerald-700 text-[11px] font-medium rounded-b-xl">✓ Dispatch marked</div>` },
+  };
+
+  // ADDED 2026-07-30 — "Awaiting Items" indicator. One <li> per not-ready item,
+  // shared between the card breakdown and the detail-view panel (Task 4).
+  // EXTENDED 2026-08-14, real live bug (SO-16476/PR-00006, "CUSTOMIZED (FLOOR
+  // LAMP)") — see the `unpackaged` bucket comment in fetchAwaitingItems() for
+  // the full root-cause writeup. Same rendering pattern as pending/rejected.
+  function awaitingItemLinesHtml(info) {
+    // EXTENDED 2026-08-14, per user ("dapat may Qty siya") — pending/unpackaged
+    // lines now show the Pre_Order_FF row's own Qty alongside the item/SKU
+    // (rejected/Exception_Control1 rows don't carry a confirmed qty field, left
+    // as-is).
+    const qtyLabel = (it) => (it.qty && it.qty !== "—" ? ` &times; ${escapeHtml(it.qty)}` : "");
+    const pendingLines = info.pending.map((it) =>
+      `<li class="flex items-center justify-between gap-2 py-1"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})${qtyLabel(it)}</span></span><span class="shrink-0 text-amber-600 font-medium">Pending arrival</span></li>`);
+    const unpackagedLines = (info.unpackaged || []).map((it) =>
+      `<li class="flex items-center justify-between gap-2 py-1"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})${qtyLabel(it)}</span></span><span class="shrink-0 text-blue-600 font-medium">Received — not yet packaged</span></li>`);
+    const rejectedLines = info.rejected.map((it) =>
+      `<li class="flex items-center justify-between gap-2 py-1"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})</span></span><span class="shrink-0 text-rose-600 font-medium">QC Rejected (${escapeHtml(it.status)})</span></li>`);
+    // ADDED 2026-08-17 — RR recheck lines, same rendering pattern as the rest.
+    const qcRecheckLines = (info.qcRecheck || []).map((it) =>
+      `<li class="flex items-center justify-between gap-2 py-1"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})${qtyLabel(it)}</span></span><span class="shrink-0 text-purple-600 font-medium">🔁 ${escapeHtml(it.rr)} — pending QC recheck</span></li>`);
+    return `<ul class="text-xs divide-y divide-slate-100">${pendingLines.join("") + unpackagedLines.join("") + rejectedLines.join("") + qcRecheckLines.join("")}</ul>`;
+  }
+
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+  function nextStepFor(r, state) {
+    const st = state || dispatchState(r);
+    if (st === "done") return { here: "Dispatched", action: "Handed to Delivery (DMS)", who: "Scheduler", tone: "done" };
+    const here = st === "partial" ? "Partly dispatched" : "Order Aggregation";
+    try {
+      const items = Array.isArray(r.Item_Details) ? r.Item_Details : [];
+      const remaining = items.filter((row) => !isTrue(row.Dispatched));
+      const unpaid = paymentBlockedItems(r.SO, remaining);
+      if (unpaid.length) return { here, action: "Payment clearing (" + unpaid.length + " item" + (unpaid.length === 1 ? "" : "s") + ")", who: "Accounting", tone: "wait" };
+      const exc = exceptionBlockedItems(r.SO, remaining);
+      if (exc.length) return { here, action: "Open exception (" + exc.length + " item" + (exc.length === 1 ? "" : "s") + ")", who: "Warehouse", tone: "wait" };
+      const aw = awaitingInfoForSO(displayVal(r.SO));
+      const notReady = aw.pending.length + aw.rejected.length + aw.unpackaged.length + aw.qcRecheck.length;
+      if (notReady) return { here, action: notReady + " item" + (notReady === 1 ? "" : "s") + " still in Pick / Pack / QC", who: "Warehouse", tone: "wait" };
+    } catch (e) {
+      console.warn("[NextStep] check skipped:", e);
+    }
+    return { here, action: st === "partial" ? "Dispatch the remaining items" : "Select items, then Dispatch", who: "Dispatcher", tone: "next" };
+  }
+/* ───────── FORECAST (added 2026-11-04) ─────────
+   Read-only. Written by the Forecast_Stamp_Daily schedule onto this form's
+   Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+   displays them.
+
+   The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+   title attribute rather than the cell, so the column stays one line wide. The
+   date shown is the midpoint of that window, never a promise.
+
+   Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+   #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+   separation. Status also carries its own word, so it is never colour-alone.
+
+   fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+   esc there), so this picks whichever exists and carries its own as a last
+   resort - it must never be the reason a row fails to render. */
+var fcEsc = (function () {
+  if (typeof escapeHtml === "function") return escapeHtml;
+  if (typeof esc === "function") return esc;
+  return function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+})();
+
+var FORECAST_TONE = {
+  "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+  "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+  "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+};
+
+/* Creator hands dates back in whichever format the app is set to; this accepts the
+   four shapes seen across this app and returns "" rather than "Invalid Date". */
+function forecastDateText(v) {
+  if (!v) return "";
+  var s = String(v).trim();
+  var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  if (m) return m[2] + " " + m[1] + ", " + m[3];
+  var d = new Date(s.replace(/-/g, "/"));
+  if (isNaN(d.getTime())) return s.split(" ")[0];
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+/* True when this record has nothing forecast on it yet — the card and the list
+   then leave the forecast out entirely instead of printing a lone dash. */
+function forecastBlank_(r) {
+  if (!r) return true;
+  return !r.Forecast_Delivery && !String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+}
+
+function forecastCell(r) {
+  r = r || {};
+  var raw = r.Forecast_Delivery;
+  var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+  var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+  var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+  var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+  var tip = fcEsc(win || status || "");
+
+  return (
+    '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+    "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+    "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+    ';flex:none"></span>' + date +
+    (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+    "</span>"
+  );
+}
+
+  function orderCardHtml(r, state) {
+    const total = itemRowCount_(r);
+    // CHANGED 2026-07-30, per user ("0/2? but one item dispatched already.
+    // should be 1/2 right?") — since dispatch now KEEPS rows instead of
+    // deleting them, `selected` (currently-checked-for-the-NEXT-dispatch
+    // count) is the wrong number to show here — an already-dispatched row is
+    // deliberately excluded from it, so a fully-progressed order could show
+    // "0/2" forever even with 1 of 2 genuinely done. The card badge should
+    // read as overall progress (how many of this SO's items are actually
+    // dispatched), not "how many are queued for the next click".
+    const dispatchedCount = dispatchedItemCount(r);
+    const style = CARD_STATE_STYLES[state];
+    const awaiting = awaitingInfoForSO(displayVal(r.SO));
+    // EXTENDED 2026-08-14 — awaiting.unpackaged counts too, see fetchAwaitingItems().
+    // EXTENDED 2026-08-17 — awaiting.qcRecheck counts too, see CONFIG.QC_REPORT's comment.
+    const awaitingCount = awaiting.pending.length + awaiting.rejected.length + awaiting.unpackaged.length + awaiting.qcRecheck.length;
+    const awaitingBadgeId = `awaiting-badge-${r.ID}`;
+    const awaitingBreakdownId = `awaiting-breakdown-${r.ID}`;
+    // CHANGED 2026-11-05, per user ("ayusin mo to") — a record with no Delivery
+    // Type / no Target Date / no forecast used to render three lone "—" lines,
+    // which read as a broken card. Blank lines are now simply left out instead
+    // of printing a placeholder.
+    const dtVal = displayVal(r.DELIVERY_TYPE);
+    const dtLine = dtVal === "—" ? "" : `<p class="text-xs text-slate-500 mt-1">${escapeHtml(dtVal)}</p>`;
+    const dateTxt = formatDate(r.Target_Date);
+    const crateHtml = isTrue(r.For_Crate) ? `<span class="text-[10px] font-semibold text-amber-600">📦 For Crate</span>` : "";
+    const metaLine = (dateTxt !== "—" || crateHtml)
+      ? `<div class="flex items-center justify-between mt-2"><span class="text-[11px] text-slate-400">${dateTxt === "—" ? "" : escapeHtml(dateTxt)}</span>${crateHtml}</div>`
+      : "";
+    const fcLine = forecastBlank_(r) ? "" : `<div class="mt-1.5">${forecastCell(r)}</div>`;
+    const awaitingHtml = awaitingCount ? `
+        <button type="button" id="${awaitingBadgeId}" class="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold hover:bg-amber-200 transition"
+          onclick="event.stopPropagation(); var el=document.getElementById('${awaitingBreakdownId}'); if(el) el.classList.toggle('hidden');">
+          ⏳ ${awaitingCount} not ready
+        </button>
+        <div id="${awaitingBreakdownId}" class="hidden mt-1.5 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5" onclick="event.stopPropagation();">
+          ${awaitingItemLinesHtml(awaiting)}
+        </div>` : "";
+    return `
+      <div class="order-card cursor-pointer rounded-xl border ${style.border} hover:shadow-card transition px-4 py-3" data-id="${r.ID}">
+        <div class="flex items-start justify-between gap-2">
+          <p class="text-sm font-bold text-slate-900 leading-tight">${escapeHtml(displayVal(r.Customer_Name))}</p>
+          <span class="shrink-0 inline-flex items-center h-5 px-2 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">${dispatchedCount}/${total} item${total === 1 ? "" : "s"}</span>
+        </div>
+        <p class="text-xs mt-1">
+          <span class="text-blue-600 font-medium">${escapeHtml(displayVal(r.PAC))}</span>
+          <span class="text-slate-300 mx-1">|</span>
+          <span class="text-blue-600 font-medium">${escapeHtml(displayVal(r.SO))}</span>
+        </p>
+        ${dtLine}
+        <div class="mt-2">${nextStepCell(r.ID, nextStepFor(r, state))}</div>
+        ${metaLine}
+        ${fcLine}
+        ${awaitingHtml}
+        ${state === "done" ? `
+        <button type="button" class="archive-card-btn mt-2 w-full text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg py-1.5 transition" data-id="${r.ID}">
+          🗄 Archive
+        </button>` : ""}
+        ${style.banner}
+      </div>`;
+  }
+
+  // ---------------------------------------------------------------------
+  // View mode — ADDED 2026-11-05 ("dapat may list view rin to").
+  // renderBoard() keeps its name because ~6 call sites already use it; it is
+  // now the single repaint entry point and paints whichever view is active.
+  // ---------------------------------------------------------------------
+  // CHANGED 2026-11-05, per user ("dapat unang makikita yung list hindi yung
+  // naka KANBAN style") — List is what opens by default now. A staff member who
+  // deliberately switches to Board still gets Board back on their next visit;
+  // only the first-time / cleared-storage default moved.
+  const VIEW_KEY = "oa_view_mode";
+  let VIEW_MODE = "list";
+  try { const v = localStorage.getItem(VIEW_KEY); if (v === "list" || v === "board") VIEW_MODE = v; } catch (e) {}
+
+  let listFilter = "all";
+  // key: which column; dir: "asc" | "desc". "added" = the board's own default
+  // order (newest record first), so List opens showing exactly what Board does.
+  let listSort = { key: "added", dir: "desc" };
+
+  const LIST_COLUMNS = [
+    { key: "status",   label: "Status",        sortable: true },
+    { key: "customer", label: "Customer",      sortable: true },
+    { key: "pac",      label: "PAC #",         sortable: true },
+    { key: "so",       label: "SO #",          sortable: true },
+    { key: "type",     label: "Delivery Type", sortable: true },
+    { key: "items",    label: "Items",         sortable: true },
+    { key: "next",     label: "Next Step",     sortable: false },
+    { key: "target",   label: "Target Date",   sortable: true },
+    { key: "forecast", label: "Forecast",      sortable: true },
+    { key: "act",      label: "",              sortable: false },
+  ];
+
+  const LIST_STATE = {
+    pending: { label: "Pending", cls: "bg-amber-100 text-amber-700",     dot: "bg-amber-500" },
+    partial: { label: "Partial", cls: "bg-blue-100 text-blue-700",       dot: "bg-blue-500" },
+    done:    { label: "Done",    cls: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  };
+
+  const STATE_RANK = { pending: 0, partial: 1, done: 2 };
+
+  function setViewMode(mode) {
+    VIEW_MODE = mode === "list" ? "list" : "board";
+    try { localStorage.setItem(VIEW_KEY, VIEW_MODE); } catch (e) {}
+    const boardWrap = document.getElementById("boardWrap");
+    const listWrapEl = document.getElementById("listWrap");
+    if (boardWrap) boardWrap.classList.toggle("hidden", VIEW_MODE !== "board");
+    if (listWrapEl) {
+      // `hidden` and `flex` both set display, so the flex class is added only
+      // while the list is actually showing — otherwise a hidden list would
+      // still take up the page.
+      listWrapEl.classList.toggle("hidden", VIEW_MODE !== "list");
+      listWrapEl.classList.toggle("flex", VIEW_MODE === "list");
+    }
+    const bb = document.getElementById("viewBoardBtn");
+    const lb = document.getElementById("viewListBtn");
+    if (bb) bb.classList.toggle("is-active", VIEW_MODE === "board");
+    if (lb) lb.classList.toggle("is-active", VIEW_MODE === "list");
+    renderBoard();
+  }
+
+  function listSortValue(r, key, state) {
+    switch (key) {
+      case "status":   return STATE_RANK[state];
+      case "customer": return displayVal(r.Customer_Name).toLowerCase();
+      case "pac":      return displayVal(r.PAC).toLowerCase();
+      case "so":       return displayVal(r.SO).toLowerCase();
+      case "type":     return displayVal(r.DELIVERY_TYPE).toLowerCase();
+      case "items":    return itemRowCount_(r) ? dispatchedItemCount(r) / itemRowCount_(r) : -1;
+      case "target":   { const d = parseZohoDateTime(r.Target_Date); return d ? d.getTime() : null; }
+      case "forecast": { const d = parseZohoDateTime(r.Forecast_Delivery); return d ? d.getTime() : null; }
+      default:         { const d = parseZohoDateTime(r.Added_Time); return d ? d.getTime() : 0; }
+    }
+  }
+
+  function sortListRows(rows) {
+    const dir = listSort.dir === "asc" ? 1 : -1;
+    const key = listSort.key;
+    return rows.slice().sort((a, b) => {
+      const va = listSortValue(a, key, dispatchState(a));
+      const vb = listSortValue(b, key, dispatchState(b));
+      // Blanks (no date, no customer name) always sink to the bottom whichever
+      // direction is picked — otherwise an empty row hijacks the top.
+      const ea = va === null || va === "" || va === "—";
+      const eb = vb === null || vb === "" || vb === "—";
+      if (ea && eb) return 0;
+      if (ea) return 1;
+      if (eb) return -1;
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function listHeadHtml() {
+    return LIST_COLUMNS.map((c) => {
+      if (!c.sortable) return `<th class="list-th">${escapeHtml(c.label)}</th>`;
+      const active = listSort.key === c.key;
+      const arrow = active ? (listSort.dir === "asc" ? " ↑" : " ↓") : "";
+      return `<th class="list-th sortable${active ? " text-slate-900" : ""}" data-sort="${c.key}">${escapeHtml(c.label)}${arrow}</th>`;
+    }).join("");
+  }
+
+  function listRowHtml(r, state) {
+    const st = LIST_STATE[state];
+    const total = itemRowCount_(r);
+    const dispatched = dispatchedItemCount(r);
+    const aw = awaitingInfoForSO(displayVal(r.SO));
+    const awCount = aw.pending.length + aw.rejected.length + aw.unpackaged.length + aw.qcRecheck.length;
+    const dt = displayVal(r.DELIVERY_TYPE);
+    const target = formatDate(r.Target_Date);
+    const dash = `<span class="text-slate-300">—</span>`;
+    // The not-ready chip here is a plain count, not the board's expandable
+    // badge — an element id reused across two views would collide, and the
+    // full breakdown is one click away in the detail view anyway.
+    const notReady = awCount
+      ? `<span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold" title="${awCount} item${awCount === 1 ? "" : "s"} still in Pick / Pack / QC">⏳ ${awCount}</span>`
+      : "";
+    return `
+      <tr class="list-row" data-id="${r.ID}">
+        <td class="list-td"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full ${st.cls} text-[10px] font-bold"><span class="h-1.5 w-1.5 rounded-full ${st.dot}"></span>${st.label}</span></td>
+        <td class="list-td font-semibold text-slate-900">${escapeHtml(displayVal(r.Customer_Name))}${isTrue(r.For_Crate) ? ` <span class="text-[10px] font-semibold text-amber-600 whitespace-nowrap">📦 Crate</span>` : ""}</td>
+        <td class="list-td text-blue-600 font-medium whitespace-nowrap">${escapeHtml(displayVal(r.PAC))}</td>
+        <td class="list-td text-blue-600 font-medium whitespace-nowrap">${escapeHtml(displayVal(r.SO))}</td>
+        <td class="list-td text-slate-600">${dt === "—" ? dash : escapeHtml(dt)}</td>
+        <td class="list-td whitespace-nowrap"><span class="inline-flex items-center h-5 px-2 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">${dispatched}/${total}</span>${notReady}</td>
+        <td class="list-td">${nextStepCell(r.ID, nextStepFor(r, state))}</td>
+        <td class="list-td text-slate-500 whitespace-nowrap">${target === "—" ? dash : escapeHtml(target)}</td>
+        <td class="list-td whitespace-nowrap">${forecastBlank_(r) ? dash : forecastCell(r)}</td>
+        <td class="list-td text-right whitespace-nowrap">${state === "done"
+          ? `<button type="button" class="archive-row-btn text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg px-2.5 py-1 transition" data-id="${r.ID}">🗄 Archive</button>`
+          : ""}</td>
+      </tr>`;
+  }
+
+  function renderFilterPills(counts) {
+    const defs = [
+      { f: "all",     label: "All",     n: counts.all },
+      { f: "pending", label: "Pending", n: counts.pending },
+      { f: "partial", label: "Partial", n: counts.partial },
+      { f: "done",    label: "Done",    n: counts.done },
+    ];
+    defs.forEach((d) => {
+      const btn = document.querySelector(`.list-filter-btn[data-filter="${d.f}"]`);
+      if (!btn) return;
+      btn.innerHTML = `${d.label}<span class="lf-count">${d.n}</span>`;
+      btn.classList.toggle("is-active", listFilter === d.f);
+    });
+  }
+
+  function renderList(filtered, counts) {
+    renderFilterPills(counts);
+    const rows = listFilter === "all" ? filtered : filtered.filter((r) => dispatchState(r) === listFilter);
+    const sorted = sortListRows(rows);
+
+    const head = document.getElementById("listHead");
+    const body = document.getElementById("listBody");
+    const foot = document.getElementById("listFooter");
+    if (!head || !body) return;
+
+    head.innerHTML = listHeadHtml();
+    body.innerHTML = sorted.length
+      ? sorted.map((r) => listRowHtml(r, dispatchState(r))).join("")
+      : `<tr><td class="list-td text-center text-xs text-slate-400 py-10" colspan="${LIST_COLUMNS.length}">No orders match this view.</td></tr>`;
+    if (foot) foot.textContent = `${sorted.length} order${sorted.length === 1 ? "" : "s"}${listFilter === "all" ? "" : " · " + LIST_STATE[listFilter].label}`;
+
+    head.querySelectorAll(".list-th.sortable").forEach((th) => {
+      th.addEventListener("click", () => {
+        const key = th.dataset.sort;
+        if (listSort.key === key) listSort.dir = listSort.dir === "asc" ? "desc" : "asc";
+        else listSort = { key: key, dir: (key === "customer" || key === "pac" || key === "so" || key === "type") ? "asc" : "desc" };
+        renderBoard();
+      });
+    });
+    body.querySelectorAll(".list-row").forEach((tr) => {
+      tr.addEventListener("click", () => switchToDetail(tr.dataset.id));
+    });
+    body.querySelectorAll(".archive-row-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        archiveRecord(btn.dataset.id);
+      });
+    });
+  }
+
+  function renderBoard() {
+    const filtered = getFilteredRows();
+    const pending = filtered.filter((r) => dispatchState(r) === "pending");
+    const partial = filtered.filter((r) => dispatchState(r) === "partial");
+    const done = filtered.filter((r) => dispatchState(r) === "done");
+
+    document.getElementById("pendingCount").textContent = pending.length;
+    document.getElementById("partialCount").textContent = partial.length;
+    document.getElementById("doneCount").textContent = done.length;
+
+    if (VIEW_MODE === "list") {
+      renderList(filtered, { all: filtered.length, pending: pending.length, partial: partial.length, done: done.length });
+      return;
+    }
+
+    const pendingColumn = document.getElementById("pendingColumn");
+    const partialColumn = document.getElementById("partialColumn");
+    const doneColumn = document.getElementById("doneColumn");
+
+    pendingColumn.innerHTML = pending.length
+      ? pending.map((r) => orderCardHtml(r, "pending")).join("")
+      : `<p class="text-xs text-slate-400 text-center py-8">No pending orders.</p>`;
+    partialColumn.innerHTML = partial.length
+      ? partial.map((r) => orderCardHtml(r, "partial")).join("")
+      : `<p class="text-xs text-slate-400 text-center py-8">No partially selected orders.</p>`;
+    doneColumn.innerHTML = done.length
+      ? done.map((r) => orderCardHtml(r, "done")).join("")
+      : `<p class="text-xs text-slate-400 text-center py-8">No dispatched orders yet.</p>`;
+
+    [pendingColumn, partialColumn, doneColumn].forEach((col) => {
+      col.querySelectorAll(".order-card").forEach((card) => {
+        card.addEventListener("click", () => switchToDetail(card.dataset.id));
+      });
+      col.querySelectorAll(".archive-card-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          archiveRecord(btn.dataset.id);
+        });
+      });
+    });
+  }
+
+  function renderAll() {
+    renderBoard();
+  }
+
+  // ---------------------------------------------------------------------
+  // Detail view
+  // ---------------------------------------------------------------------
+  function renderItemDetailsTable(r) {
+    const rows = Array.isArray(r.Item_Details) ? r.Item_Details : [];
+    // PAC # looked up PER ITEM (SO+SKU) via Sales_Order_Readiness_Gate, added
+    // 2026-07-31 per user request ("display the item's PAC number in Item
+    // Details"). NOT the record's own header r.PAC — REVISED same day, real
+    // bug found live: a single Order_Aggregation1 record can hold items from
+    // more than one real package, so the header field alone is wrong for any
+    // row beyond the first package's own items (see buildReadinessIndex()'s
+    // own comment). Falls back to the header PAC only if this exact SO+SKU has
+    // no matching readiness-gate record yet.
+    document.getElementById("detailItemRows").innerHTML = rows.length
+      ? rows.map((row) => {
+          // FIXED 2026-08-07 — prefer the row's OWN PAC (Order_Aggregation1's
+          // own Item_Details.PAC, real and reliable since the 2026-08-06 fix)
+          // over the readiness-gate index lookup, which used to be the only
+          // source before that field existed. Falls back to the readiness
+          // index (now PAC-aware, see buildReadinessIndex) only when this
+          // row's own PAC is blank (legacy pre-2026-08-06 rows), then the
+          // record's header PAC as the last resort.
+          const rowPac = displayVal(row.PAC);
+          const info = readinessInfoForItem(r.SO, row.SKU, rowPac !== "—" ? rowPac : null);
+          const pacVal = rowPac !== "—" ? rowPac : ((info && info.pac) ? info.pac : displayVal(r.PAC));
+          return `
+          <tr>
+            <td class="py-2 pr-3 text-blue-600 font-medium">${escapeHtml(pacVal)}</td>
+            <td class="py-2 pr-3 text-slate-800 font-medium">${escapeHtml(displayVal(row.Item_Name))}</td>
+            <td class="py-2 pr-3 text-slate-500">${escapeHtml(displayVal(row.SKU))}</td>
+            <td class="py-2 pr-3 text-slate-700 text-right">${escapeHtml(displayVal(row.QTY))}</td>
+            <td class="py-2 pr-3 text-slate-500">${escapeHtml(displayVal(row.Bin_Location))}</td>
+            <td class="py-2">${isTrue(row.Dispatched)
+              ? `<span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Dispatched</span>`
+              : (isTrue(row.Select1)
+                ? `<span class="text-emerald-600 font-bold">✓ Selected</span>`
+                : `<span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">Pending</span>`)}</td>
+          </tr>`;
+        }).join("")
+      : `<tr><td colspan="6" class="py-6 text-center text-slate-400">No item rows.</td></tr>`;
+  }
+
+  // ADDED 2026-07-30 — "Awaiting Items" indicator, detail view half. Reuses
+  // awaitingItemLinesHtml() from a prior task — same rendering, no toggle needed
+  // here (unlike the card, this panel has room to just always show).
+  function renderAwaitingItemsPanel(r) {
+    const info = awaitingInfoForSO(displayVal(r.SO));
+    // EXTENDED 2026-08-14 — info.unpackaged counts too, see fetchAwaitingItems().
+    // EXTENDED 2026-08-17 — info.qcRecheck counts too, see CONFIG.QC_REPORT's comment.
+    const count = info.pending.length + info.rejected.length + (info.unpackaged || []).length + (info.qcRecheck || []).length;
+    const card = document.getElementById("awaitingItemsCard");
+    if (!count) {
+      card.style.display = "none";
+      return;
+    }
+    card.style.display = "";
+    document.getElementById("awaitingItemsList").innerHTML = awaitingItemLinesHtml(info);
+  }
+
+  const DISPATCH_STATUS_BADGE = {
+    pending: badgePill("Pending", "bg-amber-50 text-amber-700 border-amber-200"),
+    partial: badgePill("Partial", "bg-blue-50 text-blue-700 border-blue-200"),
+    done: badgePill("Dispatched", "bg-emerald-50 text-emerald-700 border-emerald-200"),
+  };
+
+  // CHANGED 2026-09-07, per user report — the DISPATCH panel's "Status" field
+  // (#detailDispatchStatus) used to show dispatchState() (pending/partial/
+  // done, driven by Item_Details.Select1/Dispatched — see dispatchState()
+  // above). User wants THIS specific box to show the SO's real Payment
+  // Status instead (Paid/Pending/Partial, from Sales_Order_Readiness_Gate —
+  // same source/labels as PAYMENT_STATUS_LABEL and paymentBlockedItems()
+  // above). Worst-case across this record's own Item_Details rows (No <
+  // Partial < Yes) — a record normally has all rows on the same invoice/SO,
+  // so in practice this is one value, but this stays correct even if a row's
+  // readiness-gate lookup ever disagrees with a sibling row's.
+  function soPaymentStatusBadge(r) {
+    const items = Array.isArray(r.Item_Details) ? r.Item_Details : [];
+    const RANK = { No: 0, Partial: 1, Yes: 2 };
+    let worst = null;
+    items.forEach((row) => {
+      const info = readinessInfoForItem(r.SO, row.SKU, displayVal(row.PAC));
+      const ps = info && info.paymentStatus ? info.paymentStatus : null;
+      if (ps && (worst === null || RANK[ps] < RANK[worst])) worst = ps;
+    });
+    if (worst === null) return badgePill("Not Checked", "bg-slate-50 text-slate-500 border-slate-200");
+    const cls = worst === "Yes" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : worst === "Partial" ? "bg-blue-50 text-blue-700 border-blue-200"
+      : "bg-amber-50 text-amber-700 border-amber-200";
+    return badgePill(PAYMENT_STATUS_LABEL[worst] || worst, cls);
+  }
+
+  function renderDispatchPanel(r) {
+    const state = dispatchState(r);
+    const dispatched = state === "done";
+    const selected = selectedItemCount(r);
+    const allItems = Array.isArray(r.Item_Details) ? r.Item_Details : [];
+    const selectedRows = allItems.filter((row) => isTrue(row.Select1) && !isTrue(row.Dispatched));
+    const blockedItems = paymentBlockedItems(r.SO, selectedRows);
+    const exceptionBlocked = exceptionBlockedItems(r.SO, selectedRows);
+    document.getElementById("detailDispatchStatus").innerHTML = soPaymentStatusBadge(r);
+    document.getElementById("detailForCrate").innerHTML = isTrue(r.For_Crate)
+      ? badgePill("Yes", "bg-amber-50 text-amber-700 border-amber-200")
+      : badgePill("No", "bg-slate-50 text-slate-500 border-slate-200");
+    document.getElementById("detailAddedTime").textContent = formatDateTime(r.Added_Time);
+
+    const btn = document.getElementById("dispatchBtn");
+    const hint = document.getElementById("dispatchHint");
+    const HINT_DEFAULT = "text-[11px] text-slate-400 mb-2";
+    const HINT_BLOCKED = "text-[11px] text-rose-600 mb-2 font-medium";
+    if (dispatched) {
+      btn.textContent = "Dispatched";
+      btn.disabled = true;
+      hint.className = HINT_DEFAULT;
+      hint.textContent = "Nothing left on this order to dispatch.";
+    } else if (blockedItems.length > 0 || exceptionBlocked.length > 0) {
+      // ADDED 2026-07-31, per user — at least one SELECTED item's own real PAC
+      // (looked up by SO+SKU, not the record's header field — see
+      // paymentBlockedItems()'s own comment for why) has a Sales Order
+      // Readiness Gate record that isn't Paid yet. Checked before the
+      // selected-items gate so it's never silently masked by "check a box
+      // first".
+      // ADDED 2026-08-06 — extended to also cover an open (not Completed,
+      // not override-approved) Exception_Control1 record for the same SO+SKU
+      // — see exceptionBlockedItems()'s own comment.
+      btn.textContent = "🚚 Dispatch Selected Items";
+      btn.disabled = true;
+      hint.className = HINT_BLOCKED;
+      const parts = [];
+      if (blockedItems.length > 0) parts.push(`Payment not cleared: ${blockedItems.map((b) => `${b.item} (PAC ${b.pac}: ${b.statusLabel})`).join("; ")}`);
+      if (exceptionBlocked.length > 0) parts.push(`Open exception: ${exceptionBlocked.map((b) => `${b.item} (${b.statusLabel})`).join("; ")}`);
+      hint.textContent = parts.join(" — ") + " — approve an override in Order Readiness first, or resolve directly.";
+    } else if (selected === 0) {
+      btn.textContent = "🚚 Dispatch Selected Items";
+      btn.disabled = true;
+      hint.className = HINT_DEFAULT;
+      // EXTENDED 2026-08-14, real live bug (SO-16476/PR-00006) — when state is
+      // "partial" purely because of an awaiting.unpackaged/pending/rejected item
+      // (every row CURRENTLY on this record is already Dispatched, nothing left
+      // to check here), the old generic "Check at least one item's box" hint was
+      // actively misleading — there's nothing to check, the missing item hasn't
+      // even reached this record yet. Give the real reason instead.
+      const awaitingHere = awaitingInfoForSO(displayVal(r.SO));
+      // EXTENDED 2026-08-17 — awaitingHere.qcRecheck counts too, see
+      // CONFIG.QC_REPORT's comment — otherwise this count (and therefore which
+      // hint branch fires) could still undercount/misfire when qcRecheck is the
+      // ONLY outstanding bucket for this SO.
+      const awaitingHereCount = awaitingHere.pending.length + awaitingHere.rejected.length + awaitingHere.unpackaged.length + awaitingHere.qcRecheck.length;
+      if (state === "partial" && dispatchedItemCount(r) === itemRowCount_(r) && awaitingHereCount > 0) {
+        hint.textContent = `Nothing more to dispatch from what's listed here yet — ${awaitingHereCount} item(s) from this SO still in progress upstream (not yet packaged/received/QC'd). See "Awaiting Items" above.`;
+      } else {
+        hint.textContent = "Check at least one item's \"Select to Dispatch\" box in Item Details before dispatching.";
+      }
+    } else {
+      btn.textContent = "🚚 Dispatch Selected Items";
+      btn.disabled = false;
+      hint.className = HINT_DEFAULT;
+      hint.textContent = `Sends ${selected} selected item${selected === 1 ? "" : "s"} to the DMS as a new delivery. Unselected items stay on this order.`;
+    }
+  }
+
+  // Custom modal replacing native confirm() — inside a Zoho Creator widget
+  // iframe, prompt()/confirm() show the raw embedded-page origin
+  // (*.zappsusercontent.com) in the dialog chrome, which looks broken.
+  let dispatchModalResolver = null;
+  const dispatchModal = document.getElementById("dispatchModal");
+
+  function askDispatchConfirm() {
+    return new Promise((resolve) => {
+      dispatchModalResolver = resolve;
+      document.getElementById("fDispatchDeliveryDate").value = "";
+      dispatchModal.classList.remove("hidden");
+    });
+  }
+  // CHANGED 2026-08-26 — now resolves {confirmed, deliveryDate} instead of a plain
+  // boolean, so dispatchRecord() can read the officer's optional target date. On
+  // Cancel, deliveryDate is irrelevant (dispatchRecord() bails on !confirmed first).
+  function closeDispatchModal(confirmed) {
+    const deliveryDate = document.getElementById("fDispatchDeliveryDate").value || "";
+    dispatchModal.classList.add("hidden");
+    if (dispatchModalResolver) {
+      dispatchModalResolver({ confirmed, deliveryDate });
+      dispatchModalResolver = null;
+    }
+  }
+  document.getElementById("dispatchModalCancelBtn").addEventListener("click", () => closeDispatchModal(false));
+  document.getElementById("dispatchModalConfirmBtn").addEventListener("click", () => closeDispatchModal(true));
+  document.getElementById("btnClearDispatchDeliveryDate").addEventListener("click", () => { document.getElementById("fDispatchDeliveryDate").value = ""; });
+
+  // ADDED 2026-08-03, per user request — Archive button on every "Done"
+  // record (card + detail view). Purely a display-hide, not a delete: sets
+  // a new Decision Box field, Archived (user creates manually on
+  // Order_Aggregation1), then the record drops out of computeOrderedRows()
+  // going forward — same "system-driven hide, not a real delete" convention
+  // used elsewhere in this app.
+  let archiveModalResolver = null;
+  const archiveModal = document.getElementById("archiveModal");
+
+  function askArchiveConfirm() {
+    return new Promise((resolve) => {
+      archiveModalResolver = resolve;
+      archiveModal.classList.remove("hidden");
+    });
+  }
+  function closeArchiveModal(result) {
+    archiveModal.classList.add("hidden");
+    if (archiveModalResolver) {
+      archiveModalResolver(result);
+      archiveModalResolver = null;
+    }
+  }
+  document.getElementById("archiveModalCancelBtn").addEventListener("click", () => closeArchiveModal(false));
+  document.getElementById("archiveModalConfirmBtn").addEventListener("click", () => closeArchiveModal(true));
+
+  function archiveRecord(recordId) {
+    const r = allRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r) return;
+
+    document.getElementById("archiveModalMessage").textContent =
+      `This hides SO ${displayVal(r.SO)} (${displayVal(r.Customer_Name)}) from the Order Board. It stays in Creator — nothing is deleted.`;
+
+    askArchiveConfirm().then((confirmed) => {
+      if (!confirmed) return;
+      ZOHO.CREATOR.DATA.updateRecords({
+        app_name: CONFIG.APP_NAME,
+        report_name: CONFIG.REPORT_NAME,
+        payload: { criteria: `(ID == ${r.ID})`, data: { Archived: true } },
+      }).then((resp) => {
+        if (!(resp && resp.code === 3000)) throw new Error("archive-failed: " + JSON.stringify(resp));
+        r.Archived = true;
+        orderedRows = computeOrderedRows(allRecords);
+        if (currentDetailRecord === r) switchToList();
+        renderBoard();
+        toast(`Archived SO ${displayVal(r.SO)}.`, "success");
+      }).catch((err) => {
+        console.error(err);
+        toast("Archive failed — see console.", "error");
+      });
+    });
+  }
+
+  // UNUSED since 2026-10-27 — kept because it documents the shape the
+  // APPOINTMENT's name-type Customer_Name needs, which the step-3 Deluge has to
+  // reproduce. Stage 1's Customer_Name is a plain Single Line field, so
+  // dispatchRecord() writes textVal() directly instead of calling this.
+  // Builds the new Service_Appointment's Customer_Name compound value.
+  // Order_Aggregation1's own Customer_Name is one plain string with no
+  // reliable first/last split point — puts the whole thing in last_name
+  // (keeps zc_display_value readable), leaves first_name blank. A deliberate
+  // judgment call, not a guessed split.
+  function buildDmsCustomerName(name) {
+    return { first_name: "", last_name: textVal(name) };
+  }
+
+  // Plain "YYYY-MM-DD" — Zoho date fields reject any other format via addRecords.
+  function todayYMD() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+
+  // Only forwards Type_of_Delivery if it resolves to an exact DMS picklist choice
+  // — omits the key entirely otherwise (a mismatched picklist value would reject
+  // the WHOLE addRecords call). CHANGED 2026-08-10, per user request ("type of
+  // delivery let's match what we have into DMS") — real orders carry region-
+  // suffixed values like "Delivery & Installation - Metro Manila" that never
+  // exactly matched any of the 7 DMS choices, leaving it blank on every real
+  // dispatch. Reuses the SAME mapping already user-approved for the Section G
+  // taxonomy cleanup (2026-07-17, see CLAUDE.md): Installation->With
+  // Installation, Demo->Site Visit, Pull Out->Pullout, Delivery and
+  // Installation->With Installation, Delivery->Delivery Only, Site Visit
+  // unchanged — done here via substring match (case-insensitive) to absorb the
+  // region-suffix/wording variance real Delivery_Type values carry, checked
+  // most-specific-first so e.g. "Multi-Day Install" isn't swallowed by the
+  // generic "installation" check below it.
+  function resolveDmsDeliveryType(rawType) {
+    const v = textVal(rawType).trim();
+    if (!v) return "";
+    if (DMS_DELIVERY_TYPES.indexOf(v) !== -1) return v;
+    const low = v.toLowerCase();
+    if (low.indexOf("multi-day") !== -1 || low.indexOf("multi day") !== -1) return "Multi-Day Install";
+    if (low.indexOf("full-day") !== -1 || low.indexOf("full day") !== -1) return "Full-Day Install";
+    if (low.indexOf("replacement") !== -1) return "Replacement";
+    if (low.indexOf("pullout") !== -1 || low.indexOf("pull out") !== -1 || low.indexOf("pull-out") !== -1) return "Pullout";
+    if (low.indexOf("pick up") !== -1 || low.indexOf("pickup") !== -1 || low.indexOf("pick-up") !== -1) return "Pick Up";
+    if (low.indexOf("site visit") !== -1) return "Site Visit";
+    if (low.indexOf("demo") !== -1) return "Site Visit";
+    if (low.indexOf("install") !== -1) return "With Installation";
+    if (low.indexOf("delivery") !== -1) return "Delivery Only";
+    return "";
+  }
+
+  // CHANGED 2026-08-06, per user request (real gap found live: a single dispatch
+  // covering items from 2 different packages collapsed to ONE Service_Appointment
+  // record stamped with the record's own single header-level PAC — whichever
+  // package's QC sync happened to run last — so the OTHER package's items never
+  // got a real Package_Number on the DMS side at all, and Create Shipment could
+  // never be run for them). Design: "one dispatch, one package, one appointment
+  // record" — group selected items by their OWN per-row PAC (checker_checklist_
+  // qc_sync.txt now stamps this per row) and create one Service_Appointment PER
+  // DISTINCT PACKAGE GROUP, instead of one total. Falls back to the record's own
+  // header PAC for any row whose own PAC is still blank (rows created before this
+  // fix went live) — same value it always used, just scoped correctly now instead
+  // of applying it to every row regardless of source.
+  //
+  // NOTE — this grouping helper is STILL USED below, just for a different purpose
+  // now (see dispatchRecord()'s own header comment): as of 2026-08-06 it no
+  // longer drives one-Service_Appointment-per-group; it drives one
+  // Package_Shipments row per group instead, alongside a single shared
+  // Service_Appointment record.
+  function resolveRowPac(r, row) {
+    const rowPac = textVal(row && row.PAC);
+    if (rowPac && rowPac !== "—") return rowPac;
+    const info = readinessInfoForItem(r && r.SO, row && row.SKU, null);
+    if (info && info.pac && info.pac !== "—") return textVal(info.pac);
+    const headerPac = textVal(r && r.PAC);
+    if (headerPac && headerPac !== "—") return headerPac;
+    return "";
+  }
+
+  // ADDED 2026-10-29 - the old inline `row.QTY || row.Qty || row.Quantity || "1"`
+  // chain turned a REAL quantity of 0 into "1", because 0 is falsy. Explicit
+  // blank test instead. Order matters: QTY is Order_Aggregation1's own column
+  // name, the other two are only there for rows relayed from elsewhere.
+  function rowQtyText(row) {
+    const cands = [row && row.QTY, row && row.Qty, row && row.Quantity];
+    for (let i = 0; i < cands.length; i++) {
+      const c = cands[i];
+      if (c !== undefined && c !== null && String(c).trim() !== "") return textVal(c);
+    }
+    return "1";
+  }
+
+  // ADDED 2026-10-29 - Delivery_Scheduling.City is a 26-value PICKLIST (list
+  // verbatim from DMS IDE/Scheduling form) while Order_Aggregation1.City is
+  // free text. An unlisted picklist value rejects the WHOLE addRecords call, so
+  // until now City was simply never written and the picklist sat empty on every
+  // automated record. Now: an exact (case-insensitive) match writes that choice,
+  // and any OTHER non-blank city writes "Other" - which is exactly what that
+  // choice is for. Delivery_City keeps the raw text in both cases, so nothing
+  // is ever lost or guessed at.
+  const DMS_CITIES = ["Batangas", "Bulacan", "Caloocan", "Cavite", "Laguna", "Las Piñas", "Makati", "Malabon", "Mandaluyong", "Manila", "Marikina", "Muntinlupa", "Navotas", "Pampanga", "Pangasinan", "Parañaque", "Pasay", "Pasig", "Quezon City", "Rizal", "San Juan", "Taguig", "Tarlac", "Valenzuela", "Zambales", "Other"];
+  function resolveDmsCity(val) {
+    const t = textVal(val).trim();
+    if (!t) return "";
+    const low = t.toLowerCase();
+    const hit = DMS_CITIES.find((c) => c.toLowerCase() === low);
+    return hit || "Other";
+  }
+
+  function resolveRowSku(r, row) {
+    const directSku = textVal(row && (row.SKU || row.sku));
+    if (directSku && directSku !== "—") return directSku;
+    if (Array.isArray(rawPaymentRows) && rawPaymentRows.length) {
+      const so = textVal(r && r.SO).trim();
+      const pac = resolveRowPac(r, row);
+      const name = textVal(row && row.Item_Name).trim().toLowerCase();
+      if (pac && pac !== "—") {
+        const hitPac = rawPaymentRows.find((g) => textVal(g.sales_order_number || g.SO).trim() === so && textVal(g.Package_Order) === pac && textVal(g.SKU));
+        if (hitPac && textVal(hitPac.SKU)) return textVal(hitPac.SKU);
+      }
+      if (name) {
+        const hitName = rawPaymentRows.find((g) => textVal(g.sales_order_number || g.SO).trim() === so && textVal(g.Item_Name).trim().toLowerCase() === name && textVal(g.SKU));
+        if (hitName && textVal(hitName.SKU)) return textVal(hitName.SKU);
+      }
+      const soRows = rawPaymentRows.filter((g) => textVal(g.sales_order_number || g.SO).trim() === so && textVal(g.SKU));
+      if (soRows.length === 1 && textVal(soRows[0].SKU)) return textVal(soRows[0].SKU);
+    }
+    return "";
+  }
+
+  function groupSelectedItemsByPac(selectedItems, r) {
+    const groups = new Map();
+    selectedItems.forEach((row) => {
+      const pac = resolveRowPac(r, row) || "—";
+      if (!groups.has(pac)) groups.set(pac, []);
+      groups.get(pac).push(row);
+    });
+    return groups;
+  }
+
+  async function dispatchRecord() {
+    if (!currentDetailRecord) return;
+    const r = currentDetailRecord;
+    if (!hydratedItemDetailIds.has(r.ID)) {
+      await hydrateItemDetails(r);
+    }
+    const allItems = Array.isArray(r.Item_Details) ? r.Item_Details : [];
+    const selectedItems = allItems.filter((row) => isTrue(row.Select1) && !isTrue(row.Dispatched));
+    const remainingItems = allItems.filter((row) => !(isTrue(row.Select1) && !isTrue(row.Dispatched)));
+    if (!selectedItems.length) return;
+
+    const blockedItems = paymentBlockedItems(r.SO, selectedItems);
+    // ADDED 2026-08-06 — exception hard block re-check, same treatment as
+    // the payment one right above it.
+    const exceptionBlocked = exceptionBlockedItems(r.SO, selectedItems);
+    if (blockedItems.length > 0 || exceptionBlocked.length > 0) {
+      const parts = [];
+      if (blockedItems.length > 0) parts.push(`Payment not cleared: ${blockedItems.map((b) => `${b.item} (PAC ${b.pac}: ${b.statusLabel})`).join("; ")}`);
+      if (exceptionBlocked.length > 0) parts.push(`Open exception: ${exceptionBlocked.map((b) => `${b.item} (${b.statusLabel})`).join("; ")}`);
+      toast(parts.join(" — ") + " — check Payment Status / Exceptions in Order Readiness first.", "error");
+      return;
+    }
+
+    // CHANGED 2026-08-06, per user request (supersedes the same-day "one SA
+    // record per package" fix) — one dispatch now creates exactly ONE
+    // Service_Appointment record regardless of how many packages the
+    // selection spans; per-package shipment state moves to a separate
+    // Package_Shipments record per package instead of splitting the
+    // appointment itself. See docs/2026-08-06-dms-multi-package-service-
+    // appointment-design.md for the full reasoning (subform-update platform
+    // limit makes tracking evolving per-package state INSIDE a subform
+    // unsafe — Package_Shipments rows are plain top-level records instead).
+    const pacGroups = groupSelectedItemsByPac(selectedItems, r);
+    const packageCount = pacGroups.size;
+
+    document.getElementById("dispatchModalMessage").textContent =
+      `This sends ${selectedItems.length} selected item${selectedItems.length === 1 ? "" : "s"} (${selectedItems.map((it) => displayVal(it.Item_Name)).join(", ")}) to the DMS as one new Initial Scheduling record` +
+      (packageCount > 1 ? ` covering ${packageCount} packages (${[...pacGroups.keys()].join(", ")})` : "") +
+      ` for SO ${displayVal(r.SO)}. ` +
+      (remainingItems.length ? `${remainingItems.length} unselected item${remainingItems.length === 1 ? "" : "s"} will stay on this order.` : "This will complete this order's dispatch.");
+
+    askDispatchConfirm().then(({ confirmed, deliveryDate }) => {
+      if (!confirmed) return;
+      const btn = document.getElementById("dispatchBtn");
+      btn.disabled = true;
+      btn.textContent = "Dispatching…";
+
+      const resolvedDeliveryType = resolveDmsDeliveryType(r.DELIVERY_TYPE);
+      // Delivery_Scheduling's own Item_Details grid columns: Item_Name (text),
+      // Qty (TEXT, not number — unlike the appointment's Quantity), plus SKU and
+      // PAC, both added 2026-10-27 per Proposals/DMS_Chain_Build_2026-10-27.md
+      // §4.1. PAC is the per-row package identity that has to survive the whole
+      // chain; the header Package_Number below is display-only.
+      // Qty goes through rowQtyText() - see its own comment for the qty-of-0 bug
+      // the old truthiness chain had.
+      // Bin_Location is NOT written here. It was, for one revision on 2026-10-29,
+      // but the live form (DMS IDE/Scheduling form, re-exported that day) has no
+      // such grid column - and a write to a column that does not exist fails the
+      // WHOLE dispatch with 3001. The per-row bin now rides in the header Notes
+      // trace built below instead, so the information still arrives. Create
+      // Delivery_Scheduling.Item_Details.Bin_Location (Single Line) and this is
+      // a one-line change back to a real column.
+      const isItemDetails = selectedItems.map((row) => ({
+        Item_Name: textVal(row.Item_Name),
+        Qty: rowQtyText(row),
+        SKU: resolveRowSku(r, row),
+        PAC: resolveRowPac(r, row),
+      }));
+      // Primary/display-only package — first group's PAC, matches the design
+      // doc's "keep Package_Number as first-package display" decision.
+      const rawPrimaryPac = [...pacGroups.keys()][0] || "";
+      const primaryPac = rawPrimaryPac !== "—" ? rawPrimaryPac : (textVal(r.PAC) || "");
+      const allPacs = [...pacGroups.keys()].filter((x) => x && x !== "—").join(", ");
+      const isData = {
+        // Delivery_Scheduling.SO is a textarea; there is no separate display copy
+        // on this form the way the appointment carries Sales_Order_Display.
+        SO: textVal(r.SO),
+        // NEW 2026-10-27 — stage marker. "New" means it has arrived from Order
+        // Aggregation and nobody has handed it off yet. The Initial Scheduling
+        // widget flips it to "Handed Off" when it creates the Service Request.
+        Schedule_Status: "New",
+        // Trace link back to the Order Aggregation record, NOT a uniqueness key:
+        // one aggregation record can legitimately dispatch several times (select
+        // some items, dispatch, then select the rest). The real double-send guard
+        // stays what it has always been — the per-item Dispatched flag written at
+        // the end of this same function.
+        Order_Aggregation_ID: String(r.ID),
+        // Plain text here. Delivery_Scheduling.Customer_Name is a Single Line
+        // field, so buildDmsCustomerName()'s compound {first_name,last_name}
+        // shape (which the appointment's name-type field needs) must NOT be used.
+        Customer_Name: textVal(r.Customer_Name),
+        Customer_Address: textVal(r.Customer_Address),
+        // ADDED 2026-08-06, per user request ("why other fields is not auto
+        // populated? like the city email contact") — Order_Aggregation1 now
+        // carries City/Email/Contact (relayed from Pre_Order_FF via
+        // so_kanban_sync.txt -> receiving_widget_custom_api.txt/
+        // receiving_create_bin_receiving.txt -> checker_checklist_qc_sync.txt).
+        // Service_Appointment_Form already had these 3 fields defined, just
+        // never written — this is the last hop, feeding the Archived widget's
+        // "Create Sales Return" auto-populate.
+        // Delivery_City, not City. Delivery_Scheduling.City is a 26-value
+        // PICKLIST and this value is free text relayed up the fulfillment chain —
+        // an unlisted picklist value rejects the entire addRecords call. The
+        // picklist stays for manual entry; Delivery_City (new 2026-10-27) is the
+        // text twin the automation writes.
+        Delivery_City: textVal(r.City),
+        Email: textVal(r.Email),
+        Contact: textVal(r.Contact),
+        // ADDED 2026-08-10, per user request ("order date = from sales order
+        // report - SO Created Date, fulfillment completed = current date it got
+        // dispatched"). Order_Date relays Order_Aggregation1.SO_Created_Date
+        // (new field, sourced from Pre_Order_FF.SO_Creation_Date via
+        // checker_checklist_qc_sync.txt — same hop City/Email/Contact use).
+        // Fulfillment_Completed_Date is NO LONGER WRITTEN HERE (2026-10-27) — it
+        // is an appointment field, and the appointment is created at step 3. The
+        // step-3 Deluge sets it to the date the dispatch actually happened, which
+        // it reads off the Initial Scheduling record's own Added_Time.
+        // FIXED 2026-10-29 - Order_Date is a DATE field on Delivery_Scheduling
+        // and this line sent textVal(...) unconditionally, so an Order
+        // Aggregation record with a blank SO_Created_Date sent "" to a Date
+        // field: "UnParsable date", and the ENTIRE dispatch failed. Exactly the
+        // trap this same function already guards Date_field against a few lines
+        // down. Moved below the literal, written only when it has a value.
+        // Display-only, carries all package numbers if multiple packages
+        Package_Number: allPacs || primaryPac,
+        Item_Details: isItemDetails,
+        // Delivery_Scheduling's own header-level free-text summary columns, the
+        // ones its native report actually displays. Filled so a record that
+        // arrived by automation reads the same as a hand-entered one.
+        //
+        // CHANGED 2026-10-29, per user ("sa pag pasok sa initial scheduling dapat
+        // isang line isang item lang"): joined with a NEWLINE, not ", ". Both are
+        // textarea fields, so one item per line is what the native form and
+        // report actually show - a comma-joined run-on was the whole complaint.
+        // The two stay index-aligned, so line 3 of Qty belongs to line 3 of
+        // Item_Detail, and every reader of these two splits on newline OR comma.
+        Item_Detail: selectedItems.map((it) => textVal(it.Item_Name)).join("\n"),
+        Qty: selectedItems.map((it) => rowQtyText(it)).join("\n"),
+        // ===== 2026-10-29 - FIELD PARITY WITH ORDER AGGREGATION =====
+        // User: "ayusin mo lahat ng pumapasok dito. check mo lahat ng pwedeng
+        // pumasok." Every Order_Aggregation1 column now lands somewhere.
+        //
+        // These three are REAL fields, created by the user on 2026-10-29 and
+        // verified against the re-exported DMS IDE/Scheduling form. Note the
+        // name: the form calls it `Demo`, not `Demo_No` - the form is the
+        // authority, so the payload follows it.
+        Demo: textVal(r.DEMO),
+        Customer_Type: textVal(r.Customer_Type),
+        For_Crate: isTrue(r.For_Crate),
+        // Stage-1 lifecycle defaults, so a record that arrived by automation
+        // reads the same as a hand-entered one instead of showing blank in the
+        // native report's Completed/Rescheduled columns. Both are picklists and
+        // both values below are verbatim choices from the form export.
+        Completed: "Not Yet",
+        Rescheduled: "No",
+      };
+      // The four Order_Aggregation1 facts that still have NO column of their own
+      // on Delivery_Scheduling (Order PAC, Order Type, the raw as-ordered
+      // delivery type, PR#), plus the per-row Bin Location. They used to be
+      // written as real fields; the live form has none of them, and writing to a
+      // field that does not exist fails the whole dispatch with 3001. So they go
+      // into Notes - a textarea that exists, that no automation writes, and that
+      // the native report already displays. Nothing is lost.
+      //
+      // To promote any of these to a real column later: create it, move the line
+      // out of this array and into isData above. Nothing else changes.
+      const isNotes = [];
+      if (textVal(r.PAC)) isNotes.push("Order PAC: " + textVal(r.PAC));
+      if (textVal(r.ORDER_TYPE)) isNotes.push("Order type: " + textVal(r.ORDER_TYPE));
+      // The RAW delivery type, unmapped. Type_of_Delivery is the picklist-safe
+      // translation and goes BLANK when the raw wording is not a recognised DMS
+      // type, which used to lose the original wording completely.
+      if (textVal(r.DELIVERY_TYPE)) isNotes.push("Delivery type (as ordered): " + textVal(r.DELIVERY_TYPE));
+      if (textVal(r.PR)) isNotes.push("PR#: " + textVal(r.PR));
+      const binBits = selectedItems
+        .filter((row) => textVal(row.Bin_Location))
+        .map((row) => textVal(row.Item_Name) + " - " + textVal(row.Bin_Location));
+      if (binBits.length) isNotes.push("Bin locations: " + binBits.join("; "));
+      if (isNotes.length) isData.Notes = isNotes.join("\n");
+      // City (26-value picklist) - see resolveDmsCity()'s own comment. Written
+      // only when there is a city at all; a blank picklist write is pointless
+      // and the key is simply omitted.
+      const dmsCity = resolveDmsCity(r.City);
+      if (dmsCity) isData.City = dmsCity;
+      // The two DATE fields. Both are omitted entirely when blank rather than
+      // sent as "" - a blank string assigned to a Creator Date field throws
+      // "UnParsable date" and fails the whole insert.
+      if (textVal(r.SO_Created_Date)) isData.Order_Date = textVal(r.SO_Created_Date);
+      if (textVal(r.Target_Date)) isData.Target_Delivery_Date = textVal(r.Target_Date);
+      // Type_of_Delivery resolves to the APPOINTMENT's spellings ("With
+      // Installation", "Pullout"). Those two were added to
+      // Delivery_Scheduling.Type_of_Delivery on 2026-10-27 so this form is a
+      // superset — the same resolved value now passes through all four forms of
+      // the chain with no mapping anywhere. See DMS_Chain_Build §4.1.
+      if (resolvedDeliveryType) isData.Type_of_Delivery = resolvedDeliveryType;
+      // ADDED 2026-08-26, per user request — officer-given target date from the
+      // dispatch confirm modal, shown to the customer in the Site Confirmation
+      // outreach email's "Delivery Date" line (that email fires here, at dispatch,
+      // before any date is actually confirmed in Scheduling/Step 2 — this is the
+      // only date that CAN exist yet). Deliberately optional: if left blank, the
+      // key is omitted entirely rather than sent as "" — Requested_Delivery_Date
+      // is a Date-typed field, and Deluge's insert throws "UnParsable date" on an
+      // empty string assigned to a Date field (same class of bug already fixed in
+      // dms_site_confirmation.txt's own SO_Created_Date handling).
+      // CHANGED 2026-10-27 — this date is now the INITIAL SCHEDULE itself, written
+      // to Delivery_Scheduling.Date_field, not the appointment's advisory
+      // Requested_Delivery_Date. It is what the officer reviews in the Initial
+      // Scheduling widget and what the scheduling engine will later anchor its
+      // slot search on (DMS_Chain_Build §2). Still deliberately optional: a blank
+      // string assigned to a Date field throws "UnParsable date", so the key is
+      // omitted entirely rather than sent empty.
+      if (deliveryDate) isData.Date_field = deliveryDate;
+      // Time is left unset on purpose — the dispatch modal only asks for a date,
+      // and the officer sets the initial time in the Initial Scheduling widget.
+
+      ZOHO.CREATOR.DATA.addRecords({
+        app_name: CONFIG.APP_NAME,
+        form_name: CONFIG.INITIAL_SCHEDULING_FORM,
+        payload: { data: isData },
+      }).then((isResponse) => {
+        if (!(isResponse && isResponse.code === 3000 && isResponse.data && isResponse.data.ID)) {
+          throw new Error("initial-scheduling-create-failed: " + JSON.stringify(isResponse));
+        }
+        const newScheduleId = isResponse.data.ID;
+
+        // REMOVED 2026-10-27 — the per-package Package_Shipments loop that used to
+        // live here. Those rows carry a Service_Appointment_ID, and under the new
+        // chain the appointment is not created until the Service Request stage, so
+        // there is no ID to stamp yet. They are now inserted by the
+        // SR_Created_Make_Appointment workflow on Service_Request1, from the
+        // appointment's own distinct PACs. See DMS_Chain_Build §3 step 3 and §6.
+        return Promise.resolve().then(() => {
+          // Mark every originally-selected row Dispatched — the Initial
+          // Scheduling record was created, so the dispatch itself is done.
+          const rebuiltItemDetails = allItems.map((row) => {
+            const justDispatched = isTrue(row.Select1) && !isTrue(row.Dispatched);
+            return {
+              Item_Name: textVal(row.Item_Name),
+              SKU: textVal(row.SKU),
+              QTY: textVal(row.QTY),
+              Bin_Location: textVal(row.Bin_Location),
+              PAC: textVal(row.PAC),
+              Select1: justDispatched ? false : isTrue(row.Select1),
+              Dispatched: justDispatched ? true : isTrue(row.Dispatched),
+            };
+          });
+          const nowFullyDispatched = rebuiltItemDetails.length > 0 && rebuiltItemDetails.every((row) => row.Dispatched === true);
+          const aggData = { Item_Details: rebuiltItemDetails };
+          if (nowFullyDispatched) aggData.Dispatch_Selected = true;
+
+          return ZOHO.CREATOR.DATA.updateRecords({
+            app_name: CONFIG.APP_NAME,
+            report_name: CONFIG.REPORT_NAME,
+            payload: { criteria: `(ID == ${r.ID})`, data: aggData },
+          }).then((aggResponse) => {
+            if (!(aggResponse && aggResponse.code === 3000)) throw new Error("agg-update-failed: " + JSON.stringify(aggResponse));
+            r.Item_Details = rebuiltItemDetails;
+            if (nowFullyDispatched) r.Dispatch_Selected = true;
+            const pkgMsg = packageCount > 1 ? ` covering ${packageCount} packages (${[...pacGroups.keys()].join(", ")})` : "";
+            const baseMsg = `Sent to Initial Scheduling (record #${newScheduleId}${pkgMsg}). Set the initial date and time there, then hand it off to Service Request.`;
+            const typeMsg = resolvedDeliveryType ? "" : (r.DELIVERY_TYPE ? " Type of Delivery left blank — \"" + displayVal(r.DELIVERY_TYPE) + "\" isn't a valid DMS delivery type." : "");
+            toast(baseMsg + typeMsg, "success");
+            renderItemDetailsTable(r);
+            renderDispatchPanel(r);
+            document.getElementById("archiveRecordBtn").classList.toggle("hidden", dispatchState(r) !== "done");
+            renderBoard();
+          });
+        });
+      }).catch((err) => {
+        console.error(err);
+        toast("Dispatch failed — see console.", "error");
+        btn.disabled = false;
+        renderDispatchPanel(r);
+      });
+    });
+  }
+  document.getElementById("dispatchBtn").addEventListener("click", dispatchRecord);
+
+  function switchToDetail(recordId) {
+    const r = allRecords.find(rec => String(rec.ID) === String(recordId));
+    if (!r) return;
+    currentDetailRecord = r;
+    renderNextStepBanner("nsBanner", r.ID, nextStepFor(r));
+
+    document.getElementById("editRecordBtn").onclick = () => switchToEdit(r);
+    const archiveBtn = document.getElementById("archiveRecordBtn");
+    archiveBtn.classList.toggle("hidden", dispatchState(r) !== "done");
+    archiveBtn.onclick = () => archiveRecord(r.ID);
+
+    document.getElementById("detailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
+    document.getElementById("detailSoNo").textContent = displayVal(r.SO) !== "—" ? displayVal(r.SO) : "Order Aggregation";
+    document.getElementById("detailCustomer").textContent = displayVal(r.Customer_Name);
+    document.getElementById("detailSubline").textContent = `${displayVal(r.ORDER_TYPE)} · ${displayVal(r.DELIVERY_TYPE)}`;
+
+    const fieldsHtml = [
+      ["SO #", displayVal(r.SO)],
+      ["PAC #", displayVal(r.PAC)],
+      ["PR #", displayVal(r.PR)],
+      ["DEMO #", displayVal(r.DEMO)],
+      ["Order Type", displayVal(r.ORDER_TYPE)],
+      ["Delivery Type", displayVal(r.DELIVERY_TYPE)],
+      ["Target Delivery Date", formatDate(r.Target_Date)],
+    ];
+    document.getElementById("detailFields").innerHTML = fieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    const customerFieldsHtml = [
+      ["Customer Name", displayVal(r.Customer_Name)],
+      ["Customer Type", displayVal(r.Customer_Type)],
+      ["Customer Address", displayVal(r.Customer_Address)],
+    ];
+    document.getElementById("detailCustomerFields").innerHTML = customerFieldsHtml.map(([label, val]) => `
+      <div>
+        <dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd>
+      </div>`).join("");
+
+    renderItemDetailsTable(r);
+    renderDispatchPanel(r);
+    renderAwaitingItemsPanel(r);
+
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("editView").classList.add("hidden");
+    document.getElementById("detailView").classList.remove("hidden");
+    window.scrollTo(0, 0);
+
+    // Covers the case where this record hasn't been hydrated yet (e.g. the
+    // background hydrateAllItemDetails pass from loadLive is still running,
+    // or failed for this one record) — re-renders the item table and dispatch
+    // panel (Select1 feeds selectedItemCount/dispatchState) once it resolves.
+    hydrateItemDetails(r).then((changed) => {
+      if (!changed || currentDetailRecord !== r) return;
+      renderItemDetailsTable(r);
+      renderDispatchPanel(r);
+      document.getElementById("archiveRecordBtn").classList.toggle("hidden", dispatchState(r) !== "done");
+      if (currentEditRecord === r) populateEditForm(r);
+      renderBoard();
+    });
+  }
+
+  function switchToList() {
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("editView").classList.add("hidden");
+    document.getElementById("listView").classList.remove("hidden");
+  }
+  document.getElementById("backToListBtn").addEventListener("click", switchToList);
+
+  // ---------------------------------------------------------------------
+  // Edit form — Item Details subform rows (same repeatable-row pattern as
+  // Spare_part_type in the QC Checklist widget).
+  // ---------------------------------------------------------------------
+  function itemRowHtml(rowIndex, row) {
+    // CHANGED 2026-07-30, per user request ("display items in that SO label
+    // the dispatched one as 'Dispatched'") — dispatch used to REMOVE a row
+    // from Item_Details entirely once sent; now it stays (new Dispatched
+    // subform column, real field, user creates manually), permanently marked
+    // instead of deleted. A dispatched row has no checkbox at all (nothing
+    // left to select — it's history now) and can't be removed via this form
+    // (data-dispatched drives both, since there's no visible checkbox left to
+    // read the value back from in readItemRows()).
+    const dispatched = isTrue(row.Dispatched);
+    const selectCell = dispatched
+      ? `<span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">✅ Dispatched</span>`
+      : `<label class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700">
+          <input type="checkbox" class="item-selected-cb" ${isTrue(row.Select1) ? "checked" : ""}> Select to Dispatch
+        </label>`;
+    // ADDED 2026-08-06 — PAC (which package this row belongs to, stamped by
+    // checker_checklist_qc_sync.txt) has no dedicated input here on purpose
+    // (not meant to be manually reassigned via this form), but MUST round-trip
+    // through a manual Edit+Save or it gets silently wiped — this is a full
+    // subform replace, not a merge, so any key missing from readItemRows()'s
+    // output is gone on save. Preserved via a data attribute, same pattern as
+    // data-dispatched/data-row above.
+    return `
+      <div class="item-row bg-slate-50 rounded-lg px-3 py-3 space-y-2" data-row="${rowIndex}" data-dispatched="${dispatched ? "true" : "false"}" data-pac="${escapeHtml(textVal(row.PAC))}">
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center">
+          <input type="text" class="item-name field-input" placeholder="Item Name" value="${escapeHtml(textVal(row.Item_Name))}" ${dispatched ? "readonly" : ""}>
+          <input type="text" class="item-sku field-input" placeholder="SKU" value="${escapeHtml(textVal(row.SKU))}" ${dispatched ? "readonly" : ""}>
+          <input type="text" class="item-qty field-input" placeholder="Qty" value="${escapeHtml(textVal(row.QTY))}" ${dispatched ? "readonly" : ""}>
+          <input type="text" class="item-bin field-input" placeholder="Bin Location" value="${escapeHtml(textVal(row.Bin_Location))}" ${dispatched ? "readonly" : ""}>
+          ${selectCell}
+        </div>
+        <div class="flex items-center justify-end">
+          ${dispatched ? "" : `<button type="button" class="remove-item-row-btn text-xs text-rose-600 hover:text-rose-800 shrink-0">Remove</button>`}
+        </div>
+      </div>`;
+  }
+
+  function addItemRow(row) {
+    const rowIndex = itemRowCount++;
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = itemRowHtml(rowIndex, row || {});
+    const rowEl = wrapper.firstElementChild;
+    document.getElementById("itemRows").appendChild(rowEl);
+    // FIXED 2026-08-07, real live bug found via debug logging (Task 10
+    // verification) — a Dispatched row renders NO remove button at all (see
+    // itemRowHtml's own 2026-07-30 comment), so this querySelector returned
+    // null and .addEventListener threw, aborting populateEditForm's forEach
+    // right after the first Dispatched row — every row after it in the array
+    // silently never got added. Latent since 2026-07-30, only surfaced once a
+    // multi-row record with an already-Dispatched row got edited.
+    const removeBtn = rowEl.querySelector(".remove-item-row-btn");
+    if (removeBtn) removeBtn.addEventListener("click", () => rowEl.remove());
+  }
+  document.getElementById("addItemRowBtn").addEventListener("click", () => addItemRow({}));
+
+  function readItemRows() {
+    return Array.from(document.querySelectorAll("#itemRows .item-row")).map((rowEl) => {
+      // A dispatched row has no checkbox to read from at all (see itemRowHtml)
+      // — its Select1/Dispatched values come from the row's own data attribute
+      // instead, set once at render time, never user-editable again.
+      const dispatched = rowEl.dataset.dispatched === "true";
+      const selectCb = rowEl.querySelector(".item-selected-cb");
+      return {
+        Item_Name: rowEl.querySelector(".item-name").value.trim(),
+        SKU: rowEl.querySelector(".item-sku").value.trim(),
+        QTY: rowEl.querySelector(".item-qty").value.trim(),
+        Bin_Location: rowEl.querySelector(".item-bin").value.trim(),
+        PAC: rowEl.dataset.pac || "",
+        Select1: dispatched ? false : (selectCb ? selectCb.checked : false),
+        Dispatched: dispatched,
+      };
+    }).filter((row) => row.Item_Name || row.SKU || row.QTY || row.Bin_Location || row.Select1 || row.Dispatched);
+  }
+
+  function populateEditForm(r) {
+    document.getElementById("editTitle").textContent = !isBlank(r.SO) ? `Edit Order Aggregation — ${r.SO}` : "Edit Order Aggregation";
+
+    document.getElementById("f_SO").value = textVal(r.SO);
+    document.getElementById("f_PAC").value = textVal(r.PAC);
+    document.getElementById("f_PR").value = textVal(r.PR);
+    document.getElementById("f_DEMO").value = textVal(r.DEMO);
+    document.getElementById("f_ORDER_TYPE").value = textVal(r.ORDER_TYPE);
+    document.getElementById("f_DELIVERY_TYPE").value = textVal(r.DELIVERY_TYPE);
+    document.getElementById("f_Target_Date").value = toDateInputValue(r.Target_Date);
+    document.getElementById("f_For_Crate").checked = isTrue(r.For_Crate);
+
+    document.getElementById("f_Customer_Name").value = textVal(r.Customer_Name);
+    document.getElementById("f_Customer_Type").value = textVal(r.Customer_Type);
+    document.getElementById("f_Customer_Address").value = textVal(r.Customer_Address);
+
+    document.getElementById("itemRows").innerHTML = "";
+    itemRowCount = 0;
+    const items = Array.isArray(r.Item_Details) ? r.Item_Details : [];
+    if (items.length) items.forEach((row) => addItemRow(row));
+    else addItemRow({});
+  }
+
+  function collectEditFormData() {
+    return {
+      SO: document.getElementById("f_SO").value.trim(),
+      PAC: document.getElementById("f_PAC").value.trim(),
+      PR: document.getElementById("f_PR").value.trim(),
+      DEMO: document.getElementById("f_DEMO").value.trim(),
+      ORDER_TYPE: document.getElementById("f_ORDER_TYPE").value.trim(),
+      DELIVERY_TYPE: document.getElementById("f_DELIVERY_TYPE").value.trim(),
+      Target_Date: document.getElementById("f_Target_Date").value,
+      For_Crate: document.getElementById("f_For_Crate").checked,
+      Customer_Name: document.getElementById("f_Customer_Name").value.trim(),
+      Customer_Type: document.getElementById("f_Customer_Type").value.trim(),
+      Customer_Address: document.getElementById("f_Customer_Address").value.trim(),
+      Item_Details: readItemRows(),
+    };
+  }
+
+  async function saveEditForm() {
+    if (!currentEditRecord) return;
+    const data = collectEditFormData();
+    const saveBtns = [document.getElementById("saveEditBtn"), document.getElementById("saveEditBtn2")];
+    saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
+
+    const recordId = currentEditRecord.ID;
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      payload: {
+        criteria: `(ID == ${recordId})`,
+        data: data,
+      },
+    };
+
+    try {
+      const response = await ZOHO.CREATOR.DATA.updateRecords(config);
+      if (!response || response.code !== 3000) throw new Error("update-failed");
+      Object.assign(currentEditRecord, data);
+
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast("Order saved.", "success");
+      orderedRows = computeOrderedRows(allRecords);
+      renderAll();
+      switchToDetail(recordId);
+    } catch (err) {
+      console.error(err);
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast("Couldn't save changes.", "error");
+    }
+  }
+
+  function switchToEdit(r) {
+    currentEditRecord = r;
+    document.getElementById("listView").classList.add("hidden");
+    document.getElementById("detailView").classList.add("hidden");
+    document.getElementById("editView").classList.remove("hidden");
+    populateEditForm(r);
+    window.scrollTo(0, 0);
+  }
+
+  function cancelEdit() {
+    document.getElementById("editView").classList.add("hidden");
+    if (currentEditRecord) {
+      switchToDetail(currentEditRecord.ID);
+    } else {
+      document.getElementById("listView").classList.remove("hidden");
+    }
+  }
+  document.getElementById("cancelEditBtn").addEventListener("click", cancelEdit);
+  document.getElementById("cancelEditBtn2").addEventListener("click", cancelEdit);
+  document.getElementById("saveEditBtn").addEventListener("click", saveEditForm);
+  document.getElementById("saveEditBtn2").addEventListener("click", saveEditForm);
+
+  // ---------------------------------------------------------------------
+  // Data loading (Order_Aggregation1_Report)
+  // ---------------------------------------------------------------------
+  function fetchAllRecords() {
+    // field_config: "all" returns raw form field data instead of the report's
+    // flattened concatenated-string formula column — EXCEPT for Item_Details,
+    // which still comes back summarized (see hydrateAllItemDetails below).
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || [])
+      .catch((err) => {
+        // FIXED 2026-07-30, real bug found live — this had NO error handling at
+        // all, so a genuinely EMPTY report (code 9220 "No records exist in this
+        // report" — Creator returns this as an HTTP 400, not a resolved response
+        // with an empty array) threw uncaught here, rejected the whole loadLive()
+        // Promise.all, and surfaced as "Failed to load records from Zoho
+        // Creator." with a permanently blank board — even though "0 orders" is a
+        // completely valid, real state. Same already-documented gotcha this app
+        // has fixed in POs/PRs/INQs before, just never applied to this widget.
+        if (isEmptyReportError(err)) return [];
+        console.error(err);
+        throw err;
+      });
+  }
+
+  // Same 9220/9280-is-empty-not-error gotcha this app hits repeatedly — Creator
+  // reports a genuinely empty report as an HTTP 400 with this code, buried in
+  // err.responseText as a JSON string, not a clean resolved empty array.
+  function isEmptyReportError(err) {
+    try {
+      const text = (err && err.responseText) ? err.responseText : (typeof err === "string" ? err : JSON.stringify(err));
+      const code = JSON.parse(text).code;
+      return code === 9220 || code === 9280;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ADDED 2026-07-30 — "Awaiting Items" indicator (design doc:
+  // docs/2026-07-30-order-aggregation-awaiting-items-design.md). Bulk-fetches
+  // BOTH source reports ONCE (not per-card — cheap, plain widget-SDK getRecords,
+  // no invokeurl/quota involvement) and groups by SO client-side. "Not ready"
+  // per the approved design = Pre_Order_FF still Pending, OR an open (not
+  // Completed) Exception_Control1 row — deliberately NOT the broader "anything
+  // stuck earlier in Pick/Pack/QC with no exception at all" (out of scope,
+  // user declined that option).
+  function fetchAwaitingItems() {
+    const gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+    const fetchOne = (reportName) => gr({
+      app_name: CONFIG.APP_NAME,
+      report_name: reportName,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    }).then((resp) => (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [])
+      .catch((err) => { console.error("fetchAwaitingItems: " + reportName + " failed:", err); return []; });
+
+    return Promise.all([
+      fetchOne(CONFIG.PRE_ORDER_REPORT),
+      fetchOne(CONFIG.EXCEPTION_CONTROL_REPORT),
+      fetchOne(CONFIG.QC_REPORT),
+    ]).then(([preOrderRows, exceptionRows, qcRows]) => {
+      const map = new Map();
+      function bucketFor(soVal) {
+        if (!map.has(soVal)) map.set(soVal, { pending: [], rejected: [], packaged: [], unpackaged: [], qcRecheck: [] });
+        return map.get(soVal);
+      }
+
+      // ADDED 2026-08-17 — see CONFIG.QC_REPORT's own comment. An RR recheck
+      // row (RR field non-blank) still sitting in QC (QC_Status not yet
+      // Approved/Rejected) means a rework unit for this SO hasn't finished QC
+      // yet, let alone reached Order_Aggregation1 — the SO can't be truly done
+      // while one of these is outstanding, same as pending/rejected/unpackaged.
+      qcRows.forEach((row) => {
+        if (isBlank(row.RR)) return;
+        if (row.QC_Status === "Approved" || row.QC_Status === "Rejected") return;
+        const soVal = displayVal(row.SO);
+        if (soVal === "—") return;
+        bucketFor(soVal).qcRecheck.push({ sku: displayVal(row.SKU), itemName: displayVal(row.Item_Name), qty: displayVal(row.Quantity), rr: displayVal(row.RR) });
+      });
+
+      preOrderRows.forEach((row) => {
+        const soVal = displayVal(row.SO);
+        if (soVal === "—") return;
+        if (row.Pre_Order_Status === "Pending") {
+          bucketFor(soVal).pending.push({ sku: displayVal(row.SKU), itemName: displayVal(row.Item_Name), qty: displayVal(row.Qty) });
+          return;
+        }
+        // ADDED 2026-08-07, real live gap found during Task 10 verification — a
+        // replacement's fresh Pre_Order_FF row (RR-redirect branch in
+        // checker_checklist_qc_sync.txt) is created ALREADY at Pre_Order_Status
+        // "Received" (skips "Pending" entirely — replacement stock is presumed
+        // on-hand), so the Pending-only check above never caught it, and once a
+        // package IS created for it (Package_Number gets set), it's still mid-
+        // flight through Order Readiness/Pick/Pack/QC with no Order_Aggregation1
+        // row yet — the SO's kanban card could show "Done" the moment every OTHER
+        // item was dispatched, even though this replacement hadn't even started
+        // its own journey. Track every packaged-but-still-in-Pre_Order_FF row here
+        // too; dispatchState() below cross-checks against its own record's
+        // Item_Details for a matching Dispatched=true row before ever crediting it
+        // as actually finished.
+        const pkgNo = displayVal(row.Package_Number);
+        if (pkgNo !== "—") {
+          bucketFor(soVal).packaged.push({ sku: displayVal(row.SKU), pac: pkgNo, itemName: displayVal(row.Item_Name) });
+          return;
+        }
+        // ADDED 2026-08-14, real live bug (SO-16476/PR-00006, "CUSTOMIZED (FLOOR
+        // LAMP)") — a THIRD gap the 2026-08-07 fix above still missed: a row that's
+        // "Received" (arrived, so the Pending check above already skipped it) but
+        // has NO Package_Number YET EITHER (Create Package not clicked yet) fell
+        // into neither bucket — invisible to both this SO's "still awaiting" count
+        // AND the "packaged, still mid-flight" cross-check, so the SO's card/detail
+        // flipped straight to "Dispatched"/"Nothing left" the moment every item
+        // Order_Aggregation1 currently had was dispatched, with this item never
+        // having even started its own journey. Tracked separately from `pending`
+        // (this item HAS arrived — a "Pending arrival" label would be wrong) and
+        // from `packaged` (no PAC# yet to cross-check against Item_Details with).
+        bucketFor(soVal).unpackaged.push({ sku: displayVal(row.SKU), itemName: displayVal(row.Item_Name), qty: displayVal(row.Qty) });
+      });
+
+      // ADDED 2026-08-06 — SO+SKU-keyed exception index for the new hard
+      // block, built in the SAME pass over exceptionRows that already feeds
+      // the (unchanged) informational awaitingBySO map below — one fetch,
+      // two indexes, no duplicate network call.
+      // FIXED 2026-08-07 — same class of bug as buildReadinessIndex's own
+      // FIXED comment: was SO+SKU only, would silently collapse 2+ real
+      // packages sharing the same SO+SKU into one entry. Exception_Control1
+      // carries its own real PAC field (confirmed live), so keyed by
+      // SO+SKU+PAC now, with the bare SO+SKU key kept as a first-wins
+      // fallback for legacy/no-PAC data — see exceptionBlockedItems below.
+      const exceptionMap = new Map();
+      exceptionRows.forEach((row) => {
+        if (row.Status === "Completed") return;
+        const soVal = displayVal(row.Sales_Order);
+        if (soVal === "—") return;
+        const skuVal = displayVal(row.SKU);
+        if (skuVal !== "—") {
+          const pacVal = displayVal(row.PAC);
+          const entry = {
+            status: displayVal(row.Status) || "Pending",
+            overrideApproved: isTrue(row.Override_Approved),
+          };
+          exceptionMap.set(soVal + "|" + skuVal + "|" + pacVal, entry);
+          const fallbackKey = soVal + "|" + skuVal;
+          if (!exceptionMap.has(fallbackKey)) exceptionMap.set(fallbackKey, entry);
+        }
+        bucketFor(soVal).rejected.push({ sku: skuVal, itemName: displayVal(row.Item_Name), status: displayVal(row.Status) || "Pending" });
+      });
+
+      return { awaitingMap: map, exceptionSKUMap: exceptionMap };
+    });
+  }
+
+  // Looks up the awaiting-items info for one card's own SO. Always returns a
+  // real object (never undefined) so callers never need a null-check.
+  function awaitingInfoForSO(soVal) {
+    return awaitingBySO.get(soVal) || { pending: [], rejected: [], packaged: [], unpackaged: [], qcRecheck: [] };
+  }
+
+  // ADDED 2026-07-31 — payment gate on Dispatch, per user request ("the user
+  // cannot dispatch an item... with same PAC number if that item's Payment
+  // Status != Paid"). Bulk-fetches Sales_Order_Readiness_Gate_Report ONCE
+  // (same cheap-bulk-fetch convention as fetchAwaitingItems above). Fails OPEN
+  // on a fetch error or a genuinely empty report — same reasoning as every
+  // other best-effort gate in this app (a broken lookup shouldn't newly block
+  // an otherwise-working Dispatch). An item with NO matching readiness-gate
+  // row at all also fails open (not yet synced there, or created outside that
+  // flow) — only an item with a real record that ISN'T "Yes" actually blocks.
+  //
+  // REVISED same day, real bug found live (screenshot: one Order_Aggregation1
+  // record's header PAC was "PAC-16354", but its own Item_Details held items
+  // from TWO different real packages — PAC-16354 AND PAC-16353 — because this
+  // form aggregates by SO, not by package. The first version keyed this whole
+  // index by PAC (Package_Order) and used the header r.PAC for every row,
+  // which is only correct for a record that happens to hold exactly one
+  // package's worth of items. Fixed: indexed by SO+SKU instead (the real
+  // per-ITEM key Sales_Order_Readiness_Gate itself is upserted on — see
+  // DelugeScripts/preorder_to_readiness_gate.txt's own
+  // `sales_order_number == soVal && SKU == skuVal` match) — every row's real
+  // PAC and payment status are now looked up individually, never assumed to
+  // match the record's own header field.
+  let rawPaymentRows = [];
+  function fetchPaymentStatusRows() {
+    return ZOHO.CREATOR.DATA.getRecords({
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.READINESS_GATE_REPORT,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    }).then((response) => {
+      rawPaymentRows = (response && response.data) || [];
+      return rawPaymentRows;
+    })
+      .catch((err) => {
+        if (isEmptyReportError(err)) return [];
+        console.error("fetchPaymentStatusRows failed:", err);
+        return [];
+      });
+  }
+
+  function buildReadinessIndex(rows) {
+    const map = new Map();
+    rows.forEach((row) => {
+      const so = displayVal(row.sales_order_number);
+      const sku = displayVal(row.SKU);
+      if (so === "—" || sku === "—") return;
+      const pac = displayVal(row.Package_Order);
+      const entry = {
+        pac,
+        paymentStatus: row.payment_status || "",
+        // ADDED 2026-08-06 — override fields, see design doc. overrideApproved
+        // is only honored by paymentBlockedItems() below if
+        // overrideApprovedForStatus still matches the CURRENT paymentStatus —
+        // any drift since approval means the status changed again and the
+        // override no longer applies (the "tied to the specific block" rule).
+        overrideApproved: isTrue(row.Override_Approved),
+        overrideApprovedForStatus: row.Override_Approved_For_Status || "",
+        // ADDED 2026-09-03 — same Credit Terms bypass as the Readiness Gate
+        // widget's own Approve Dispatch queue (loadApproveQueue). An invoice
+        // with real Books credit terms (Net 15/30/45/60) is EXPECTED to
+        // still be unpaid here — paymentBlockedItems() below skips it
+        // entirely, no override needed at all.
+        hasCreditTerms: isTrue(row.Has_Credit_Terms),
+      };
+      // FIXED 2026-08-07, real live bug found during Task 10 verification
+      // (SO-16415 replacement test) — was keyed by SO+SKU alone, silently
+      // collapsing 2+ real packages sharing the same SO+SKU (the replacement-
+      // package redesign made this a normal case) into ONE entry, whichever
+      // row this forEach happened to process last. A dispatcher could see the
+      // WRONG package's payment status/PAC applied to a row, or worse, an
+      // unpaid package's block masked by a paid sibling's entry overwriting
+      // it in the Map. Keyed by SO+SKU+PAC now (real per-item key); the bare
+      // SO+SKU key is kept too, but only as a first-wins fallback for legacy
+      // callers/data with no PAC to key on — see readinessInfoForItem below.
+      map.set(so + "|" + sku + "|" + pac, entry);
+      const fallbackKey = so + "|" + sku;
+      if (!map.has(fallbackKey)) map.set(fallbackKey, entry);
+    });
+    return map;
+  }
+
+  // Real per-item lookup — null if this exact SO+SKU(+PAC) has no matching
+  // readiness-gate record at all (not yet synced, or a genuinely different
+  // flow — callers fail open on null). Pass the row's own PAC when known
+  // (real per-item key since the replacement-package redesign); falls back
+  // to the SO+SKU-only entry only when PAC is blank/unavailable.
+  function readinessInfoForItem(soVal, sku, pac) {
+    const so = displayVal(soVal);
+    const skuV = displayVal(sku);
+    if (pac) {
+      const hit = readinessBySOSKU.get(so + "|" + skuV + "|" + displayVal(pac));
+      if (hit) return hit;
+    }
+    return readinessBySOSKU.get(so + "|" + skuV) || null;
+  }
+
+  // Given the SO and a set of Item_Details rows (real ones, not the header),
+  // returns which of them are genuinely payment-blocked — {item, pac,
+  // statusLabel} per blocked row. Empty array = nothing blocking. Used both
+  // for the button's disabled state (against the currently-selected rows) and
+  // dispatchRecord()'s own defense-in-depth re-check.
+  function paymentBlockedItems(soVal, rows) {
+    const blocked = [];
+    rows.forEach((row) => {
+      // FIXED 2026-08-07 — pass this row's own PAC (real per-item key since
+      // the replacement-package redesign; see readinessInfoForItem/
+      // buildReadinessIndex's own FIXED comments) instead of SO+SKU alone,
+      // which could silently apply a DIFFERENT package's payment status to
+      // this row when 2+ packages share the same SO+SKU.
+      const info = readinessInfoForItem(soVal, row.SKU, row.PAC);
+      if (!info || !info.paymentStatus || info.paymentStatus === "Yes") return;
+      // ADDED 2026-09-03 — see hasCreditTerms's own comment in
+      // buildReadinessIndex above. Skips this item out of the block
+      // entirely, same as an approved override, no override record needed.
+      if (info.hasCreditTerms) return;
+      // ADDED 2026-08-06 — override honored ONLY if it was approved for
+      // exactly this current paymentStatus value. Any mismatch (status
+      // changed again since approval) means this is effectively a fresh
+      // block — falls through to the push() below, same as never approved.
+      if (info.overrideApproved && info.overrideApprovedForStatus === info.paymentStatus) return;
+      blocked.push({
+        item: displayVal(row.Item_Name),
+        pac: info.pac || "—",
+        statusLabel: PAYMENT_STATUS_LABEL[info.paymentStatus] || (info.paymentStatus || "Not Checked"),
+      });
+    });
+    return blocked;
+  }
+
+  // ADDED 2026-08-06 — NEW hard block (exceptions were informational-only
+  // before this feature). Mirrors paymentBlockedItems()'s exact shape/
+  // calling convention — used both for the button's disabled state and
+  // dispatchRecord()'s own defense-in-depth re-check, same as the payment
+  // one. No status-snapshot needed here (unlike payment) — a resolved
+  // exception naturally becomes a NEW Exception_Control1 record on its next
+  // real occurrence in this app's existing creation pattern, so staleness
+  // isn't a concern the way it is for a single record's payment_status
+  // flipping back and forth.
+  function exceptionBlockedItems(soVal, rows) {
+    const blocked = [];
+    rows.forEach((row) => {
+      // FIXED 2026-08-07 — same PAC-aware lookup fix as paymentBlockedItems
+      // above (see exceptionMap's own FIXED comment); try SO+SKU+PAC first
+      // (this row's real per-item key), fall back to SO+SKU only if this
+      // row's own PAC is blank.
+      const so = displayVal(soVal);
+      const skuV = displayVal(row.SKU);
+      const rowPac = displayVal(row.PAC);
+      const info = (rowPac !== "—" && exceptionBySOSKU.get(so + "|" + skuV + "|" + rowPac))
+        || exceptionBySOSKU.get(so + "|" + skuV);
+      if (!info) return;
+      if (info.overrideApproved) return;
+      blocked.push({
+        item: displayVal(row.Item_Name),
+        statusLabel: info.status,
+      });
+    });
+    return blocked;
+  }
+
+  // Bulk getRecords (fetchAllRecords, above) — CONFIRMED against live data
+  // (2026-07-27, same finding as the QC Checklist widget's Spare_part_type
+  // field): even with field_config: "all" on the parent, subform/grid fields
+  // come back summarized to just [{ID, zc_display_value}] per row, not the
+  // real Item_Name/SKU/QTY/Bin_Location/Select1 child-field values. The
+  // "field_config: 'all' returns raw subform array" comment on fetchAllRecords
+  // above was an untested assumption written before this was verified — it's
+  // wrong. getRecordById on a single record, by contrast, returns the full
+  // per-row child-field data, so each record's Item_Details is hydrated via a
+  // separate on-demand fetch. Selected/total item counts and the Pending/
+  // Partial/Done kanban bucket all depend on Select1, which is exactly the
+  // field that's missing from the bulk shape — this is core to the widget,
+  // not a rarely-seen detail section, so every record gets hydrated right
+  // after the initial load (not just the one record a user happens to open).
+  function fetchFullItemDetails(id) {
+    if (!(ZOHO.CREATOR.DATA && typeof ZOHO.CREATOR.DATA.getRecordById === "function")) return Promise.resolve(null);
+    const config = {
+      app_name: CONFIG.APP_NAME,
+      report_name: CONFIG.REPORT_NAME,
+      id: id,
+      field_config: "all",
+    };
+    return ZOHO.CREATOR.DATA.getRecordById(config).then((response) => {
+      const full = response && response.data;
+      return (full && Array.isArray(full.Item_Details)) ? full.Item_Details : null;
+    }).catch((err) => {
+      console.error("Failed to fetch full Item_Details for record " + id + ":", err);
+      return null;
+    });
+  }
+
+  // Patches r.Item_Details in place (skips records already hydrated, or with
+  // no item rows to begin with) — safe to call repeatedly on the same record.
+  async function hydrateItemDetails(r) {
+    if (hydratedItemDetailIds.has(r.ID)) return false;
+    if (!Array.isArray(r.Item_Details) || !r.Item_Details.length) return false;
+    const fullRows = await fetchFullItemDetails(r.ID);
+    if (!fullRows) return false;
+    r.Item_Details = fullRows;
+    hydratedItemDetailIds.add(r.ID);
+    return true;
+  }
+
+  // Runs `fn` over `items` with at most `limit` in flight at once — avoids
+  // firing hundreds of simultaneous getRecordById calls (and likely hitting
+  // Zoho API rate limits) when there are many orders to hydrate.
+  async function runWithConcurrency(items, limit, fn) {
+    const queue = items.slice();
+    const workers = new Array(Math.min(limit, queue.length)).fill(0).map(async () => {
+      while (queue.length) {
+        await fn(queue.shift());
+      }
+    });
+    await Promise.all(workers);
+  }
+
+  async function hydrateAllItemDetails(records) {
+    await runWithConcurrency(records, 6, (r) => hydrateItemDetails(r));
+  }
+
+  function loadLive() {
+    Promise.all([fetchAllRecords(), fetchAwaitingItems(), fetchPaymentStatusRows()]).then(async ([records, awaitingResult, paymentRows]) => {
+      allRecords = records;
+      awaitingBySO = awaitingResult.awaitingMap;
+      exceptionBySOSKU = awaitingResult.exceptionSKUMap;
+      readinessBySOSKU = buildReadinessIndex(paymentRows);
+      orderedRows = computeOrderedRows(allRecords);
+      // Fast first paint with whatever the bulk fetch gave us (SO/customer
+      // info is accurate; per-item Select1 isn't yet, so Partial/Done
+      // buckets and "selected/total" counts may briefly be off) — then
+      // upgrade to accurate data once every record's Item_Details is
+      // hydrated, and re-render.
+      renderAll();
+      checkDeepLinkOpenOrderAgg();
+      await hydrateAllItemDetails(allRecords);
+      renderAll();
+      if (currentDetailRecord) {
+        renderItemDetailsTable(currentDetailRecord);
+        renderDispatchPanel(currentDetailRecord);
+        renderAwaitingItemsPanel(currentDetailRecord);
+      }
+    }).catch((err) => {
+      console.error(err);
+      toast("Failed to load records from Zoho Creator.", "error");
+    });
+  }
+
+  // Deep link from a notification click — same pattern as UI/FF Widget/SO's own
+  // checkDeepLinkOpenSO(). Opens straight into switchToDetail() (this widget's
+  // own read-only detail view — Edit is a separate, deliberate 2nd click via
+  // editRecordBtn, not changed here). Real page link name confirmed by user
+  // 2026-08-03: Order_Aggregation2.
+  //   Target_URL = "https://creatorapp.zoho.com/homecartel/environment/" +
+  //     "<development|production>/supply-chain-app/#Page:Order_Aggregation2" +
+  //     "?orderAggRecordId=" + input.ID
+  // Query string AFTER the hash, not before — confirmed gotcha elsewhere in this
+  // app. Still needs a Page Variable named `orderAggRecordId` registered on the
+  // Order_Aggregation2 page (Page Builder -> Variables tab -> Add Variable) —
+  // not yet confirmed done.
+  let deepLinkChecked = false;
+  function checkDeepLinkOpenOrderAgg() {
+    if (deepLinkChecked) return;
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams !== "function") return;
+    deepLinkChecked = true;
+    ZOHO.CREATOR.UTIL.getQueryParams().then((params) => {
+      const id = params && params.orderAggRecordId;
+      if (id) switchToDetail(id);
+    }).catch(() => {});
+  }
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  searchInput.addEventListener("input", renderBoard);
+
+  // ADDED 2026-11-05 — Board / List tabs + the list's own status filter pills.
+  document.getElementById("viewBoardBtn").addEventListener("click", () => setViewMode("board"));
+  document.getElementById("viewListBtn").addEventListener("click", () => setViewMode("list"));
+  document.querySelectorAll(".list-filter-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      listFilter = btn.dataset.filter;
+      renderBoard();
+    });
+  });
+  // Applies the remembered view and paints it (safe before data loads — every
+  // renderer handles an empty orderedRows).
+  setViewMode(VIEW_MODE);
+
+  const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+  if (sdkReady) {
+    loadLive();
+  } else {
+    toast("This widget must be opened inside Zoho Creator to load data.", "error");
+  }
+
+  // ---------------------------------------------------------------------
+  // Notification bell — see notification_component/README.md. Same 2 accounts
+  // as the other FF widgets for now, per user (2026-08-03): "for now that two
+  // only. we will update this some other time if have some changes."
+  // ---------------------------------------------------------------------
+  const notifications = window.NotificationSystem ? NotificationSystem.init({
+    mountId:          "notifMount",
+    appName:          CONFIG.APP_NAME,
+    reportName:       "OrderAgg_Notifications_Report",
+    currentUserEmail: () => CURRENT_USER_EMAIL,
+    environment:      () => ZC_ENV,
+    roleMap:          { "homecartelff@gmail.com": "HC Pack & Fulfill", "hcinvanalyst@gmail.com": "HC Systems" },
+    fullAccessRoles:  ["HC Systems"],
+    title:            "Notifications",
+  }) : { open(){}, close(){}, refresh(){} };
+
+  // Resolve the real logged-in email + dev/prod environment — same 2-path
+  // getInitParams()/ZOHO.CREATOR.init() fallback chain proven in the other FF
+  // widgets. This widget had no such resolution before.
+  if (sdkReady && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams === "function") {
+    ZOHO.CREATOR.UTIL.getInitParams().then((params) => {
+      if (params && (params.environment || params.env)) ZC_ENV = params.environment || params.env;
+      const email = params && (params.loginUser || params.login_user || params.userEmail || params.user_email || params.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); }
+    }).catch(() => {});
+  }
+  if (sdkReady && typeof ZOHO.CREATOR.init === "function") {
+    ZOHO.CREATOR.init().then((initData) => {
+      if (initData && (initData.environment || initData.env)) ZC_ENV = initData.environment || initData.env;
+      const email = initData && (initData.loginUser || initData.login_user || initData.userEmail || initData.user || "");
+      const emailStr = String(email || "").trim().toLowerCase();
+      if (emailStr && !CURRENT_USER_EMAIL) { CURRENT_USER_EMAIL = emailStr; notifications.refresh(); }
+    }).catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+// form: Disable_PR_Details_Supplier2  form=Tony_Fan_Purchase_Request event=on add or edit on load  [.ds line 37849]
+    disable PR_No_Supplier2;
+disable PR_Date_Supplier2;
+disable Items_Supplier2;
+disable sku_Supplier2;
+disable quantity_Supplier2;
+disable Description1_Supplier2;
+disable description_Supplier2;
+disable unit_Supplier2;
+disable category_Supplier2;
+disable Target_Delivery_Supplier2;
+disable Response_Status;
+disable edit_counter;
+disable Supplier_Selected_Supplier2.Suppliers_Supplier2;
+disable Supplier_Selected_Supplier2.Status_Supplier2;
+disable Supplier_Selected_Supplier2.Selected_Supplier2;
+if(input.edit_counter == 0)
+{
+    disable Supplier_Selected_Supplier2.Availability_Supplier2;
+    disable Supplier_Selected_Supplier2.Initial_Price_Supplier2;
+    disable Supplier_Selected_Supplier2.Negotiated_Supplier2;
+    disable Supplier_Selected_Supplier2.Final_Price_Supplier2;
+    disable Supplier_Selected_Supplier2.Lead_Time_Supplier2;
+}
+if(input.Response_Status == "Not Selected")
+{
+    disable Supplier_Selected_Supplier2.Availability_Supplier2;
+    disable Supplier_Selected_Supplier2.Initial_Price_Supplier2;
+    disable Supplier_Selected_Supplier2.Negotiated_Supplier2;
+    disable Supplier_Selected_Supplier2.Final_Price_Supplier2;
+    disable Supplier_Selected_Supplier2.Lead_Time_Supplier2;
+}

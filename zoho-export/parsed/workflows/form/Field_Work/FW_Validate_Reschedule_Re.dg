@@ -1,0 +1,6 @@
+// form: FW_Validate_Reschedule_Reason  form=Field_Work event=on add or edit on validate  [.ds line 45029]
+    if(input.Status == "Reschedule Requested" && input.Reschedule_Reason == null || input.Reschedule_Reason == "")
+{
+    alert "Reschedule Reason is required when Status is set to Reschedule Requested.";
+    cancel submit;
+}

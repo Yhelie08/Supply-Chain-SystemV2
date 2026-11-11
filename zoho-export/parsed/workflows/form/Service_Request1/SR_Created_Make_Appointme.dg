@@ -1,0 +1,184 @@
+// form: SR_Created_Make_Appointment  form=Service_Request1 event=on add on success  [.ds line 46550]
+    // =====================================================================
+// SR_Created_Make_Appointment
+// Service_Request1 (Created > Successful submission)
+//
+// Guard: kung may Service_Appointment_ID na, wala nang gagawin. Ito ang
+// nagpipigil ng dobleng appointment kung sakaling ma-trigger ulit ito.
+// =====================================================================
+if(input.Service_Appointment_ID == null || input.Service_Appointment_ID == "")
+{
+    srRec = Service_Request1[ID == input.ID];
+    // -----------------------------------------------------------------
+    // 1. Kunin ang stage-1 record (Initial Scheduling) para sa 2 petsa na
+    //    wala sa Service Request: Order_Date at ang araw ng dispatch.
+    //    for-each, hindi bare assignment — ito ang proven-safe na shape
+    //    dito para sa pagbasa ng record na hindi `input` (pareho ng
+    //    dms_exception_queue.txt).
+    // -----------------------------------------------------------------
+    isOrderDate = null;
+    isDispatchDate = null;
+    if(input.Initial_Schedule_ID != null && input.Initial_Schedule_ID != "")
+    {
+        for each  isLoop in Delivery_Scheduling[ID == input.Initial_Schedule_ID.toLong()]
+        {
+            isOrderDate = isLoop.Order_Date;
+            isDispatchDate = isLoop.Added_Time.toDate();
+        }
+    }
+    if(isDispatchDate == null)
+    {
+        isDispatchDate = zoho.currentdate;
+    }
+    // -----------------------------------------------------------------
+    // 2. Type_of_Delivery — PICKLIST sa appointment, plain text sa SR.
+    //    Ang value na wala sa listahan ay tinatanggihan ang BUONG insert,
+    //    kaya hindi natin ipapasa kung hindi eksaktong tugma. Hindi ito
+    //    hula — ito ang 8 tunay na choice sa Service_Appointment_Form.
+    // -----------------------------------------------------------------
+    validTypes = {"Delivery Only","With Installation","Full-Day Install","Multi-Day Install","Replacement","Site Visit","Pullout","Pick Up"};
+    typeToUse = "";
+    rawType = ifnull(input.Delivery_Type,"").trim();
+    if(validTypes.contains(rawType))
+    {
+        typeToUse = rawType;
+    }
+    // -----------------------------------------------------------------
+    // 3. Gawin ang appointment. Naka-"Queued" — ito ang tunay na starting
+    //    state ng DMS, at ito ang hinahanap ng site-confirmation workflow.
+    //
+    //    Walang Date field na ipinapasa na blangko: ang Deluge ay
+    //    sumasabog ng "UnParsable date" sa blangkong petsa, kaya ang
+    //    Requested_Delivery_* at Order_Date ay isusulat PAGKATAPOS ng
+    //    insert, may null check bawat isa.
+    // -----------------------------------------------------------------
+    newSaId = insert into Service_Appointment_Form
+    [
+        Appointment_Status="Queued"
+        Sales_Order=ifnull(input.Sales_Order,"")
+        Sales_Order_Display=ifnull(input.Sales_Order,"")
+        Package_Number=ifnull(input.Package_Number,"")
+        Customer_Address=ifnull(input.Customer_Address,"")
+        City=ifnull(input.City,"")
+        Email=ifnull(input.Email,"")
+        Contact=input.Phone_Number
+        Type_of_Delivery=typeToUse
+        Initial_Schedule_ID=ifnull(input.Initial_Schedule_ID,"")
+        Service_Request_ID=input.ID + ""
+        Service_Request=ifnull(input.SR_No,"") + ""
+        Original_SO=ifnull(input.Original_SO,"")
+        RMA=ifnull(input.RMA1,"")
+        Reason=ifnull(input.Reason,"")
+        Sub_Reason=ifnull(input.Sub,"")
+        If_Pull_Out=ifnull(input.If_Pull_Out,"")
+        Priority_Level=ifnull(input.Priority_Level,"")
+        Scheduled_by=ifnull(input.Scheduled_by,"")
+        Fulfillment_Completed_Date=isDispatchDate
+        Site_Confirmation_Status="Pending"
+        Exception_Status="None"
+        Added_User=zoho.loginuser
+    ];
+    newSA = Service_Appointment_Form[ID == newSaId];
+    // -----------------------------------------------------------------
+    // 4. Customer_Name — NAME-type field sa appointment, plain text sa SR.
+    //    Walang maaasahang hati sa first/last, kaya buo sa last_name
+    //    (mababasa pa rin ang zc_display_value) — pareho ng desisyon ng
+    //    Order Aggregation widget noong 2026-07-28, hindi hula sa hati.
+    // -----------------------------------------------------------------
+    srCustName = ifnull(input.Customer_Name,"").trim();
+    if(srCustName != "")
+    {
+        newSA.Customer_Name.first_name="";
+        newSA.Customer_Name.last_name=srCustName;
+    }
+    // -----------------------------------------------------------------
+    // 5. ANG BUOD NG BUONG STEP NA ITO — ang initial schedule.
+    //    Ito ang dadaanan ng scheduling engine (step 4): ang slot search
+    //    ay mag-aanchor sa Requested_Delivery_Date, hindi na sa "ngayon".
+    //
+    //    CHANGED 2026-10-27 — ang Initial_Schedule_Time ay DATE-TIME pala
+    //    (nakumpirma nang live: code 3002 "Enter a valid date format for
+    //    Initial Schedule Time" nang sinubukang isulat na puro oras), samantalang
+    //    ang Requested_Delivery_Time ay TIME. Kaya kinukuha dito ang oras na
+    //    bahagi lang. 12-oras ang format ("09:39:00 AM") — ganoon ang ipinapakita
+    //    ng lahat ng Time field sa app na ito (timedisplayoptions = "hh:mm:ss",
+    //    maliit na hh = 12-oras), at ganoon din ang Confirmed_Time_Slot.
+    // -----------------------------------------------------------------
+    if(input.Delivery_Date != null)
+    {
+        newSA.Requested_Delivery_Date=input.Delivery_Date;
+    }
+    if(input.Initial_Schedule_Time != null)
+    {
+        newSA.Requested_Delivery_Time=input.Initial_Schedule_Time.toString("hh:mm:ss a");
+    }
+    if(isOrderDate != null)
+    {
+        newSA.Order_Date=isOrderDate;
+    }
+    // -----------------------------------------------------------------
+    // 6. Item rows. Kasama ang PAC — ito ang per-package identity na
+    //    kailangang makarating hanggang dulo ng chain.
+    //    Ang .insert() sa subform ang proven-safe na shape dito.
+    // -----------------------------------------------------------------
+    for each  it in input.Item_Details
+    {
+        newRow = Service_Appointment_Form.Item_Details();
+        newRow.Item_Name=it.Item_Name;
+        newRow.SKU=it.SKU;
+        newRow.Quantity=it.Quantity;
+        newRow.PAC=it.PAC;
+        newSA.Item_Details.insert(newRow);
+    }
+    // -----------------------------------------------------------------
+    // 7. Package_Shipments — isang row kada package.
+    //    Galing sa per-row PAC, hindi sa header Package_Number (display
+    //    lang iyon; pwedeng "PAC1, PAC2" kapag 2 package ang dispatch).
+    //    Kapag walang PAC sa kahit isang row (lumang record), hahatiin
+    //    ang header sa kuwit bilang fallback.
+    // -----------------------------------------------------------------
+    pacList = List();
+    for each  it2 in input.Item_Details
+    {
+        p = ifnull(it2.PAC,"").trim();
+        if(p != "" && !pacList.contains(p))
+        {
+            pacList.add(p);
+        }
+    }
+    if(pacList.size() == 0)
+    {
+        hdrPac = ifnull(input.Package_Number,"").trim();
+        if(hdrPac != "")
+        {
+            for each  hp in hdrPac.toList(",")
+            {
+                hp2 = hp.trim();
+                if(hp2 != "" && !pacList.contains(hp2))
+                {
+                    pacList.add(hp2);
+                }
+            }
+        }
+    }
+    for each  pac in pacList
+    {
+        insert into Package_Shipments
+        [
+            Service_Appointment_ID=newSaId + ""
+            Sales_Order=ifnull(input.Sales_Order,"")
+            Package_Number=pac
+            Shipment_Created=false
+            Added_User=zoho.loginuser
+        ]
+    }
+    // -----------------------------------------------------------------
+    // 8. Write-back sa Service Request. Huling-huli ito: hangga't
+    //    blangko ang Service_Appointment_ID, alam ng guard sa itaas na
+    //    hindi pa tapos — kaya ang isang na-abort na run ay pwedeng
+    //    i-retry nang hindi nagdodoble.
+    // -----------------------------------------------------------------
+    srRec.Service_Appointment_ID=newSaId + "";
+    srRec.SR_Status="Scheduling";
+    info "SR_Created_Make_Appointment: SR " + input.ID + " -> SA " + newSaId + ", " + pacList.size() + " package row(s)";
+}

@@ -1,0 +1,111 @@
+// map createExceptionControlFromComplaint(String complaintNumber, String salesOrder, String customerName, String orderType, String itemsJson)   [.ds lines 28909-29020]
+response = Map();
+itemsList = itemsJson.toJSONList();
+if(itemsList == null || itemsList.size() == 0)
+{
+    response.put("status","error");
+    response.put("message","At least one item is required.");
+    return response;
+}
+maxExcNum = 0;
+for each  existingExcRec in Exception_Control1[ID != 0]
+{
+    existingExcNoStr = existingExcRec.Exception_Number;
+    if(existingExcNoStr != null && existingExcNoStr.startsWith("EXC-FF-"))
+    {
+        numPart = existingExcNoStr.removeFirstOccurence("EXC-FF-");
+        numVal = numPart.toLong();
+        if(numVal > maxExcNum)
+        {
+            maxExcNum = numVal;
+        }
+    }
+}
+createdIds = List();
+createdNumbers = List();
+for each  itemRaw in itemsList
+{
+    item = itemRaw.toMap();
+    itemName = item.get("itemName") + "";
+    if(itemName == "null")
+    {
+        itemName = "";
+    }
+    sku = item.get("sku") + "";
+    if(sku == "null")
+    {
+        sku = "";
+    }
+    itemToReplace1 = item.get("itemToReplace1") + "";
+    if(itemToReplace1 == "null")
+    {
+        itemToReplace1 = "";
+    }
+    quantityOfSpareParts = item.get("quantityOfSpareParts") + "";
+    if(quantityOfSpareParts == "null")
+    {
+        quantityOfSpareParts = "";
+    }
+    itemToReplace3 = item.get("itemToReplace3") + "";
+    if(itemToReplace3 == "null")
+    {
+        itemToReplace3 = "";
+    }
+    maxExcNum = maxExcNum + 1;
+    if(maxExcNum < 10)
+    {
+        nextExcNo = "EXC-FF-0000" + maxExcNum;
+    }
+    else if(maxExcNum < 100)
+    {
+        nextExcNo = "EXC-FF-000" + maxExcNum;
+    }
+    else if(maxExcNum < 1000)
+    {
+        nextExcNo = "EXC-FF-00" + maxExcNum;
+    }
+    else if(maxExcNum < 10000)
+    {
+        nextExcNo = "EXC-FF-0" + maxExcNum;
+    }
+    else
+    {
+        nextExcNo = "EXC-FF-" + maxExcNum;
+    }
+    newExceptionId = insert into Exception_Control1
+    [
+        Sales_Order=salesOrder
+        SKU=sku
+        Exception_Number=nextExcNo
+        Order_Type=orderType
+        Source_Module="CMS Complaint"
+        Remarks="Pushed from CMS Complaint " + complaintNumber
+        Customer_Name=customerName
+        Item_to_Replace3=itemToReplace3
+        Item_to_Replace1=itemToReplace1
+        Quantity_of_damage_spare_s=quantityOfSpareParts
+        Item_Name=itemName
+        Status="Pending"
+        Qty=1
+        Added_User=zoho.loginuser
+    ];
+    newExcNotifId = insert into ExceptionControl_Notifications
+    [
+        Recipient_Email="homecartelff@gmail.com"
+        Notification_Type="Exception Record Created"
+        Message="New Exception Control record — " + salesOrder + " (" + itemName + ") — " + nextExcNo + " (from CMS Complaint " + complaintNumber + ")."
+        Created_On=zoho.currenttime
+        Read=false
+        Target_URL="https://creatorapp.zoho.com/homecartel/supply-chain-app/#Page:Exception_Control2?excRecordId=" + newExceptionId
+        Source_Record_No=salesOrder
+        Source_Record_ID=newExceptionId
+        Added_User=zoho.loginuser
+    ];
+    createdIds.add(newExceptionId + "");
+    createdNumbers.add(nextExcNo);
+}
+response.put("status","success");
+response.put("message",createdIds.size() + " Exception Control record(s) created.");
+response.put("createdIds",createdIds);
+response.put("exceptionNumbers",createdNumbers);
+return response;

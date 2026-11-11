@@ -1,0 +1,262 @@
+// functions: Acknowledged_PO_Supplier2  form=Tony_Fan_Purchase_Order event= on start > on click  [.ds line 51268]
+input.Acknowledge_On_Supplier2 = zoho.currenttime;
+                input.PO_Status_Supplier2 = "Confirmed";
+                aggPORecsT = Purchase_Order[PO_No == input.PO_No_Supplier2];
+                for each  apoT in aggPORecsT
+                {
+                    apoT.Acknowledge_On=zoho.currenttime;
+                    apoT.PO_Status="Confirmed";
+                    soNoTextT = apoT.SO_No.Sales_Order_Number;
+                    matchingShipNoT = "";
+                    candidateShipmentsT = Shipments[PO_No == apoT.ID && Shipment_Status == "Pending"];
+                    for each  shT in candidateShipmentsT
+                    {
+                        matchingShipNoT = shT.Shipment_No;
+                    }
+                    if(matchingShipNoT != "")
+                    {
+                        targetShipsT = Shipments[Shipment_No == matchingShipNoT];
+                        for each  tshT in targetShipsT
+                        {
+                            targetShipT = tshT;
+                        }
+                    }
+                    if(apoT.RR_Reference_No != null && apoT.RR_Reference_No != "")
+                    {
+                        if(matchingShipNoT == "")
+                        {
+                            maxShipNumT = 0;
+                            existingShipmentsT = Shipments[ID != 0];
+                            for each  shT in existingShipmentsT
+                            {
+                                shipNoStrT = shT.Shipment_No;
+                                if(shipNoStrT != null && shipNoStrT != "")
+                                {
+                                    shipNumPartT = shipNoStrT.removeFirstOccurence("SHP-");
+                                    shipNumT = shipNumPartT.toLong();
+                                    if(shipNumT > maxShipNumT)
+                                    {
+                                        maxShipNumT = shipNumT;
+                                    }
+                                }
+                            }
+                            newShipNumT = maxShipNumT + 1;
+                            if(newShipNumT < 10)
+                            {
+                                newShipNoT = "SHP-0000" + newShipNumT;
+                            }
+                            else if(newShipNumT < 100)
+                            {
+                                newShipNoT = "SHP-000" + newShipNumT;
+                            }
+                            else if(newShipNumT < 1000)
+                            {
+                                newShipNoT = "SHP-00" + newShipNumT;
+                            }
+                            else if(newShipNumT < 10000)
+                            {
+                                newShipNoT = "SHP-0" + newShipNumT;
+                            }
+                            else
+                            {
+                                newShipNoT = "SHP-" + newShipNumT;
+                            }
+                            newShipIDT = insert into Shipments
+                            [
+                                Shipment_No=newShipNoT
+                                PO_No=apoT.ID
+                                Sales_Order=soNoTextT
+                                Customer=apoT.Customer
+                                Supplier="Tony"
+                                Shipment_Status="Pending"
+                                Added_User=zoho.loginuser
+                            ];
+                            targetShipT = Shipments[ID == newShipIDT];
+                        }
+                        for each  poLnT in apoT.PO_Line_Items
+                        {
+                            targetShipT.Required_Days_Lead=poLnT.Required_Days_Lead;
+                            targetShipT.Remaining_Days=poLnT.Remaining_Days;
+                            targetShipT.Target_Date=poLnT.Target_Delivery;
+                            targetShipT.Supplier_Target_Date=poLnT.supplier_target_date;
+                            targetShipT.Production_Date=poLnT.Production_Date;
+                            if(poLnT.PR_No != null && poLnT.PR_No != "")
+                            {
+                                prLineT = Purchase_Request1[PR_No == poLnT.PR_No];
+                                targetShipT.Shipment_Days=prLineT.Shipment_Days;
+                                targetShipT.Sales_Owner=prLineT.Sales_Owner;
+                            }
+                            else
+                            {
+                                targetShipT.Sales_Owner=apoT.Sales_Owner;
+                            }
+                            shipLineExistsT = false;
+                            for each  existingShipLnT in targetShipT.PO_Shipments
+                            {
+                                if(existingShipLnT.PR_No == poLnT.PR_No)
+                                {
+                                    shipLineExistsT = true;
+                                }
+                            }
+                            if(shipLineExistsT == false)
+                            {
+                                newShipLineT = Shipments.PO_Shipments();
+                                newShipLineT.PR_No=poLnT.PR_No;
+                                newShipLineT.SKU=poLnT.SKU;
+                                newShipLineT.Item_Name=poLnT.Item;
+                                newShipLineT.Ordered_QTY=poLnT.QTY;
+                                newShipLineT.Shipment_QTY=poLnT.QTY;
+                                newShipLineT.Remaining_QTY=poLnT.QTY;
+                                newShipLineT.Shipping_Mode=poLnT.Shipping_Mode;
+                                targetShipT.PO_Shipments.insert(newShipLineT);
+                            }
+                        }
+                        recvFoundT = false;
+                        matchingRecvIDT = 0;
+                        existingRecvT = Receiving[Shipments == targetShipT.ID];
+                        for each  rcT in existingRecvT
+                        {
+                            matchingRecvIDT = rcT.ID;
+                            recvFoundT = true;
+                        }
+                        if(recvFoundT == true)
+                        {
+                            targetRecvsT = Receiving[ID == matchingRecvIDT];
+                            for each  trcT in targetRecvsT
+                            {
+                                targetRecvT = trcT;
+                            }
+                        }
+                        else
+                        {
+                            maxRecvNumT = 0;
+                            existingRecvsT = Receiving[ID != 0];
+                            for each  rcT in existingRecvsT
+                            {
+                                recvNoStrT = rcT.Receive_No1;
+                                if(recvNoStrT != null && recvNoStrT != "")
+                                {
+                                    recvNumPartT = recvNoStrT.removeFirstOccurence("RCV-");
+                                    recvNumT = recvNumPartT.toLong();
+                                    if(recvNumT > maxRecvNumT)
+                                    {
+                                        maxRecvNumT = recvNumT;
+                                    }
+                                }
+                            }
+                            newRecvNumT = maxRecvNumT + 1;
+                            if(newRecvNumT < 10)
+                            {
+                                newRecvNoT = "RCV-0000" + newRecvNumT;
+                            }
+                            else if(newRecvNumT < 100)
+                            {
+                                newRecvNoT = "RCV-000" + newRecvNumT;
+                            }
+                            else if(newRecvNumT < 1000)
+                            {
+                                newRecvNoT = "RCV-00" + newRecvNumT;
+                            }
+                            else if(newRecvNumT < 10000)
+                            {
+                                newRecvNoT = "RCV-0" + newRecvNumT;
+                            }
+                            else
+                            {
+                                newRecvNoT = "RCV-" + newRecvNumT;
+                            }
+                            newRecvIDT = insert into Receiving
+                            [
+                                Receive_No1=newRecvNoT
+                                Shipments=targetShipT.ID
+                                SO_No=soNoTextT
+                                PO_No=apoT.PO_No
+                                Customer_Name=apoT.Customer
+                                Supplier="Tony"
+                                Added_User=zoho.loginuser
+                            ];
+                            targetRecvT = Receiving[ID == newRecvIDT];
+                        }
+                        for each  poLnT in apoT.PO_Line_Items
+                        {
+                            if(poLnT.PR_No != null && poLnT.PR_No != "")
+                            {
+                                prLineRecvT = Purchase_Request1[PR_No == poLnT.PR_No];
+                                targetRecvT.Sales_Owner=prLineRecvT.Sales_Owner;
+                            }
+                            else
+                            {
+                                targetRecvT.Sales_Owner=apoT.Sales_Owner;
+                            }
+                            recvLineExistsT = false;
+                            for each  existingRecvLnT in targetRecvT.Receiving_Line_Items
+                            {
+                                if(existingRecvLnT.PR_No == poLnT.PR_No)
+                                {
+                                    recvLineExistsT = true;
+                                }
+                            }
+                            if(recvLineExistsT == false)
+                            {
+                                newRecvLineT = Receiving.Receiving_Line_Items();
+                                newRecvLineT.PR_No=poLnT.PR_No;
+                                newRecvLineT.SKU=poLnT.SKU;
+                                newRecvLineT.Item_Name=poLnT.Item;
+                                newRecvLineT.Expected_Qty=poLnT.QTY;
+                                targetRecvT.Receiving_Line_Items.insert(newRecvLineT);
+                            }
+                        }
+                        /* ADDED 2026-07-16 — Tony mirror of the Fenteng block above. */
+                        totalExpectedT = 0;
+                        totalAcceptedT = 0;
+                        totalDamageT = 0;
+                        totalMissingT = 0;
+                        totalLinesRT = 0;
+                        incompleteLinesT = 0;
+                        readyForFulfillT = 0;
+                        for each  rln2 in targetRecvT.Receiving_Line_Items
+                        {
+                            totalLinesRT = totalLinesRT + 1;
+                            expRT = ifnull(rln2.Expected_Qty,0);
+                            accRT = ifnull(rln2.Accepted_Qty,0);
+                            dmgRT = ifnull(rln2.Damage_Qty,0);
+                            misRT = ifnull(rln2.Missing_Qty,0);
+                            totalExpectedT = totalExpectedT + expRT;
+                            totalAcceptedT = totalAcceptedT + accRT;
+                            totalDamageT = totalDamageT + dmgRT;
+                            totalMissingT = totalMissingT + misRT;
+                            totalRecRT = accRT + dmgRT + misRT;
+                            if(totalRecRT == expRT && accRT == expRT)
+                            {
+                                rln2.Line_Result="Complete";
+                                rln2.Ready_for_Fulfillment=true;
+                                readyForFulfillT = readyForFulfillT + 1;
+                            }
+                            else
+                            {
+                                rln2.Line_Result="Incomplete";
+                                rln2.Ready_for_Fulfillment=false;
+                                incompleteLinesT = incompleteLinesT + 1;
+                            }
+                        }
+                        targetRecvT.Total_Expected_Qty=totalExpectedT;
+                        targetRecvT.Total_Accepted_Qty=totalAcceptedT;
+                        targetRecvT.Total_Damage_Qty=totalDamageT;
+                        targetRecvT.Total_Missing_Qty=totalMissingT;
+                        targetRecvT.Total_Lines=totalLinesRT;
+                        targetRecvT.Incomplete_Lines=incompleteLinesT;
+                        targetRecvT.Ready_for_Fulfillment1=readyForFulfillT;
+                        if(totalLinesRT == 0 || (totalAcceptedT == 0 && totalDamageT == 0 && totalMissingT == 0))
+                        {
+                            targetRecvT.Receive_Status="Pending";
+                        }
+                        else if(incompleteLinesT == 0)
+                        {
+                            targetRecvT.Receive_Status="Received";
+                        }
+                        else
+                        {
+                            targetRecvT.Receive_Status="Partial Received";
+                        }
+                    }
+                }

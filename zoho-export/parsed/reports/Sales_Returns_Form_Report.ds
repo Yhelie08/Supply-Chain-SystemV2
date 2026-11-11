@@ -1,0 +1,35 @@
+
+			displayName = "Sales Returns Form Report"
+			show all rows from Sales_Returns_Form    
+			(
+				RMA as "RMA#"
+				Service_Request as "Service Request#"
+				Sales_Order as "Sales Order#"
+				Package_Number as "Package Number"
+				Customer_Name as "Customer Name"
+				Customer_Address as "Customer Address"
+				City
+				Email
+				Contact
+				(
+					displayformat = plainnumber 
+				)
+				Date_field as "Date"
+				Warehouse_Name as "Warehouse Name"
+				Reason
+				Sub_Reason as "Sub Reason"
+				Returned_by as "Returned by"
+				SR_CREATION_STATUS as "SR CREATION STATUS"
+				Image
+				Video
+				Signature
+				Complaint_Record_ID as "Complaint Record ID"
+				app as "Appointment Record ID"
+				Books_SalesReturn_No
+				Books_SalesReturn_ID
+				Items
+				(
+					field = Items.SKU + " " + Items.Item_Name + " " + Items.Qty_Shipped_Fulfilled + " " + Items.Return_Quantity
+				)
+			)
+		

@@ -1,0 +1,124 @@
+{
+  "name": "Transfer_Warehouse",
+  "label": "Transfer Warehouse",
+  "successMessage": "Data Added Successfully!",
+  "line": 19101,
+  "fields": [
+    {
+      "name": "Transfer_Warehouse",
+      "label": "Transfer Warehouse",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Initiated_At1",
+      "label": "Initiated At:",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Initiated_By",
+      "label": "Initiated By:",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Edwin",
+        "Andrea"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "From_Warehouse",
+      "label": "From Warehouse",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "HC WH3 BAESA",
+        "HC WH1 BANAWE"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "To_Warehouse",
+      "label": "To Warehouse",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "HC WH3 BAESA",
+        "HC WH1 BANAWE"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "SO_Optional",
+      "label": "SO # (Optional)",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Select"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Item_to_transfer",
+      "label": "Item to transfer",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Items",
+          "label": "Items",
+          "type": "picklist",
+          "required": false,
+          "lookup": {
+            "form": "Items",
+            "criteria": null,
+            "field": "ID"
+          },
+          "displayformat": "[item_name]"
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Quantity",
+          "label": "Quantity",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "PAC_Optional",
+          "label": "PAC # (Optional)",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Dispatch",
+      "label": "Dispatch",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Received",
+      "label": "Received",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    }
+  ]
+}

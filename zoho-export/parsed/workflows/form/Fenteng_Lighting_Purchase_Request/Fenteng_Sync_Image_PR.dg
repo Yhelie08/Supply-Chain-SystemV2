@@ -1,0 +1,10 @@
+// form: Fenteng_Sync_Image_PR  form=Fenteng_Lighting_Purchase_Request event=on add or edit on success  [.ds line 39210]
+    if(input.Items_Supplier1 != null)
+{
+    itemRec = Items[ID == input.Items_Supplier1];
+    if(itemRec != null && itemRec.Image != null)
+    {
+        r = Fenteng_Lighting_Purchase_Request[ID == input.ID];
+        r.Product_Image_Supplier1_PR=itemRec.Image;
+    }
+}

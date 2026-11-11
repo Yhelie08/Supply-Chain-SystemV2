@@ -1,0 +1,143 @@
+// string Approve_Multiple_PRs(Purchase_Request1 selectedPRs)   [.ds lines 25323-25466]
+approvedCount = 0;
+skippedCount = 0;
+for each  pr in selectedPRs
+{
+    if(pr.PR_READY_FOR_PO != true)
+    {
+        skippedCount = skippedCount + 1;
+        continue;
+    }
+    pr.PR_Approved=true;
+    selectedSupplierName = pr.Selected_Supplier;
+    customerRec = Customer[ID == pr.Customer.ID];
+    customerName = customerRec.customer_name;
+    itemIDRaw = pr.Items.toString();
+    itemIDClean = itemIDRaw.removeFirstOccurence("[").removeLastOccurence("]");
+    itemRec = Items[ID == itemIDClean.toLong()];
+    itemName = itemRec.item_name;
+    matchingPO = null;
+    candidatePOs = Purchase_Order[PO_Status != "Completed" && Is_Locked == false];
+    for each  po in candidatePOs
+    {
+        if(po.SO_No.Sales_Order_Number == pr.Sales_Order)
+        {
+            for each  ln in po.PO_Line_Items
+            {
+                if(ln.Supplier == selectedSupplierName)
+                {
+                    matchingPO = po;
+                }
+            }
+        }
+    }
+    if(matchingPO != null)
+    {
+        targetPO = matchingPO;
+    }
+    else
+    {
+        maxNum = 0;
+        existingPOs = Purchase_Order[ID != 0];
+        for each  existingPo in existingPOs
+        {
+            poNoStr = existingPo.PO_No;
+            if(poNoStr != null && poNoStr != "")
+            {
+                numPart = poNoStr.removeFirstOccurence("PO-");
+                num = numPart.toLong();
+                if(num > maxNum)
+                {
+                    maxNum = num;
+                }
+            }
+        }
+        newNum = maxNum + 1;
+        if(newNum < 10)
+        {
+            newPONo = "PO-0000" + newNum;
+        }
+        else if(newNum < 100)
+        {
+            newPONo = "PO-000" + newNum;
+        }
+        else if(newNum < 1000)
+        {
+            newPONo = "PO-00" + newNum;
+        }
+        else if(newNum < 10000)
+        {
+            newPONo = "PO-0" + newNum;
+        }
+        else
+        {
+            newPONo = "PO-" + newNum;
+        }
+        soLookup = Sales_Order[Sales_Order_Number == pr.Sales_Order];
+        soID = soLookup.ID;
+        newPOID = insert into Purchase_Order
+        [
+            PO_No=newPONo
+            SO_No=soID
+            Customer=customerName
+            Customer_Type=pr.Customer_Type
+            Sales_Owner=pr.Sales_Owner
+            PO_Date=zoho.currentdate
+            PO_Status="Draft"
+            Added_User=zoho.loginuser
+        ];
+        targetPO = Purchase_Order[ID == newPOID];
+    }
+    newLine = Purchase_Order.PO_Line_Items();
+    newLine.PR_No=pr.PR_No;
+    newLine.Supplier=selectedSupplierName;
+    newLine.Item=itemName;
+    newLine.SKU=pr.sku;
+    newLine.QTY=pr.quantity.round(0).toLong();
+    newLine.Unit=pr.unit;
+    newLine.Final_Price=pr.Selcted_Final_Cost;
+    newLine.Line_Total=pr.quantity.round(0).toLong() * pr.Selcted_Final_Cost.round(0).toLong();
+    newLine.Shipping_Mode=pr.Shipment_Mode;
+    newLine.Target_Delivery=pr.Target_Delivery;
+    newLine.supplier_target_date=pr.supplier_target_date;
+    newLine.Delay_Status=pr.Delay_Status;
+    newLine.Followed_Recommendation=pr.Followed_Recommendation;
+    newLine.Override_Reason=pr.Override_Reason;
+    newLine.Required_Days_Lead=pr.Required_Days_Lead;
+    newLine.Remaining_Days=pr.Remaining_Days;
+    newLine.Priority=pr.Priority;
+    targetPO.PO_Line_Items.insert(newLine);
+    totalVal = 0;
+    totalLns = 0;
+    for each  poLn in targetPO.PO_Line_Items
+    {
+        totalLns = totalLns + 1;
+        if(poLn.Line_Total != null)
+        {
+            totalVal = totalVal + poLn.Line_Total;
+        }
+    }
+    targetPO.Total_PO_Value=totalVal;
+    targetPO.Total_Lines=totalLns;
+    supSnapRec = Suppliers[Supplier_Name.first_name == selectedSupplierName];
+    targetPO.Supplier_Load_At_PO=supSnapRec.Active_PO_Count;
+    pr.PR_Status="Converted to PO";
+    pr.Link_PO_No=targetPO.PO_No;
+    pr.Production_Date=zoho.currentdate;
+    activePOCount = 0;
+    allActivePOs = Purchase_Order[PO_Status != "Completed" && PO_Status != "Cancelled"];
+    for each  apo in allActivePOs
+    {
+        apoRec = Purchase_Order[ID == apo.ID];
+        for each  apoLn in apoRec.PO_Line_Items
+        {
+            if(apoLn.Supplier == selectedSupplierName)
+            {
+                activePOCount = activePOCount + 1;
+            }
+        }
+    }
+    supSnapRec.Active_PO_Count=activePOCount;
+    approvedCount = approvedCount + 1;
+}
+return approvedCount + " PR(s) approved at na-convert sa PO. " + skippedCount + " PR(s) nilaktawan dahil hindi pa READY FOR PO.";

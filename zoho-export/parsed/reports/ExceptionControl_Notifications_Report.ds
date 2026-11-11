@@ -1,0 +1,14 @@
+
+			displayName = "ExceptionControl Notifications Report"
+			show all rows from ExceptionControl_Notifications    
+			(
+				Notification_Type
+				Recipient_Email
+				Message
+				Created_On
+				Read
+				Source_Record_ID
+				Source_Record_No
+				Target_URL
+			)
+		

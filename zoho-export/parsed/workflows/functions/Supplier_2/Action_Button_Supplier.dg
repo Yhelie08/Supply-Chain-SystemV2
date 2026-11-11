@@ -1,0 +1,2 @@
+// functions: Action_Button_Supplier  form=Supplier_2 event= on start > on click  [.ds line 49023]
+openUrl("#Form:Supplier_2?viewLinkName=Supplier_2_Report&recLinkID=" + input.ID,"same window");

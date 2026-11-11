@@ -1,0 +1,248 @@
+{
+  "name": "Sales_Order_Fulfillment",
+  "label": "Sales Order Fulfillment",
+  "successMessage": "Data Added Successfully!",
+  "line": 13398,
+  "fields": [
+    {
+      "name": "Sales_Order_Details",
+      "label": "SO & Package Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Fulfillment_Stage",
+      "label": "Fulfillment Stage",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Waiting For Package",
+        "Order Readiness",
+        "Picking",
+        "Pack",
+        "Quality Checking",
+        "Crate",
+        "For Delivery"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "SO_Status",
+      "label": "SO Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Preparing",
+        "For Delivery"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Package",
+      "label": "Package#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "order_type",
+      "label": "Order Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Normal",
+        "Replacement",
+        "Pre Order",
+        "(Partly) Pre Order",
+        "Furniture Republic Stores",
+        "Change Item"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Delivery_Type",
+      "label": "Delivery Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Status",
+      "label": "Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Yes",
+        "No",
+        "Partial"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "For_Crate",
+      "label": "For Crate",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "SO_No",
+      "label": "SO No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SO_Created_Date",
+      "label": "SO Created Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Package_Date",
+      "label": "Package Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Shipment_Mode",
+      "label": "Shipment Mode",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "PR_No",
+      "label": "PR No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_No",
+      "label": "RR No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "target_delivery_date",
+      "label": "Target Delivery Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Customer_Details",
+      "label": "Customer Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Customer",
+      "label": "Customer",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Customer",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[customer_name]"
+    },
+    {
+      "name": "Customer_Type",
+      "label": "Customer Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Contact_No",
+      "label": "Contact No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Billing_Address",
+      "label": "Billing Address",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipping_Address",
+      "label": "Shipping Address",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Item_Details1",
+      "label": "Item Details",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Item",
+          "label": "Item",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Quantity",
+          "label": "Quantity",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Bin_Location",
+          "label": "Bin Location",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "SO_SKU_Key",
+      "label": "SO SKU Key",
+      "type": "text",
+      "required": false,
+      "unique": true
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

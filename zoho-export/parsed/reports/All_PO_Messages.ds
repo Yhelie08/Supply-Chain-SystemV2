@@ -1,0 +1,12 @@
+
+			displayName = "PO Messages Report"
+			show all rows from PO_Messages    
+			(
+				PO_No
+				Supplier
+				Sender_Role
+				Sender_Name
+				Message
+				Sent_On
+			)
+		

@@ -1,0 +1,106 @@
+
+			displayName = "Service Appointment"
+			show all rows from Service_Appointment_Form    
+			(
+				Scheduled_Date_and_Time as "Scheduled Date and Time"
+				Installer
+				Assistant_Installers as "Assistant Installers"
+				Assigned_to_Driver as "Assigned to (Driver)"
+				Assigned_to_Dispatcher as "Assigned to (Dispatcher)"
+				Logistic_Notes as "Logistic Notes"
+				Shipment_Order as "Shipment Order"
+				Shipment_Order_File as "Shipment Order File"
+				Appointment_Status as "Appointment Status"
+				RMA as "RMA#"
+				Original_SO as "Original SO#"
+				Reason
+				Sub_Reason as "Sub Reason"
+				Service_Request as "Service Request#"
+				Sales_Order as "Sales Order#"
+				Package_Number as "Package Number"
+				Customer_Address as "Customer Address"
+				Customer_Name  as "Customer Name"
+				City
+				Email
+				Contact
+				(
+					displayformat = plainnumber 
+				)
+				Address 
+	 			(
+	      			enable = Link_to_Map,Show_As_Text
+	 			)
+				Start_of_Work as "Start of Work"
+				End_of_Work as "End of Work"
+				Assigned_Status as "Assigned Status"
+				If_Pull_Out as "If Pull Out"
+				Priority_Level as "Priority Level"
+				Scheduled_by as "Scheduled by:"
+				Complaint_Record_ID as "Complaint Record ID"
+				Appointment_Record_ID as "Appointment Record ID"
+				custom action "Re-Schedule"
+				(
+	  			workflow = Re_Schedule
+				show action in edit record menu = true
+				column header = "Re-Schedule"
+				confirmation before execution
+				(
+					message for individual record = "Execute the Re Schedule action for this record?"
+					confirm button text = "Yes"		
+					cancel button text = "No"
+				)
+				)
+				Suggested_Schedule_Date as "Suggested Schedule Date"
+				Fleet_Assignment as "Fleet Assignment"
+				Original_System_Suggestion as "Original System Suggestion"
+				Site_Confirmation_Status as "Site Confirmation Status"
+				Suggested_Time_Slot as "Suggested Time Slot"
+				Calendar_Event_Summary
+				Exception_Status as "Exception Status"
+				Sales_Order_Display as "Sales Order Display"
+				Confirmation_Method as "Confirmation Method"
+				Site_Confirmation_Notes as "Site Confirmation Notes"
+				Calendar_Entry_Created as "Calendar Entry Created"
+				Confirmed_Schedule_Date as "Confirmed Schedule Date"
+				Confirmed_Time_Slot as "Confirmed Time Slot"
+				Estimated_Duration as "Estimated Duration (hrs)"
+				Exception_Reason as "Exception Reason"
+				Followup_Count as "Followup Count"
+				Fulfillment_Completed_Date as "Fulfillment Completed Date"
+				Installation_Required as "Installation Required"
+				Order_Date as "Order Date"
+				Outreach_Sent_Date as "Outreach Sent Date"
+				Override_Applied as "Override Applied"
+				Override_By as "Override By"
+				Override_Reason as "Override Reason"
+				Override_Timestamp as "Override Timestamp"
+				Type_of_Delivery as "Type of Delivery"
+				Delivery_Latitude as "Delivery Latitude"
+				Delivery_Longitude as "Delivery Longitude"
+				Geocode_Status as "Geocode Status"
+				Dispatch_Date as "Dispatch Date"
+				Actual_Delivery_Date as "Actual Delivery Date"
+				Logistic_Notes1.Attachment_of_Photo as "Logistic Notes"
+				Location_Route as "Location Route"
+				Date_Confirmed as "Date Confirmed"
+				Third_Party_Provider as "3rd Party Provider"
+				Shipment_Order_No
+				Needs_Site_Visit
+				Rescheduled_From_SA
+				Item_Details as "Item Details"
+				(
+					field = Item_Details.Item_Name + " " + Item_Details.SKU + " " + Item_Details.Quantity + " " + Item_Details.PAC
+				)
+				Priority
+				Rescheduled_Via_Exception as "Rescheduled via Exception"
+				Requested_Delivery_Date
+				Requested_Delivery_Time
+				Delivery_ID as "Delivery ID"
+				Initial_Schedule_ID as "Initial Schedule ID"
+				Service_Request_ID as "Service Request ID"
+				Fleet_Decision
+				Override_Fleet_3rd_Party as "Override Fleet (3rd-Party)"
+				Complaint as "Complaint #"
+				Complaint_ID as "Complaint ID"
+			)
+		

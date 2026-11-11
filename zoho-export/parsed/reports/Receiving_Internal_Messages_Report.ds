@@ -1,0 +1,11 @@
+
+			displayName = "Receiving_Internal_Messages Report"
+			show all rows from Receiving_Internal_Messages    
+			(
+				Receive_No1 as "Receive No"
+				Sender_Email as "Sender Email"
+				Sender_Role as "Sender Role"
+				Message
+				Sent_On as "Sent On"
+			)
+		

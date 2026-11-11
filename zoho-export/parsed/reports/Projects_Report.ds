@@ -1,0 +1,14 @@
+
+			displayName = "Projects Report"
+			show all rows from Projects    
+			(
+				Project_Name as "Project Name"
+				Customer
+				Status
+				Project_Code as "Project Code"
+				Books_Estimate_ID as "Books Estimate ID"
+				Books_Estimate_No as "Books Estimate No"
+				Group_Discount_Pct as "Quote Discount Percentage"
+				All_SRP_Approved as "All SRP Approved"
+			)
+		

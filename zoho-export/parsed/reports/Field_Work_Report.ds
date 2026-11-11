@@ -1,0 +1,63 @@
+
+			displayName = "Field Work Report"
+			show all rows from Field_Work    
+			(
+				Status
+				Logistic_Notes as "Logistic Notes"
+				Package_Order as "Package Order"
+				Shipment_Order as "Shipment Order"
+				Service_Request as "Service Request#"
+				RMA as "RMA#"
+				Original_SO as "Original SO#"
+				Reason
+				Subreason as "Sub Reason"
+				Sales_Order as "Sales Order#"
+				Package_Number as "Package Number"
+				Type_of_Delivery as "Type of Delivery"
+				Customer_Name as "Customer Name"
+				Customer_Address as "Customer Address"
+				City
+				Email
+				Contact
+				(
+					displayformat = plainnumber 
+				)
+				If_Pull_Out as "If Pull Out"
+				Scheduled_Date_and_Time as "Scheduled Date and Time"
+				Assigned_to_Installer as "Assigned to (Installer)"
+				Assigned_to_Dispatcher as "Assigned to (Dispatcher)"
+				Schedule_Start_Date_and_Time as "Schedule Start Date and Time"
+				Schedule_End_Date_and_Time as "Schedule End Date and Time"
+				Upload_PDf_of_Initial_Report as "Upload PDf of Initial Report"
+				Customer_Rating as "Customer Rating"
+				Receiver_s_Signature_Upload as "Receiver's Signature Upload"
+				Receiver_s_Name  as "Receiver's Name"
+				Receiver_s_Signature as "Receiver's Signature"
+				Assignee_Signature as "Assignee Signature"
+				Final_Checking_Bago_Umalis_sa_Site as "Final Checking Bago Umalis sa Site"
+				Installation_Status as "Installation Status"
+				Sales_Return_Status as "Sales Return Status"
+				Image
+				Complaint_Record_ID as "Complaint Record ID"
+				Appointment_Record_ID as "Appointment Record ID"
+				Video_and_Status_of_Installed_Item as "Video and Status of Installed Item"
+				(
+					field = Video_and_Status_of_Installed_Item.Image_Upload + " " + Video_and_Status_of_Installed_Item.Notes_Remarks + " " + Video_and_Status_of_Installed_Item.Video_If_necessary + " " + Video_and_Status_of_Installed_Item.Added_Time + " " + Video_and_Status_of_Installed_Item.Added_User
+				)
+				Item_Details as "Item Details"
+				(
+					field = Item_Details.Item_Name + " " + Item_Details.Quantity + " " + Item_Details.SKU
+				)
+				SubForm
+				(
+					field = SubForm.Attachment_of_Photo + " " + SubForm.Notes
+				)
+				Reschedule_Reason
+				Reschedule_Processed
+				Service_Appointment_ID
+				Video as " Video"
+				Forecast_Delivery as "Forecast Delivery"
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+			)
+		

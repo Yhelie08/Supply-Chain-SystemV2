@@ -1,0 +1,2 @@
+// map reScheduleDelivery(String recordId)   [.ds lines 34563-34565]
+return thisapp.dmsScheduleSlot(recordId,true);

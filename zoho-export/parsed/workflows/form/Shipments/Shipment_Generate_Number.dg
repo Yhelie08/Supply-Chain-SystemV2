@@ -1,0 +1,39 @@
+// form: Shipment_Generate_Number  form=Shipments event=on add on success  [.ds line 42583]
+    // === Shipment_Generate_Number ===
+// Form: Shipments | Event: Created | Actions on Load
+maxNum = 0;
+existingShipments = Shipments[ID != 0];
+for each  shp in existingShipments
+{
+    shpNoStr = shp.Shipment_No;
+    if(shpNoStr != null && shpNoStr != "")
+    {
+        numPart = shpNoStr.removeFirstOccurence("SHP-");
+        num = numPart.toLong();
+        if(num > maxNum)
+        {
+            maxNum = num;
+        }
+    }
+}
+newNum = maxNum + 1;
+if(newNum < 10)
+{
+    input.Shipment_No = "SHP-0000" + newNum;
+}
+else if(newNum < 100)
+{
+    input.Shipment_No = "SHP-000" + newNum;
+}
+else if(newNum < 1000)
+{
+    input.Shipment_No = "SHP-00" + newNum;
+}
+else if(newNum < 10000)
+{
+    input.Shipment_No = "SHP-0" + newNum;
+}
+else
+{
+    input.Shipment_No = "SHP-" + newNum;
+}

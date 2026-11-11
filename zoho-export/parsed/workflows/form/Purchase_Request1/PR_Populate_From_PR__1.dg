@@ -1,0 +1,106 @@
+// form: PR_Populate_From_PR  form=Purchase_Request1 event=on add on success  [.ds line 37566]
+    if(input.Source == "SO")
+{
+    return;
+}
+if(input.Sourcing_Type == "Local")
+{
+    return;
+}
+matchedInqNo = input.inquiry_reference;
+routeFenteng = true;
+hasFentengQuote = false;
+selAvail = "";
+selInitPrice = 0;
+selNego = 0;
+selFinalPrice = 0;
+selLeadTime = 0;
+if(matchedInqNo != null && matchedInqNo != "")
+{
+    routeFenteng = false;
+    anySelected = false;
+    inqRecs = Inquiry_Form[INQ_No == matchedInqNo];
+    for each  inqRec in inqRecs
+    {
+        for each  q in inqRec.Supplier_Quotes
+        {
+            if(q.Selected == true)
+            {
+                anySelected = true;
+                sid = q.Supplier_ID + "";
+                sidRawC1 = sid.removeFirstOccurence("[").removeLastOccurence("]");
+                quoteBooksIdC1 = "";
+                if(sidRawC1 != "")
+                {
+                    for each  supRecC1 in Suppliers
+                    {
+                        if(supRecC1.ID + "" == sidRawC1)
+                        {
+                            quoteBooksIdC1 = supRecC1.Supplier_ID + "";
+                        }
+                    }
+                }
+                if(quoteBooksIdC1 == "2680178000049168001")
+                {
+                    routeFenteng = true;
+                    hasFentengQuote = true;
+                    selAvail = q.Availability;
+                    selInitPrice = q.Initial_Price;
+                    selNego = q.Negotiated;
+                    selFinalPrice = q.Final_Price;
+                    selLeadTime = q.Lead_Time;
+                }
+            }
+        }
+        break;
+    }
+    if(anySelected == false)
+    {
+        routeFenteng = true;
+    }
+}
+if(routeFenteng == true)
+{
+    fResponseStatus = "Waiting";
+    if(hasFentengQuote == true)
+    {
+        fResponseStatus = "Selected";
+    }
+    newRecID1 = insert into Fenteng_Lighting_Purchase_Request
+    [
+        PR_No_Supplier1=input.PR_No
+        PR_Date_Supplier1=input.PR_Date
+        Items_Supplier1=input.Items
+        sku_Supplier1=input.sku
+        quantity_Supplier1=input.quantity
+        Description1_Supplier1=input.Description1
+        description_Supplier1=input.description
+        unit_Supplier1=input.unit
+        category_Supplier1=input.category
+        Target_Delivery_Supplier1=input.Target_Delivery
+        Priority_PR_Supplier1=input.Priority
+        SRP_Rate_PR_Supplier1=input.SRP_Rate_PR
+        inquiry_reference_Supplier1=matchedInqNo
+        Response_Status=fResponseStatus
+        edit_counter=1
+        Added_User=zoho.loginuser
+    ];
+    newRec1 = Fenteng_Lighting_Purchase_Request[ID == newRecID1];
+    itemRecF = Items[ID == input.Items];
+    if(itemRecF != null && itemRecF.Image != null)
+    {
+        newRec1.Product_Image_Supplier1_PR=itemRecF.Image;
+    }
+    subRow1 = Fenteng_Lighting_Purchase_Request.Supplier_Selected_Supplier1();
+    subRow1.Suppliers_Supplier1="Fenteng";
+    if(hasFentengQuote == true)
+    {
+        subRow1.Availability_Supplier1=selAvail;
+        subRow1.Initial_Price_Supplier1=selInitPrice;
+        subRow1.Negotiated_Supplier1=selNego;
+        subRow1.Final_Price_Supplier1=selFinalPrice;
+        subRow1.Lead_Time_Supplier1=selLeadTime;
+        subRow1.Selected_Supplier1=true;
+    }
+    newRec1.Supplier_Selected_Supplier1.insert(subRow1);
+}

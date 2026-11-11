@@ -1,0 +1,41 @@
+
+			displayName = "All Shipments"
+			show all rows from Shipments    
+			(
+				Shipment_No as "Shipment No."
+				Sales_Order as "SO No."
+				Supplier
+				Shipment_Status as "Shipment Status"
+				Customer
+				Risk_Status as "Delay Status"
+				Target_Date as "Target Date"
+				ETA
+				Arrival_Date as "Arrival Date"
+				ETD
+				Production_Date as "Production Date"
+				Need_Attention1 as "Need Attention"
+				Shipment_Days as "Shipment Days"
+				Sales_Owner as "Sales Owner"
+				Supplier_Target_Date as "Supplier Target Date"
+				PO_Shipments as "Shipment Line Items"
+				(
+					field = PO_Shipments.PR_No + " " + PO_Shipments.Item_Name + " " + PO_Shipments.SKU + " " + PO_Shipments.Ordered_QTY + " " + PO_Shipments.Shipment_QTY + " " + PO_Shipments.Remaining_QTY + " " + PO_Shipments.Shipping_Mode + " " + PO_Shipments.Line_Status + " " + PO_Shipments.Fully_Shipped + " " + PO_Shipments.Shipment_Mode_When_Received
+				)
+				Notes
+				PO_No as "PO No."
+				Required_Days_Lead as "Required Days (Lead)"
+				Ship_Out_Date as "Ship Out Date"
+				Receiving_Record_Created as "Receiving Record Created"
+				Need_Attention as "Received Flag"
+				Previous_Status as "Previous Status"
+				Remaining_Days as "Remaining Days"
+				Supplier_Shipment_Details.Shipment_ID as "Supplier Shipment Details"
+				Estimated_Warehouse_Arrival as "Estimated Warehouse Arrival"
+				Source_Module
+				Exception_Number
+				Notified_10d
+				Forecast_Window as "Forecast Window"
+				Forecast_Status as "Forecast Status"
+				Forecast_Delivery as "Forecast Delivery"
+			)
+		

@@ -1,0 +1,14 @@
+
+			displayName = "OrderAgg Notifications Report"
+			show all rows from OrderAgg_Notifications    
+			(
+				Notification_Type
+				Recipient_Email
+				Message
+				Created_On
+				Read
+				Target_URL
+				Source_Record_No
+				Source_Record_ID
+			)
+		

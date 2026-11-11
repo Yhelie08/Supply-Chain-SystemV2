@@ -1,0 +1,157 @@
+// map addCustomerByIdBooks(String customerBooksId)   [.ds lines 22953-23110]
+response = Map();
+orgId = "751117756";
+customerBooksId = customerBooksId.trim();
+if(customerBooksId == "")
+{
+    response.put("status","error");
+    response.put("message","Customer ID is required.");
+    return response;
+}
+contactResp = invokeurl
+[
+    url :"https://www.zohoapis.com/books/v3/contacts/" + customerBooksId + "?organization_id=" + orgId
+    type :GET
+    connection:"zhbooks3"
+];
+detail = contactResp.get("contact");
+if(detail == null)
+{
+    response.put("status","error");
+    response.put("message","Customer not found in Books for ID " + customerBooksId + " — check the ID and try again.");
+    return response;
+}
+nameVal = ifnull(detail.get("contact_name"),"");
+emailVal = ifnull(detail.get("email"),"");
+phoneVal = ifnull(detail.get("phone"),"");
+mobileVal = ifnull(detail.get("mobile"),"");
+billing = detail.get("billing_address");
+shipping = detail.get("shipping_address");
+billMap = Map();
+if(billing != null)
+{
+    billMap.put("address_line_1",ifnull(billing.get("address"),""));
+    billMap.put("address_line_2",ifnull(billing.get("street2"),""));
+    billMap.put("district_city",ifnull(billing.get("city"),""));
+}
+shipMap = Map();
+if(shipping != null)
+{
+    shipMap.put("address_line_1",ifnull(shipping.get("address"),""));
+    shipMap.put("address_line_2",ifnull(shipping.get("street2"),""));
+    shipMap.put("district_city",ifnull(shipping.get("city"),""));
+}
+// Upsert into Creator's Customer form, matched by ID1 (the Books contact
+// id) — same dedup key sync-customers.js uses, same lookup shape
+// addItemByIdBooks already proves live for Items.
+existingId = "";
+for each  rec in Customer[ID1 == customerBooksId]
+{
+    existingId = rec.ID + "";
+}
+wasUpdate = false;
+newRecordId = "";
+if(existingId != "")
+{
+    wasUpdate = true;
+    newRecordId = existingId;
+    update Customer[ID == existingId.toLong()]
+    [
+        customer_name=nameVal
+        Email=emailVal
+        Billing_Address.address_line_1=billMap.get("address_line_1")
+        Billing_Address.address_line_2=billMap.get("address_line_2")
+        Billing_Address.district_city=billMap.get("district_city")
+        Shipping_Address.address_line_1=shipMap.get("address_line_1")
+        Shipping_Address.address_line_2=shipMap.get("address_line_2")
+        Shipping_Address.district_city=shipMap.get("district_city")
+    ];
+}
+else
+{
+    insertedId = insert into Customer
+    [
+        ID1=customerBooksId
+        customer_name=nameVal
+        Email=emailVal
+        Billing_Address.address_line_1=billMap.get("address_line_1")
+        Billing_Address.address_line_2=billMap.get("address_line_2")
+        Billing_Address.district_city=billMap.get("district_city")
+        Shipping_Address.address_line_1=shipMap.get("address_line_1")
+        Shipping_Address.address_line_2=shipMap.get("address_line_2")
+        Shipping_Address.district_city=shipMap.get("district_city")
+        Added_User=zoho.loginuser
+    ];
+    newRecordId = insertedId + "";
+}
+// Phone_Number/Mobile set AFTER the core upsert, each wrapped in try/catch —
+// FIXED live 2026-08-12: Deluge's phone-type field rejects an empty string
+// with "The value of the field 'Phone' doesn't conform to a phone number
+// format" (hit testing contact_id 2680178000010272365, whose Books 'phone'
+// was blank) — this is a FORMAT validation, not just a missing-value one,
+// so it can also reject a non-empty but non-normalized number. Splitting
+// these out (skip entirely when empty, try/catch when present) means a
+// bad/blank phone can never block the customer record itself from saving —
+// same "commit core fields first, handle risky optional field after"
+// pattern as this app's own addItemByIdBooks (used there for image sync).
+phoneSynced = false;
+if(phoneVal != "")
+{
+    try 
+    {
+        update Customer[ID == newRecordId.toLong()]
+        [
+            Phone_Number=phoneVal
+        ];
+        phoneSynced = true;
+    }        catch (e)
+    {
+        phoneSynced = false;
+    }
+}
+mobileSynced = false;
+if(mobileVal != "")
+{
+    try 
+    {
+        update Customer[ID == newRecordId.toLong()]
+        [
+            Mobile=mobileVal
+        ];
+        mobileSynced = true;
+    }        catch (e)
+    {
+        mobileSynced = false;
+    }
+}
+response.put("status","success");
+response.put("wasUpdate",wasUpdate);
+response.put("recordId",newRecordId);
+response.put("ID1",customerBooksId);
+response.put("customer_name",nameVal);
+response.put("Email",emailVal);
+response.put("Phone_Number",phoneVal);
+response.put("Mobile",mobileVal);
+response.put("phoneSynced",phoneSynced);
+response.put("mobileSynced",mobileSynced);
+response.put("Billing_Address",billMap);
+response.put("Shipping_Address",shipMap);
+messageText = "";
+if(wasUpdate)
+{
+    messageText = "Updated existing customer: " + nameVal;
+}
+else
+{
+    messageText = "Added new customer: " + nameVal;
+}
+if(phoneVal != "" && !phoneSynced)
+{
+    messageText = messageText + " (phone format rejected, saved without it)";
+}
+if(mobileVal != "" && !mobileSynced)
+{
+    messageText = messageText + " (mobile format rejected, saved without it)";
+}
+response.put("message",messageText);
+return response;

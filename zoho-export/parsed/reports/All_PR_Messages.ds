@@ -1,0 +1,12 @@
+
+			displayName = "PR Messages Report"
+			show all rows from PR_Messages    
+			(
+				PR_No
+				Supplier
+				Sender_Role
+				Sender_Name
+				Message
+				Sent_On
+			)
+		

@@ -1,0 +1,29 @@
+// form: DS_Validate_Team_Capacity  form=Delivery_Scheduling event=on add or edit on validate  [.ds line 46504]
+    if(input.Date_field != null && input.Installer != null)
+{
+    warnTeams = "";
+    for each  ins in input.Installer
+    {
+        availDS = Daily_Team_Availability[Availability_Date == input.Date_field && Installer == ins && Availability_Status != "Not Available"];
+        cntDS = 0;
+        if(availDS != null)
+        {
+            for each  ad in availDS
+            {
+                cntDS = cntDS + 1;
+            }
+        }
+        if(cntDS == 0)
+        {
+            if(warnTeams != "")
+            {
+                warnTeams = warnTeams + ", ";
+            }
+            warnTeams = warnTeams + ins;
+        }
+    }
+    if(warnTeams != "")
+    {
+        alert "Paalala: walang Daily Team Availability record para sa " + warnTeams + " sa petsang ito. I-check muna sa Daily Team Availability - baka naka-leave o walang schedule. Tutuloy pa rin ang save kung sigurado ka.";
+    }
+}

@@ -1,0 +1,15 @@
+// form: Notify on Receiving Quantity Mismatch  form=Receiving event=on add or edit on success  [.ds line 44705]
+    if(input.Total_Accepted_Qty != input.Total_Expected_Qty)
+{
+    insert into App_Notifications
+    [
+        Recipient_Email="homecartelpacker@gmail.com"
+        Notification_Type="Receiving Quantity Mismatch"
+        Message="Received quantity for " + input.Receive_No1 + " does not match expected quantity."
+        Created_On=zoho.currenttime
+        Target_URL="https://creator.zoho.com/homecartel/supply-chain-app/#Page:Receiving1"
+        Source_Record_No=input.Receive_No1
+        Source_Record_ID=input.ID
+        Added_User=zoho.loginuser
+    ]
+}

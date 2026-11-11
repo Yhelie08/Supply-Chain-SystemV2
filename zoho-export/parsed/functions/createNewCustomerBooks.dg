@@ -1,0 +1,95 @@
+// map createNewCustomerBooks(String custName, String custEmail, String custPhone, String billAddress, String billCity)   [.ds lines 29022-29117]
+response = Map();
+orgId = "751117756";
+custName = custName.trim();
+if(custName == "")
+{
+    response.put("status","error");
+    response.put("message","Customer name is required.");
+    return response;
+}
+contactPerson = Map();
+contactPerson.put("first_name",custName);
+contactPerson.put("email",custEmail);
+contactPerson.put("phone",custPhone);
+contactPerson.put("is_primary_contact",true);
+contactPersonsList = List();
+contactPersonsList.add(contactPerson);
+billMap = Map();
+billMap.put("address",billAddress);
+billMap.put("city",billCity);
+contactBody = Map();
+contactBody.put("contact_name",custName);
+contactBody.put("contact_type","customer");
+contactBody.put("customer_sub_type","business");
+contactBody.put("email",custEmail);
+contactBody.put("phone",custPhone);
+contactBody.put("contact_persons",contactPersonsList);
+contactBody.put("billing_address",billMap);
+createResp = invokeurl
+[
+    url :"https://www.zohoapis.com/books/v3/contacts?organization_id=" + orgId
+    type :POST
+    body:contactBody.toString()
+    headers:{"Content-Type":"application/json"}
+    connection:"zhbooks3"
+];
+info "Books contact create resp: " + createResp;
+detail = createResp.get("contact");
+if(detail == null)
+{
+    response.put("status","error");
+    response.put("message",ifnull(createResp.get("message"),"Books contact creation failed — see execution log."));
+    return response;
+}
+newContactId = detail.get("contact_id") + "";
+// Insert into Creator's Customer form — always a fresh insert (this is
+// CREATE, never upsert; a brand-new contact_id can't already match an
+// existing ID1). Composite Address fields need per-subfield dot notation
+// — confirmed live in addCustomerByIdBooks, whole-Map assignment
+// (`Billing_Address = billMap`) is invalid Deluge syntax here.
+insertedId = insert into Customer
+[
+    ID1=newContactId
+    customer_name=custName
+    Email=custEmail
+    Billing_Address.address_line_1=billAddress
+    Billing_Address.district_city=billCity
+    Added_User=zoho.loginuser
+];
+newRecordId = insertedId + "";
+// Phone_Number set AFTER the core insert, wrapped in try/catch — same
+// "commit core fields first, handle risky optional field after" pattern
+// as addCustomerByIdBooks (Deluge's phone-type field rejects an empty
+// string as an invalid FORMAT, not just a missing value).
+phoneSynced = false;
+if(custPhone != "")
+{
+    try 
+    {
+        update Customer[ID == newRecordId.toLong()]
+        [
+            Phone_Number=custPhone
+        ];
+        phoneSynced = true;
+    }        catch (e)
+    {
+        phoneSynced = false;
+    }
+}
+response.put("status","success");
+response.put("recordId",newRecordId);
+response.put("ID1",newContactId);
+response.put("customer_name",custName);
+response.put("Email",custEmail);
+response.put("Phone_Number",custPhone);
+response.put("Mobile","");
+response.put("Billing_Address",billMap);
+response.put("Shipping_Address",Map());
+messageText = "Created new Books customer: " + custName;
+if(custPhone != "" && !phoneSynced)
+{
+    messageText = messageText + " (phone format rejected, saved without it)";
+}
+response.put("message",messageText);
+return response;

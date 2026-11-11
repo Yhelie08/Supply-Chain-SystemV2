@@ -1,0 +1,191 @@
+// string fcStampDelivery(string soText)   [.ds lines 33531-33722]
+/* ==================================================================
+   1. HATIIN ANG SO TEXT
+      Textarea ang SO box sa Initial Scheduling, sa Service Request at sa
+      Service Appointment, kaya pwedeng bagong linya o kuwit ang pagitan
+      ng mga SO. Pareho silang hinahati dito. Isang SO lang ang Field_Work,
+      at kaya pa rin ito ng parehong splitter — isa o marami, pareho ang
+      linya.
+   ================================================================== */
+if(soText == null || soText == "" || soText == "null")
+{
+    return "walang SO sa row na ito";
+}
+clean = soText.replaceAll("\n",",");
+clean = clean.replaceAll("\r",",");
+clean = clean.replaceAll(";",",");
+soList = clean.toList(",");
+/* ==================================================================
+   2. UNANG PASADA — siguraduhing may forecast ang bawat SO.
+      Kung wala pa (lumang record, o kakagawa lang), ang engine mismo ang
+      tinatawag — ang PAREHONG `fcStampBySoNo` na gamit ng limang pipeline
+      workflow. Walang bagong matematika dito, walang ikalimang kopya ng
+      ladder. Kopya lang ang ginagawa ng function na ito.
+   ================================================================== */
+soCount = 0;
+engineRuns = 0;
+for each  raw in soList
+{
+    so = raw.trim();
+    if(so != "")
+    {
+        soCount = soCount + 1;
+        hasOne = false;
+        for each  sof in Sales_Order_Fulfillment[SO_No == so]
+        {
+            /* DATE field: sa null lang ikinukumpara, hindi sa "" (gotcha #29). */
+            if(sof.Forecast_Delivery != null)
+            {
+                hasOne = true;
+            }
+        }
+        if(!hasOne)
+        {
+            engineSaid = thisapp.fcStampBySoNo(so);
+            engineRuns = engineRuns + 1;
+        }
+    }
+}
+/* ==================================================================
+   3. IKALAWANG PASADA — hanapin ang PINAKAHULING petsa.
+      ISANG SOF record KADA ITEM (so_fulfillment_sync.txt linya 390), at
+      per item ang PR — kaya magkaiba ang petsa ng mga item ng isang SO.
+      Ang pinakahuli sa kanila ang tunay na kayang ihatid.
+
+      Nagsisimula sa PETSA, hindi sa null: ang null-initialised na variable
+      ay walang type sa Deluge at hindi na makukumpara sa petsa. Ang
+      `found` na flag ang may hawak ng kahulugang "wala pa" (gotcha #27).
+   ================================================================== */
+fcDelivery = zoho.currentdate;
+found = false;
+fcWindow = "";
+fcStatus = "";
+anyMiss = false;
+for each  raw2 in soList
+{
+    so2 = raw2.trim();
+    if(so2 != "")
+    {
+        for each  sof2 in Sales_Order_Fulfillment[SO_No == so2]
+        {
+            d = sof2.Forecast_Delivery;
+            if(d != null)
+            {
+                if(sof2.Forecast_Status == "Will Miss")
+                {
+                    anyMiss = true;
+                }
+                if(!found)
+                {
+                    found = true;
+                    fcDelivery = d;
+                    fcWindow = sof2.Forecast_Window + "";
+                    fcStatus = sof2.Forecast_Status + "";
+                }
+                else if(d > fcDelivery)
+                {
+                    fcDelivery = d;
+                    fcWindow = sof2.Forecast_Window + "";
+                    fcStatus = sof2.Forecast_Status + "";
+                }
+            }
+        }
+    }
+}
+if(!found)
+{
+    /* Walang isusulat na blangko: buburahin lang nito ang dating laman. */
+    return soCount + " SO, wala pa isa mang may forecast";
+}
+if(anyMiss)
+{
+    fcStatus = "Will Miss";
+}
+/* ==================================================================
+   4. STAMP — apat na form, pareho ang tatlong field.
+      `== soText`, BUO AT HINDI HINAHATI. Ang row na kasasave lang ay may
+      EKSAKTONG text na iyon, kaya siya ang tinatamaan.
+
+      BAKIT HINDI `contains`: kung "kahit alin sa mga SO ko" ang hahanapin,
+      matatamaan din ang KAPITBAHAY na row na may kaparehong isang SO pero
+      IBA ang listahan — ibang pinakahuling petsa iyon. Tapos ang workflow
+      NIYA naman ang magsusulat pabalik dito. Magpapalitan sila ng sulat
+      nang walang katapusan. Ang `==` ang nagsasara ng pintong iyon.
+
+      May sariling workflow ang apat na form, kaya walang nawawala: kapag
+      sarili nilang text ang hinahanap, tiyak na sila ang natatamaan.
+
+      LAGING `!=` GUARD BAGO SUMULAT: ang write mismo ang pwedeng
+      magpaputok ulit ng parehong workflow. Sa ikalawang putok ay pareho
+      ang kinalkula, walang nagbago, walang write — doon humihinto.
+   ================================================================== */
+stamped = 0;
+// STAMP: Delivery_Scheduling
+for each  ds in Delivery_Scheduling[SO == soText]
+{
+    if(ds.Forecast_Delivery != fcDelivery)
+    {
+        ds.Forecast_Delivery=fcDelivery;
+    }
+    if(ds.Forecast_Window != fcWindow)
+    {
+        ds.Forecast_Window=fcWindow;
+    }
+    if(ds.Forecast_Status != fcStatus)
+    {
+        ds.Forecast_Status=fcStatus;
+    }
+    stamped = stamped + 1;
+}
+// STAMP: Service_Request1
+for each  sr in Service_Request1[Sales_Order == soText]
+{
+    if(sr.Forecast_Delivery != fcDelivery)
+    {
+        sr.Forecast_Delivery=fcDelivery;
+    }
+    if(sr.Forecast_Window != fcWindow)
+    {
+        sr.Forecast_Window=fcWindow;
+    }
+    if(sr.Forecast_Status != fcStatus)
+    {
+        sr.Forecast_Status=fcStatus;
+    }
+    stamped = stamped + 1;
+}
+// STAMP: Service_Appointment_Form
+for each  sa in Service_Appointment_Form[Sales_Order == soText]
+{
+    if(sa.Forecast_Delivery != fcDelivery)
+    {
+        sa.Forecast_Delivery=fcDelivery;
+    }
+    if(sa.Forecast_Window != fcWindow)
+    {
+        sa.Forecast_Window=fcWindow;
+    }
+    if(sa.Forecast_Status != fcStatus)
+    {
+        sa.Forecast_Status=fcStatus;
+    }
+    stamped = stamped + 1;
+}
+// STAMP: Field_Work
+for each  fw in Field_Work[Sales_Order == soText]
+{
+    if(fw.Forecast_Delivery != fcDelivery)
+    {
+        fw.Forecast_Delivery=fcDelivery;
+    }
+    if(fw.Forecast_Window != fcWindow)
+    {
+        fw.Forecast_Window=fcWindow;
+    }
+    if(fw.Forecast_Status != fcStatus)
+    {
+        fw.Forecast_Status=fcStatus;
+    }
+    stamped = stamped + 1;
+}
+return soCount + " SO -> " + fcDelivery.toString("MMM dd, yyyy") + " | " + fcWindow + " | " + fcStatus + " | " + stamped + " record | engine " + engineRuns + "x";

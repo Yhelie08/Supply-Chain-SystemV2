@@ -1,0 +1,1546 @@
+// schedule: Forecast_Stamp_Daily  form=null event= on start > on load  [.ds line 47373]
+/* ============================================================================
+                   1. SETTINGS — isang beses lang, may fallback sa spec ng user
+                   ============================================================================ */
+                /* Isang record lang ang binabasa — ang UNA. Kung higit sa isa ang nasa form, ang una
+                   ang mananalo at tahimik na babalewalain ang iba; kaya isa lang ang gawin.
+                
+                   Kung WALA pang record, ang mga default sa ibaba ang gagamitin — ang mismong spec mo
+                   noong 2026-10-30. Tumatakbo pa rin ang script, hindi lang gagalaw ang mga numero
+                   hangga't hindi ka pa nagsa-save ng record.
+                
+                   Apat ang walang min/max sa form (Prep, Delivery, Local Transit, Local Customs):
+                   isang numero lang ang kanila, kaya pareho ang min at max. Walang nawawala — pareho
+                   naman ang min at max ng apat na iyon sa orihinal na spec (7/7, 0/0, 0/0, 0/0). */
+                airTMin = 5;
+                airTMax = 7;
+                airCMin = 2;
+                airCMax = 3;
+                lclTMin = 35;
+                lclTMax = 60;
+                lclCMin = 7;
+                lclCMax = 10;
+                fclTMin = 35;
+                fclTMax = 60;
+                fclCMin = 7;
+                fclCMax = 10;
+                locTMin = 0;
+                locTMax = 0;
+                locCMin = 0;
+                locCMax = 0;
+                prepMin = 7;
+                prepMax = 7;
+                delMin = 0;
+                delMax = 0;
+                reAnchor = true;
+                addSupLead = false;
+                fsTaken = false;
+                fsRecs = Forecast_Settings[ID != 0];
+                for each  fs in fsRecs
+                {
+                    if(!fsTaken)
+                    {
+                        fsTaken = true;
+                        if(fs.Air_Transit_Min != null)
+                        {
+                            airTMin = fs.Air_Transit_Min.toLong();
+                        }
+                        if(fs.Air_Transit_Max != null)
+                        {
+                            airTMax = fs.Air_Transit_Max.toLong();
+                        }
+                        if(fs.Air_Customs_to_WH_Min != null)
+                        {
+                            airCMin = fs.Air_Customs_to_WH_Min.toLong();
+                        }
+                        if(fs.Air_Customs_to_WH_Max != null)
+                        {
+                            airCMax = fs.Air_Customs_to_WH_Max.toLong();
+                        }
+                        if(fs.LCL_Transit_Min != null)
+                        {
+                            lclTMin = fs.LCL_Transit_Min.toLong();
+                        }
+                        if(fs.LCL_Transit_Max != null)
+                        {
+                            lclTMax = fs.LCL_Transit_Max.toLong();
+                        }
+                        if(fs.LCL_Customs_to_WH_Min != null)
+                        {
+                            lclCMin = fs.LCL_Customs_to_WH_Min.toLong();
+                        }
+                        if(fs.LCL_Customs_to_WH_Max != null)
+                        {
+                            lclCMax = fs.LCL_Customs_to_WH_Max.toLong();
+                        }
+                        if(fs.FCL_Transit_Min != null)
+                        {
+                            fclTMin = fs.FCL_Transit_Min.toLong();
+                        }
+                        if(fs.FCL_Transit_Max != null)
+                        {
+                            fclTMax = fs.FCL_Transit_Max.toLong();
+                        }
+                        if(fs.FCL_Customs_to_WH_Min != null)
+                        {
+                            fclCMin = fs.FCL_Customs_to_WH_Min.toLong();
+                        }
+                        if(fs.FCL_Customs_to_WH_Max != null)
+                        {
+                            fclCMax = fs.FCL_Customs_to_WH_Max.toLong();
+                        }
+                        if(fs.Local_Transit_Days != null)
+                        {
+                            locTMin = fs.Local_Transit_Days.toLong();
+                            locTMax = fs.Local_Transit_Days.toLong();
+                        }
+                        if(fs.Local_Customs_Days != null)
+                        {
+                            locCMin = fs.Local_Customs_Days.toLong();
+                            locCMax = fs.Local_Customs_Days.toLong();
+                        }
+                        if(fs.Prep_Days_Thru_QC != null)
+                        {
+                            prepMin = fs.Prep_Days_Thru_QC.toLong();
+                            prepMax = fs.Prep_Days_Thru_QC.toLong();
+                        }
+                        if(fs.Delivery_Days != null)
+                        {
+                            delMin = fs.Delivery_Days.toLong();
+                            delMax = fs.Delivery_Days.toLong();
+                        }
+                        /* Checkbox: sa Deluge pwede itong dumating bilang boolean o bilang text
+                           depende sa paraan ng pagbasa, kaya pareho ang hinahawakan dito. Ang laman
+                           ng record ang SUMUSUNOD, hindi ang default sa itaas — kung hindi, kasinungalingan
+                           ang checkbox. Kaya kung HINDI naka-check ang Re-anchor sa record mo, patay ito. */
+                        chk = fs.Re_anchor_on_Latest_Real_Event.toString().toLowerCase();
+                        reAnchor = chk == "true";
+                        chk = fs.Include_Supplier_Lead_Time.toString().toLowerCase();
+                        addSupLead = chk == "true";
+                    }
+                }
+                today = zoho.currentdate;
+                /* Parehong manual-test override na ginagamit ng shipment_delay_status_schedule, para
+                   pwedeng i-test ang forecast sa ibang petsa nang hindi hinihintay ang bukas.
+                
+                   >>> ITO ANG UNANG BURAHIN KUNG AYAW MAG-SAVE NG SCRIPT. <<<
+                   Burahin ang 9 na linya mula `settingsRec = ...` hanggang sa pangalawang `}` sa ibaba.
+                   Hindi ito kailangan ng forecast — testing convenience lang ito.
+                
+                   Bakit: kailangan nitong EXISTING na ang `Schedule_Test_Settings` form. Nasa repo ang
+                   definition niya (`DelugeScripts\schedule_test_settings_form.txt`) at prerequisite siya
+                   ng `shipment_delay_status_schedule`, pero HINDI ko makumpirma na talagang nagawa na
+                   siya sa Creator. Kung hindi pa, "Variable Schedule_Test_Settings does not exist" ang
+                   isasabi ng editor — at nakakalito iyon, kasi parang problema sa forecast ang dating
+                   pero wala namang kinalaman. Burahin lang, o gawin ang form, bahala ka. */
+                settingsRec = Schedule_Test_Settings[ID != 0];
+                for each  s in settingsRec
+                {
+                    if(s.Test_Current_Date != null)
+                    {
+                        today = s.Test_Current_Date;
+                    }
+                }
+                /* ============================================================================
+                   2. SHIPMENT INDEX — isang pass lang sa Shipments, para hindi na kailangan ng
+                      subform criteria (mapagkakatiwalaan ang iteration, hindi ang
+                      `Shipments[Supplier_Shipment_Details.PR_No == x]`).
+                
+                      Para sa isang PR, ang PINAKAUNANG Date_Shipped ang panalo — kapag umalis na
+                      ang unang linya, nagsimula nang gumalaw ang order.
+                   ============================================================================ */
+                shipIdByPr = Map();
+                shipDateByPr = Map();
+                shipStatusByPr = Map();
+                shipModeByPr = Map();
+                allShips = Shipments[ID != 0];
+                rawShipCount = 0;
+                for each  sh in allShips
+                {
+                    rawShipCount = rawShipCount + 1;
+                    for each  srow in sh.Supplier_Shipment_Details
+                    {
+                        if(srow.PR_No != null && srow.PR_No != "")
+                        {
+                            pk = srow.PR_No + "";
+                            /* FIXED 2026-11-04, nakita sa live na form definition ng Shipments:
+                               ang Supplier_Shipment_Details.Date_Shipped ay plain TEXT, hindi Date.
+                               (Ginagawa itong string ng supplier_shipment_sync: `row.Date_Shipped + ""`,
+                               kahit tunay na Date field ang pinanggalingan sa supplier portal.)
+                
+                               Dalawang sira kung text ang iiwan:
+                               1. LEXICOGRAPHIC ang string comparison, kaya "30-Jan-2026" ay lalabas na
+                                  mas malaki kaysa "05-Feb-2026" — maling shipment ang mapipili bilang
+                                  pinakauna, kaya maling anchor at maling petsa ang forecast.
+                               2. Dumadaan sa .addDay() ang anchor mamaya, at hindi iyon gumagana sa text.
+                
+                               Kaya isang beses lang itong ginagawang tunay na date, dito sa index.
+                               Kung hindi mabasa, null — nawawala lang ang pag-anchor para sa PR na iyon,
+                               hindi bumabagsak ang buong run. Ang tanging mapagkukunan ng hindi mabasang
+                               halaga ay manual na pag-type sa grid; ang sync mismo ay laging naglalagay
+                               ng format ng app. */
+                            dsVal = null;
+                            if(srow.Date_Shipped != null && srow.Date_Shipped != "")
+                            {
+                                dsVal = srow.Date_Shipped.toDate();
+                            }
+                            takeIt = false;
+                            if(!shipIdByPr.containKey(pk))
+                            {
+                                takeIt = true;
+                            }
+                            else if(dsVal != null)
+                            {
+                                if(shipDateByPr.get(pk) == null)
+                                {
+                                    takeIt = true;
+                                }
+                                else if(dsVal < shipDateByPr.get(pk))
+                                {
+                                    takeIt = true;
+                                }
+                            }
+                            if(takeIt)
+                            {
+                                shipIdByPr.put(pk,sh.ID);
+                                shipDateByPr.put(pk,dsVal);
+                                shipStatusByPr.put(pk,sh.Shipment_Status + "");
+                                /* FIXED 2026-11-04 mula sa live na form definition: WALANG
+                                   header-level na Shipment_Mode ang Shipments. `sh.Shipment_Mode`
+                                   ang nakalagay dito dati — compile error iyon ("Shipment_Mode does
+                                   not exist"), hindi na sana magsa-save ang buong script.
+                
+                                   Ang tanging mode sa Shipments ay nasa mga subform row:
+                                   Supplier_Shipment_Details.Shipment_Mode (ito) at
+                                   PO_Shipments.Shipping_Mode (ibang grid, hindi ito nililoop dito).
+                                   Kaya blangko ang panimula; kung blangko pa rin pagkatapos, ang
+                                   PR.Shipment_Mode naman ang gagamitin sa ibaba, at kung wala rin,
+                                   LCL ang assumption na may `assumed` flag. */
+                                modeHere = "";
+                                if(srow.Shipment_Mode != null && srow.Shipment_Mode != "")
+                                {
+                                    modeHere = srow.Shipment_Mode + "";
+                                }
+                                shipModeByPr.put(pk,modeHere);
+                            }
+                        }
+                    }
+                }
+                /* ============================================================================
+                   3. MAIN PASS — bawat Sales Order Fulfillment record
+                   ============================================================================ */
+                sofCount = 0;
+                stampCount = 0;
+                noDateCount = 0;
+                allSof = Sales_Order_Fulfillment[ID != 0];
+                rawSofCount = 0;
+                /* HINDI "" ang panimula: kung "" ang SO_No ng kauna-unahang row ay lalaktawan
+                   ang if at hindi pa definido ang gateRecs - "Variable 'gateRecs' is not
+                   defined". */
+                cacheSo = "~wala~";
+                /* ROLL-UP para sa mga ORDER-LEVEL na form (Receiving, Order_Aggregation1,
+                   Service_Request1, Service_Appointment_Form). Walang SKU ang mga iyon - isang
+                   record sila kada order o kada package, kaya hindi sila pwedeng per item.
+                   Ang panuntunan ay PAREHO ng delivery leg: ang PINAKAHULING petsa sa lahat ng
+                   item ang nananalo, at `Will Miss` kung kahit isang item lang ang hindi
+                   aabot. Hindi maihahatid ang order hangga't hindi dumarating ang huling item.
+                   DATI: kung sinong row ang huling tumakbo, iyon ang naitatak - kaya ang isang
+                   order na may item sa bodega at item na nasa China pa ay pwedeng magpakita ng
+                   petsa ng nasa bodega. */
+                soTouched = Map();
+                soBest = Map();
+                soBestWin = Map();
+                soWorst = Map();
+                soWorstRank = Map();
+                for each  sof in allSof
+                {
+                    rawSofCount = rawSofCount + 1;
+                    sofCount = sofCount + 1;
+                    soNo = sof.SO_No + "";
+                    prNo = sof.PR_No + "";
+                    stage = sof.Fulfillment_Stage + "";
+                    /* ====================================================================
+                       PER ITEM (2026-11-06, per user: "dapat per item yung forecast nito").
+                       Isang SOF record = ISANG ITEM (so_fulfillment_sync: isang record kada
+                       SKU). Kaya ang pagkakakilanlan ng row na ito ay PR_No + SKU, hindi ang
+                       SO. Ang `prNo` ay pwedeng dumating na literal na "null" na string mula
+                       sa `+ ""` sa blangkong field - hindi iyon nahuhuli ng `!= ""`.
+                       ==================================================================== */
+                    if(prNo == null)
+                    {
+                        prNo = "";
+                    }
+                    prNo = prNo.trim();
+                    if(prNo == "null")
+                    {
+                        prNo = "";
+                    }
+                    hasPr = prNo != "";
+                    /* Walang sariling SKU field ang SOF. Nasa `SO_SKU_Key` ito, na ginawa ng
+                       syncpackagetofulfillment bilang `<SO>_<SKU>` (linya 719). Tinatanggal
+                       ang `<SO>_` na unahan para SKU-sa-SKU ang paghahambing, at
+                       ini-normalize: TRIM, UPPERCASE, at tinatanggal ang "SKU:" na unahan na
+                       nakikita sa ilang Gate row (hal. "SKU: KB314-3-B"). */
+                    sofKey = sof.SO_SKU_Key + "";
+                    if(sofKey == null)
+                    {
+                        sofKey = "";
+                    }
+                    sofKey = sofKey.trim();
+                    if(sofKey == "null")
+                    {
+                        sofKey = "";
+                    }
+                    sofSku = "";
+                    if(sofKey != "")
+                    {
+                        sofSku = sofKey;
+                        if(soNo != "")
+                        {
+                            sofSku = sofSku.replaceFirst(soNo + "_","");
+                        }
+                        sofSku = sofSku.trim().toUpperCase();
+                        if(sofSku.startsWith("SKU:"))
+                        {
+                            sofSku = sofSku.replaceFirst("SKU:","").trim();
+                        }
+                    }
+                    /* STOCK ON HAND: nasa Fulfillment na ang order at hindi ito pre-order,
+                       kaya WALA NANG import leg — prep + delivery na lang ang natitira.
+                       Dati ay hindi man lang binabasa ang order_type, kaya ang Normal order na
+                       nasa "Waiting For Package" ay binibigyan pa rin ng 35–60 araw na biyahe
+                       para sa stock na nasa bodega na. (User, 2026-11-04.)
+                       Ang "(Partly) Pre Order" ay pre-order pa rin: may linyang kailangan pang
+                       iprodyus at ipadala, kaya ang mas mahabang sagot ang totoo. */
+                    otype = (sof.order_type + "").toUpperCase();
+                    /* DATI: `stockOnHand = !otype.contains("PRE ORDER")` - ang ORDER ang
+                       tinatanong, hindi ang ITEM. Sa "(Partly) Pre Order" ay may linyang nasa
+                       bodega na at may linyang nasa China pa; pareho silang binibigyan ng
+                       42-70 araw.
+                       NGAYON: "may PR ba ANG LINYANG ITO?". Gumagawa lang ng PR ang so_to_pr
+                       kapag `availStock <= 0` (linya 149), kaya ang BLANGKONG PR_No ay ibig
+                       sabihin nasa bin na ang item - prep + delivery na lang.
+                       Walang nababago sa Normal (lahat blangko) at sa buong Pre Order (lahat
+                       may PR). Ang partly lang ang gumagalaw - at ang Normal na naubusan ng
+                       stock, na may tunay na import leg at dati ay prep-only ang sagot. */
+                    stockOnHand = !hasPr;
+                    clientTarget = sof.target_delivery_date;
+                    /* -- 3a. Galing sa PR: ang simula ng chain, at ang sourcing/mode -------- */
+                    prAdded = null;
+                    sourcing = "";
+                    supLead = 0;
+                    modeVal = sof.Shipment_Mode + "";
+                    if(prNo != null && prNo != "")
+                    {
+                        /* `for each`, hindi `if(... != null)`. Ang Form[criteria] na walang
+                           katugma ay nagbabalik ng WALANG-LAMANG RECORD, hindi null — kaya
+                           dumadaan ang null check, blangko ang Added_Time, at bumabagsak ang
+                           `.toDate()` ng buong takbo: "Value is empty and 'toDate' function
+                           cannot be applied" (live, 2026-11-04). Sa for-each, hindi tumatakbo
+                           ang loob kapag walang row. Ito rin ang ginagamit ng 11 stamp block.
+                
+                           Sapat na ang isang PR: iisa lang ang simula ng chain. */
+                        prRecs = Purchase_Request1[PR_No == prNo];
+                        prTaken = false;
+                        for each  prRec in prRecs
+                        {
+                            if(!prTaken)
+                            {
+                                prTaken = true;
+                                if(prRec.Added_Time != null)
+                                {
+                                    prAdded = prRec.Added_Time.toDate();
+                                }
+                                sourcing = prRec.Sourcing_Type + "";
+                                if(prRec.Required_Days_Lead != null)
+                                {
+                                    supLead = prRec.Required_Days_Lead.toLong();
+                                }
+                                if(modeVal == null || modeVal == "")
+                                {
+                                    modeVal = prRec.Shipment_Mode + "";
+                                }
+                            }
+                        }
+                    }
+                    /* Walang PR? Ang SO_Created_Date na lang ang simula — mas mabuti pa rin kaysa
+                       walang forecast. Nakikita naman sa Forecast_Window kung saan nag-anchor. */
+                    if(prAdded == null)
+                    {
+                        if(sof.SO_Created_Date != null)
+                        {
+                            prAdded = sof.SO_Created_Date;
+                        }
+                    }
+                    /* -- 3b. Galing sa Shipment ---------------------------------------------- */
+                    dateShipped = null;
+                    shipStatus = "";
+                    shipId = null;
+                    if(prNo != null && prNo != "")
+                    {
+                        if(shipIdByPr.containKey(prNo))
+                        {
+                            shipId = shipIdByPr.get(prNo);
+                            dateShipped = shipDateByPr.get(prNo);
+                            shipStatus = shipStatusByPr.get(prNo) + "";
+                            if(modeVal == null || modeVal == "")
+                            {
+                                modeVal = shipModeByPr.get(prNo) + "";
+                            }
+                        }
+                    }
+                    /* -- 3c. Mga stage record: kinukuha na rin dito para gamitin BOTH sa
+                              pag-alam kung kailan nagsimula ang prep AT sa pagtatatak mamaya.
+                              Isang fetch lang kada form, walang dagdag na query. ------------- */
+                    /* ISANG fetch kada SO, hindi kada ITEM. Magkakasunod ang mga SOF row ng
+                       iisang SO (sabay silang ginawa), kaya sapat na ang paghahambing sa huling
+                       SO para mawala ang 5 query sa bawat dagdag na item. Kung mahiwalay man
+                       ang isang row (item na idinagdag mamaya), mag-fe-fetch lang ulit - tama
+                       pa rin, mabagal lang nang kaunti. Ito ang pinakamalaking ginagastos ng
+                       schedule: sa 5 item kada SO, 25 query ang nagiging 5. */
+                    if(soNo != cacheSo)
+                    {
+                        cacheSo = soNo;
+                        gateRecs = Sales_Order_Readiness_Gate[sales_order_number == soNo];
+                        pickRecs = Pick1[SO == soNo];
+                        qcRecs = Checker_Checklist[SO == soNo];
+                        oaRecs = Order_Aggregation1[SO == soNo];
+                        crateRecs = Crate_Checklist[SO == soNo];
+                    }
+                    /* ------------------------------------------------------------------------
+                       3c-bis. MAY SKU BA ANG FORM NA ITO PARA SA ITEM NA ITO?
+                       Isang pasada sa memorya (walang query) kada form. Kung may katugmang
+                       SKU, SKU ang gagamiting pagtutugma - tunay na per item. Kung WALA -
+                       dahil iba ang pagkakasulat ng SKU doon o blangko - babalik sa dating
+                       PR_No / SO-wide na pagtutugma, kaya WALANG row na mawawalan ng forecast
+                       dahil sa pagbabagong ito. Hindi pwedeng mas masama kaysa sa dati.
+                       ------------------------------------------------------------------------ */
+                    gSkuHit = false;
+                    if(sofSku != "")
+                    {
+                        for each  gA in gateRecs
+                        {
+                            gASku = (gA.SKU + "").trim().toUpperCase();
+                            if(gASku == "NULL")
+                            {
+                                gASku = "";
+                            }
+                            if(gASku.startsWith("SKU:"))
+                            {
+                                gASku = gASku.replaceFirst("SKU:","").trim();
+                            }
+                            if(gASku == sofSku)
+                            {
+                                gSkuHit = true;
+                            }
+                        }
+                    }
+                    pSkuHit = false;
+                    if(sofSku != "")
+                    {
+                        for each  pA in pickRecs
+                        {
+                            pASku = (pA.SKU + "").trim().toUpperCase();
+                            if(pASku == "NULL")
+                            {
+                                pASku = "";
+                            }
+                            if(pASku.startsWith("SKU:"))
+                            {
+                                pASku = pASku.replaceFirst("SKU:","").trim();
+                            }
+                            if(pASku == sofSku)
+                            {
+                                pSkuHit = true;
+                            }
+                        }
+                    }
+                    qSkuHit = false;
+                    if(sofSku != "")
+                    {
+                        for each  qA in qcRecs
+                        {
+                            qASku = (qA.SKU + "").trim().toUpperCase();
+                            if(qASku == "NULL")
+                            {
+                                qASku = "";
+                            }
+                            if(qASku.startsWith("SKU:"))
+                            {
+                                qASku = qASku.replaceFirst("SKU:","").trim();
+                            }
+                            if(qASku == sofSku)
+                            {
+                                qSkuHit = true;
+                            }
+                        }
+                    }
+                    cSkuHit = false;
+                    if(sofSku != "")
+                    {
+                        for each  cA in crateRecs
+                        {
+                            cASku = (cA.SKU + "").trim().toUpperCase();
+                            if(cASku == "NULL")
+                            {
+                                cASku = "";
+                            }
+                            if(cASku.startsWith("SKU:"))
+                            {
+                                cASku = cASku.replaceFirst("SKU:","").trim();
+                            }
+                            if(cASku == sofSku)
+                            {
+                                cSkuHit = true;
+                            }
+                        }
+                    }
+                    /* prepStart ay NAGSISIMULA SA PETSA, hindi sa null. Ang null-initialised na
+                       variable ay walang type, kaya hindi mahanap ng Deluge ang .daysBetween()
+                       dito: "Not able to find 'daysBetween' function" (live, 2026-11-04).
+                       Ang kahulugang "wala pang nakitang prep" ay nasa prepFound na. */
+                    prepStart = today;
+                    prepFound = false;
+                    for each  g in gateRecs
+                    {
+                        matchG = true;
+                        /* PER ITEM: SKU kung may katugma sa form na ito, PR_No kung wala. */
+                        gSku = (g.SKU + "").trim().toUpperCase();
+                        if(gSku == "NULL")
+                        {
+                            gSku = "";
+                        }
+                        if(gSku.startsWith("SKU:"))
+                        {
+                            gSku = gSku.replaceFirst("SKU:","").trim();
+                        }
+                        if(gSkuHit)
+                        {
+                            if(gSku != sofSku)
+                            {
+                                matchG = false;
+                            }
+                        }
+                        else if(hasPr && g.pr_number != null && g.pr_number != "" && g.pr_number != prNo)
+                        {
+                            matchG = false;
+                        }
+                        if(matchG)
+                        {
+                            /* I-null muna: kondisyonal na ang assignment sa loob ng loop, kaya
+                               kung blangko ang Added_Time ng row na ito ay magagamit sana ulit
+                               ang petsa ng NAKARAANG row — at sa kauna-unahang row ay wala pang
+                               laman ang variable. */
+                            gd = null;
+                            if(g.Added_Time != null)
+                            {
+                                gd = g.Added_Time.toDate();
+                            }
+                            if(gd != null)
+                            {
+                                if(!prepFound || gd < prepStart)
+                                {
+                                    prepStart = gd;
+                                    prepFound = true;
+                                }
+                            }
+                        }
+                    }
+                    for each  p in pickRecs
+                    {
+                        matchP = true;
+                        /* PER ITEM: SKU kung may katugma sa form na ito, PR_No kung wala. */
+                        pSku = (p.SKU + "").trim().toUpperCase();
+                        if(pSku == "NULL")
+                        {
+                            pSku = "";
+                        }
+                        if(pSku.startsWith("SKU:"))
+                        {
+                            pSku = pSku.replaceFirst("SKU:","").trim();
+                        }
+                        if(pSkuHit)
+                        {
+                            if(pSku != sofSku)
+                            {
+                                matchP = false;
+                            }
+                        }
+                        else if(hasPr && p.PR_if_any != null && p.PR_if_any != "" && p.PR_if_any != prNo)
+                        {
+                            matchP = false;
+                        }
+                        if(matchP)
+                        {
+                            /* I-null muna: kondisyonal na ang assignment sa loob ng loop, kaya
+                               kung blangko ang Added_Time ng row na ito ay magagamit sana ulit
+                               ang petsa ng NAKARAANG row — at sa kauna-unahang row ay wala pang
+                               laman ang variable. */
+                            pd = null;
+                            if(p.Added_Time != null)
+                            {
+                                pd = p.Added_Time.toDate();
+                            }
+                            if(pd != null)
+                            {
+                                if(!prepFound || pd < prepStart)
+                                {
+                                    prepStart = pd;
+                                    prepFound = true;
+                                }
+                            }
+                        }
+                    }
+                    for each  q in qcRecs
+                    {
+                        matchQ = true;
+                        /* PER ITEM: SKU kung may katugma sa form na ito, PR_No kung wala. */
+                        qSku = (q.SKU + "").trim().toUpperCase();
+                        if(qSku == "NULL")
+                        {
+                            qSku = "";
+                        }
+                        if(qSku.startsWith("SKU:"))
+                        {
+                            qSku = qSku.replaceFirst("SKU:","").trim();
+                        }
+                        if(qSkuHit)
+                        {
+                            if(qSku != sofSku)
+                            {
+                                matchQ = false;
+                            }
+                        }
+                        else if(hasPr && q.PR != null && q.PR != "" && q.PR != prNo)
+                        {
+                            matchQ = false;
+                        }
+                        if(matchQ)
+                        {
+                            /* I-null muna: kondisyonal na ang assignment sa loob ng loop, kaya
+                               kung blangko ang Added_Time ng row na ito ay magagamit sana ulit
+                               ang petsa ng NAKARAANG row — at sa kauna-unahang row ay wala pang
+                               laman ang variable. */
+                            qd = null;
+                            if(q.Added_Time != null)
+                            {
+                                qd = q.Added_Time.toDate();
+                            }
+                            if(qd != null)
+                            {
+                                if(!prepFound || qd < prepStart)
+                                {
+                                    prepStart = qd;
+                                    prepFound = true;
+                                }
+                            }
+                        }
+                    }
+                    for each  c in crateRecs
+                    {
+                        matchC = true;
+                        /* PER ITEM: SKU kung may katugma sa form na ito, PR_No kung wala. */
+                        cSku = (c.SKU + "").trim().toUpperCase();
+                        if(cSku == "NULL")
+                        {
+                            cSku = "";
+                        }
+                        if(cSku.startsWith("SKU:"))
+                        {
+                            cSku = cSku.replaceFirst("SKU:","").trim();
+                        }
+                        if(cSkuHit)
+                        {
+                            if(cSku != sofSku)
+                            {
+                                matchC = false;
+                            }
+                        }
+                        else if(hasPr && c.PR_if_any != null && c.PR_if_any != "" && c.PR_if_any != prNo)
+                        {
+                            matchC = false;
+                        }
+                        if(matchC)
+                        {
+                            /* I-null muna: kondisyonal na ang assignment sa loob ng loop, kaya
+                               kung blangko ang Added_Time ng row na ito ay magagamit sana ulit
+                               ang petsa ng NAKARAANG row — at sa kauna-unahang row ay wala pang
+                               laman ang variable. */
+                            cd = null;
+                            if(c.Added_Time != null)
+                            {
+                                cd = c.Added_Time.toDate();
+                            }
+                            if(cd != null)
+                            {
+                                if(!prepFound || cd < prepStart)
+                                {
+                                    prepStart = cd;
+                                    prepFound = true;
+                                }
+                            }
+                        }
+                    }
+                    /* ------------------------------------------------------------------------
+                       3d. ANG ENGINE. Nandito lang ito ISANG BESES sa buong script — walang
+                           kopya, kaya walang pwedeng mag-drift.
+                       ------------------------------------------------------------------------ */
+                    modeKey = modeVal.toUpperCase();
+                    srcKey = sourcing.toUpperCase();
+                    if(srcKey == "LOCAL")
+                    {
+                        tMin = locTMin;
+                        tMax = locTMax;
+                        cMin = locCMin;
+                        cMax = locCMax;
+                        bucket = "Local";
+                    }
+                    else if(modeKey.contains("AIR"))
+                    {
+                        tMin = airTMin;
+                        tMax = airTMax;
+                        cMin = airCMin;
+                        cMax = airCMax;
+                        bucket = "Air";
+                    }
+                    else if(modeKey == "FCL")
+                    {
+                        tMin = fclTMin;
+                        tMax = fclTMax;
+                        cMin = fclCMin;
+                        cMax = fclCMax;
+                        bucket = "FCL";
+                    }
+                    else
+                    {
+                        /* Blanko o hindi kilalang mode: LCL ang ipinapalagay (iyon ang karaniwan
+                           dito), pero sinasabi ito sa Forecast_Window para walang mabigla. */
+                        tMin = lclTMin;
+                        tMax = lclTMax;
+                        cMin = lclCMin;
+                        cMax = lclCMax;
+                        bucket = "LCL";
+                        if(modeKey != "LCL")
+                        {
+                            bucket = "LCL?";
+                        }
+                    }
+                    /* Nagsisimula sa PETSA, hindi sa null: ang null-initialised na variable ay
+                       walang type, kaya hindi mahanap ng Deluge ang .addDay() dito — "Not able
+                       to find ... function". Ang kahulugang "walang mapagsisimulan" ay nasa
+                       anchorFound na. */
+                    anchor = today;
+                    anchorFound = false;
+                    sumMin = 0;
+                    sumMax = 0;
+                    position = "";
+                    if(reAnchor && stage == "For Delivery")
+                    {
+                        anchor = today;
+                        anchorFound = true;
+                        sumMin = delMin;
+                        sumMax = delMax;
+                        position = "Ready";
+                    }
+                    else if(reAnchor && stage == "Order Readiness" || stage == "Picking" || stage == "Pack" || stage == "Quality Checking" || stage == "Crate")
+                    {
+                        anchor = today;
+                        anchorFound = true;
+                        usedDays = 0;
+                        if(prepFound)
+                        {
+                            /* Ang (petsa - petsa) sa Deluge na ito ay STRING, kahit ilagay pa sa variable —
+                               tinanggihan ng live editor ang parehong anyo noong 2026-11-04. Kaya
+                               .daysBetween() na lang, na deretsong araw ang ibinabalik at matagal nang
+                               gumagana sa app na ito (dms_site_confirmation.txt).
+                               Hindi umaasa sa sign convention ng daysBetween: kinukuha ang laki, saka
+                               pinipilit na positibo. */
+                            usedDays = prepStart.daysBetween(today);
+                            if(usedDays < 0)
+                            {
+                                usedDays = usedDays * -1;
+                            }
+                        }
+                        if(usedDays < 0)
+                        {
+                            usedDays = 0;
+                        }
+                        leftMin = prepMin - usedDays;
+                        if(leftMin < 0)
+                        {
+                            leftMin = 0;
+                        }
+                        leftMax = prepMax - usedDays;
+                        if(leftMax < 0)
+                        {
+                            leftMax = 0;
+                        }
+                        sumMin = leftMin + delMin;
+                        sumMax = leftMax + delMax;
+                        position = stage;
+                    }
+                    else if(stockOnHand)
+                    {
+                        /* HINDI nakasalalay sa Re-anchor: ang re-anchor ay tungkol sa KUNG SAAN
+                           magsisimulang magbilang, ito ay tungkol sa ALING LEG ang umiiral. */
+                        anchor = today;
+                        anchorFound = true;
+                        sumMin = prepMin + delMin;
+                        sumMax = prepMax + delMax;
+                        position = "Stock on hand";
+                    }
+                    else if(reAnchor && shipStatus == "Delivered")
+                    {
+                        anchor = today;
+                        anchorFound = true;
+                        sumMin = prepMin + delMin;
+                        sumMax = prepMax + delMax;
+                        position = "At WH";
+                    }
+                    else if(reAnchor && dateShipped != null)
+                    {
+                        anchor = dateShipped;
+                        anchorFound = true;
+                        sumMin = tMin + cMin + prepMin + delMin;
+                        sumMax = tMax + cMax + prepMax + delMax;
+                        position = "In transit";
+                    }
+                    else
+                    {
+                        /* prAdded PWEDENG null (walang PR at walang SO_Created_Date). Dati ay
+                           nahuhuli iyon ng `if(anchor == null)` sa baba; ngayong flag na ang
+                           gamit, dito na dapat tingnan — kung hindi, magiging null ang anchor
+                           habang true ang flag, at bumabagsak ang .addDay() sa null. */
+                        if(prAdded != null)
+                        {
+                            anchor = prAdded;
+                            anchorFound = true;
+                        }
+                        sumMin = tMin + cMin + prepMin + delMin;
+                        sumMax = tMax + cMax + prepMax + delMax;
+                        if(addSupLead)
+                        {
+                            sumMin = sumMin + supLead;
+                            sumMax = sumMax + supLead;
+                        }
+                        position = "Procurement";
+                    }
+                    fcDelivery = null;
+                    fcWindow = "";
+                    fcStatus = "";
+                    if(!anchorFound)
+                    {
+                        /* Wala talagang mapagsisimulan — huwag mag-imbento ng petsa. */
+                        fcWindow = "Walang panimulang petsa";
+                        fcStatus = "No Start Date";
+                        noDateCount = noDateCount + 1;
+                    }
+                    else
+                    {
+                        earliest = anchor.addDay(sumMin);
+                        latest = anchor.addDay(sumMax);
+                        /* Pwedeng nasa nakaraan na ang buong window kung hindi gumalaw ang order.
+                           Totoong balita iyon — lumampas na ang chain sa sarili nitong tantiya —
+                           pero hindi tamang magpakita ng delivery na parang nangyari na. Hinihila
+                           sa ngayon, at sinasabi sa window. */
+                        pastIts = false;
+                        if(latest < today)
+                        {
+                            pastIts = true;
+                        }
+                        if(earliest < today)
+                        {
+                            earliest = today;
+                        }
+                        if(latest < today)
+                        {
+                            latest = today;
+                        }
+                        /* Ang (petsa - petsa) sa Deluge na ito ay STRING, kahit ilagay pa sa variable —
+                           tinanggihan ng live editor ang parehong anyo noong 2026-11-04. Kaya
+                           .daysBetween() na lang, na deretsong araw ang ibinabalik at matagal nang
+                           gumagana sa app na ito (dms_site_confirmation.txt).
+                           Hindi umaasa sa sign convention ng daysBetween: kinukuha ang laki, saka
+                           pinipilit na positibo. Laging latest >= earliest dito. */
+                        spanDays = earliest.daysBetween(latest);
+                        if(spanDays < 0)
+                        {
+                            spanDays = spanDays * -1;
+                        }
+                        /* fcDate, hindi fcDelivery, ang ipinapasa sa daysBetween sa ibaba.
+                           Nagsisimula ang fcDelivery bilang `null`, kaya hindi mapatunayan ng Deluge
+                           na DATE ito kapag ARGUMENTO na — "Data type of argument at index '1' of the
+                           function 'daysBetween' did not match ... '[DATE-TIME, DATE]'" (live, 2026-11-04).
+                           Ang fcDate ay galing lang sa .addDay(), kaya tiyak na DATE.
+                           MALI ang naunang akala ko na mapagparaya ang receiver position — pareho
+                           silang mahigpit; isa-isa lang iniuulat ng compiler. Nananatiling
+                           null-hanggang-makuha ang
+                           fcDelivery dahil kailangan iyon ng mga stamp guard: hindi dapat
+                           mabura ng walang-lamang forecast ang naitatak nang petsa. */
+                        fcDate = earliest.addDay((spanDays / 2).round(0).toLong());
+                        fcDelivery = fcDate;
+                        fcWindow = earliest.toString("MMM dd") + " - " + latest.toString("MMM dd, yyyy") + " | " + bucket + " | " + position;
+                        if(pastIts)
+                        {
+                            fcWindow = fcWindow + " | lampas na sa tantiya";
+                        }
+                        /* -- Status laban sa HINIHINTAY NG CLIENT ---------------------------
+                           Ang client target ay ang Books SO custom field cf_target_delivery_date,
+                           na kinokopya ng so_fulfillment_sync papunta sa target_delivery_date.
+                           Kung walang laman, HINDI ito itinuturing na on-time — ibinubukod. */
+                        if(clientTarget == null)
+                        {
+                            fcStatus = "No Client Date";
+                        }
+                        else if(today > clientTarget)
+                        {
+                            fcStatus = "Overdue";
+                        }
+                        else if(latest <= clientTarget)
+                        {
+                            fcStatus = "On Track";
+                        }
+                        else if(earliest <= clientTarget)
+                        {
+                            fcStatus = "At Risk";
+                        }
+                        else
+                        {
+                            fcStatus = "Will Miss";
+                        }
+                        if(clientTarget != null)
+                        {
+                            /* Ang (petsa - petsa) sa Deluge na ito ay STRING, kahit ilagay pa sa variable —
+                               tinanggihan ng live editor ang parehong anyo noong 2026-11-04. Kaya
+                               .daysBetween() na lang, na deretsong araw ang ibinabalik at matagal nang
+                               gumagana sa app na ito (dms_site_confirmation.txt).
+                               Hindi umaasa sa sign convention ng daysBetween: kinukuha ang laki, saka
+                               pinipilit na positibo.
+                               Dito MAY KAHULUGAN ang sign (+ = huli, - = maaga), kaya hindi
+                               hinuhulaan: ang paghahambing ng petsa ang naglalagay nito. */
+                            varDays = clientTarget.daysBetween(fcDate);
+                            if(varDays < 0)
+                            {
+                                varDays = varDays * -1;
+                            }
+                            if(fcDate < clientTarget)
+                            {
+                                varDays = varDays * -1;
+                            }
+                            if(varDays > 0)
+                            {
+                                fcWindow = fcWindow + " | +" + varDays + "d vs client";
+                            }
+                            else if(varDays < 0)
+                            {
+                                fcWindow = fcWindow + " | " + varDays * -1 + "d early";
+                            }
+                            else
+                            {
+                                fcWindow = fcWindow + " | sakto sa client";
+                            }
+                        }
+                    }
+                    /* ------------------------------------------------------------------------
+                       3d-bis. ROLL-UP PER SO - para sa mga form na walang SKU.
+                       Ang Receiving, Order_Aggregation1, Service_Request1 at
+                       Service_Appointment_Form ay isang record kada order o package, kaya
+                       hindi sila pwedeng per item. Ang PINAKAHULING petsa ang nananalo at ang
+                       PINAKAMASAMANG status - hindi maihahatid ang order hangga't hindi
+                       dumarating ang huling item. Pareho ito ng panuntunan sa delivery leg.
+                       ------------------------------------------------------------------------ */
+                    rowRank = 0;
+                    if(fcStatus == "No Start Date")
+                    {
+                        rowRank = 1;
+                    }
+                    else if(fcStatus == "No Client Date")
+                    {
+                        rowRank = 2;
+                    }
+                    else if(fcStatus == "On Track")
+                    {
+                        rowRank = 3;
+                    }
+                    else if(fcStatus == "At Risk")
+                    {
+                        rowRank = 4;
+                    }
+                    else if(fcStatus == "Will Miss")
+                    {
+                        rowRank = 5;
+                    }
+                    else if(fcStatus == "Overdue")
+                    {
+                        rowRank = 6;
+                    }
+                    /* Sinasabi ng window kung ALING item ang humihila sa petsa - iyon ang
+                       unang tanong tuwing "bakit ganito kalayo ang order na ito?". */
+                    rowWin = fcWindow;
+                    if(sofSku != "")
+                    {
+                        rowWin = fcWindow + " | item " + sofSku;
+                    }
+                    soFresh = false;
+                    if(!soTouched.containKey(soNo))
+                    {
+                        soTouched.put(soNo,"1");
+                        soFresh = true;
+                    }
+                    /* `rollChanged` ang nagpapasya kung sulit pang hawakan ang mga
+                       order-level na form. Sa unang item ng SO, oo. Pagkatapos, kapag may
+                       bagong pinakahuling petsa o mas masamang status lang. Kaya ang SO na may
+                       10 item ay karaniwang 1 beses lang hahawakan ang Receiving/OA/SR/SA,
+                       hindi 10. */
+                    rollChanged = soFresh;
+                    if(soFresh)
+                    {
+                        soBestWin.put(soNo,rowWin);
+                        soWorst.put(soNo,fcStatus);
+                        soWorstRank.put(soNo,rowRank);
+                        if(fcDelivery != null)
+                        {
+                            soBest.put(soNo,fcDelivery);
+                        }
+                    }
+                    else
+                    {
+                        if(fcDelivery != null)
+                        {
+                            if(!soBest.containKey(soNo))
+                            {
+                                soBest.put(soNo,fcDelivery);
+                                soBestWin.put(soNo,rowWin);
+                                rollChanged = true;
+                            }
+                            else
+                            {
+                                /* `.toDate()` muna: walang type ang galing sa Map, at tumatanggi
+                                   ang Deluge sa paghahambing ng DATE sa walang-type (gotcha #27). */
+                                prevBest = soBest.get(soNo).toDate();
+                                if(fcDelivery > prevBest)
+                                {
+                                    soBest.put(soNo,fcDelivery);
+                                    soBestWin.put(soNo,rowWin);
+                                    rollChanged = true;
+                                }
+                            }
+                        }
+                        prevRank = soWorstRank.get(soNo).toLong();
+                        if(rowRank > prevRank)
+                        {
+                            soWorstRank.put(soNo,rowRank);
+                            soWorst.put(soNo,fcStatus);
+                            rollChanged = true;
+                        }
+                    }
+                    /* Nagsisimula sa fcDelivery para tiyak na DATE-o-null ang type, hindi
+                       walang-type na null. */
+                    rollDate = fcDelivery;
+                    if(soBest.containKey(soNo))
+                    {
+                        rollDate = soBest.get(soNo).toDate();
+                    }
+                    rollWindow = soBestWin.get(soNo) + "";
+                    rollStatus = soWorst.get(soNo) + "";
+                    /* ------------------------------------------------------------------------
+                       3e. STAMP — pareho ang tatlong field sa lahat. Laging may `!=` guard bago
+                           magsulat: ang write ang mabigat, hindi ang read.
+                
+                           PER ITEM ang SOF, Purchase_Request1, Gate, Pick1, Checker_Checklist
+                           at Crate_Checklist (may SKU sila). ROLL-UP ang Receiving,
+                           Order_Aggregation1, Service_Request1 at Service_Appointment_Form.
+                       ------------------------------------------------------------------------ */
+                    // STAMP: Sales_Order_Fulfillment
+                    if(sof.Forecast_Delivery != fcDelivery)
+                    {
+                        sof.Forecast_Delivery=fcDelivery;
+                    }
+                    if(sof.Forecast_Window != fcWindow)
+                    {
+                        sof.Forecast_Window=fcWindow;
+                    }
+                    if(sof.Forecast_Status != fcStatus)
+                    {
+                        sof.Forecast_Status=fcStatus;
+                    }
+                    stampCount = stampCount + 1;
+                    // STAMP: Purchase_Request1
+                    if(prNo != null && prNo != "")
+                    {
+                        prStamp = Purchase_Request1[PR_No == prNo];
+                        for each  pr in prStamp
+                        {
+                            if(pr.Forecast_Delivery != fcDelivery)
+                            {
+                                pr.Forecast_Delivery=fcDelivery;
+                            }
+                            if(pr.Forecast_Window != fcWindow)
+                            {
+                                pr.Forecast_Window=fcWindow;
+                            }
+                            if(pr.Forecast_Status != fcStatus)
+                            {
+                                pr.Forecast_Status=fcStatus;
+                            }
+                        }
+                    }
+                    // STAMP: Shipments
+                    if(shipId != null)
+                    {
+                        shipStamp = Shipments[ID == shipId];
+                        for each  shp in shipStamp
+                        {
+                            if(shp.Forecast_Delivery != fcDelivery)
+                            {
+                                shp.Forecast_Delivery=fcDelivery;
+                            }
+                            if(shp.Forecast_Window != fcWindow)
+                            {
+                                shp.Forecast_Window=fcWindow;
+                            }
+                            if(shp.Forecast_Status != fcStatus)
+                            {
+                                shp.Forecast_Status=fcStatus;
+                            }
+                        }
+                    }
+                    // STAMP: Receiving   (ORDER-LEVEL - roll-up, walang SKU sa header)
+                    if(rollChanged && soNo != null && soNo != "")
+                    {
+                        rcvStamp = Receiving[SO_No == soNo];
+                        for each  rcv in rcvStamp
+                        {
+                            if(rcv.Forecast_Delivery != rollDate)
+                            {
+                                rcv.Forecast_Delivery=rollDate;
+                            }
+                            if(rcv.Forecast_Window != rollWindow)
+                            {
+                                rcv.Forecast_Window=rollWindow;
+                            }
+                            if(rcv.Forecast_Status != rollStatus)
+                            {
+                                rcv.Forecast_Status=rollStatus;
+                            }
+                        }
+                    }
+                    // STAMP: Sales_Order_Readiness_Gate
+                    for each  g2 in gateRecs
+                    {
+                        matchG2 = true;
+                        /* PER ITEM: SKU kung may katugma sa form na ito, PR_No kung wala. */
+                        g2Sku = (g2.SKU + "").trim().toUpperCase();
+                        if(g2Sku == "NULL")
+                        {
+                            g2Sku = "";
+                        }
+                        if(g2Sku.startsWith("SKU:"))
+                        {
+                            g2Sku = g2Sku.replaceFirst("SKU:","").trim();
+                        }
+                        if(gSkuHit)
+                        {
+                            if(g2Sku != sofSku)
+                            {
+                                matchG2 = false;
+                            }
+                        }
+                        else if(hasPr && g2.pr_number != null && g2.pr_number != "" && g2.pr_number != prNo)
+                        {
+                            matchG2 = false;
+                        }
+                        if(matchG2)
+                        {
+                            if(g2.Forecast_Delivery != fcDelivery)
+                            {
+                                g2.Forecast_Delivery=fcDelivery;
+                            }
+                            if(g2.Forecast_Window != fcWindow)
+                            {
+                                g2.Forecast_Window=fcWindow;
+                            }
+                            if(g2.Forecast_Status != fcStatus)
+                            {
+                                g2.Forecast_Status=fcStatus;
+                            }
+                        }
+                    }
+                    // STAMP: Pick1
+                    for each  p2 in pickRecs
+                    {
+                        matchP2 = true;
+                        /* PER ITEM: SKU kung may katugma sa form na ito, PR_No kung wala. */
+                        p2Sku = (p2.SKU + "").trim().toUpperCase();
+                        if(p2Sku == "NULL")
+                        {
+                            p2Sku = "";
+                        }
+                        if(p2Sku.startsWith("SKU:"))
+                        {
+                            p2Sku = p2Sku.replaceFirst("SKU:","").trim();
+                        }
+                        if(pSkuHit)
+                        {
+                            if(p2Sku != sofSku)
+                            {
+                                matchP2 = false;
+                            }
+                        }
+                        else if(hasPr && p2.PR_if_any != null && p2.PR_if_any != "" && p2.PR_if_any != prNo)
+                        {
+                            matchP2 = false;
+                        }
+                        if(matchP2)
+                        {
+                            if(p2.Forecast_Delivery != fcDelivery)
+                            {
+                                p2.Forecast_Delivery=fcDelivery;
+                            }
+                            if(p2.Forecast_Window != fcWindow)
+                            {
+                                p2.Forecast_Window=fcWindow;
+                            }
+                            if(p2.Forecast_Status != fcStatus)
+                            {
+                                p2.Forecast_Status=fcStatus;
+                            }
+                        }
+                    }
+                    // STAMP: Checker_Checklist
+                    for each  q2 in qcRecs
+                    {
+                        matchQ2 = true;
+                        /* PER ITEM: SKU kung may katugma sa form na ito, PR_No kung wala. */
+                        q2Sku = (q2.SKU + "").trim().toUpperCase();
+                        if(q2Sku == "NULL")
+                        {
+                            q2Sku = "";
+                        }
+                        if(q2Sku.startsWith("SKU:"))
+                        {
+                            q2Sku = q2Sku.replaceFirst("SKU:","").trim();
+                        }
+                        if(qSkuHit)
+                        {
+                            if(q2Sku != sofSku)
+                            {
+                                matchQ2 = false;
+                            }
+                        }
+                        else if(hasPr && q2.PR != null && q2.PR != "" && q2.PR != prNo)
+                        {
+                            matchQ2 = false;
+                        }
+                        if(matchQ2)
+                        {
+                            if(q2.Forecast_Delivery != fcDelivery)
+                            {
+                                q2.Forecast_Delivery=fcDelivery;
+                            }
+                            if(q2.Forecast_Window != fcWindow)
+                            {
+                                q2.Forecast_Window=fcWindow;
+                            }
+                            if(q2.Forecast_Status != fcStatus)
+                            {
+                                q2.Forecast_Status=fcStatus;
+                            }
+                        }
+                    }
+                    // STAMP: Order_Aggregation1   (ORDER-LEVEL - roll-up)
+                    /* WALANG SKU field ang Order_Aggregation1 - nasa Item_Details subform ang
+                       mga item, at isang record ito kada package. Dati ay isinasala sa `PR`,
+                       pero isang halaga lang ang kaya ng field na iyon samantalang ang isang
+                       package ay pwedeng maraming PR, kaya hindi nito kayang kumatawan sa
+                       item. Roll-up na: ang huling petsa ng buong SO. */
+                    if(rollChanged)
+                    {
+                        for each  oa2 in oaRecs
+                        {
+                            if(oa2.Forecast_Delivery != rollDate)
+                            {
+                                oa2.Forecast_Delivery=rollDate;
+                            }
+                            if(oa2.Forecast_Window != rollWindow)
+                            {
+                                oa2.Forecast_Window=rollWindow;
+                            }
+                            if(oa2.Forecast_Status != rollStatus)
+                            {
+                                oa2.Forecast_Status=rollStatus;
+                            }
+                        }
+                    }
+                    // STAMP: Crate_Checklist
+                    for each  c2 in crateRecs
+                    {
+                        matchC2 = true;
+                        /* PER ITEM: SKU kung may katugma sa form na ito, PR_No kung wala. */
+                        c2Sku = (c2.SKU + "").trim().toUpperCase();
+                        if(c2Sku == "NULL")
+                        {
+                            c2Sku = "";
+                        }
+                        if(c2Sku.startsWith("SKU:"))
+                        {
+                            c2Sku = c2Sku.replaceFirst("SKU:","").trim();
+                        }
+                        if(cSkuHit)
+                        {
+                            if(c2Sku != sofSku)
+                            {
+                                matchC2 = false;
+                            }
+                        }
+                        else if(hasPr && c2.PR_if_any != null && c2.PR_if_any != "" && c2.PR_if_any != prNo)
+                        {
+                            matchC2 = false;
+                        }
+                        if(matchC2)
+                        {
+                            if(c2.Forecast_Delivery != fcDelivery)
+                            {
+                                c2.Forecast_Delivery=fcDelivery;
+                            }
+                            if(c2.Forecast_Window != fcWindow)
+                            {
+                                c2.Forecast_Window=fcWindow;
+                            }
+                            if(c2.Forecast_Status != fcStatus)
+                            {
+                                c2.Forecast_Status=fcStatus;
+                            }
+                        }
+                    }
+                    // STAMP: Service_Request1   (DMS — Sales_Order ang field, hindi SO_No)
+                    /* ORDER-LEVEL: isang delivery ito, hindi isang item. Roll-up. */
+                    if(rollChanged && soNo != null && soNo != "")
+                    {
+                        srStamp = Service_Request1[Sales_Order == soNo];
+                        for each  sr in srStamp
+                        {
+                            if(sr.Forecast_Delivery != rollDate)
+                            {
+                                sr.Forecast_Delivery=rollDate;
+                            }
+                            if(sr.Forecast_Window != rollWindow)
+                            {
+                                sr.Forecast_Window=rollWindow;
+                            }
+                            if(sr.Forecast_Status != rollStatus)
+                            {
+                                sr.Forecast_Status=rollStatus;
+                            }
+                        }
+                    }
+                    // STAMP: Service_Appointment_Form   (ORDER-LEVEL - roll-up)
+                    if(rollChanged && soNo != null && soNo != "")
+                    {
+                        saStamp = Service_Appointment_Form[Sales_Order == soNo];
+                        for each  sa in saStamp
+                        {
+                            if(sa.Forecast_Delivery != rollDate)
+                            {
+                                sa.Forecast_Delivery=rollDate;
+                            }
+                            if(sa.Forecast_Window != rollWindow)
+                            {
+                                sa.Forecast_Window=rollWindow;
+                            }
+                            if(sa.Forecast_Status != rollStatus)
+                            {
+                                sa.Forecast_Status=rollStatus;
+                            }
+                        }
+                    }
+                }
+                /* ============================================================================
+                   4. PANGALAWANG PASS — mga PR na wala pa talagang SOF.
+                      Nasa procurement pa lang, pero kailangan na nilang may forecast — iyon ang
+                      "PR hanggang delivery". Dahil walang SO, walang client target, kaya laging
+                      "No Client Date" ang status nila; ang petsa ang mahalaga dito.
+                   ============================================================================ */
+                prOnlyCount = 0;
+                allPr = Purchase_Request1[ID != 0];
+                rawPrCount = 0;
+                for each  pr3 in allPr
+                {
+                    rawPrCount = rawPrCount + 1;
+                    prNo3 = pr3.PR_No + "";
+                    hasSof = false;
+                    sofCheck = Sales_Order_Fulfillment[PR_No == prNo3];
+                    for each  sc in sofCheck
+                    {
+                        hasSof = true;
+                    }
+                    if(!hasSof)
+                    {
+                        prOnlyCount = prOnlyCount + 1;
+                        modeVal3 = pr3.Shipment_Mode + "";
+                        src3 = (pr3.Sourcing_Type + "").toUpperCase();
+                        mode3 = modeVal3.toUpperCase();
+                        if(src3 == "LOCAL")
+                        {
+                            t3Min = locTMin;
+                            t3Max = locTMax;
+                            c3Min = locCMin;
+                            c3Max = locCMax;
+                            bucket3 = "Local";
+                        }
+                        else if(mode3.contains("AIR"))
+                        {
+                            t3Min = airTMin;
+                            t3Max = airTMax;
+                            c3Min = airCMin;
+                            c3Max = airCMax;
+                            bucket3 = "Air";
+                        }
+                        else if(mode3 == "FCL")
+                        {
+                            t3Min = fclTMin;
+                            t3Max = fclTMax;
+                            c3Min = fclCMin;
+                            c3Max = fclCMax;
+                            bucket3 = "FCL";
+                        }
+                        else
+                        {
+                            t3Min = lclTMin;
+                            t3Max = lclTMax;
+                            c3Min = lclCMin;
+                            c3Max = lclCMax;
+                            bucket3 = "LCL";
+                            if(mode3 != "LCL")
+                            {
+                                bucket3 = "LCL?";
+                            }
+                        }
+                        /* I-null muna, tulad ng gd/pd/qd/cd: kondisyonal na ang assignment sa
+                           loob ng loop, kaya tatagas sana ang petsa ng NAKARAANG PR. May
+                           if(anchor3 != null) na sa baba bago ito gamitin. */
+                        /* Nagsisimula sa PETSA, hindi sa null: ang null-initialised na variable ay
+                           walang type, kaya hindi mahanap ng Deluge ang .addDay() dito — "Not able
+                           to find ... function". Ang kahulugang "walang mapagsisimulan" ay nasa
+                           anchor3Found na. */
+                        anchor3 = today;
+                        anchor3Found = false;
+                        if(pr3.Added_Time != null)
+                        {
+                            anchor3 = pr3.Added_Time.toDate();
+                            anchor3Found = true;
+                        }
+                        pos3 = "Procurement";
+                        s3Min = t3Min + c3Min + prepMin + delMin;
+                        s3Max = t3Max + c3Max + prepMax + delMax;
+                        /* Kahit walang SOF, kung may shipment na ang PR ay umaalis na ito —
+                           i-anchor sa Date_Shipped para humigpit ang window. */
+                        if(reAnchor && shipIdByPr.containKey(prNo3))
+                        {
+                            ds3 = shipDateByPr.get(prNo3);
+                            st3 = shipStatusByPr.get(prNo3) + "";
+                            if(st3 == "Delivered")
+                            {
+                                anchor3 = today;
+                                anchor3Found = true;
+                                s3Min = prepMin + delMin;
+                                s3Max = prepMax + delMax;
+                                pos3 = "At WH";
+                            }
+                            else if(ds3 != null)
+                            {
+                                anchor3 = ds3;
+                                anchor3Found = true;
+                                pos3 = "In transit";
+                            }
+                        }
+                        else if(addSupLead)
+                        {
+                            if(pr3.Required_Days_Lead != null)
+                            {
+                                s3Min = s3Min + pr3.Required_Days_Lead.toLong();
+                                s3Max = s3Max + pr3.Required_Days_Lead.toLong();
+                            }
+                        }
+                        fc3Delivery = null;
+                        fc3Window = "Walang panimulang petsa";
+                        fc3Status = "No Start Date";
+                        if(anchor3Found)
+                        {
+                            e3 = anchor3.addDay(s3Min);
+                            l3 = anchor3.addDay(s3Max);
+                            past3 = false;
+                            if(l3 < today)
+                            {
+                                past3 = true;
+                            }
+                            if(e3 < today)
+                            {
+                                e3 = today;
+                            }
+                            if(l3 < today)
+                            {
+                                l3 = today;
+                            }
+                            /* Ang (petsa - petsa) sa Deluge na ito ay STRING, kahit ilagay pa sa variable —
+                               tinanggihan ng live editor ang parehong anyo noong 2026-11-04. Kaya
+                               .daysBetween() na lang, na deretsong araw ang ibinabalik at matagal nang
+                               gumagana sa app na ito (dms_site_confirmation.txt).
+                               Hindi umaasa sa sign convention ng daysBetween: kinukuha ang laki, saka
+                               pinipilit na positibo. Laging l3 >= e3 dito. */
+                            span3 = e3.daysBetween(l3);
+                            if(span3 < 0)
+                            {
+                                span3 = span3 * -1;
+                            }
+                            fc3Delivery = e3.addDay((span3 / 2).round(0).toLong());
+                            fc3Window = e3.toString("MMM dd") + " - " + l3.toString("MMM dd, yyyy") + " | " + bucket3 + " | " + pos3;
+                            if(past3)
+                            {
+                                fc3Window = fc3Window + " | lampas na sa tantiya";
+                            }
+                            fc3Status = "No Client Date";
+                        }
+                        if(pr3.Forecast_Delivery != fc3Delivery)
+                        {
+                            pr3.Forecast_Delivery=fc3Delivery;
+                        }
+                        if(pr3.Forecast_Window != fc3Window)
+                        {
+                            pr3.Forecast_Window=fc3Window;
+                        }
+                        if(pr3.Forecast_Status != fc3Status)
+                        {
+                            pr3.Forecast_Status=fc3Status;
+                        }
+                        // STAMP: Shipments (para sa PR na wala pang SOF)
+                        if(shipIdByPr.containKey(prNo3))
+                        {
+                            shipStamp3 = Shipments[ID == shipIdByPr.get(prNo3)];
+                            for each  shp3 in shipStamp3
+                            {
+                                if(shp3.Forecast_Delivery != fc3Delivery)
+                                {
+                                    shp3.Forecast_Delivery=fc3Delivery;
+                                }
+                                if(shp3.Forecast_Window != fc3Window)
+                                {
+                                    shp3.Forecast_Window=fc3Window;
+                                }
+                                if(shp3.Forecast_Status != fc3Status)
+                                {
+                                    shp3.Forecast_Status=fc3Status;
+                                }
+                            }
+                        }
+                    }
+                }
+                info "FORECAST STAMP — petsa: " + today.toString("MMM dd, yyyy");
+                info "SOF na-proseso: " + sofCount + " | na-stamp: " + stampCount + " | walang panimulang petsa: " + noDateCount;
+                info "PR na wala pang SOF: " + prOnlyCount;
+                /* DIAGNOSTIC, idinagdag 2026-11-04. Hindi magkasya ang unang takbo: 7 SOF at 8 PR
+                   na walang SOF, habang 197 ang nasa Purchase Request list. Kung 7 lang talaga ang
+                   SOF, dapat halos lahat ng PR ay "walang SOF" — hindi 8. Ang tatlong bilang na ito
+                   ay ang HILAW na laki ng bawat fetch, bago pa ang anumang filter ng loop, kaya
+                   sila ang magsasabi kung aling fetch ang kulang. Burahin kapag nasagot na. */
+                info "HILAW na fetch — Shipments: " + rawShipCount + " | SOF: " + rawSofCount + " | PR: " + rawPrCount;

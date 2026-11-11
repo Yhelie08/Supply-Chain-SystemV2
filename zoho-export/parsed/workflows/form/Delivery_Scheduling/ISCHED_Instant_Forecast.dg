@@ -1,0 +1,4 @@
+// form: ISCHED_Instant_Forecast  form=Delivery_Scheduling event=on add or edit on success  [.ds line 47050]
+    /* `SO` ang baybay DITO LANG sa apat — maliit na form, malaking patibong.
+   `Sales_Order` ang tatlo pa. */
+info thisapp.fcStampDelivery(input.SO + "");

@@ -1,0 +1,6 @@
+// form: RR_Set_Defaults  form=Tony_Fan_Replacement_Request event=on add on validate  [.ds line 40649]
+    // === RR_Set_Defaults ===
+// Form: Replacement_Request | Event: Created | Validations on form submission
+input.RR_Status = "Open";
+input.RR_Date = zoho.currentdate;
+input.Last_Updated = zoho.currenttime;

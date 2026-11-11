@@ -1,0 +1,11 @@
+
+			displayName = "Site Visit Photos Report"
+			show all rows from Site_Visit_Photos    
+			(
+				Record_ID
+				Section1 as "Section"
+				File_Name
+				Photo
+				Uploaded_On
+			)
+		

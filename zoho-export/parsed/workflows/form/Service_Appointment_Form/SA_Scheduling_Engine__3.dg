@@ -1,0 +1,15 @@
+// form: SA_Scheduling_Engine  form=Service_Appointment_Form event=on add or edit on success  [.ds line 41498]
+    if(input.Appointment_Status == "Completed" || input.Appointment_Status == "Failed" && input.Calendar_Entry_Created == true)
+{
+    statusTag = "[" + input.Appointment_Status + "]";
+    if(input.Calendar_Event_Summary == null || !input.Calendar_Event_Summary.contains(statusTag))
+    {
+        rec3 = Service_Appointment_Form[ID == input.ID];
+        baseSummary = rec3.Calendar_Event_Summary;
+        if(baseSummary == null)
+        {
+            baseSummary = "";
+        }
+        rec3.Calendar_Event_Summary=baseSummary + " " + statusTag;
+    }
+}

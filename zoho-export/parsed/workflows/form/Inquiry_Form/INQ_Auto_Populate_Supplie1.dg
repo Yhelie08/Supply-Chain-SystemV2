@@ -1,0 +1,91 @@
+// form: INQ_Auto_Populate_Supplier_Quotes  form=Inquiry_Form event=on add on validate  [.ds line 34772]
+    maxNum = 0;
+allInquiries = Inquiry_Form[ID != 0];
+for each  rec in allInquiries
+{
+    try 
+    {
+        currentNum = rec.INQ_No.replaceAll("[^0-9]","").toLong();
+        if(currentNum > maxNum)
+        {
+            maxNum = currentNum;
+        }
+    }    catch (e)
+    {
+    }
+}
+newNum = maxNum + 1;
+newNum_str = newNum.toString();
+if(newNum < 10)
+{
+    newNum_str = "0000" + newNum_str;
+}
+else if(newNum < 100)
+{
+    newNum_str = "000" + newNum_str;
+}
+else if(newNum < 1000)
+{
+    newNum_str = "00" + newNum_str;
+}
+else if(newNum < 10000)
+{
+    newNum_str = "0" + newNum_str;
+}
+input.INQ_No = "INQ-" + newNum_str;
+input.quote_group = input.Projects.Project_Code;
+existingQuoteIds = List();
+existingQuoteNames = List();
+for each  qr in input.Supplier_Quotes
+{
+    rawId = qr.Supplier_ID + "";
+    cleanId = rawId.removeFirstOccurence("[").removeLastOccurence("]").trim();
+    if(cleanId != "")
+    {
+        existingQuoteIds.add(cleanId);
+    }
+    rawName = qr.Suppliers;
+    if(rawName != null)
+    {
+        existingQuoteNames.add(rawName.trim().toLowerCase());
+    }
+}
+for each  sup in input.Suppliers
+{
+    supRecord = Suppliers[ID == sup];
+    supName = supRecord.Supplier_Name.first_name;
+    supKey = "";
+    if(supName != null)
+    {
+        supKey = supName.trim().toLowerCase();
+    }
+    supIdRaw = sup + "";
+    supIdKey = supIdRaw.removeFirstOccurence("[").removeLastOccurence("]").trim();
+    alreadyThere = false;
+    if(existingQuoteIds.contains(supIdKey))
+    {
+        alreadyThere = true;
+    }
+    if(existingQuoteNames.contains(supKey))
+    {
+        alreadyThere = true;
+    }
+    if(alreadyThere == false)
+    {
+        newRow = Inquiry_Form.Supplier_Quotes();
+        newRow.Suppliers=supName;
+        newRow.Supplier_ID=sup;
+        newRow.Stage="Not Selected";
+        input.Supplier_Quotes.insert(newRow);
+        existingQuoteIds.add(supIdKey);
+        existingQuoteNames.add(supKey);
+    }
+}
+for each  sup in input.Suppliers
+{
+    supRecord = Suppliers[ID == sup];
+    supName = supRecord.Supplier_Name.first_name;
+    newRow2 = Inquiry_Form.Supplier_Quotes_Last_Edited();
+    newRow2.Suppliers_Last_Edited=supName;
+    input.Supplier_Quotes_Last_Edited.insert(newRow2);
+}

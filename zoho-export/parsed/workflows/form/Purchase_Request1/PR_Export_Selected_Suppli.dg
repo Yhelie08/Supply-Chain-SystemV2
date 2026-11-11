@@ -1,0 +1,14 @@
+// form: PR_Export_Selected_Supplier  form=Purchase_Request1 event=on edit on validate  [.ds line 38661]
+    // === PR_Export_Selected_Supplier ===
+// Form: Purchase_Request1 | Event: Created or Edited | Validations on form submission
+// === Step A: Hanapin ang row sa Supplier_Selected subform kung saan Selected = true ===
+for each  row in input.Supplier_Selected
+{
+    if(row.Selected == true)
+    {
+        // === Step B: I-export ang supplier name, final cost, at lead time papunta sa PR-level fields ===
+        input.Selected_Supplier = row.Suppliers;
+        Selected_Final_Cost = row.Final_Price;
+        input.Required_Days_Lead = row.Lead_Time;
+    }
+}

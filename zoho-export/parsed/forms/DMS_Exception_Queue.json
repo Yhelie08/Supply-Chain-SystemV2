@@ -1,0 +1,141 @@
+{
+  "name": "DMS_Exception_Queue",
+  "label": "DMS Exception Queue",
+  "successMessage": "Data Added Successfully!",
+  "line": 1503,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Exception_ID",
+      "label": "Exception ID",
+      "type": "autonumber",
+      "required": false
+    },
+    {
+      "name": "Sales_Order_Reference",
+      "label": "Sales Order Reference",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Service_Appointment_Form",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[Sales_Order_Display]"
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Exception_Stage",
+      "label": "Exception Stage",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Site Confirmation",
+        "Scheduling",
+        "Calendar",
+        "Dispatch",
+        "Manual"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Exception_Reason",
+      "label": "Exception Reason",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Severity",
+      "label": "Severity",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Raised_By",
+      "label": "Raised By",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "System",
+        "Officer"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Date_Raised",
+      "label": "Date Raised",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Assigned_To",
+      "label": "Assigned To",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Delivery Officer",
+        "Dispatch Staff",
+        "Delivery Manager",
+        "System Admin"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Status",
+      "label": "Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Open",
+        "In Progress",
+        "Resolved",
+        "Dismissed"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Resolution_Action",
+      "label": "Resolution Action",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Resolution_Date",
+      "label": "Resolution Date",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Revert_to_System",
+      "label": "Revert to System",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Requeue_Processed",
+      "label": "Requeue Processed",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    }
+  ]
+}

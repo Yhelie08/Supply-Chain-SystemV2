@@ -1,0 +1,51 @@
+{
+  "name": "PO_Messages",
+  "label": "PO Messages",
+  "successMessage": "Data Added Successfully!",
+  "line": 8800,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "PO_No",
+      "label": "PO No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Supplier",
+      "label": "Supplier",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sender_Role",
+      "label": "Sender Role",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sender_Name",
+      "label": "Sender Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Message",
+      "label": "Message",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Sent_On",
+      "label": "Sent On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "name": "Fenteng_Notifications",
+  "label": "Fenteng Notifications",
+  "successMessage": "Data Added Successfully!",
+  "line": 4933,
+  "fields": [
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false
+    },
+    {
+      "name": "Recipient_Email",
+      "label": "Recipient Email",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Notification_Type",
+      "label": "Notification Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Message",
+      "label": "Message",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Created_On",
+      "label": "Created On",
+      "type": "datetime",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Read",
+      "label": "Read",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Target_URL",
+      "label": "Target URL",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Source_Record_No",
+      "label": "Source Record No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Source_Record_ID",
+      "label": "Source Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Deep_Link_Token",
+      "label": "Deep Link Token",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

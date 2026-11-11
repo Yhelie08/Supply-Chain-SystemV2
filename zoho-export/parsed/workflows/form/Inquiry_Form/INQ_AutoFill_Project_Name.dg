@@ -1,0 +1,2 @@
+// form: INQ_AutoFill_Project_Name  form=Inquiry_Form event=on add or edit on user input of Projects  [.ds line 36174]
+input.Project_Name = input.Projects.Project_Name;

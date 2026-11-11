@@ -1,0 +1,15 @@
+
+			displayName = "All Suppliers"
+			show all rows from Suppliers    
+			(
+				Supplier_Name  as "Supplier Name"
+				ID
+				Supported_Categories as "Supported Categories"
+				Handles_All as "Handles All"
+				Max_Capacity as "Max Capacity"
+				Active_PO_Count as "Active PO Count"
+				Utilization as "Utilization Percentage"
+				Status
+				Supplier_ID as "Supplier ID"
+			)
+		

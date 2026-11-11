@@ -1,0 +1,394 @@
+{
+  "name": "Exceptions",
+  "label": "Exceptions",
+  "successMessage": "Data Added Successfully!",
+  "line": 2807,
+  "fields": [
+    {
+      "name": "Exceptions",
+      "label": "Exceptions",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Exception_No",
+      "label": "Exception No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Exception_Status",
+      "label": "Exception Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Open",
+        "Under Review",
+        "Waiting",
+        "Resolved",
+        "Closed"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Priority",
+      "label": "Priority",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Source_Module",
+      "label": "Source Module",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Receiving",
+        "Fulfillment EXC"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Due_Date",
+      "label": "Due Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Product_Context",
+      "label": "Source Linkage",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Sales_Order",
+      "label": "SO No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "PO_No",
+      "label": "PO No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipment_No",
+      "label": "Shipment#",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Receive_No",
+      "label": "Receive No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Receiving_Line_ID",
+      "label": "Receiving Line ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Product_Context1",
+      "label": "Product Context",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Shade",
+        "Base",
+        "Glass",
+        "Others"
+      ],
+      "fields": [
+        {
+          "name": "PR_No",
+          "label": "PR No",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Supplier",
+          "label": "Supplier",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item",
+          "label": "Item",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Category",
+          "label": "Category",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Qty",
+          "label": "Qty",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Type_field",
+          "label": "Type",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Damage",
+            "Missing"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Photo",
+          "label": "Photo",
+          "type": "upload file",
+          "required": false,
+          "fileCount": "10"
+        },
+        {
+          "name": "Affected_Missing_Part",
+          "label": "Affected/Missing Part",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Damage_Missing_Category",
+          "label": "Damage/Missing Category",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Sparepart",
+            "Whole Fixture"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Root_Cause_Category",
+          "label": "Root Cause Category",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Different product inside the box vs label",
+            "Wrong Item Sent",
+            "Production Damage",
+            "Shipping Damage",
+            "Missing from Shipment",
+            "Wrong Quantity",
+            "Late Delivery"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Description",
+          "label": "Description",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "name": "Action_Required",
+          "label": "Action Required",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Replace Whole Unit",
+            "Replace Spare Part",
+            "No Action"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Repairable",
+          "label": "Repairable",
+          "type": "radiobuttons",
+          "required": false,
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Repair_Outcome",
+          "label": "Repair Outcome",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Pending",
+            "Fixed",
+            "Not Fixed"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Spare_Part_Type",
+          "label": "Spare Part Type",
+          "type": "checkboxes",
+          "required": false,
+          "options": [
+            "Shade",
+            "Base",
+            "Glass",
+            "Others"
+          ]
+        },
+        {
+          "name": "Quantity_of_damage_spare_s",
+          "label": "Quantity of damage spare s",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Spare_Part_Type_Other",
+          "label": "Spare Part Type Other",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Problem_Details",
+      "label": "Problem Details",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Exception_Title",
+      "label": "Exception Title",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Exception_Description",
+      "label": "Exception Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Resolution_Action",
+      "label": "Resolution Action",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Impact_Type",
+      "label": "Impact Type",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Damage Only",
+        "Damage + Delay",
+        "Delay Only",
+        "No Impact"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Delay_Impact",
+      "label": "Delay Impact",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Fulfillment_Impact",
+      "label": "Fulfillment Impact",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Ownership",
+      "label": "Ownership",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Assigned_Department",
+      "label": "Assigned Department",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Procurement",
+        "Fulfillment"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Assigned_To",
+      "label": "Assigned To",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Opened_On",
+      "label": "Opened On",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Waiting_On",
+      "label": "Waiting On",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Supplier",
+        "Purchasing",
+        "Fulfillment"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "RR_Supplier_Override",
+      "label": "RR Supplier Override",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "RR_Supplier_Change_Reason",
+      "label": "RR Supplier Change Reason",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "Section1",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Exception_Line_Key",
+      "label": "Exception Line Key",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

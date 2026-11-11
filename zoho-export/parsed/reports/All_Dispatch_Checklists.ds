@@ -1,0 +1,23 @@
+
+			displayName = "All Dispatch Checklists"
+			show all rows from Dispatch_Checklist    
+			(
+				Dis as "Dispatch ID"
+				Service_Appointment_ID as "Service Appointment ID"
+				Sales_Order as "Sales Order"
+				Package_Number as "Package Number"
+				Dispatch_Status as "Dispatch Status"
+				Dispatch_By as "Dispatch By"
+				Dispatched_At2 as "Dispatched_At"
+				Check_Items_Complete as "Check Items Complete"
+				Check_Contact_Details as "Check Contact Details"
+				Check_Payment as "Check Payment"
+				Check_No_Exception as "Check No Exception"
+				DR_No as "DR No"
+				Check_SO_Number as "I-check ang Sales Order Number kung tama"
+				Check_SKU_Match as "I-check ang SKU ng box kung tugma sa item list sa Shipment Order"
+				Check_Box_Quality as "I-check ang quality ng boxes/crates"
+				Check_Box_Count as "I-check ang bilang ng boxes na ilalabas  at ang bilang mismo"
+				Signature_Dispatcher as "Signature (Dispatcher)"
+			)
+		

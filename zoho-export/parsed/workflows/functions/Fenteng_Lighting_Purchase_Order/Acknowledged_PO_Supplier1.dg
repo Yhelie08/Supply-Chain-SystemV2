@@ -1,0 +1,266 @@
+// functions: Acknowledged_PO_Supplier1  form=Fenteng_Lighting_Purchase_Order event= on start > on click  [.ds line 51544]
+input.Acknowledge_On_Supplier1 = zoho.currenttime;
+                input.PO_Status_Supplier1 = "Confirmed";
+                aggPORecsF = Purchase_Order[PO_No == input.PO_No_Supplier1];
+                for each  apoF in aggPORecsF
+                {
+                    apoF.Acknowledge_On=zoho.currenttime;
+                    apoF.PO_Status="Confirmed";
+                    soNoTextF = apoF.SO_No.Sales_Order_Number;
+                    matchingShipNoF = "";
+                    candidateShipmentsF = Shipments[PO_No == apoF.ID && Shipment_Status == "Pending"];
+                    for each  shF in candidateShipmentsF
+                    {
+                        matchingShipNoF = shF.Shipment_No;
+                    }
+                    if(matchingShipNoF != "")
+                    {
+                        targetShipsF = Shipments[Shipment_No == matchingShipNoF];
+                        for each  tshF in targetShipsF
+                        {
+                            targetShipF = tshF;
+                        }
+                    }
+                    /* Normal (non-replacement) POs: Shipment was already created by PR_Approved, so
+                       this native path has nothing to write ETD/ETA onto without its own input source —
+                       see the file-level NOTES above. Replacement POs still find-or-create below. */
+                    if(apoF.RR_Reference_No != null && apoF.RR_Reference_No != "")
+                    {
+                        if(matchingShipNoF == "")
+                        {
+                            maxShipNumF = 0;
+                            existingShipmentsF = Shipments[ID != 0];
+                            for each  shF in existingShipmentsF
+                            {
+                                shipNoStrF = shF.Shipment_No;
+                                if(shipNoStrF != null && shipNoStrF != "")
+                                {
+                                    shipNumPartF = shipNoStrF.removeFirstOccurence("SHP-");
+                                    shipNumF = shipNumPartF.toLong();
+                                    if(shipNumF > maxShipNumF)
+                                    {
+                                        maxShipNumF = shipNumF;
+                                    }
+                                }
+                            }
+                            newShipNumF = maxShipNumF + 1;
+                            if(newShipNumF < 10)
+                            {
+                                newShipNoF = "SHP-0000" + newShipNumF;
+                            }
+                            else if(newShipNumF < 100)
+                            {
+                                newShipNoF = "SHP-000" + newShipNumF;
+                            }
+                            else if(newShipNumF < 1000)
+                            {
+                                newShipNoF = "SHP-00" + newShipNumF;
+                            }
+                            else if(newShipNumF < 10000)
+                            {
+                                newShipNoF = "SHP-0" + newShipNumF;
+                            }
+                            else
+                            {
+                                newShipNoF = "SHP-" + newShipNumF;
+                            }
+                            newShipIDF = insert into Shipments
+                            [
+                                Shipment_No=newShipNoF
+                                PO_No=apoF.ID
+                                Sales_Order=soNoTextF
+                                Customer=apoF.Customer
+                                Supplier="Fenteng"
+                                Shipment_Status="Pending"
+                                Added_User=zoho.loginuser
+                            ];
+                            targetShipF = Shipments[ID == newShipIDF];
+                        }
+                        for each  poLnF in apoF.PO_Line_Items
+                        {
+                            targetShipF.Required_Days_Lead=poLnF.Required_Days_Lead;
+                            targetShipF.Remaining_Days=poLnF.Remaining_Days;
+                            targetShipF.Target_Date=poLnF.Target_Delivery;
+                            targetShipF.Supplier_Target_Date=poLnF.supplier_target_date;
+                            targetShipF.Production_Date=poLnF.Production_Date;
+                            if(poLnF.PR_No != null && poLnF.PR_No != "")
+                            {
+                                prLineF = Purchase_Request1[PR_No == poLnF.PR_No];
+                                targetShipF.Shipment_Days=prLineF.Shipment_Days;
+                                targetShipF.Sales_Owner=prLineF.Sales_Owner;
+                            }
+                            else
+                            {
+                                targetShipF.Sales_Owner=apoF.Sales_Owner;
+                            }
+                            shipLineExistsF = false;
+                            for each  existingShipLnF in targetShipF.PO_Shipments
+                            {
+                                if(existingShipLnF.PR_No == poLnF.PR_No)
+                                {
+                                    shipLineExistsF = true;
+                                }
+                            }
+                            if(shipLineExistsF == false)
+                            {
+                                newShipLineF = Shipments.PO_Shipments();
+                                newShipLineF.PR_No=poLnF.PR_No;
+                                newShipLineF.SKU=poLnF.SKU;
+                                newShipLineF.Item_Name=poLnF.Item;
+                                newShipLineF.Ordered_QTY=poLnF.QTY;
+                                newShipLineF.Shipment_QTY=poLnF.QTY;
+                                newShipLineF.Remaining_QTY=poLnF.QTY;
+                                newShipLineF.Shipping_Mode=poLnF.Shipping_Mode;
+                                targetShipF.PO_Shipments.insert(newShipLineF);
+                            }
+                        }
+                        recvFoundF = false;
+                        matchingRecvIDF = 0;
+                        existingRecvF = Receiving[Shipments == targetShipF.ID];
+                        for each  rcF in existingRecvF
+                        {
+                            matchingRecvIDF = rcF.ID;
+                            recvFoundF = true;
+                        }
+                        if(recvFoundF == true)
+                        {
+                            targetRecvsF = Receiving[ID == matchingRecvIDF];
+                            for each  trcF in targetRecvsF
+                            {
+                                targetRecvF = trcF;
+                            }
+                        }
+                        else
+                        {
+                            maxRecvNumF = 0;
+                            existingRecvsF = Receiving[ID != 0];
+                            for each  rcF in existingRecvsF
+                            {
+                                recvNoStrF = rcF.Receive_No1;
+                                if(recvNoStrF != null && recvNoStrF != "")
+                                {
+                                    recvNumPartF = recvNoStrF.removeFirstOccurence("RCV-");
+                                    recvNumF = recvNumPartF.toLong();
+                                    if(recvNumF > maxRecvNumF)
+                                    {
+                                        maxRecvNumF = recvNumF;
+                                    }
+                                }
+                            }
+                            newRecvNumF = maxRecvNumF + 1;
+                            if(newRecvNumF < 10)
+                            {
+                                newRecvNoF = "RCV-0000" + newRecvNumF;
+                            }
+                            else if(newRecvNumF < 100)
+                            {
+                                newRecvNoF = "RCV-000" + newRecvNumF;
+                            }
+                            else if(newRecvNumF < 1000)
+                            {
+                                newRecvNoF = "RCV-00" + newRecvNumF;
+                            }
+                            else if(newRecvNumF < 10000)
+                            {
+                                newRecvNoF = "RCV-0" + newRecvNumF;
+                            }
+                            else
+                            {
+                                newRecvNoF = "RCV-" + newRecvNumF;
+                            }
+                            newRecvIDF = insert into Receiving
+                            [
+                                Receive_No1=newRecvNoF
+                                Shipments=targetShipF.ID
+                                SO_No=soNoTextF
+                                PO_No=apoF.PO_No
+                                Customer_Name=apoF.Customer
+                                Supplier="Fenteng"
+                                Added_User=zoho.loginuser
+                            ];
+                            targetRecvF = Receiving[ID == newRecvIDF];
+                        }
+                        for each  poLnF in apoF.PO_Line_Items
+                        {
+                            if(poLnF.PR_No != null && poLnF.PR_No != "")
+                            {
+                                prLineRecvF = Purchase_Request1[PR_No == poLnF.PR_No];
+                                targetRecvF.Sales_Owner=prLineRecvF.Sales_Owner;
+                            }
+                            else
+                            {
+                                targetRecvF.Sales_Owner=apoF.Sales_Owner;
+                            }
+                            recvLineExistsF = false;
+                            for each  existingRecvLnF in targetRecvF.Receiving_Line_Items
+                            {
+                                if(existingRecvLnF.PR_No == poLnF.PR_No)
+                                {
+                                    recvLineExistsF = true;
+                                }
+                            }
+                            if(recvLineExistsF == false)
+                            {
+                                newRecvLineF = Receiving.Receiving_Line_Items();
+                                newRecvLineF.PR_No=poLnF.PR_No;
+                                newRecvLineF.SKU=poLnF.SKU;
+                                newRecvLineF.Item_Name=poLnF.Item;
+                                newRecvLineF.Expected_Qty=poLnF.QTY;
+                                targetRecvF.Receiving_Line_Items.insert(newRecvLineF);
+                            }
+                        }
+                        /* ADDED 2026-07-16, mirrored from pr_to_po_grouping.txt Action 2 — Receiving's
+                           own Validations workflows never fire on this cross-form insert either. */
+                        totalExpectedF = 0;
+                        totalAcceptedF = 0;
+                        totalDamageF = 0;
+                        totalMissingF = 0;
+                        totalLinesRF = 0;
+                        incompleteLinesF = 0;
+                        readyForFulfillF = 0;
+                        for each  rln in targetRecvF.Receiving_Line_Items
+                        {
+                            totalLinesRF = totalLinesRF + 1;
+                            expRF = ifnull(rln.Expected_Qty,0);
+                            accRF = ifnull(rln.Accepted_Qty,0);
+                            dmgRF = ifnull(rln.Damage_Qty,0);
+                            misRF = ifnull(rln.Missing_Qty,0);
+                            totalExpectedF = totalExpectedF + expRF;
+                            totalAcceptedF = totalAcceptedF + accRF;
+                            totalDamageF = totalDamageF + dmgRF;
+                            totalMissingF = totalMissingF + misRF;
+                            totalRecRF = accRF + dmgRF + misRF;
+                            if(totalRecRF == expRF && accRF == expRF)
+                            {
+                                rln.Line_Result="Complete";
+                                rln.Ready_for_Fulfillment=true;
+                                readyForFulfillF = readyForFulfillF + 1;
+                            }
+                            else
+                            {
+                                rln.Line_Result="Incomplete";
+                                rln.Ready_for_Fulfillment=false;
+                                incompleteLinesF = incompleteLinesF + 1;
+                            }
+                        }
+                        targetRecvF.Total_Expected_Qty=totalExpectedF;
+                        targetRecvF.Total_Accepted_Qty=totalAcceptedF;
+                        targetRecvF.Total_Damage_Qty=totalDamageF;
+                        targetRecvF.Total_Missing_Qty=totalMissingF;
+                        targetRecvF.Total_Lines=totalLinesRF;
+                        targetRecvF.Incomplete_Lines=incompleteLinesF;
+                        targetRecvF.Ready_for_Fulfillment1=readyForFulfillF;
+                        if(totalLinesRF == 0 || (totalAcceptedF == 0 && totalDamageF == 0 && totalMissingF == 0))
+                        {
+                            targetRecvF.Receive_Status="Pending";
+                        }
+                        else if(incompleteLinesF == 0)
+                        {
+                            targetRecvF.Receive_Status="Received";
+                        }
+                        else
+                        {
+                            targetRecvF.Receive_Status="Partial Received";
+                        }
+                    }
+                }

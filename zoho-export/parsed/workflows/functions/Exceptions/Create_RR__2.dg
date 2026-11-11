@@ -1,0 +1,241 @@
+// functions: Create_RR  form=Exceptions event= on start > on click  [.ds line 53753]
+excRecF = Exceptions[ID == input.ID];
+                groupKeysF = List();
+                groupSkuF = Map();
+                groupItemF = Map();
+                groupSupplierF = Map();
+                groupTypeF = Map();
+                groupQtyF = Map();
+                // ADDED 2026-08-08 — same spare-part aggregation as Action 1, see that block's
+                // own comment for the full reasoning. FIXED same day, code review: paired
+                // "Type: Qty" string, see Action 1's own comment for the full explanation.
+                groupSpareTypeF = Map();
+                groupSparePairsF = Map();
+                // ADDED 2026-10-12 — the officer confirms the supplier on the Exception Control
+                // widget before Create RR runs, and the choice lands in the Exceptions header field
+                // RR_Supplier_Override. Blank = use the supplier tagged on the exception line, i.e.
+                // exactly today's behaviour. This is what makes the supplier gate below test the
+                // CHOSEN supplier rather than the tagged one, so an overridden RR routes to the
+                // right supplier and only to that one. Mirrors createRRFenteng/createRRTony.
+                rrSupOverrideF = ifnull(input.RR_Supplier_Override,"") + "";
+                rrSupOverrideF = rrSupOverrideF.trim();
+                for each  pc in excRecF.Product_Context1
+                {
+                    /* ADDED 2026-07-21 — same repair-tracking gate as Action 1, see that block's
+                       own comment. */
+                    if(pc.Type_field == "Damage" && pc.Repairable == "Yes" && pc.Repair_Outcome != "Not Fixed")
+                    {
+                        continue;
+                    }
+                    gKeyF = pc.SKU + "||" + pc.Type_field;
+                    if(!groupKeysF.contains(gKeyF))
+                    {
+                        groupKeysF.add(gKeyF);
+                        groupSkuF.put(gKeyF,pc.SKU);
+                        groupItemF.put(gKeyF,pc.Item);
+                        if(rrSupOverrideF != "")
+                        {
+                            groupSupplierF.put(gKeyF,rrSupOverrideF);
+                        }
+                        else
+                        {
+                            groupSupplierF.put(gKeyF,pc.Supplier);
+                        }
+                        groupTypeF.put(gKeyF,pc.Type_field);
+                        groupQtyF.put(gKeyF,0);
+                        groupSpareTypeF.put(gKeyF,"");
+                        groupSparePairsF.put(gKeyF,"");
+                    }
+                    groupQtyF.put(gKeyF,groupQtyF.get(gKeyF) + ifnull(pc.Qty,0));
+                    pcQtyRawF = pc.Quantity_of_damage_spare_s + "";
+                    if(pcQtyRawF != "" && pcQtyRawF != "null")
+                    {
+                        // CHANGED 2026-08-08d — see the plain Action's own comment above for the
+                        // full per-type-qty reasoning.
+                        pcOtherTextF = pc.Spare_Part_Type_Other + "";
+                        segsF = pcQtyRawF.toList(",");
+                        pcSpareTypeF = "";
+                        pcPairsThisRowF = "";
+                        for each  segF in segsF
+                        {
+                            segTrimF = segF.trim();
+                            segTypeF = segTrimF.getPrefix(":").trim();
+                            segQtyF = segTrimF.getSuffix(":").trim();
+                            if(segQtyF == "" || segQtyF == "null")
+                            {
+                                segQtyF = "—";
+                            }
+                            if(segTypeF == "Others" && pcOtherTextF != "" && pcOtherTextF != "null")
+                            {
+                                segTypeF = pcOtherTextF;
+                            }
+                            if(pcSpareTypeF == "")
+                            {
+                                pcSpareTypeF = segTypeF;
+                            }
+                            else
+                            {
+                                pcSpareTypeF = pcSpareTypeF + ", " + segTypeF;
+                            }
+                            segPairF = segTypeF + ": " + segQtyF;
+                            if(pcPairsThisRowF == "")
+                            {
+                                pcPairsThisRowF = segPairF;
+                            }
+                            else
+                            {
+                                pcPairsThisRowF = pcPairsThisRowF + ", " + segPairF;
+                            }
+                        }
+                        existingSpareTypeF = groupSpareTypeF.get(gKeyF);
+                        if(existingSpareTypeF == "")
+                        {
+                            groupSpareTypeF.put(gKeyF,pcSpareTypeF);
+                        }
+                        else
+                        {
+                            groupSpareTypeF.put(gKeyF,existingSpareTypeF + ", " + pcSpareTypeF);
+                        }
+                        existingPairF = groupSparePairsF.get(gKeyF);
+                        if(existingPairF == "")
+                        {
+                            groupSparePairsF.put(gKeyF,pcPairsThisRowF);
+                        }
+                        else
+                        {
+                            groupSparePairsF.put(gKeyF,existingPairF + ", " + pcPairsThisRowF);
+                        }
+                    }
+                }
+                existingSupPairsF = List();
+                existingSupRRsF = Fenteng_Lighting_Replacement_Request[Source_Exception_No == input.Exception_No];
+                for each  esrF in existingSupRRsF
+                {
+                    for each  ssrowF in esrF.Replacement_Summary
+                    {
+                        existingSupPairsF.add(ssrowF.SKU + "||" + esrF.Source_Type);
+                    }
+                }
+                for each  gKeyF in groupKeysF
+                {
+                    // FIXED 2026-08-07, real bug confirmed live: Production's real
+                    // Receiving.Supplier value is "Tony Fan"/"Fenteng Lighting" (the
+                    // Suppliers form's own full display name), not the bare "Fenteng"/"Tony"
+                    // this strict equality expected — only Dev's own test data happened to
+                    // use the bare literal, masking this in every prior test. Zero supplier
+                    // RRs were ever created in Production as a result. Matches the defensive
+                    // == || .contains() pattern already used elsewhere in this codebase for
+                    // the same field (see receiving_widget_custom_api.txt/
+                    // receiving_create_bin_receiving.txt). Mirrored from create_rr_custom_api.txt.
+                    supplierValF = groupSupplierF.get(gKeyF) + "";
+                    if(supplierValF != "Fenteng" && !supplierValF.contains("Fenteng"))
+                    {
+                        continue;
+                    }
+                    gSkuF = groupSkuF.get(gKeyF);
+                    gTypeF = groupTypeF.get(gKeyF);
+                    sourceTypeF = "";
+                    if(input.Source_Module == "Receiving")
+                    {
+                        if(gTypeF == "Damage")
+                        {
+                            sourceTypeF = "Receiving Damage";
+                        }
+                        else
+                        {
+                            sourceTypeF = "Receiving Missing";
+                        }
+                    }
+                    else if(input.Source_Module == "Fulfillment QC")
+                    {
+                        sourceTypeF = "QC Failure";
+                    }
+                    else
+                    {
+                        sourceTypeF = "Management Decision";
+                    }
+                    pairKeyF = gSkuF + "||" + sourceTypeF;
+                    if(existingSupPairsF.contains(pairKeyF))
+                    {
+                        continue;
+                    }
+                    parentRRNoF = "";
+                    parentRRSupF = "";
+                    parentRRsF = Replacement_Request[Source_Exception_No == input.Exception_No];
+                    for each  prrF in parentRRsF
+                    {
+                        if(prrF.Source_Type == sourceTypeF)
+                        {
+                            for each  prsRowF in prrF.Replacement_Summary
+                            {
+                                if(prsRowF.SKU == gSkuF)
+                                {
+                                    parentRRNoF = prrF.RR_No;
+                                    parentRRSupF = prrF.RR_Supplier + "";
+                                }
+                            }
+                        }
+                    }
+                    /* ADDED 2026-10-12, real bug found in live testing (EXC-00001): the officer
+                       changed the supplier on an Exception that ALREADY had RR-00001 routed to
+                       Tony and acknowledged by him. Action 1 correctly deduped and did not create
+                       a new parent, so RR_Supplier stayed "Tony" — but this action deduped only
+                       against its OWN form, found nothing, passed the overridden gate, and attached
+                       a record to that same RR-00001. Both suppliers ended up holding the same RR.
+                       A supplier-side record must never disagree with its parent. A BLANK parent
+                       supplier is allowed through deliberately: RR_Supplier only exists from
+                       2026-07-20, so older parents genuinely have none and must keep working. */
+                    if(parentRRNoF != "" && parentRRSupF.trim() != "" && parentRRSupF != "Fenteng" && !parentRRSupF.contains("Fenteng"))
+                    {
+                        continue;
+                    }
+                    if(parentRRNoF != "")
+                    {
+                        newSupRRIDF = insert into Fenteng_Lighting_Replacement_Request
+                        [
+                            RR_No=parentRRNoF
+                            RR_Date=zoho.currentdate
+                            RR_Status="Open"
+                            Source_Type=sourceTypeF
+                            Source_Exception_No=input.Exception_No
+                            Last_Updated=zoho.currenttime
+                            RR_Item_to_Replace=groupSpareTypeF.get(gKeyF)
+                            RR_Damage_Qty=groupQtyF.get(gKeyF)
+                            RR_Spare_Parts=groupSparePairsF.get(gKeyF)
+                            Added_User=zoho.loginuser
+                        ];
+                        newSupRRF = Fenteng_Lighting_Replacement_Request[ID == newSupRRIDF];
+                        newSupRowF = Fenteng_Lighting_Replacement_Request.Replacement_Summary();
+                        newSupRowF.PR_No=input.Receiving_Line_ID;
+                        newSupRowF.Supplier=groupSupplierF.get(gKeyF);
+                        newSupRowF.SKU=gSkuF;
+                        newSupRowF.Item=groupItemF.get(gKeyF);
+                        newSupRowF.SO_No=input.Sales_Order;
+                        newSupRowF.Original_PO_No=input.PO_No;
+                        newSupRowF.Priority=input.Priority;
+                        newSupRowF.RR_Qty=groupQtyF.get(gKeyF);
+                        newSupRRF.Replacement_Summary.insert(newSupRowF);
+                        /* ADDED 2026-07-20 — supplier-side counterpart of Action 1's Missing_SKUs
+                           stamp / new PO creation, see that Action's own comment for why this moved
+                           here instead of approve_rr_supplier.txt. */
+                        if(sourceTypeF == "Receiving Missing")
+                        {
+                            targetSupPOsF2 = Fenteng_Lighting_Purchase_Order[PO_No_Supplier1 == input.PO_No];
+                            for each  spoF2 in targetSupPOsF2
+                            {
+                                spoF2.Missing_SKUs_Supplier1=gSkuF;
+                            }
+                        }
+                        else
+                        {
+                            /* CHANGED 2026-07-20 — supplier-side counterpart of Action 1's Damage_SKUs
+                               change above. No new supplier PO created — stamps the new
+                               Damage_SKUs_Supplier1 field on the EXISTING supplier PO instead. */
+                            targetSupPOsDmgF2 = Fenteng_Lighting_Purchase_Order[PO_No_Supplier1 == input.PO_No];
+                            for each  spoDmgF2 in targetSupPOsDmgF2
+                            {
+                                spoDmgF2.Damage_SKUs_Supplier1=gSkuF;
+                            }
+                        }
+                    }
+                }

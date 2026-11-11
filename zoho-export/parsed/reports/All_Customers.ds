@@ -1,0 +1,28 @@
+
+			displayName = "All Customers"
+			show all rows from Customer    
+			(
+				customer_name as "Customer Name"
+				ID
+				Email
+				Phone_Number as "Phone"
+				(
+					displayformat = plainnumber 
+				)
+				Mobile
+				(
+					displayformat = plainnumber 
+				)
+				Billing_Address  as "Billing Address"
+	 			(
+	      			enable = Link_to_Map,Show_As_Text
+	 			)
+				Shipping_Address  as "Shipping Address"
+	 			(
+	      			enable = Link_to_Map,Show_As_Text
+	 			)
+				Customer_Type as "Customer Type"
+				ID1 as "ID"
+				Dropdown as "Drop Down"
+			)
+		

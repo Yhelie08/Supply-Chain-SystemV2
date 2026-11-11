@@ -1,0 +1,39 @@
+// map approveRRFenteng(String rrRecordId, String expectedShipDate, String eta)   [.ds lines 25241-25280]
+response = Map();
+r = Fenteng_Lighting_Replacement_Request[ID == rrRecordId.toLong()];
+if(r == null)
+{
+    response.put("status","error");
+    response.put("message","Replacement Request not found.");
+    return response;
+}
+if(r.RR_Status != "Open")
+{
+    response.put("status","error");
+    response.put("message","Already approved.");
+    return response;
+}
+if(expectedShipDate == null || expectedShipDate == "" || eta == null || eta == "")
+{
+    response.put("status","error");
+    response.put("message","Expected Ship Date and ETA are both required to approve.");
+    return response;
+}
+r.RR_Status="Acknowledged";
+r.Expected_Ship_Date=expectedShipDate;
+r.ETA=eta;
+r.Supplier_Acknowledgement1=true;
+r.Supplier_Acknowledge_Date=zoho.currenttime;
+r.Last_Updated=zoho.currenttime;
+update Replacement_Request[RR_No == r.RR_No]
+[
+    RR_Status="Acknowledged"
+    Expected_Ship_Date=expectedShipDate
+    ETA=eta
+    Supplier_Acknowledgement1=true
+    Supplier_Acknowledge_Date=zoho.currenttime
+    Last_Updated=zoho.currenttime
+];
+response.put("status","success");
+response.put("message","Replacement Request approved — Expected Ship " + expectedShipDate + ", ETA " + eta + ".");
+return response;

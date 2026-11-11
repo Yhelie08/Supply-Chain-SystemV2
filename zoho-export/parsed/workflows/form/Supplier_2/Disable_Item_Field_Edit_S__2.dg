@@ -1,0 +1,31 @@
+// form: Disable_Item_Field_Edit_Supplier  form=Supplier_2 event=on edit on load  [.ds line 35195]
+    if(input.Open_to_similar_design_Supplier == true)
+{
+    enable Similar_Design_Photo_Supplier;
+}
+else
+{
+    disable Similar_Design_Photo_Supplier;
+}
+inqRecords = Inquiry_Form[INQ_No == input.INQ_No_Supplier];
+for each  inq in inqRecords
+{
+    if(inq.Product_Sample == "HideToSupplier")
+    {
+        hide Product_Sample_Supplier;
+    }
+    if(inq.D_Image == "HideToSupplier")
+    {
+        hide D_Image_Supplier;
+    }
+    if(inq.Specification == "HideToSupplier")
+    {
+        hide Specification_Supplier;
+        hide Specification_Details_Supplier;
+    }
+    if(inq.Technical_Drawing == "HideToSupplier")
+    {
+        hide Technical_Drawing_Supplier;
+    }
+    break;
+}

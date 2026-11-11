@@ -1,0 +1,601 @@
+{
+  "name": "Receiving",
+  "label": "Receiving",
+  "successMessage": "Data Added Successfully!",
+  "line": 11723,
+  "fields": [
+    {
+      "name": "Receiving_Summary",
+      "label": "Receiving Summary",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Receive_No1",
+      "label": "Receive No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "SO_No",
+      "label": "SO No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "PO_No",
+      "label": "PO No.",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Sales_Owner",
+      "label": "Sales Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Shipments",
+      "label": "Shipments",
+      "type": "picklist",
+      "required": false,
+      "lookup": {
+        "form": "Shipments",
+        "criteria": null,
+        "field": "ID"
+      },
+      "displayformat": "[Shipment_No]"
+    },
+    {
+      "name": "Customer_Name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Supplier",
+      "label": "Supplier",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Books_Receive_No",
+      "label": "Books Receive No",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Receive_Status",
+      "label": "Receive Status",
+      "type": "picklist",
+      "required": false,
+      "options": [
+        "Received",
+        "Partial Received",
+        "Pending"
+      ],
+      "maxchar": "100"
+    },
+    {
+      "name": "Received_Date",
+      "label": "Received Date",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Warehouse",
+      "label": "Warehouse",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Books_Receive_ID",
+      "label": "Books Receive ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Section",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Source_Module",
+      "label": "Source Module",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Exception_Number",
+      "label": "Exception Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Result_Flags",
+      "label": "Result Flags",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Total_Expected_Qty",
+      "label": "Total Expected Qty",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Total_Missing_Qty",
+      "label": "Total Missing Qty",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Total_Lines",
+      "label": "Total Lines",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Total_Accepted_Qty",
+      "label": "Total Accepted Qty",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Total_Damage_Qty",
+      "label": "Total Damage Qty",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Incomplete_Lines",
+      "label": "Incomplete Lines",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Ready_for_Fulfillment1",
+      "label": "Ready for Fulfillment",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Exception_Count",
+      "label": "Exception Count",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Receiving_Line_Items",
+      "label": "Item and Quantity",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Complete",
+        "Incomplete"
+      ],
+      "fields": [
+        {
+          "name": "PR_No",
+          "label": "PR No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "RR_No",
+          "label": "RR No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Single_Line",
+          "label": "Single Line",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_Name",
+          "label": "Item Name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Expected_Qty",
+          "label": "Expected Qty",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Accepted_Qty",
+          "label": "Accepted Qty",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Damage_Qty",
+          "label": "Damage Qty",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Missing_Qty",
+          "label": "Missing Qty",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Bin_location",
+          "label": "Bin Location",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Receiving Area"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Shipment_Mode_When_Received",
+          "label": "Shipment Mode When Received",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Airfreight",
+            "LCL",
+            "FCL"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Line_Result",
+          "label": "Line Result",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Complete",
+            "Incomplete"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Has_Exceptions",
+          "label": "Has Exceptions",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        },
+        {
+          "name": "Ready_for_Fulfillment",
+          "label": "Ready for Fulfillment",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        },
+        {
+          "name": "Label_Ready",
+          "label": "Label Ready",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        },
+        {
+          "name": "Label_Printed",
+          "label": "Label Printed",
+          "type": "checkbox",
+          "required": false,
+          "initialValue": "false"
+        },
+        {
+          "name": "Receive_Photo",
+          "label": "Receive Photo",
+          "type": "image",
+          "required": false,
+          "fileCount": "10"
+        }
+      ]
+    },
+    {
+      "name": "SKU_Receive_History",
+      "label": "SKU Receive History",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "Item",
+          "label": "Item",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item_QTY",
+          "label": "Item QTY",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Receive_Count",
+          "label": "Receive Count",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Books_Receive_No",
+          "label": "Books Receive No",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Books_Receive_ID",
+          "label": "Books Receive ID",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Damage_Missing_Details",
+      "label": "Damage & Missing Details",
+      "type": "grid",
+      "required": false,
+      "options": [
+        "Shade",
+        "Base",
+        "Glass",
+        "Others"
+      ],
+      "helpText": "Specific part (e.g. \\\"shade\\\", \\\"bracket\\\") — applicable sa both damage at missing",
+      "fields": [
+        {
+          "name": "PR_No",
+          "label": "PR No.",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Qty",
+          "label": "Qty",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "Type_field",
+          "label": "Type",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Damage",
+            "Missing"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Photo",
+          "label": "Photo",
+          "type": "upload file",
+          "required": false,
+          "fileCount": "10"
+        },
+        {
+          "name": "Affected_Missing_Part",
+          "label": "Affected/Missing Part",
+          "type": "text",
+          "required": false,
+          "helpText": "Specific part (e.g. \\\"shade\\\", \\\"bracket\\\") — applicable sa both damage at missing"
+        },
+        {
+          "name": "Damage_Missing_Category",
+          "label": "Damage/Missing Category",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Sparepart",
+            "Whole Fixture"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Root_Cause_Category",
+          "label": "Root Cause Category",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Different product inside the box vs label",
+            "Wrong Item Sent",
+            "Production Damage",
+            "Shipping Damage",
+            "Missing from Shipment",
+            "Wrong Quantity",
+            "Late Delivery"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Description",
+          "label": "Description",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "name": "Action_Required",
+          "label": "Action Required",
+          "type": "picklist",
+          "required": false,
+          "options": [
+            "Replace Whole Unit",
+            "Replace Spare Part",
+            "No Action"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Repairable",
+          "label": "Repairable",
+          "type": "radiobuttons",
+          "required": false,
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "maxchar": "100"
+        },
+        {
+          "name": "Spare_Part_Type",
+          "label": "Spare Part Type",
+          "type": "checkboxes",
+          "required": false,
+          "options": [
+            "Shade",
+            "Base",
+            "Glass",
+            "Others"
+          ]
+        },
+        {
+          "name": "Quantity_of_damage_spare_s",
+          "label": "Quantity of damage spare s",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Spare_Part_Type_Other",
+          "label": "Spare Part Type Other",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Notes_for_Shipment",
+      "label": "Notes for Shipment",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Receiving_Notes",
+      "label": "Receiving Notes",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "General_Photos",
+      "label": "General Photos",
+      "type": "upload file",
+      "required": false,
+      "fileCount": "10"
+    },
+    {
+      "name": "Partial_Receive_Timeline",
+      "label": "Partial Receive Timeline",
+      "type": "grid",
+      "required": false,
+      "fields": [
+        {
+          "name": "RR_No",
+          "label": "Receiving #",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Supplier",
+          "label": "Supplier",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "SKU",
+          "label": "SKU",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Item",
+          "label": "Item ",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Quantity",
+          "label": "Quantity",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Shipment_Mode",
+          "label": "Shipment Mode",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Date_Time",
+          "label": "Date-Time",
+          "type": "datetime",
+          "required": false,
+          "alloweddays": "0,1,2,3,4,5,6"
+        }
+      ]
+    },
+    {
+      "name": "Section1",
+      "label": "Section",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Create_Exception_Requested",
+      "label": "Create Exception Requested",
+      "type": "checkbox",
+      "required": false,
+      "initialValue": "false"
+    },
+    {
+      "name": "Forecast",
+      "label": "Forecast",
+      "type": "section",
+      "required": false,
+      "visibility": "true"
+    },
+    {
+      "name": "Forecast_Delivery",
+      "label": "Forecast Delivery",
+      "type": "date",
+      "required": false,
+      "alloweddays": "0,1,2,3,4,5,6"
+    },
+    {
+      "name": "Forecast_Window",
+      "label": "Forecast Window",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Forecast_Status",
+      "label": "Forecast Status",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

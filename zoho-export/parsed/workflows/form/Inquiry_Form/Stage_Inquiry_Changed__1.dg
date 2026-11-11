@@ -1,0 +1,18 @@
+// form: Stage_Inquiry_Changed  form=Inquiry_Form event=on add or edit on success  [.ds line 35626]
+    for each  sq in input.Supplier_Quotes
+{
+    nego = sq.Negotiated;
+    fp = sq.Final_Price;
+    if(nego != null && nego != 0 && fp != null && fp != 0)
+    {
+        sq.Stage="Final";
+    }
+    else if(nego != null && nego != 0 || fp != null && fp != 0)
+    {
+        sq.Stage="Negotiating";
+    }
+    else
+    {
+        sq.Stage="Not Selected";
+    }
+}

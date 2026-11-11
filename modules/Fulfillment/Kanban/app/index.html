@@ -1,0 +1,2315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fulfillment — Kanban</title>
+
+<!--
+  ZOHO CREATOR WIDGET — DEPLOYMENT NOTES
+  ---------------------------------------
+  ONE widget, ONE board. Every fulfillment line item is a card that lives in
+  exactly one column at a time, reflecting which stage it's currently in:
+  Pick (Pick1_Report) -> Pack (Pack_Report) ->
+  QC (All_Qc_Reports1, pending) -> Rework (All_Qc_Reports1, rejected) ->
+  Crating (All_Crates, pending) -> Done (All_Crates, done).
+
+  NOTE (2026-08-18): the old "Not Started (Picker_Report)" stage was removed
+  from this board — the standalone Picker form was removed from the real
+  pipeline on 2026-07-28 (readiness_gate_release_to_pick1_direct.txt),
+  Sales_Order_Readiness_Gate now hands off straight to Pick1_Report, and
+  Assign_Picker is chosen on the Gate form itself, arriving on Pick1 as a
+  plain read-only "Picker" field (see the Pick stage's own card/detail).
+  Picker_Report no longer receives new records, so it's no longer fetched.
+
+  The underlying data model is 4 separate Zoho reports (one per stage — a
+  native Deluge workflow hands a record off from one report to the next,
+  same as the standalone widgets this was built from). This widget just reads
+  all 4 in parallel and buckets each report's currently-active rows into the
+  matching column, so the BOARD reads as one continuous pipeline even though
+  nothing is actually merged/duplicated behind the scenes.
+
+  Upload as a Zoho Creator widget (zip this file + plugin-manifest.json +
+  app/translations/en.json). CONFIG.APP_NAME = "supply-chain-app". Uses JS
+  API v2 (ZOHO.CREATOR.DATA.getRecords/updateRecords/addRecords,
+  ZOHO.CREATOR.FILE.uploadFile, field_config: "all").
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'ui-monospace', 'monospace'] },
+        boxShadow: { card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)' }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { height: 100%; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  .field-input {
+    width: 100%; font-size: 0.875rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;
+    background: #f8fafc; padding: 0.5rem 0.75rem; transition: all .15s ease;
+  }
+  .field-input:focus { outline: none; background: white; box-shadow: 0 0 0 2px #cbd5e1; }
+  .checkbox-row { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8125rem; color: #334155; padding: 0.25rem 0; }
+  /* ADDED 2026-09-03 — brought the QC edit form here in line with the real QC
+     Checklist widget's own same-day fixes: Sales Order/Customer/Item Details
+     locked read-only (this is a duplicate embedded copy of that widget's
+     edit form, so it needs the identical fix), and Date Checked/Location
+     marked + enforced as mandatory (see validateQcRequiredFields() below). */
+  .field-input[readonly] { background: #f1f5f9; color: #64748b; cursor: default; }
+  .field-input[readonly]:focus { outline: none; background: #f1f5f9; box-shadow: none; }
+  .field-required-mark { color: #ef4444; margin-left: 2px; }
+  .field-input-error { border-color: #ef4444 !important; background: #fef2f2 !important; }
+
+  .kb-board { scroll-snap-type: x proximity; }
+  /* flex-grow so columns stretch to fill the board's full width instead of
+     leaving empty space to the right when there are only a few columns
+     (e.g. after removing Not Started/Rework/Done) — min-width keeps them
+     from squashing too narrow, and the board still scrolls horizontally
+     (#board's overflow-x-auto) if there are enough columns to need it. */
+  .kb-col { flex: 1 1 260px; min-width: 260px; scroll-snap-align: start; }
+  /* flex:1 (instead of a fixed max-height) so each column's card list fills
+     the full height of its column box — #board is now a fixed-height flex
+     row (see #boardView/#board below), so .kb-col stretches to match it,
+     and this makes the card list consume whatever's left after the column's
+     own header bar, scrolling internally past min-height. */
+  .kb-col-body { flex: 1; min-height: 140px; overflow-y: auto; }
+  .kb-card { transition: transform .12s ease, box-shadow .12s ease; }
+  .kb-card:hover { transform: translateY(-1px); box-shadow: 0 6px 14px 0 rgb(0 0 0 / 0.10); }
+  .kb-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+</style>
+</head>
+<body class="min-h-full bg-slate-100 text-slate-800 antialiased">
+
+  <!-- ===================================================================
+       BOARD VIEW
+       =================================================================== -->
+  <div id="boardView" class="w-full px-4 sm:px-6 py-5 flex flex-col h-screen">
+
+    <header class="shrink-0 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-4">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Fulfillment Board</h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Pick → Pack → QC → Crating ·
+          <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
+          </span>
+        </p>
+      </div>
+      <div class="relative">
+        <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
+        </svg>
+        <input id="globalSearch" type="text" placeholder="Search SO#, PAC#, item, SKU, assignee…"
+          class="w-64 sm:w-80 pl-9 pr-3 py-2 text-sm rounded-full border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 transition" />
+      </div>
+    </header>
+
+    <div id="board" class="kb-board flex flex-1 min-h-0 gap-4 overflow-x-auto pb-4"></div>
+  </div>
+
+  <!-- ===================================================================
+       DETAIL / EDIT VIEWS (one per stage, hidden until a card is opened)
+       =================================================================== -->
+  <div id="pck-detail" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="pckBackBtn" class="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Back to Board</button>
+      <span class="text-slate-300">|</span>
+      <span id="pckDetailBreadcrumb" class="text-slate-500"></span>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h2 id="pckDetailSoNo" class="text-xl font-bold text-slate-900"></h2>
+          <p id="pckDetailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+          <p id="pckDetailSubline" class="text-xs text-slate-400 mt-1"></p>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="pckDetailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div id="pckDetailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div id="pckDetailItemFields" class="grid grid-cols-1 sm:grid-cols-4 gap-x-6 gap-y-4"></div>
+        </div>
+      </div>
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4">📦 Pick Status</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Picker</span>
+              <span id="pckDetailPicker" class="text-sm text-slate-800 font-medium"></span>
+            </div>
+            <div id="pckDetailMarked"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="pak-detail" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="pakBackBtn" class="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Back to Board</button>
+      <span class="text-slate-300">|</span>
+      <span id="pakDetailBreadcrumb" class="text-slate-500"></span>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h2 id="pakDetailSoNo" class="text-xl font-bold text-slate-900"></h2>
+          <p id="pakDetailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+          <p id="pakDetailSubline" class="text-xs text-slate-400 mt-1"></p>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="pakDetailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div id="pakDetailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div id="pakDetailItemFields" class="grid grid-cols-1 sm:grid-cols-4 gap-x-6 gap-y-4"></div>
+        </div>
+      </div>
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4">📦 Pack Status</h3>
+          <div class="space-y-3">
+            <div>
+              <span class="text-xs text-slate-500 block mb-1">Assign Packer</span>
+              <div id="pakDetailAssignPacker"></div>
+            </div>
+            <div id="pakDetailSendToQc"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="qc-detail" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="qcBackBtn" class="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Back to Board</button>
+      <span class="text-slate-300">|</span>
+      <span id="qcDetailBreadcrumb" class="text-slate-500"></span>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="qcDetailSoNo" class="text-xl font-bold text-slate-900"></h2>
+            <p id="qcDetailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+            <p id="qcDetailSubline" class="text-xs text-slate-400 mt-1"></p>
+          </div>
+          <button id="qcEditRecordBtn" class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">✏️ Edit</button>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="qcDetailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div id="qcDetailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div id="qcDetailItemFields" class="grid grid-cols-1 sm:grid-cols-4 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">✅ QC Checklist</h3>
+          <div id="qcDetailChecklists" class="space-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">💡 Bulb &amp; Color Specs</h3>
+          <div id="qcDetailBulbSpecs" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🛠️ Damage Assessment</h3>
+          <div id="qcDetailDamageFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 mb-3"></div>
+          <div id="qcDetailSpareParts" class="space-y-2"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📎 Documentation</h3>
+          <div id="qcDetailDocumentation" class="space-y-3"></div>
+        </div>
+      </div>
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4">🔍 QC Summary</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between"><span class="text-xs text-slate-500">QC Status</span><span id="qcDetailQcStatus"></span></div>
+            <div class="flex items-center justify-between"><span class="text-xs text-slate-500">Quality Checker</span><span id="qcDetailQualityChecker" class="text-sm text-slate-800 font-medium"></span></div>
+            <div class="flex items-center justify-between"><span class="text-xs text-slate-500">Date Checked</span><span id="qcDetailDateChecked" class="text-sm text-slate-800 font-medium"></span></div>
+            <div class="flex items-center justify-between"><span class="text-xs text-slate-500">Location</span><span id="qcDetailLocation" class="text-sm text-slate-800 font-medium"></span></div>
+          </div>
+          <div class="border-t border-slate-100 mt-4 pt-4">
+            <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Remarks</p>
+            <p id="qcDetailRemarks" class="text-sm text-slate-700 whitespace-pre-wrap"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="qc-edit" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="max-w-4xl">
+      <div class="flex items-center justify-between mb-4">
+        <button id="qcCancelEditBtn" class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Cancel</button>
+        <button id="qcSaveEditBtn" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Save Changes</button>
+      </div>
+      <h2 id="qcEditTitle" class="text-lg font-bold text-slate-900 mb-4"></h2>
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">SO #<input id="qcf_SO" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">PAC #<input id="qcf_PAC" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">PR #<input id="qcf_PR" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">RR #<input id="qcf_RR" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Demo #<input id="qcf_Demo" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Order Type<input id="qcf_Order_Type" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Delivery Type<input id="qcf_Delivery_Type" class="field-input mt-1" readonly></label>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">Customer Name<input id="qcf_Customer_Name" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Customer Type<input id="qcf_Customer_Type" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Customer Address<input id="qcf_Customer_Address" class="field-input mt-1" readonly></label>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <label class="text-xs text-slate-500">Item Name<input id="qcf_Item_Name" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">SKU<input id="qcf_SKU" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Quantity<input id="qcf_Quantity" class="field-input mt-1" readonly></label>
+            <label class="text-xs text-slate-500">Bin Location<input id="qcf_Bin_Location" class="field-input mt-1" readonly></label>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🔍 QC Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">Date Checked<span class="field-required-mark">*</span><input id="qcf_Date_Checked" type="date" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Quality Checker<input id="qcf_Quality_Checker" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Location<span class="field-required-mark">*</span>
+              <select id="qcf_Location" class="field-input mt-1">
+                <option value="">— Select —</option>
+                <option value="WH Banawe">WH Banawe</option>
+                <option value="WH Baesa">WH Baesa</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">✅ QC Checklist</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Fixture Body Checklist</p><div id="qcg_Fixture_Body_Checklist"></div></div>
+            <div><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Checklist</p><div id="qcg_LED_Checklist"></div></div>
+            <div><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Uniformity</p><div id="qcg_Uniformity"></div></div>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">💡 Bulb &amp; Color Specs</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Type of Bulb</p><div id="qcg_Type_of_Bulb" class="max-h-40 overflow-y-auto pr-1"></div></div>
+            <div><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Color Temperature</p><div id="qcg_Color_Temperature" class="max-h-40 overflow-y-auto pr-1"></div></div>
+            <div><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Lighting Feature</p><div id="qcg_Lighting_Feature" class="max-h-40 overflow-y-auto pr-1"></div></div>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🛠️ Damage Assessment</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <label class="text-xs text-slate-500">Item to Replace
+              <select id="qcf_Item_to_Replace" class="field-input mt-1">
+                <option value="">— Select —</option>
+                <option value="Whole Fixture">Whole Fixture</option>
+                <option value="Spare Parts">Spare Parts</option>
+                <option value="No damage">No damage</option>
+              </select>
+            </label>
+            <label class="text-xs text-slate-500">Quantity of Damage Items<input id="qcf_Quantity_of_Damage_Items" class="field-input mt-1"></label>
+          </div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Spare Part Type</p>
+            <button id="qcAddSparePartBtn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition">+ Add row</button>
+          </div>
+          <div id="qcSparePartsRows" class="space-y-2"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📎 Documentation</h3>
+          <label class="text-xs text-slate-500 block mb-4">Remarks<textarea id="qcf_Remarks" rows="4" class="field-input mt-1 resize-none"></textarea></label>
+          <div class="mb-4">
+            <p class="text-xs text-slate-500 mb-1">Images (JPG, JPEG, PNG · max 10MB each)</p>
+            <p id="qcImageStatusNote" class="text-[11px] text-slate-400 mb-1.5"></p>
+            <input id="qcf_Images" type="file" accept="image/jpeg,image/png" multiple class="field-input text-xs">
+            <p class="text-[11px] text-slate-400 mt-1">Selected files are added to the existing images — they don't replace them.</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 mb-1">Video (max 50MB)</p>
+            <p id="qcVideoStatusNote" class="text-[11px] text-slate-400 mb-1.5"></p>
+            <input id="qcf_Video" type="file" accept="video/*" class="field-input text-xs">
+            <p class="text-[11px] text-slate-400 mt-1">Uploading a new video replaces the existing one.</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-2">✍️ Signature</h3>
+          <p id="qcSignatureStatusNote" class="text-xs text-slate-400 mb-2"></p>
+          <div class="border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+            <canvas id="qcSignatureCanvas" class="w-full touch-none cursor-crosshair block" height="160"></canvas>
+          </div>
+          <div class="flex items-center justify-between mt-2">
+            <p class="text-[11px] text-slate-400">Draw a new signature to replace the existing one. Leave blank to keep it unchanged.</p>
+            <button id="qcClearSignatureBtn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition">Clear</button>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🔍 QC Status</h3>
+          <div class="flex items-center gap-6">
+            <label class="flex items-center gap-2 text-sm text-slate-700"><input type="radio" name="qcStatus" id="qcf_QC_Status_Approved" value="Approved"> Approved</label>
+            <label class="flex items-center gap-2 text-sm text-slate-700"><input type="radio" name="qcStatus" id="qcf_QC_Status_Rejected" value="Rejected"> Rejected</label>
+            <label class="flex items-center gap-2 text-sm text-slate-700"><input type="radio" name="qcStatus" id="qcf_QC_Status_None" value=""> Pending</label>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pb-8">
+          <button id="qcCancelEditBtn2" class="text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-4 py-2 transition">Cancel</button>
+          <button id="qcSaveEditBtn2" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="crt-detail" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="flex items-center gap-2 mb-4 text-sm">
+      <button id="crtBackBtn" class="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Back to Board</button>
+      <span class="text-slate-300">|</span>
+      <span id="crtDetailBreadcrumb" class="text-slate-500"></span>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="crtDetailSoNo" class="text-xl font-bold text-slate-900"></h2>
+            <p id="crtDetailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
+            <p id="crtDetailSubline" class="text-xs text-slate-400 mt-1"></p>
+          </div>
+          <button id="crtEditRecordBtn" class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">✏️ Edit</button>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div id="crtDetailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div id="crtDetailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div id="crtDetailItemFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📦 Crating Checklist</h3>
+          <div id="crtDetailChecklists" class="space-y-4"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📎 Documentation</h3>
+          <div id="crtDetailDocumentation" class="space-y-3"></div>
+        </div>
+      </div>
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4">🔍 Crate Summary</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between"><span class="text-xs text-slate-500">Crating Status</span><span id="crtDetailCratingStatus"></span></div>
+            <div class="flex items-center justify-between"><span class="text-xs text-slate-500">Assign Crater</span><span id="crtDetailAssignCrater" class="text-sm text-slate-800 font-medium"></span></div>
+            <div class="flex items-center justify-between"><span class="text-xs text-slate-500">Assigned Checker</span><span id="crtDetailAssignedChecker" class="text-sm text-slate-800 font-medium"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="crt-edit" class="hidden w-full px-4 sm:px-6 py-5">
+    <div class="max-w-4xl">
+      <div class="flex items-center justify-between mb-4">
+        <button id="crtCancelEditBtn" class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Cancel</button>
+        <button id="crtSaveEditBtn" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Save Changes</button>
+      </div>
+      <h2 id="crtEditTitle" class="text-lg font-bold text-slate-900 mb-4"></h2>
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🙋 Assignment</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="text-xs text-slate-500">Assign Crater
+              <select id="crtf_Assign_Crater" class="field-input mt-1">
+                <option value="">— Select —</option>
+                <option value="Lito">Lito</option>
+                <option value="__other__">Other…</option>
+              </select>
+              <input id="crtf_Assign_Crater_Other" type="text" placeholder="Enter name" class="field-input mt-2 hidden">
+            </label>
+            <label class="text-xs text-slate-500">Assigned Checker<input id="crtf_Assigned_Checker" class="field-input mt-1"></label>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">SO #<input id="crtf_SO" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">PACK #<input id="crtf_Package_Order" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">PR # (if any)<input id="crtf_PR_if_any" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">RR # (if any)<input id="crtf_RR_if_any" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Order Type<input id="crtf_Order_Type" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Delivery Type<input id="crtf_Delivery_Type" class="field-input mt-1"></label>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">Customer Name<input id="crtf_Customer_Name" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Customer Type<input id="crtf_Customer_Type" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Customer Address<input id="crtf_Customer_Address" class="field-input mt-1"></label>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="text-xs text-slate-500">Item Name<input id="crtf_Item_Name" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">SKU<input id="crtf_SKU" class="field-input mt-1"></label>
+            <label class="text-xs text-slate-500">Quantity<input id="crtf_Quantity" class="field-input mt-1"></label>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📦 Crating Checklist</h3>
+          <div id="crtg_Crating_Checklist"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📎 Documentation</h3>
+          <div class="mb-4">
+            <p class="text-xs text-slate-500 mb-1">Photo Documentation (JPG, JPEG, PNG · max 10)</p>
+            <p id="crtImageStatusNote" class="text-[11px] text-slate-400 mb-1.5"></p>
+            <input id="crtf_Images" type="file" accept="image/jpeg,image/png" multiple class="field-input text-xs">
+            <p class="text-[11px] text-slate-400 mt-1">Selected files are added to the existing photos — they don't replace them.</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 mb-1">Video Documentation (max 3 min 30 sec)</p>
+            <p id="crtVideoStatusNote" class="text-[11px] text-slate-400 mb-1.5"></p>
+            <input id="crtf_Video" type="file" accept="video/*" class="field-input text-xs">
+            <p class="text-[11px] text-slate-400 mt-1">Uploading a new video replaces the existing one.</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🚦 Crating Status</h3>
+          <div class="flex items-center gap-6">
+            <label class="flex items-center gap-2 text-sm text-slate-700"><input type="radio" name="crtCratingStatus" id="crtf_Status_Pending" value="Pending"> Pending</label>
+            <label class="flex items-center gap-2 text-sm text-slate-700"><input type="radio" name="crtCratingStatus" id="crtf_Status_Done" value="Done"> Done</label>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pb-8">
+          <button id="crtCancelEditBtn2" class="text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-4 py-2 transition">Cancel</button>
+          <button id="crtSaveEditBtn2" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+  <!-- Generic confirm modal — replaces native confirm(), which inside a Zoho
+       Creator widget iframe shows the raw embedded-page origin
+       (*.zappsusercontent.com) in its chrome. Shared by every stage's
+       one-way action (Send to Pick / Mark Picked / Send to QC / Approve /
+       Reject / Mark Done). -->
+  <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+      <h3 id="confirmModalTitle" class="text-sm font-bold text-slate-900 mb-1">Are you sure?</h3>
+      <p id="confirmModalBody" class="text-xs text-slate-500 mb-4"></p>
+      <div class="flex items-center justify-end gap-2">
+        <button id="confirmModalCancelBtn" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 transition">No</button>
+        <button id="confirmModalConfirmBtn" class="text-xs font-semibold bg-slate-900 text-white rounded-lg px-3 py-2 hover:bg-slate-800 transition">Yes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image lightbox — shared by QC + Crate detail views -->
+  <div id="lightboxOverlay" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-8 bg-slate-900/85">
+    <button id="lightboxDownloadBtn" class="absolute top-4 right-16 h-9 px-4 rounded-full bg-white/15 hover:bg-white/25 text-white text-sm font-medium flex items-center gap-1.5 transition">⬇ Download</button>
+    <button id="lightboxCloseBtn" class="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-lg transition">✕</button>
+    <img id="lightboxImg" class="max-w-full max-h-full rounded-lg shadow-lg bg-white p-2" alt="">
+  </div>
+
+  <!-- Video lightbox — shared by QC + Crate detail views -->
+  <div id="videoLightboxOverlay" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-8 bg-slate-900/85">
+    <button id="videoLightboxCloseBtn" class="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-lg transition">✕</button>
+    <div id="videoLightboxSlot" class="max-w-full max-h-full"></div>
+  </div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // CONFIG
+  // ---------------------------------------------------------------------
+  const CONFIG = {
+    APP_NAME: "supply-chain-app",
+    MAX_RECORDS: 1000,
+    REPORTS: {
+      pick: "Pick1_Report",
+      pack: "Pack_Report",
+      qc: "All_Qc_Reports1",
+      crate: "All_Crates",
+    },
+    // PICKER_OPTIONS removed 2026-08-18 — Assign_Picker is now chosen on the
+    // Sales_Order_Readiness_Gate form itself (Picker stage removed from the
+    // pipeline 2026-07-28), Pick1's own "Picker" field is read-only here.
+    PACKER_OPTIONS: ["Kurt", "Pual", "Edmon", "Petz", "Jonrey", "Rio", "Jayvon", "Jonard", "Jazz", "Hendell"],
+    CRATER_OPTIONS: ["Lito"],
+    MEDIA_FORM: "Exception_Control_Media",
+    MEDIA_REPORT: "Exception_Control_Media_Report",
+  };
+
+  const PALETTE = {
+    slate:   { border: "border-slate-300",   text: "text-slate-500",   badgeBg: "bg-slate-50",   badgeText: "text-slate-500",   badgeBorder: "border-slate-200",   dot: "bg-slate-400" },
+    amber:   { border: "border-amber-400",   text: "text-amber-600",   badgeBg: "bg-amber-50",   badgeText: "text-amber-700",   badgeBorder: "border-amber-200",   dot: "bg-amber-500" },
+    blue:    { border: "border-blue-400",    text: "text-blue-600",    badgeBg: "bg-blue-50",    badgeText: "text-blue-700",    badgeBorder: "border-blue-200",    dot: "bg-blue-500" },
+    indigo:  { border: "border-indigo-400",  text: "text-indigo-600",  badgeBg: "bg-indigo-50",  badgeText: "text-indigo-700",  badgeBorder: "border-indigo-200",  dot: "bg-indigo-500" },
+    violet:  { border: "border-violet-400",  text: "text-violet-600",  badgeBg: "bg-violet-50",  badgeText: "text-violet-700",  badgeBorder: "border-violet-200",  dot: "bg-violet-500" },
+    rose:    { border: "border-rose-400",    text: "text-rose-600",    badgeBg: "bg-rose-50",    badgeText: "text-rose-700",    badgeBorder: "border-rose-200",    dot: "bg-rose-500" },
+    emerald: { border: "border-emerald-400", text: "text-emerald-600", badgeBg: "bg-emerald-50", badgeText: "text-emerald-700", badgeBorder: "border-emerald-200", dot: "bg-emerald-500" },
+  };
+
+  // Column definitions — order here is the render order on the board.
+  // Rework / Done removed for now (temporary — the underlying QC-rejected/
+  // Crate-done data is still fetched and computed as before, setColumn()
+  // just no-ops for a key with no matching column shell, so re-adding either
+  // of these later is just adding the entry back here). The old "Not
+  // Started" (Picker) column is NOT in this temporary-removal category —
+  // that stage was permanently removed from the real pipeline 2026-07-28,
+  // its report is no longer fetched at all, and its code was deleted below.
+  const COLUMNS = [
+    { key: "pick",       label: "Pick",        color: "blue" },
+    { key: "pack",       label: "Pack",        color: "indigo" },
+    { key: "qc",         label: "QC",          color: "amber" },
+    { key: "crating",    label: "Crating",     color: "violet" },
+  ];
+
+  // ---------------------------------------------------------------------
+  // Shared helpers (used by every stage below)
+  // ---------------------------------------------------------------------
+  function displayVal(v) {
+    if (v === null || v === undefined || v === "" || v === "null") return "—";
+    if (typeof v === "object" && !Array.isArray(v)) return v.zc_display_value || v.display_value || v.ID || "—";
+    return String(v);
+  }
+  function isBlank(v) {
+    return v === null || v === undefined || v === "" || v === "null" || (Array.isArray(v) && v.length === 0);
+  }
+  function isTrue(v) {
+    return v === true || v === "true";
+  }
+  function toArray(v) {
+    if (v === null || v === undefined || v === "") return [];
+    if (Array.isArray(v)) return v.map((x) => (typeof x === "object" ? displayVal(x) : String(x))).filter(Boolean);
+    if (typeof v === "string") return v.split(",").map((s) => s.trim()).filter(Boolean);
+    return [String(v)];
+  }
+  function parseZohoDateTime(str) {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const mon = months[m[2]];
+      if (mon !== undefined) return new Date(+m[3], mon, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  }
+  function formatDate(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  function formatDateTime(str) {
+    const d = parseZohoDateTime(str);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${datePart} ${timePart}`;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+  function badgePill(text, colorKey) {
+    const p = PALETTE[colorKey] || PALETTE.slate;
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${p.badgeBg} ${p.badgeText} ${p.badgeBorder}">
+      <span class="h-1.5 w-1.5 rounded-full ${p.dot}"></span>${escapeHtml(text)}
+    </span>`;
+  }
+  function textVal(v) {
+    if (v === null || v === undefined || v === "null") return "";
+    return String(v);
+  }
+  function toast(message, type) {
+    const container = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    const styles = { success: "bg-slate-900 text-white", error: "bg-rose-600 text-white" };
+    el.className = `px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${styles[type] || styles.success}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  // Generic one-way-action confirm modal, shared by every stage.
+  let confirmModalResolver = null;
+  const confirmModal = document.getElementById("confirmModal");
+  function askConfirm(title, body, confirmLabel) {
+    document.getElementById("confirmModalTitle").textContent = title;
+    document.getElementById("confirmModalBody").textContent = body;
+    document.getElementById("confirmModalConfirmBtn").textContent = confirmLabel || "Yes";
+    confirmModal.classList.remove("hidden");
+    return new Promise((resolve) => { confirmModalResolver = resolve; });
+  }
+  function closeConfirmModal(result) {
+    confirmModal.classList.add("hidden");
+    if (confirmModalResolver) { confirmModalResolver(result); confirmModalResolver = null; }
+  }
+  document.getElementById("confirmModalCancelBtn").addEventListener("click", () => closeConfirmModal(false));
+  document.getElementById("confirmModalConfirmBtn").addEventListener("click", () => closeConfirmModal(true));
+
+  // Generic Zoho write — every stage's action funnels through this.
+  function updateRecordField(reportName, record, data) {
+    return ZOHO.CREATOR.DATA.updateRecords({
+      app_name: CONFIG.APP_NAME,
+      report_name: reportName,
+      payload: { criteria: `(ID == ${record.ID})`, data: data },
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Navigation — board vs. one of the 5 stages' detail/edit views
+  // ---------------------------------------------------------------------
+  const ALL_VIEW_IDS = ["boardView", "pck-detail", "pak-detail", "qc-detail", "qc-edit", "crt-detail", "crt-edit"];
+  function showView(id) {
+    ALL_VIEW_IDS.forEach((v) => {
+      const el = document.getElementById(v);
+      if (el) el.classList.toggle("hidden", v !== id);
+    });
+    window.scrollTo(0, 0);
+  }
+  function showBoard() { showView("boardView"); }
+
+  // ---------------------------------------------------------------------
+  // Search — one shared query filters every column at once
+  // ---------------------------------------------------------------------
+  const globalSearch = document.getElementById("globalSearch");
+  function searchQuery() { return globalSearch.value.trim().toLowerCase(); }
+  function matchesSearch(fields) {
+    const q = searchQuery();
+    if (!q) return true;
+    return fields.map(displayVal).join(" ").toLowerCase().includes(q);
+  }
+
+  // Column shells are built once from COLUMNS — each stage below only ever
+  // touches its own #col-<key> body + #count-<key> badge.
+  function renderColumnShells() {
+    const board = document.getElementById("board");
+    board.innerHTML = COLUMNS.map((c) => {
+      const p = PALETTE[c.color];
+      return `
+        <section class="kb-col bg-white rounded-2xl border-t-4 ${p.border} border-x border-b border-slate-200 shadow-card overflow-hidden flex flex-col">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <span class="text-xs font-bold tracking-wide ${p.text} uppercase">${escapeHtml(c.label)}</span>
+            <span id="count-${c.key}" class="text-xs font-semibold ${p.text} ${p.badgeBg} rounded-full px-2 py-0.5 min-w-[1.5rem] text-center">0</span>
+          </div>
+          <div id="col-${c.key}" class="kb-col-body p-3 space-y-2.5"></div>
+        </section>`;
+    }).join("");
+  }
+
+  function setColumn(key, rows, cardFn, emptyLabel) {
+    const body = document.getElementById(`col-${key}`);
+    const count = document.getElementById(`count-${key}`);
+    // No-ops for a column that's currently removed from COLUMNS (no shell
+    // rendered for it) — lets every stage's render function keep calling
+    // setColumn() unconditionally without needing to know which columns are
+    // currently shown on the board.
+    if (!body) return;
+    body.innerHTML = rows.length ? rows.map(cardFn).join("") : `<div class="py-8 text-center text-xs text-slate-300">${escapeHtml(emptyLabel)}</div>`;
+    if (count) count.textContent = rows.length;
+  }
+
+  // =======================================================================
+  // STAGE: PICK  →  column "pick"  (Pick1_Report)
+  // =======================================================================
+  let pickRecords = [], pickRows = [];
+  let pickDetailRecord = null;
+
+  function isEmptyPickRow(r) {
+    return isBlank(r.SO) && isBlank(r.PR_if_any) && isBlank(r.RR) && isBlank(r.Customer_Name) && isBlank(r.Item_Name) && isBlank(r.SKU);
+  }
+  function loadPickRecords(records) {
+    pickRecords = records;
+    pickRows = records.filter((r) => !isEmptyPickRow(r)).slice().sort((a, b) =>
+      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+  }
+
+  // Once "Mark Picked" is confirmed, the row leaves this column — job here
+  // is done, hands off to Pack next.
+  function pickActiveRows() {
+    return pickRows.filter((r) => !isTrue(r.Marked))
+      .filter((r) => matchesSearch([r.SO, r.Package_Order, r.Picker, r.Item_Name, r.SKU]));
+  }
+
+  function markPickedHtml(r) {
+    return `<button class="pck-mark-btn w-full text-[11px] font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-full px-2.5 py-1.5 transition disabled:opacity-40" data-id="${r.ID}">Mark Picked</button>`;
+  }
+  function wireMarkPickedBtn(btnEl) {
+    if (!btnEl) return;
+    btnEl.addEventListener("click", (ev) => { ev.stopPropagation(); startMarkPicked(btnEl.dataset.id, btnEl); });
+  }
+  function startMarkPicked(recordId, btnEl) {
+    const r = pickRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r || isTrue(r.Marked)) return;
+    askConfirm("Mark this as picked?", "This marks the item as physically picked.", "Yes, Mark Picked").then((confirmed) => {
+      if (!confirmed) return;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = "…"; }
+      updateRecordField(CONFIG.REPORTS.pick, r, { Marked: true }).then((response) => {
+        if (response && response.code === 3000) {
+          r.Marked = true;
+          refreshNextStep(r.ID, nsPickFor(r));
+          toast("Marked as picked.", "success");
+          renderPickColumn();
+          if (pickDetailRecord && String(pickDetailRecord.ID) === String(r.ID)) showBoard();
+        } else {
+          if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Mark Picked"; }
+          toast("Couldn't mark as picked.", "error");
+        }
+      }).catch((err) => {
+        console.error(err);
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Mark Picked"; }
+        toast("Couldn't mark as picked.", "error");
+      });
+    });
+  }
+
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+  // Same wording as the standalone Pick / Pack / QC / Crate widgets.
+  function nsPickFor(r) {
+    if (isTrue(r.Marked)) return { here: "Picked", action: "Moved to Pack", who: "Packer", tone: "done" };
+    if (isBlank(r.Picker)) return { here: "Picking", action: "Assign a picker", who: "Readiness Gate", tone: "next" };
+    return { here: "Picking", action: "Pick the items, then Mark as Picked", who: "Picker", tone: "next" };
+  }
+  function nsPackFor(r) {
+    if (isTrue(r.Send_to_QC)) return { here: "Packed", action: "Sent to QC", who: "Checker", tone: "done" };
+    if (isBlank(r.Assign_Packer)) return { here: "Pack", action: "Assign a packer", who: "Packer", tone: "next" };
+    return { here: "Pack", action: "Pack the item, then Send to QC", who: "Packer", tone: "next" };
+  }
+  function nsQcFor(r) {
+    if (r.QC_Status === "Approved") return { here: "QC Approved", action: "Moved to Crate / Order Aggregation", who: "Crater / Dispatcher", tone: "done" };
+    if (r.QC_Status === "Rejected") return { here: "QC Rejected", action: "Sent to Exception Control", who: "Warehouse", tone: "done" };
+    return { here: "Quality Checking", action: "Check the item, then Approve or Reject", who: "Checker", tone: "next" };
+  }
+  function nsCrateFor(r) {
+    if (r.Crating_Status1 === "Done") return { here: "Crated", action: "Moved to Order Aggregation", who: "Dispatcher", tone: "done" };
+    if (isBlank(r.Assign_Crater)) return { here: "Crate", action: "Assign a crater", who: "Warehouse", tone: "next" };
+    return { here: "Crate", action: "Crate the item, then mark Done", who: "Crater", tone: "next" };
+  }
+  function pickCardHtml(r) {
+    const pickerLabel = !isBlank(r.Picker) ? escapeHtml(r.Picker) : "— unassigned —";
+    return `
+      <div class="kb-card cursor-pointer bg-white border border-slate-200 rounded-xl p-3 shadow-sm" data-id="${r.ID}">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <span class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(r.SO))}</span>
+          ${badgePill(displayVal(r.Bin_Location), "blue")}
+        </div>
+        <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(displayVal(r.Item_Name))}</p>
+        <p class="kb-mono text-[11px] text-slate-500 mb-2">${escapeHtml(displayVal(r.SKU))} · Qty ${escapeHtml(displayVal(r.Quantity_to_Pick))}</p>
+        <div class="flex flex-wrap gap-1 mb-2">${badgePill(displayVal(r.Package_Order), "slate")}</div>
+        <p class="text-[11px] text-slate-400 italic mb-2">Picker: <span class="not-italic text-slate-600 font-medium">${pickerLabel}</span></p>
+        <div class="mb-2">${nextStepCell(r.ID, nsPickFor(r))}</div>
+        <div class="border-t border-slate-100 pt-2">${markPickedHtml(r)}</div>
+        <p class="text-[10px] text-slate-300 mt-2">${escapeHtml(formatDateTime(r.Added_Time))}</p>
+      </div>`;
+  }
+
+  function renderPickColumn() {
+    const rows = pickActiveRows();
+    setColumn("pick", rows, pickCardHtml, "No items");
+    document.querySelectorAll("#col-pick .kb-card").forEach((card) => {
+      card.addEventListener("click", () => openPickDetail(card.dataset.id));
+    });
+    document.querySelectorAll("#col-pick .pck-mark-btn").forEach(wireMarkPickedBtn);
+  }
+
+  function openPickDetail(recordId) {
+    const r = pickRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r) return;
+    pickDetailRecord = r;
+
+    document.getElementById("pckDetailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
+    document.getElementById("pckDetailSoNo").textContent = displayVal(r.SO) !== "—" ? displayVal(r.SO) : "Pick Record";
+    document.getElementById("pckDetailCustomer").textContent = displayVal(r.Customer_Name);
+    document.getElementById("pckDetailSubline").textContent = `${displayVal(r.Order_Type)} · ${displayVal(r.Delivery_Type)}`;
+
+    document.getElementById("pckDetailFields").innerHTML = [
+      ["SO #", displayVal(r.SO)], ["PAC #", displayVal(r.Package_Order)], ["PR #", displayVal(r.PR_if_any)], ["RR #", displayVal(r.RR)],
+      ["Demo #", displayVal(r.Demo)], ["Order Type", displayVal(r.Order_Type)], ["Delivery Type", displayVal(r.Delivery_Type)], ["Added Time", escapeHtml(formatDateTime(r.Added_Time))],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("pckDetailCustomerFields").innerHTML = [
+      ["Customer Name", displayVal(r.Customer_Name)], ["Customer Type", displayVal(r.Customer_Type)], ["Customer Address", displayVal(r.Customer_Address)],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("pckDetailItemFields").innerHTML = [
+      ["Item Name", displayVal(r.Item_Name)], ["SKU", displayVal(r.SKU)], ["Qty to Pick", displayVal(r.Quantity_to_Pick)], ["Bin Location", displayVal(r.Bin_Location)],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 font-medium mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("pckDetailPicker").textContent = displayVal(r.Picker);
+    const markedContainer = document.getElementById("pckDetailMarked");
+    markedContainer.innerHTML = markPickedHtml(r);
+    wireMarkPickedBtn(markedContainer.querySelector(".pck-mark-btn"));
+
+    showView("pck-detail");
+  }
+  document.getElementById("pckBackBtn").addEventListener("click", () => { pickDetailRecord = null; showBoard(); });
+
+  // =======================================================================
+  // STAGE: PACK  →  column "pack"  (Pack_Report)
+  // =======================================================================
+  let packRecords = [], packRows = [];
+  let packDetailRecord = null;
+  const OTHER_PACKER_VALUE = "__other__";
+
+  function isEmptyPackRow(r) {
+    return isBlank(r.SO) && isBlank(r.PR) && isBlank(r.RR) && isBlank(r.Customer_Name) && isBlank(r.Item_Name) && isBlank(r.SKU);
+  }
+  function loadPackRecords(records) {
+    packRecords = records;
+    packRows = records.filter((r) => !isEmptyPackRow(r)).slice().sort((a, b) =>
+      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+  }
+
+  // Once "Send to QC" is confirmed, the row leaves this column — hands off
+  // to the QC stage next.
+  function packActiveRows() {
+    return packRows.filter((r) => !isTrue(r.Send_to_QC))
+      .filter((r) => matchesSearch([r.SO, r.PR, r.PAC, r.Assign_Packer, r.Item_Name, r.SKU]));
+  }
+
+  function packerSelectMarkup(r) {
+    const current = r.Assign_Packer || "";
+    const isCustom = current !== "" && !CONFIG.PACKER_OPTIONS.includes(current);
+    const optionValues = ["", ...CONFIG.PACKER_OPTIONS];
+    if (isCustom) optionValues.push(current);
+    optionValues.push(OTHER_PACKER_VALUE);
+    const options = optionValues.map((opt) => {
+      const label = opt === "" ? "— Unassigned —" : opt === OTHER_PACKER_VALUE ? "Other…" : opt;
+      return `<option value="${escapeHtml(opt)}" ${opt === current ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    }).join("");
+    return `<select class="pak-packer-select w-full text-xs rounded-md border border-slate-200 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-slate-300" data-id="${r.ID}">${options}</select>`;
+  }
+  function renderPackerSelectCell(container, r) {
+    container.innerHTML = packerSelectMarkup(r);
+    wirePackerSelect(container.querySelector(".pak-packer-select"));
+  }
+  function wirePackerSelect(selectEl) {
+    if (!selectEl) return;
+    selectEl.addEventListener("click", (ev) => ev.stopPropagation());
+    selectEl.addEventListener("change", (ev) => {
+      ev.stopPropagation();
+      const r = packRecords.find((rec) => String(rec.ID) === String(selectEl.dataset.id));
+      if (!r) return;
+      if (selectEl.value === OTHER_PACKER_VALUE) showCustomPackerInput(selectEl, r);
+      else updateAssignPacker(r, selectEl.value, selectEl);
+    });
+  }
+  function showCustomPackerInput(selectEl, r) {
+    const container = selectEl.closest(".pak-packer-cell");
+    if (!container) return;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Type a name…";
+    input.className = "text-xs rounded-md border border-slate-300 bg-white px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-slate-300";
+    container.innerHTML = "";
+    container.appendChild(input);
+    input.focus();
+    let settled = false;
+    const commit = () => {
+      if (settled) return;
+      const val = input.value.trim();
+      if (!val) { settled = true; renderPackerSelectCell(container, r); return; }
+      settled = true;
+      updateAssignPacker(r, val, input);
+    };
+    const cancel = () => { if (settled) return; settled = true; renderPackerSelectCell(container, r); };
+    input.addEventListener("click", (ev) => ev.stopPropagation());
+    input.addEventListener("keydown", (ev) => {
+      ev.stopPropagation();
+      if (ev.key === "Enter") { ev.preventDefault(); commit(); }
+      if (ev.key === "Escape") { ev.preventDefault(); cancel(); }
+    });
+    input.addEventListener("blur", commit);
+  }
+  function updateAssignPacker(r, newValue, controlEl) {
+    controlEl.disabled = true;
+    updateRecordField(CONFIG.REPORTS.pack, r, { Assign_Packer: newValue }).then((response) => {
+      if (response && response.code === 3000) {
+        r.Assign_Packer = newValue;
+        refreshNextStep(r.ID, nsPackFor(r));
+        toast(newValue ? `Assigned to ${newValue}.` : "Packer cleared.", "success");
+      } else {
+        toast("Couldn't update packer.", "error");
+      }
+      renderPackColumn();
+      refreshPackDetail(r);
+    }).catch((err) => {
+      console.error(err);
+      toast("Couldn't update packer.", "error");
+      renderPackColumn();
+    });
+  }
+
+  function sendToQcHtml(r) {
+    const noPacker = isBlank(r.Assign_Packer);
+    return `<button class="pak-send-btn w-full text-[11px] font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-full px-2.5 py-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed" data-id="${r.ID}" ${noPacker ? "disabled" : ""} ${noPacker ? 'title="Assign a packer first"' : ""}>Send to QC</button>`;
+  }
+  function wireSendToQcBtn(btnEl) {
+    if (!btnEl) return;
+    btnEl.addEventListener("click", (ev) => { ev.stopPropagation(); startSendToQc(btnEl.dataset.id, btnEl); });
+  }
+  function startSendToQc(recordId, btnEl) {
+    const r = packRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r || isTrue(r.Send_to_QC)) return;
+    if (isBlank(r.Assign_Packer)) { toast("Assign a packer first.", "error"); return; }
+    askConfirm("Send this to QC?", "This marks the item as packed and ready for quality check.", "Yes, Send to QC").then((confirmed) => {
+      if (!confirmed) return;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = "…"; }
+      updateRecordField(CONFIG.REPORTS.pack, r, { Send_to_QC: true }).then((response) => {
+        if (response && response.code === 3000) {
+          r.Send_to_QC = true;
+          refreshNextStep(r.ID, nsPackFor(r));
+          toast("Sent to QC.", "success");
+          renderPackColumn();
+          if (packDetailRecord && String(packDetailRecord.ID) === String(r.ID)) showBoard();
+        } else {
+          if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Send to QC"; }
+          toast("Couldn't send to QC.", "error");
+        }
+      }).catch((err) => {
+        console.error(err);
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Send to QC"; }
+        toast("Couldn't send to QC.", "error");
+      });
+    });
+  }
+
+  function packCardHtml(r) {
+    const statusCaption = isBlank(r.Assign_Packer) ? "Awaiting packer" : `Packer: ${escapeHtml(r.Assign_Packer)}`;
+    return `
+      <div class="kb-card cursor-pointer bg-white border border-slate-200 rounded-xl p-3 shadow-sm" data-id="${r.ID}">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <span class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(r.SO))}</span>
+          ${isTrue(r.For_Crate) ? badgePill("CRATE", "violet") : ""}
+        </div>
+        <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(displayVal(r.Item_Name))}</p>
+        <p class="kb-mono text-[11px] text-slate-500 mb-2">${escapeHtml(displayVal(r.SKU))} · Qty ${escapeHtml(displayVal(r.Quantity))}</p>
+        <div class="flex flex-wrap gap-1 mb-2">${badgePill(displayVal(r.PAC), "slate")}</div>
+        <p class="text-[11px] text-slate-400 italic mb-2">${statusCaption}</p>
+        <div class="mb-2">${nextStepCell(r.ID, nsPackFor(r))}</div>
+        <div class="pak-packer-cell border-t border-slate-100 pt-2 space-y-1.5" data-id="${r.ID}">
+          ${packerSelectMarkup(r)}
+          ${sendToQcHtml(r)}
+        </div>
+        <p class="text-[10px] text-slate-300 mt-2">${escapeHtml(formatDateTime(r.Added_Time))}</p>
+      </div>`;
+  }
+
+  function renderPackColumn() {
+    const rows = packActiveRows();
+    setColumn("pack", rows, packCardHtml, "No items");
+    document.querySelectorAll("#col-pack .kb-card").forEach((card) => {
+      card.addEventListener("click", () => openPackDetail(card.dataset.id));
+    });
+    document.querySelectorAll("#col-pack .pak-packer-select").forEach(wirePackerSelect);
+    document.querySelectorAll("#col-pack .pak-send-btn").forEach(wireSendToQcBtn);
+  }
+
+  function refreshPackDetail(r) {
+    if (packDetailRecord && String(packDetailRecord.ID) === String(r.ID)) openPackDetail(r.ID);
+  }
+
+  function openPackDetail(recordId) {
+    const r = packRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r) return;
+    packDetailRecord = r;
+
+    document.getElementById("pakDetailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
+    document.getElementById("pakDetailSoNo").textContent = displayVal(r.SO) !== "—" ? displayVal(r.SO) : "Pack Record";
+    document.getElementById("pakDetailCustomer").textContent = displayVal(r.Customer_Name);
+    document.getElementById("pakDetailSubline").textContent = `${displayVal(r.Order_Type)} · ${displayVal(r.Delivery_Type)}`;
+
+    document.getElementById("pakDetailFields").innerHTML = [
+      ["SO #", displayVal(r.SO)], ["PR #", displayVal(r.PR)], ["RR #", displayVal(r.RR)], ["PAC #", displayVal(r.PAC)],
+      ["Demo #", displayVal(r.Demo)], ["Order Type", displayVal(r.Order_Type)], ["Delivery Type", displayVal(r.Delivery_Type)],
+      ["For Crate", isTrue(r.For_Crate) ? badgePill("Yes", "violet") : "—", true], ["Added Time", escapeHtml(formatDateTime(r.Added_Time))],
+    ].map(([label, val, isHtml]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 mt-0.5">${isHtml ? val : escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("pakDetailCustomerFields").innerHTML = [
+      ["Customer Name", displayVal(r.Customer_Name)], ["Customer Type", displayVal(r.Customer_Type)], ["Customer Address", displayVal(r.Customer_Address)],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("pakDetailItemFields").innerHTML = [
+      ["Item Name", displayVal(r.Item_Name)], ["SKU", displayVal(r.SKU)], ["Qty", displayVal(r.Quantity)], ["Bin Location", displayVal(r.Bin_Location)],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 font-medium mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    const packerCellContainer = document.getElementById("pakDetailAssignPacker");
+    packerCellContainer.className = "pak-packer-cell";
+    packerCellContainer.dataset.id = r.ID;
+    renderPackerSelectCell(packerCellContainer, r);
+    const sendBtnContainer = document.getElementById("pakDetailSendToQc");
+    sendBtnContainer.innerHTML = sendToQcHtml(r);
+    wireSendToQcBtn(sendBtnContainer.querySelector(".pak-send-btn"));
+
+    showView("pak-detail");
+  }
+  document.getElementById("pakBackBtn").addEventListener("click", () => { packDetailRecord = null; showBoard(); });
+
+  // =======================================================================
+  // STAGE: QC  →  columns "qc" (pending) + "rework" (rejected)  (All_Qc_Reports1)
+  // =======================================================================
+  let qcRecords = [], qcRows = [];
+  let qcDetailRecord = null, qcEditRecord = null;
+  const QC_STATUS_COLOR = { Approved: "emerald", Rejected: "rose" };
+
+  const FIXTURE_BODY_OPTIONS = [
+    "Ang glass ay malinaw, walang bubbles o mantsa", "Ang kulay at pintura ay tama",
+    "Kompleto ang mga turnilyo, base at iba pang parte ng ilaw (buuhin)", "Walang yupi, gasgas, bitak o basag",
+  ];
+  const LED_OPTIONS = [
+    "Hindi kumukurap at hindi grounded ang mga ilaw", "Hindi sobrang mainit ang bulb",
+    "Walang sira o hiwa ang wire",
+  ];
+  const UNIFORMITY_OPTIONS = [
+    "Kapag marami ang ilaw dapat pare-parehas ang kulay ng ilaw at wire", "Kapag marami ang ilaw dapat pare-parehas ang hugis", "Kapag marami ang ilaw dapat pare-parehas ang sukat",
+  ];
+  const BULB_TYPE_OPTIONS = [
+    "A60 - E27","LED Strip","A60 - E27 Dimmable","c35 - L E14","c35 - L E14 Dimmable","Corn type E14","Corn type E14 Dimmable",
+    "Corn type E27","Corn type E27 Dimmable","E14-Candle","G4","G4 Dimmable","G4 Jelly","G9","G-95","G9 Dimmable","G45 - E27",
+    "G45 - E27 Dimmable","G80 - E27","G125 - E27","GU10","GU10 Dimmable","ST64",
+  ];
+  const KELVIN_OPTIONS = ["2700K","3000K","3500K","4000K","4500K","5000K","6000K","6500K"];
+  const COLOR_TEMP_OPTIONS = [
+    "Warm (2700K)",
+    "Warm (3000K)",
+    "Neutral (3500K)",
+    "Neutral (4000K)",
+    "Daylight (4500K)",
+    "Daylight (5000K)",
+    "Cool (6000K)",
+    "Cool (6500K)",
+  ];
+  const LIGHTING_FEATURE_OPTIONS = ["Tri-color"];
+  const SPARE_PART_TYPE_OPTIONS = ["Shade","Base","Glass"];
+  let qcSparePartRowCount = 0;
+  let qcSignatureDirty = false, qcSignatureDrawing = false, qcSignatureLastPoint = null;
+
+  function isEmptyQcRow(r) {
+    return isBlank(r.SO) && isBlank(r.PR) && isBlank(r.RR) && isBlank(r.Customer_Name) && isBlank(r.Item_Name) && isBlank(r.SKU);
+  }
+  function loadQcRecords(records) {
+    qcRecords = records;
+    qcRows = records.filter((r) => !isEmptyQcRow(r)).slice().sort((a, b) =>
+      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+  }
+
+  function qcPendingRows() {
+    return qcRows.filter((r) => r.QC_Status !== "Approved" && r.QC_Status !== "Rejected")
+      .filter((r) => matchesSearch([r.SO, r.PAC, r.Quality_Checker, r.Item_Name, r.SKU]));
+  }
+  function qcReworkRows() {
+    return qcRows.filter((r) => r.QC_Status === "Rejected")
+      .filter((r) => matchesSearch([r.SO, r.PAC, r.Quality_Checker, r.Item_Name, r.SKU]));
+  }
+
+  function qcStatusHtml(r) {
+    return !isBlank(r.QC_Status) ? badgePill(r.QC_Status, QC_STATUS_COLOR[r.QC_Status] || "slate") : badgePill("Pending", "amber");
+  }
+
+  // CHANGED 2026-09-03, per direct user instruction — the quick Pass/Fail
+  // buttons below used to let anyone flip QC_Status straight from the board,
+  // completely bypassing the real QC Checklist form (its now-mandatory Date
+  // Checked/Location fields, the checklist itself, photos/video/signature —
+  // see the real QC Checklist widget's own same-day fix). Removed entirely;
+  // every card now always opens the real "View / Edit" flow, no shortcut.
+  function qcCardHtml(r) {
+    return `
+      <div class="kb-card cursor-pointer bg-white border border-slate-200 rounded-xl p-3 shadow-sm" data-id="${r.ID}">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <span class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(r.SO))}</span>
+          ${qcStatusHtml(r)}
+        </div>
+        <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(displayVal(r.Item_Name))}</p>
+        <p class="kb-mono text-[11px] text-slate-500 mb-2">${escapeHtml(displayVal(r.SKU))} · Qty ${escapeHtml(displayVal(r.Quantity))}</p>
+        <div class="flex flex-wrap gap-1 mb-2">${badgePill(displayVal(r.PAC), "slate")}</div>
+        <p class="text-[11px] text-slate-400 italic mb-2">Checker: <span class="not-italic text-slate-600 font-medium">${!isBlank(r.Quality_Checker) ? escapeHtml(r.Quality_Checker) : "— none yet —"}</span></p>
+        <div class="mb-2">${nextStepCell(r.ID, nsQcFor(r))}</div>
+        <div class="border-t border-slate-100 pt-2 flex items-center gap-1.5">
+          <button class="qc-view-btn flex-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-full px-2.5 py-1.5 transition" data-id="${r.ID}">View / Edit</button>
+        </div>
+        <p class="text-[10px] text-slate-300 mt-2">${escapeHtml(formatDateTime(r.Added_Time))}</p>
+      </div>`;
+  }
+
+  function renderQcColumns() {
+    const pending = qcPendingRows();
+    const rework = qcReworkRows();
+    setColumn("qc", pending, (r) => qcCardHtml(r), "No items");
+    setColumn("rework", rework, (r) => qcCardHtml(r), "Nothing in rework");
+
+    document.querySelectorAll("#col-qc .kb-card, #col-rework .kb-card").forEach((card) => {
+      card.addEventListener("click", () => openQcEditFromBoard(card.dataset.id));
+    });
+    document.querySelectorAll("#col-qc .qc-view-btn, #col-rework .qc-view-btn").forEach((btn) => btn.addEventListener("click", (ev) => { ev.stopPropagation(); openQcEditFromBoard(btn.dataset.id); }));
+  }
+
+  // ADDED 2026-09-03, per direct user instruction ("dapat naka edit mode
+  // kaagad ito") — clicking a QC card (or its "View / Edit" button) used to
+  // land on a read-only detail screen first, requiring a 2nd click on its
+  // own "✏️ Edit" button to actually reach the edit form. Now jumps straight
+  // into edit mode, skipping the detail screen entirely as the entry point.
+  // openQcDetail() itself is UNCHANGED and still reachable — Save routes
+  // back to it afterward (to show the just-saved result read-only), and
+  // Cancel's existing "back to detail" fallback still works the same way.
+  function openQcEditFromBoard(recordId) {
+    const r = qcRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r) return;
+    openQcEdit(r);
+  }
+
+  // --- QC: detail view -----------------------------------------------
+  function checklistGroupHtml(title, items) {
+    if (!items.length) return "";
+    return `<div><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">${escapeHtml(title)}</p><div class="space-y-1.5">${items.map((item) => `
+      <div class="flex items-start gap-2 text-sm text-slate-700"><span class="h-4 w-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] mt-0.5 shrink-0">✓</span><span>${escapeHtml(item)}</span></div>`).join("")}</div></div>`;
+  }
+  function tagListHtml(items, color) {
+    if (!items.length) return `<span class="text-slate-300 text-sm">—</span>`;
+    return items.map((item) => badgePill(item, color)).join(" ");
+  }
+  function imgUrlFromRawValue(v) {
+    if (v == null || v === "") return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "object") {
+      const candidates = [v.url, v.download_url, v.href, v.display_value, v.zc_display_value, v.value];
+      for (const c of candidates) if (c && typeof c === "string") return c;
+    }
+    return "";
+  }
+  function applyCreatorImage(imgEl, rawValue) {
+    if (!imgEl || rawValue == null || rawValue === "") return;
+    const url = imgUrlFromRawValue(rawValue);
+    if (!url) { imgEl.dispatchEvent(new Event("error")); return; }
+    if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData) ZOHO.CREATOR.UTIL.setImageData(imgEl, url, function () {});
+    else imgEl.src = url;
+  }
+  function filenameFromRawValue(v, fallback) {
+    if (typeof v !== "string") return fallback;
+    const m = v.match(/[?&]filepath=([^&]+)/);
+    return m ? decodeURIComponent(m[1]) : fallback;
+  }
+
+  // Lightbox (image zoom + download) + video lightbox — shared by QC and
+  // Crate detail views (only one is ever open at a time).
+  let lightboxRawValue = null, lightboxFilename = "image";
+  function openLightbox(rawValue, filename) {
+    lightboxRawValue = rawValue; lightboxFilename = filename || "image";
+    document.getElementById("lightboxOverlay").classList.remove("hidden");
+    applyCreatorImage(document.getElementById("lightboxImg"), rawValue);
+  }
+  function closeLightbox() { document.getElementById("lightboxOverlay").classList.add("hidden"); lightboxRawValue = null; }
+  document.getElementById("lightboxCloseBtn").addEventListener("click", closeLightbox);
+  document.getElementById("lightboxOverlay").addEventListener("click", (ev) => { if (ev.target.id === "lightboxOverlay") closeLightbox(); });
+
+  let VIDEO_LIGHTBOX_HOME = null;
+  function openVideoLightbox(videoEl, homeParent) {
+    VIDEO_LIGHTBOX_HOME = homeParent;
+    videoEl.dataset.origWidth = videoEl.getAttribute("width") || "";
+    videoEl.dataset.origHeight = videoEl.getAttribute("height") || "";
+    videoEl.removeAttribute("width"); videoEl.removeAttribute("height");
+    videoEl.style.width = "auto"; videoEl.style.height = "auto"; videoEl.style.maxWidth = "90vw"; videoEl.style.maxHeight = "85vh";
+    document.getElementById("videoLightboxSlot").appendChild(videoEl);
+    document.getElementById("videoLightboxOverlay").classList.remove("hidden");
+  }
+  function closeVideoLightbox() {
+    const overlay = document.getElementById("videoLightboxOverlay");
+    if (overlay.classList.contains("hidden")) return;
+    overlay.classList.add("hidden");
+    const slot = document.getElementById("videoLightboxSlot");
+    const videoEl = slot.firstElementChild;
+    if (videoEl && VIDEO_LIGHTBOX_HOME) {
+      videoEl.pause();
+      if (videoEl.dataset.origWidth) videoEl.setAttribute("width", videoEl.dataset.origWidth);
+      if (videoEl.dataset.origHeight) videoEl.setAttribute("height", videoEl.dataset.origHeight);
+      videoEl.style.width = ""; videoEl.style.height = ""; videoEl.style.maxWidth = ""; videoEl.style.maxHeight = "";
+      VIDEO_LIGHTBOX_HOME.insertBefore(videoEl, VIDEO_LIGHTBOX_HOME.firstChild);
+    }
+    VIDEO_LIGHTBOX_HOME = null;
+  }
+  document.getElementById("videoLightboxCloseBtn").addEventListener("click", closeVideoLightbox);
+  document.getElementById("videoLightboxOverlay").addEventListener("click", (ev) => { if (ev.target.id === "videoLightboxOverlay") closeVideoLightbox(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !document.getElementById("videoLightboxOverlay").classList.contains("hidden")) closeVideoLightbox();
+  });
+  function base64ToBlob(b64, mime) {
+    try {
+      const byteChars = atob(b64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      return new Blob([bytes], { type: mime || "application/octet-stream" });
+    } catch (e) { return null; }
+  }
+  function getBlobViaImageBridge(rawValue) {
+    return new Promise((resolve) => {
+      if (!(typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData)) { resolve(null); return; }
+      const img = new Image();
+      let done = false;
+      const finish = (blob) => { if (done) return; done = true; resolve(blob); };
+      const timer = setTimeout(() => finish(null), 15000);
+      img.onload = () => {
+        clearTimeout(timer);
+        try {
+          const src = img.src;
+          if (src.indexOf("data:") === 0) {
+            const commaIdx = src.indexOf(",");
+            const meta = src.slice(5, commaIdx);
+            const mime = meta.split(";")[0] || "application/octet-stream";
+            const payload = src.slice(commaIdx + 1);
+            finish(meta.indexOf("base64") !== -1 ? base64ToBlob(payload, mime) : new Blob([decodeURIComponent(payload)], { type: mime }));
+          } else finish(null);
+        } catch (e) { finish(null); }
+      };
+      img.onerror = () => { clearTimeout(timer); finish(null); };
+      ZOHO.CREATOR.UTIL.setImageData(img, rawValue, function () {});
+    });
+  }
+  function downloadViaImageBridge(rawValue, filename) {
+    return getBlobViaImageBridge(rawValue).then((blob) => {
+      if (!blob) return false;
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl; a.download = filename || "download";
+      document.body.appendChild(a); a.click();
+      URL.revokeObjectURL(dlUrl); a.remove();
+      return true;
+    });
+  }
+  document.getElementById("lightboxDownloadBtn").addEventListener("click", async () => {
+    if (!lightboxRawValue) return;
+    const btn = document.getElementById("lightboxDownloadBtn");
+    btn.disabled = true; btn.textContent = "Downloading…";
+    const ok = await downloadViaImageBridge(lightboxRawValue, lightboxFilename);
+    btn.disabled = false; btn.innerHTML = "⬇ Download";
+    toast(ok ? "Downloaded." : "Couldn't download.", ok ? "success" : "error");
+  });
+
+  function renderQcDocumentation(r) {
+    const rawImages = Array.isArray(r.Image_Upload_max_10_JPG_JPEG_PNG) ? r.Image_Upload_max_10_JPG_JPEG_PNG : (isBlank(r.Image_Upload_max_10_JPG_JPEG_PNG) ? [] : [r.Image_Upload_max_10_JPG_JPEG_PNG]);
+    const rawVideo = Array.isArray(r.Video_Upload_max_3_min_30_sec1) ? r.Video_Upload_max_3_min_30_sec1[0] : (isBlank(r.Video_Upload_max_3_min_30_sec1) ? null : r.Video_Upload_max_3_min_30_sec1);
+    const hasSignature = !isBlank(r.Signature);
+    document.getElementById("qcDetailDocumentation").innerHTML = `
+      <div><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Images ${rawImages.length ? `(${rawImages.length})` : ""}</p><div id="qcDocImagesGrid" class="flex flex-wrap gap-2">${rawImages.length ? "" : `<span class="text-slate-300 text-sm">—</span>`}</div></div>
+      <div class="mt-4"><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Video</p><div id="qcDocVideoBox">${rawVideo ? "" : `<span class="text-slate-300 text-sm">—</span>`}</div></div>
+      <div class="mt-4"><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Signature</p><div id="qcDocSignatureBox">${hasSignature ? "" : `<span class="text-slate-300 text-sm">Not signed</span>`}</div></div>`;
+    if (rawImages.length) {
+      const grid = document.getElementById("qcDocImagesGrid");
+      rawImages.forEach((rawVal, i) => {
+        const filename = filenameFromRawValue(rawVal, `image-${i + 1}.png`);
+        const wrap = document.createElement("div");
+        wrap.className = "w-20 h-20 rounded-lg border border-slate-200 bg-slate-100 overflow-hidden cursor-zoom-in";
+        const img = document.createElement("img");
+        img.className = "w-full h-full object-cover";
+        img.addEventListener("error", () => { wrap.innerHTML = `<div class="w-full h-full flex items-center justify-center text-[9px] text-slate-400 text-center px-1">Preview unavailable</div>`; });
+        wrap.addEventListener("click", () => openLightbox(rawVal, filename));
+        wrap.appendChild(img); grid.appendChild(wrap);
+        applyCreatorImage(img, rawVal);
+      });
+    }
+    if (rawVideo) {
+      const box = document.getElementById("qcDocVideoBox");
+      box.innerHTML = `<video width="320" height="240" controls preload="metadata" class="hidden">Preview unavailable.</video><span class="flex items-center gap-1.5 text-[11px] text-slate-400" id="qcVideoLoadingIndicator"><span class="inline-block w-3 h-3 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin"></span>Loading preview…</span><button type="button" id="qcVideoFullscreenBtn" class="hidden items-center gap-1 mt-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>Fullscreen</button>`;
+      const videoEl = box.querySelector("video");
+      document.getElementById("qcVideoFullscreenBtn").addEventListener("click", () => openVideoLightbox(videoEl, box));
+      if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData) {
+        const hiddenImg = new Image();
+        ZOHO.CREATOR.UTIL.setImageData(hiddenImg, imgUrlFromRawValue(rawVideo), function () {
+          const loadingEl = document.getElementById("qcVideoLoadingIndicator");
+          if (loadingEl) loadingEl.remove();
+          const resolvedSrc = hiddenImg.src || "";
+          if (resolvedSrc && (resolvedSrc.startsWith("blob:") || resolvedSrc.startsWith("data:"))) {
+            videoEl.src = resolvedSrc; videoEl.classList.remove("hidden");
+            document.getElementById("qcVideoFullscreenBtn").classList.remove("hidden");
+            document.getElementById("qcVideoFullscreenBtn").classList.add("flex");
+          } else {
+            box.innerHTML = `<span class="text-slate-800 text-sm font-medium">1 attached</span><p class="text-[11px] text-slate-400 mt-1">Preview unavailable.</p>`;
+          }
+        });
+      }
+    }
+    if (hasSignature) {
+      const box = document.getElementById("qcDocSignatureBox");
+      const filename = filenameFromRawValue(r.Signature, "signature.png");
+      const img = document.createElement("img");
+      img.className = "max-w-[200px] border border-slate-200 rounded-lg bg-white p-2 cursor-zoom-in";
+      img.addEventListener("error", () => { box.innerHTML = `<p class="text-xs text-slate-400">Preview unavailable.</p>`; });
+      img.addEventListener("click", () => openLightbox(r.Signature, filename));
+      box.appendChild(img);
+      applyCreatorImage(img, r.Signature);
+    }
+  }
+
+  function openQcDetail(recordId) {
+    const r = qcRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r) return;
+    closeVideoLightbox();
+    qcDetailRecord = r;
+    document.getElementById("qcEditRecordBtn").onclick = () => openQcEdit(r);
+
+    document.getElementById("qcDetailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
+    document.getElementById("qcDetailSoNo").textContent = displayVal(r.SO) !== "—" ? displayVal(r.SO) : "QC Report";
+    document.getElementById("qcDetailCustomer").textContent = displayVal(r.Customer_Name);
+    document.getElementById("qcDetailSubline").textContent = `${displayVal(r.Order_Type)} · ${displayVal(r.Delivery_Type)}`;
+
+    document.getElementById("qcDetailFields").innerHTML = [
+      ["SO #", displayVal(r.SO)], ["PAC #", displayVal(r.PAC)], ["PR #", displayVal(r.PR)], ["RR #", displayVal(r.RR)],
+      ["Demo #", displayVal(r.Demo)], ["Order Type", displayVal(r.Order_Type)], ["Delivery Type", displayVal(r.Delivery_Type)], ["Added Time", escapeHtml(formatDateTime(r.Added_Time))],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("qcDetailCustomerFields").innerHTML = [
+      ["Customer Name", displayVal(r.Customer_Name)], ["Customer Type", displayVal(r.Customer_Type)], ["Customer Address", displayVal(r.Customer_Address)],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("qcDetailItemFields").innerHTML = [
+      ["Item Name", displayVal(r.Item_Name)], ["SKU", displayVal(r.SKU)], ["Qty", displayVal(r.Quantity)], ["Bin Location", displayVal(r.Bin_Location)],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 font-medium mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    const checklistGroups = [
+      checklistGroupHtml("Fixture Body Checklist", toArray(r.Fixture_Body_Checklist)),
+      checklistGroupHtml("Checklist", toArray(r.LED_Checklist)),
+      checklistGroupHtml("Uniformity", toArray(r.Uniformity)),
+    ].filter(Boolean).join("");
+    document.getElementById("qcDetailChecklists").innerHTML = checklistGroups || `<p class="text-xs text-slate-400">No checklist items recorded.</p>`;
+
+    const detailSavedCT = toArray(r.Color_Temperature).filter((c) => c !== "Tri-color");
+    const detailSavedK = toArray(r.Kelvin);
+    let detailDisplayCT = detailSavedCT.filter((c) => COLOR_TEMP_OPTIONS.includes(c));
+    if (!detailDisplayCT.length) {
+      detailSavedK.forEach((k) => {
+        detailSavedCT.forEach((c) => {
+          const combo = `${c} (${k})`;
+          if (COLOR_TEMP_OPTIONS.includes(combo) && !detailDisplayCT.includes(combo)) detailDisplayCT.push(combo);
+        });
+        if (!detailDisplayCT.length) {
+          COLOR_TEMP_OPTIONS.forEach((opt) => {
+            if (opt.includes(`(${k})`) && !detailDisplayCT.includes(opt)) detailDisplayCT.push(opt);
+          });
+        }
+      });
+      if (!detailDisplayCT.length) detailDisplayCT = detailSavedCT.length ? detailSavedCT : detailSavedK;
+    }
+
+    document.getElementById("qcDetailBulbSpecs").innerHTML = [
+      ["Type of Bulb", toArray(r.Type_of_Bulb)],
+      ["Color Temperature", detailDisplayCT],
+      ["Lighting Feature", toArray(r.Lighting_Feature).concat(toArray(r.Color_Temperature).includes("Tri-color") && !toArray(r.Lighting_Feature).includes("Tri-color") ? ["Tri-color"] : [])],
+    ].map(([label, items]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1.5">${escapeHtml(label)}</dt><dd class="flex flex-wrap gap-1.5">${tagListHtml(items, "blue")}</dd></div>`).join("");
+
+    document.getElementById("qcDetailDamageFields").innerHTML = [
+      ["Item to Replace", displayVal(r.Item_to_Replace)], ["Quantity of Damage Items", displayVal(r.Quantity_of_Damage_Items)],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    const spareParts = Array.isArray(r.Spare_part_type) ? r.Spare_part_type : [];
+    document.getElementById("qcDetailSpareParts").innerHTML = spareParts.length
+      ? spareParts.map((sp) => `<div class="flex items-center justify-between text-sm bg-slate-50 rounded-lg px-3 py-2"><span class="text-slate-700">${escapeHtml(toArray(sp.Spare_Part_Type).join(", ") || "—")}</span><span class="text-slate-500">Qty: ${escapeHtml(displayVal(sp.Quantity_of_damage_spare_s))}</span></div>`).join("")
+      : `<p class="text-xs text-slate-400">No spare parts logged.</p>`;
+
+    renderQcDocumentation(r);
+
+    document.getElementById("qcDetailQcStatus").innerHTML = qcStatusHtml(r);
+    document.getElementById("qcDetailQualityChecker").textContent = displayVal(r.Quality_Checker);
+    document.getElementById("qcDetailDateChecked").textContent = formatDate(r.Date_Checked);
+    document.getElementById("qcDetailLocation").textContent = displayVal(r.Location);
+    document.getElementById("qcDetailRemarks").textContent = !isBlank(r.Remarks) ? r.Remarks : "—";
+
+    showView("qc-detail");
+  }
+  document.getElementById("qcBackBtn").addEventListener("click", () => { qcDetailRecord = null; showBoard(); });
+
+  // --- QC: edit view ---------------------------------------------------
+  function toDateInputValue(str) {
+    if (!str) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const m = String(str).match(/^(\d{2})-(\w{3})-(\d{4})/);
+    if (m) {
+      const months = { Jan:"01",Feb:"02",Mar:"03",Apr:"04",May:"05",Jun:"06",Jul:"07",Aug:"08",Sep:"09",Oct:"10",Nov:"11",Dec:"12" };
+      const mon = months[m[2]];
+      if (mon) return `${m[3]}-${mon}-${m[1]}`;
+    }
+    return "";
+  }
+  function renderCheckboxGroup(containerId, options, checkedValues) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = options.map((opt) => `<label class="checkbox-row"><input type="checkbox" class="mt-0.5" value="${escapeHtml(opt)}" ${checkedValues.includes(opt) ? "checked" : ""}><span>${escapeHtml(opt)}</span></label>`).join("");
+  }
+  function readCheckboxGroup(containerId) {
+    return Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)).map((el) => el.value);
+  }
+  function qcSparePartRowHtml(rowIndex, selectedTypes, qty) {
+    const radios = SPARE_PART_TYPE_OPTIONS.map((opt) => `<label class="inline-flex items-center gap-1 text-xs text-slate-600 mr-3"><input type="radio" name="qc-spare-part-type-${rowIndex}" class="qc-spare-part-type-cb" value="${escapeHtml(opt)}" ${selectedTypes.includes(opt) ? "checked" : ""}>${escapeHtml(opt)}</label>`).join("");
+    return `<div class="qc-spare-part-row flex flex-col sm:flex-row sm:items-center gap-2 bg-slate-50 rounded-lg px-3 py-2" data-row="${rowIndex}"><div class="flex-1">${radios}</div><input type="text" class="qc-spare-part-qty field-input sm:w-40" placeholder="Quantity" value="${escapeHtml(qty || "")}"><button type="button" class="qc-remove-spare-part-btn text-xs text-rose-600 hover:text-rose-800 shrink-0">Remove</button></div>`;
+  }
+  function addQcSparePartRow(selectedTypes, qty) {
+    const rowIndex = qcSparePartRowCount++;
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = qcSparePartRowHtml(rowIndex, selectedTypes || [], qty || "");
+    const rowEl = wrapper.firstElementChild;
+    document.getElementById("qcSparePartsRows").appendChild(rowEl);
+    rowEl.querySelector(".qc-remove-spare-part-btn").addEventListener("click", () => rowEl.remove());
+  }
+  document.getElementById("qcAddSparePartBtn").addEventListener("click", () => addQcSparePartRow([], ""));
+  function readQcSpareParts() {
+    return Array.from(document.querySelectorAll("#qcSparePartsRows .qc-spare-part-row")).map((rowEl) => {
+      const types = Array.from(rowEl.querySelectorAll(".qc-spare-part-type-cb:checked")).map((el) => el.value);
+      const qty = rowEl.querySelector(".qc-spare-part-qty").value.trim();
+      return { Spare_Part_Type: types, Quantity_of_damage_spare_s: qty };
+    }).filter((row) => row.Spare_Part_Type.length || row.Quantity_of_damage_spare_s);
+  }
+
+  const qcSignatureCanvas = document.getElementById("qcSignatureCanvas");
+  const qcSignatureCtx = qcSignatureCanvas.getContext("2d");
+  function sizeQcSignatureCanvas() {
+    const rect = qcSignatureCanvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    qcSignatureCanvas.width = rect.width * ratio; qcSignatureCanvas.height = 160 * ratio;
+    qcSignatureCtx.scale(ratio, ratio); qcSignatureCtx.lineWidth = 2; qcSignatureCtx.lineCap = "round"; qcSignatureCtx.strokeStyle = "#1e293b";
+  }
+  function qcSignaturePoint(ev) {
+    const rect = qcSignatureCanvas.getBoundingClientRect();
+    const touch = ev.touches && ev.touches[0];
+    return { x: (touch ? touch.clientX : ev.clientX) - rect.left, y: (touch ? touch.clientY : ev.clientY) - rect.top };
+  }
+  function qcSignatureStart(ev) { ev.preventDefault(); qcSignatureDrawing = true; qcSignatureLastPoint = qcSignaturePoint(ev); }
+  function qcSignatureMove(ev) {
+    if (!qcSignatureDrawing) return;
+    ev.preventDefault();
+    const p = qcSignaturePoint(ev);
+    qcSignatureCtx.beginPath(); qcSignatureCtx.moveTo(qcSignatureLastPoint.x, qcSignatureLastPoint.y); qcSignatureCtx.lineTo(p.x, p.y); qcSignatureCtx.stroke();
+    qcSignatureLastPoint = p; qcSignatureDirty = true;
+  }
+  function qcSignatureEnd() { qcSignatureDrawing = false; qcSignatureLastPoint = null; }
+  qcSignatureCanvas.addEventListener("mousedown", qcSignatureStart);
+  qcSignatureCanvas.addEventListener("mousemove", qcSignatureMove);
+  window.addEventListener("mouseup", qcSignatureEnd);
+  qcSignatureCanvas.addEventListener("touchstart", qcSignatureStart, { passive: false });
+  qcSignatureCanvas.addEventListener("touchmove", qcSignatureMove, { passive: false });
+  qcSignatureCanvas.addEventListener("touchend", qcSignatureEnd);
+  function clearQcSignatureCanvas() { sizeQcSignatureCanvas(); qcSignatureCtx.clearRect(0, 0, qcSignatureCanvas.width, qcSignatureCanvas.height); qcSignatureDirty = false; }
+  document.getElementById("qcClearSignatureBtn").addEventListener("click", clearQcSignatureCanvas);
+  function isQcSignatureCanvasBlank() {
+    const blank = document.createElement("canvas");
+    blank.width = qcSignatureCanvas.width; blank.height = qcSignatureCanvas.height;
+    return qcSignatureCanvas.toDataURL() === blank.toDataURL();
+  }
+  function qcSignatureCanvasToFile() {
+    return new Promise((resolve) => { qcSignatureCanvas.toBlob((blob) => resolve(blob ? new File([blob], "signature.png", { type: "image/png" }) : null), "image/png"); });
+  }
+
+  function populateQcEditForm(r) {
+    document.getElementById("qcEditTitle").textContent = !isBlank(r.SO) ? `Edit QC Report — ${r.SO}` : "Edit QC Report";
+    document.getElementById("qcf_SO").value = textVal(r.SO);
+    document.getElementById("qcf_PAC").value = textVal(r.PAC);
+    document.getElementById("qcf_PR").value = textVal(r.PR);
+    document.getElementById("qcf_RR").value = textVal(r.RR);
+    document.getElementById("qcf_Demo").value = textVal(r.Demo);
+    document.getElementById("qcf_Order_Type").value = textVal(r.Order_Type);
+    document.getElementById("qcf_Delivery_Type").value = textVal(r.Delivery_Type);
+    document.getElementById("qcf_Customer_Name").value = textVal(r.Customer_Name);
+    document.getElementById("qcf_Customer_Type").value = textVal(r.Customer_Type);
+    document.getElementById("qcf_Customer_Address").value = textVal(r.Customer_Address);
+    document.getElementById("qcf_Item_Name").value = textVal(r.Item_Name);
+    document.getElementById("qcf_SKU").value = textVal(r.SKU);
+    document.getElementById("qcf_Quantity").value = textVal(r.Quantity);
+    document.getElementById("qcf_Bin_Location").value = textVal(r.Bin_Location);
+    document.getElementById("qcf_Date_Checked").value = toDateInputValue(r.Date_Checked);
+    document.getElementById("qcf_Quality_Checker").value = textVal(r.Quality_Checker);
+    document.getElementById("qcf_Location").value = textVal(r.Location);
+
+    renderCheckboxGroup("qcg_Fixture_Body_Checklist", FIXTURE_BODY_OPTIONS, toArray(r.Fixture_Body_Checklist));
+    renderCheckboxGroup("qcg_LED_Checklist", LED_OPTIONS, toArray(r.LED_Checklist));
+    renderCheckboxGroup("qcg_Uniformity", UNIFORMITY_OPTIONS, toArray(r.Uniformity));
+    renderCheckboxGroup("qcg_Type_of_Bulb", BULB_TYPE_OPTIONS, toArray(r.Type_of_Bulb));
+
+    const savedCT = toArray(r.Color_Temperature);
+    const savedK = toArray(r.Kelvin);
+    let resolvedCT = [];
+    COLOR_TEMP_OPTIONS.forEach((opt) => {
+      if (savedCT.includes(opt)) resolvedCT.push(opt);
+    });
+    if (resolvedCT.length === 0) {
+      savedK.forEach((k) => {
+        savedCT.forEach((c) => {
+          if (c === "Tri-color") return;
+          const combo = `${c} (${k})`;
+          if (COLOR_TEMP_OPTIONS.includes(combo) && !resolvedCT.includes(combo)) {
+            resolvedCT.push(combo);
+          }
+        });
+        if (resolvedCT.length === 0) {
+          COLOR_TEMP_OPTIONS.forEach((opt) => {
+            if (opt.includes(`(${k})`) && !resolvedCT.includes(opt)) {
+              resolvedCT.push(opt);
+            }
+          });
+        }
+      });
+    }
+    renderCheckboxGroup("qcg_Color_Temperature", COLOR_TEMP_OPTIONS, resolvedCT);
+
+    const kanbanLightingFeatures = toArray(r.Lighting_Feature);
+    if (!kanbanLightingFeatures.length && toArray(r.Color_Temperature).includes("Tri-color")) {
+      kanbanLightingFeatures.push("Tri-color");
+    }
+    renderCheckboxGroup("qcg_Lighting_Feature", LIGHTING_FEATURE_OPTIONS, kanbanLightingFeatures);
+
+    document.getElementById("qcf_Item_to_Replace").value = textVal(r.Item_to_Replace);
+    document.getElementById("qcf_Quantity_of_Damage_Items").value = textVal(r.Quantity_of_Damage_Items);
+
+    document.getElementById("qcSparePartsRows").innerHTML = "";
+    qcSparePartRowCount = 0;
+    (Array.isArray(r.Spare_part_type) ? r.Spare_part_type : []).forEach((sp) => addQcSparePartRow(toArray(sp.Spare_Part_Type), textVal(sp.Quantity_of_damage_spare_s)));
+
+    document.getElementById("qcf_Remarks").value = textVal(r.Remarks);
+
+    const status = textVal(r.QC_Status);
+    document.getElementById("qcf_QC_Status_Approved").checked = status === "Approved";
+    document.getElementById("qcf_QC_Status_Rejected").checked = status === "Rejected";
+    document.getElementById("qcf_QC_Status_None").checked = status !== "Approved" && status !== "Rejected";
+
+    document.getElementById("qcSignatureStatusNote").textContent = !isBlank(r.Signature) ? "Existing signature on file. Draw below to replace it." : "No signature on file yet.";
+    clearQcSignatureCanvas();
+
+    const imageCount = toArray(r.Image_Upload_max_10_JPG_JPEG_PNG).length;
+    document.getElementById("qcImageStatusNote").textContent = imageCount ? `${imageCount} currently attached.` : "None attached yet.";
+    document.getElementById("qcf_Images").value = "";
+
+    const videoCount = toArray(r.Video_Upload_max_3_min_30_sec1).length;
+    document.getElementById("qcVideoStatusNote").textContent = videoCount ? "A video is currently attached." : "None attached yet.";
+    document.getElementById("qcf_Video").value = "";
+  }
+
+  function collectQcEditFormData() {
+    const statusEl = document.querySelector('input[name="qcStatus"]:checked');
+    return {
+      SO: document.getElementById("qcf_SO").value.trim(), PAC: document.getElementById("qcf_PAC").value.trim(),
+      PR: document.getElementById("qcf_PR").value.trim(), RR: document.getElementById("qcf_RR").value.trim(),
+      Demo: document.getElementById("qcf_Demo").value.trim(), Order_Type: document.getElementById("qcf_Order_Type").value.trim(),
+      Delivery_Type: document.getElementById("qcf_Delivery_Type").value.trim(),
+      Customer_Name: document.getElementById("qcf_Customer_Name").value.trim(), Customer_Type: document.getElementById("qcf_Customer_Type").value.trim(),
+      Customer_Address: document.getElementById("qcf_Customer_Address").value.trim(),
+      Item_Name: document.getElementById("qcf_Item_Name").value.trim(), SKU: document.getElementById("qcf_SKU").value.trim(),
+      Quantity: document.getElementById("qcf_Quantity").value.trim(), Bin_Location: document.getElementById("qcf_Bin_Location").value.trim(),
+      Date_Checked: document.getElementById("qcf_Date_Checked").value, Quality_Checker: document.getElementById("qcf_Quality_Checker").value.trim(),
+      Location: document.getElementById("qcf_Location").value,
+      Fixture_Body_Checklist: readCheckboxGroup("qcg_Fixture_Body_Checklist"), LED_Checklist: readCheckboxGroup("qcg_LED_Checklist"),
+      Uniformity: readCheckboxGroup("qcg_Uniformity"), Type_of_Bulb: readCheckboxGroup("qcg_Type_of_Bulb"),
+      Color_Temperature: readCheckboxGroup("qcg_Color_Temperature"),
+      Kelvin: Array.from(new Set(readCheckboxGroup("qcg_Color_Temperature").flatMap((s) => s.match(/\d+K/g) || []))),
+      Lighting_Feature: readCheckboxGroup("qcg_Lighting_Feature"),
+      Item_to_Replace: document.getElementById("qcf_Item_to_Replace").value, Quantity_of_Damage_Items: document.getElementById("qcf_Quantity_of_Damage_Items").value.trim(),
+      Spare_part_type: readQcSpareParts(), Remarks: document.getElementById("qcf_Remarks").value,
+      QC_Status: statusEl ? statusEl.value : "",
+    };
+  }
+
+  function uploadFileToField(reportName, recordId, fieldName, file) {
+    return ZOHO.CREATOR.FILE.uploadFile({ app_name: CONFIG.APP_NAME, report_name: reportName, id: recordId, field_name: fieldName, file: file });
+  }
+  async function uploadFilesSequentially(reportName, recordId, fieldName, files) {
+    let failures = 0;
+    for (const file of files) {
+      try {
+        const response = await uploadFileToField(reportName, recordId, fieldName, file);
+        if (!response || response.code !== 3000) failures++;
+      } catch (err) { console.error(err); failures++; }
+    }
+    return failures;
+  }
+  function fmtNowForCreator() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+  async function uploadMediaToExceptionControl(soVal, skuVal, pacVal, files, fileType) {
+    const rowKey = `${soVal || ""}|${skuVal || ""}|${pacVal || ""}`;
+    let failures = 0;
+    for (const file of files) {
+      try {
+        const addResp = await ZOHO.CREATOR.DATA.addRecords({
+          app_name: CONFIG.APP_NAME, form_name: CONFIG.MEDIA_FORM,
+          payload: { data: { Record_ID: rowKey, File_Type: fileType, File_Name: file.name, Uploaded_On: fmtNowForCreator() } },
+        });
+        const newId = addResp && addResp.data && addResp.data.ID;
+        if (!newId) { failures++; continue; }
+        const upResp = await ZOHO.CREATOR.FILE.uploadFile({ app_name: CONFIG.APP_NAME, report_name: CONFIG.MEDIA_REPORT, id: newId, field_name: "Media", file: file });
+        if (!upResp || upResp.code !== 3000) failures++;
+      } catch (err) { console.error(err); failures++; }
+    }
+    return failures;
+  }
+
+  // ADDED 2026-09-03 — same mandatory-field enforcement as the real QC
+  // Checklist widget's own same-day fix (this is a duplicate embedded copy
+  // of that form). Highlights both red + toasts on Save if either is blank.
+  function validateQcRequiredFields() {
+    const dateEl = document.getElementById("qcf_Date_Checked");
+    const locEl = document.getElementById("qcf_Location");
+    let ok = true;
+    if (!dateEl.value) { dateEl.classList.add("field-input-error"); ok = false; } else { dateEl.classList.remove("field-input-error"); }
+    if (!locEl.value) { locEl.classList.add("field-input-error"); ok = false; } else { locEl.classList.remove("field-input-error"); }
+    return ok;
+  }
+  document.getElementById("qcf_Date_Checked").addEventListener("input", () => {
+    if (document.getElementById("qcf_Date_Checked").value) document.getElementById("qcf_Date_Checked").classList.remove("field-input-error");
+  });
+  document.getElementById("qcf_Location").addEventListener("change", () => {
+    if (document.getElementById("qcf_Location").value) document.getElementById("qcf_Location").classList.remove("field-input-error");
+  });
+
+  async function saveQcEditForm() {
+    if (!qcEditRecord) return;
+    if (!validateQcRequiredFields()) {
+      toast("Date Checked and Location are required.", "error");
+      return;
+    }
+    const data = collectQcEditFormData();
+    const saveBtns = [document.getElementById("qcSaveEditBtn"), document.getElementById("qcSaveEditBtn2")];
+    saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
+
+    const recordId = qcEditRecord.ID;
+    const shouldUploadSignature = qcSignatureDirty && !isQcSignatureCanvasBlank();
+    const imageFiles = Array.from(document.getElementById("qcf_Images").files || []);
+    const videoFiles = Array.from(document.getElementById("qcf_Video").files || []);
+
+    try {
+      const response = await updateRecordField(CONFIG.REPORTS.qc, qcEditRecord, data);
+      if (!response || response.code !== 3000) throw new Error("update-failed");
+      Object.assign(qcEditRecord, data);
+
+      const failures = [];
+      if (shouldUploadSignature) {
+        const file = await qcSignatureCanvasToFile();
+        const resp = file && await uploadFileToField(CONFIG.REPORTS.qc, recordId, "Signature", file);
+        if (!resp || resp.code !== 3000) failures.push("signature"); else qcEditRecord.Signature = "uploaded";
+      }
+      if (imageFiles.length) {
+        const failCount = await uploadFilesSequentially(CONFIG.REPORTS.qc, recordId, "Image_Upload_max_10_JPG_JPEG_PNG", imageFiles);
+        if (failCount) failures.push(`${failCount} image${failCount === 1 ? "" : "s"}`); else qcEditRecord.Image_Upload_max_10_JPG_JPEG_PNG = "uploaded";
+      }
+      if (videoFiles.length) {
+        const resp = await uploadFileToField(CONFIG.REPORTS.qc, recordId, "Video_Upload_max_3_min_30_sec1", videoFiles[0]);
+        if (!resp || resp.code !== 3000) failures.push("video"); else qcEditRecord.Video_Upload_max_3_min_30_sec1 = "uploaded";
+      }
+      if (data.QC_Status === "Rejected" && (imageFiles.length || videoFiles.length)) {
+        if (imageFiles.length) {
+          const c = await uploadMediaToExceptionControl(data.SO, data.SKU, data.PAC, imageFiles, "Image");
+          if (c) failures.push(`${c} image${c === 1 ? "" : "s"} (Exception Control copy)`);
+        }
+        if (videoFiles.length) {
+          const c = await uploadMediaToExceptionControl(data.SO, data.SKU, data.PAC, videoFiles, "Video");
+          if (c) failures.push("video (Exception Control copy)");
+        }
+      }
+
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast(failures.length ? `Saved, but failed to upload: ${failures.join(", ")}.` : "QC report saved.", failures.length ? "error" : "success");
+      renderQcColumns();
+      openQcDetail(recordId);
+    } catch (err) {
+      console.error(err);
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast("Couldn't save changes.", "error");
+    }
+  }
+
+  function openQcEdit(r) {
+    qcEditRecord = r;
+    closeVideoLightbox();
+    populateQcEditForm(r);
+    showView("qc-edit");
+  }
+  function cancelQcEdit() {
+    if (qcEditRecord) openQcDetail(qcEditRecord.ID); else showBoard();
+  }
+  document.getElementById("qcCancelEditBtn").addEventListener("click", cancelQcEdit);
+  document.getElementById("qcCancelEditBtn2").addEventListener("click", cancelQcEdit);
+  document.getElementById("qcSaveEditBtn").addEventListener("click", saveQcEditForm);
+  document.getElementById("qcSaveEditBtn2").addEventListener("click", saveQcEditForm);
+
+  // =======================================================================
+  // STAGE: CRATE  →  columns "crating" (pending) + "done"  (All_Crates)
+  // =======================================================================
+  let crateRecords = [], crateRows = [];
+  let crateDetailRecord = null, crateEditRecord = null;
+  const OTHER_CRATER_VALUE = "__other__";
+  const CRATING_CHECKLIST_OPTIONS = [
+    "Maayos at matibay ang pagkaka-crate", "Walang sira o bitak sa kahon o crate",
+    "Lahat ng bahagi ng item ay ligtas at nakapaloob (walang gumagalaw sa loob)", "May foam o proteksyon sa mga gilid at sulok",
+    "May tamang label ng item sa crate", "Naselyuhan o nailagay ng maayos ang takip ng crate",
+    "May larawan bago i-seal ang crate (for record)", "Na-check ng checker bago ipadala",
+  ];
+
+  function isEmptyCrateRow(r) {
+    return isBlank(r.SO) && isBlank(r.PR_if_any) && isBlank(r.RR_if_any) && isBlank(r.Customer_Name) && isBlank(r.Item_Name) && isBlank(r.SKU);
+  }
+  function loadCrateRecords(records) {
+    crateRecords = records;
+    crateRows = records.filter((r) => !isEmptyCrateRow(r)).slice().sort((a, b) =>
+      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+  }
+  function crateSearchFilter(rows) {
+    return rows.filter((r) => matchesSearch([r.SO, r.Package_Order, r.Assign_Crater, r.Assigned_Checker, r.Item_Name, r.SKU]));
+  }
+  function crateCratingRows() { return crateSearchFilter(crateRows.filter((r) => r.Crating_Status1 !== "Done")); }
+  function crateDoneRows() { return crateSearchFilter(crateRows.filter((r) => r.Crating_Status1 === "Done")); }
+
+  function craterSelectMarkup(r) {
+    const current = r.Assign_Crater || "";
+    const isCustom = current !== "" && !CONFIG.CRATER_OPTIONS.includes(current);
+    const optionValues = ["", ...CONFIG.CRATER_OPTIONS];
+    if (isCustom) optionValues.push(current);
+    optionValues.push(OTHER_CRATER_VALUE);
+    const options = optionValues.map((opt) => {
+      const label = opt === "" ? "— Unassigned —" : opt === OTHER_CRATER_VALUE ? "Other…" : opt;
+      return `<option value="${escapeHtml(opt)}" ${opt === current ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    }).join("");
+    return `<select class="crt-crater-select w-full text-xs rounded-md border border-slate-200 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-slate-300" data-id="${r.ID}">${options}</select>`;
+  }
+  function renderCraterSelectCell(container, r) {
+    container.innerHTML = craterSelectMarkup(r);
+    wireCraterSelect(container.querySelector(".crt-crater-select"));
+  }
+  function wireCraterSelect(selectEl) {
+    if (!selectEl) return;
+    selectEl.addEventListener("click", (ev) => ev.stopPropagation());
+    selectEl.addEventListener("change", (ev) => {
+      ev.stopPropagation();
+      const r = crateRecords.find((rec) => String(rec.ID) === String(selectEl.dataset.id));
+      if (!r) return;
+      if (selectEl.value === OTHER_CRATER_VALUE) showCustomCraterInput(selectEl, r);
+      else updateAssignCrater(r, selectEl.value, selectEl);
+    });
+  }
+  function showCustomCraterInput(selectEl, r) {
+    const container = selectEl.closest(".crt-crater-cell");
+    if (!container) return;
+    const input = document.createElement("input");
+    input.type = "text"; input.placeholder = "Type a name…";
+    input.className = "text-xs rounded-md border border-slate-300 bg-white px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-slate-300";
+    container.innerHTML = ""; container.appendChild(input); input.focus();
+    let settled = false;
+    const commit = () => {
+      if (settled) return;
+      const val = input.value.trim();
+      if (!val) { settled = true; renderCraterSelectCell(container, r); return; }
+      settled = true; updateAssignCrater(r, val, input);
+    };
+    const cancel = () => { if (settled) return; settled = true; renderCraterSelectCell(container, r); };
+    input.addEventListener("click", (ev) => ev.stopPropagation());
+    input.addEventListener("keydown", (ev) => {
+      ev.stopPropagation();
+      if (ev.key === "Enter") { ev.preventDefault(); commit(); }
+      if (ev.key === "Escape") { ev.preventDefault(); cancel(); }
+    });
+    input.addEventListener("blur", commit);
+  }
+  function updateAssignCrater(r, newValue, controlEl) {
+    controlEl.disabled = true;
+    updateRecordField(CONFIG.REPORTS.crate, r, { Assign_Crater: newValue }).then((response) => {
+      if (response && response.code === 3000) { r.Assign_Crater = newValue; refreshNextStep(r.ID, nsCrateFor(r)); toast(newValue ? `Assigned to ${newValue}.` : "Crater cleared.", "success"); }
+      else toast("Couldn't update crater.", "error");
+      renderCrateColumns();
+      refreshCrateDetail(r);
+    }).catch((err) => {
+      console.error(err); toast("Couldn't update crater.", "error"); renderCrateColumns();
+    });
+  }
+
+  function markDoneHtml(r) {
+    return `<button class="crt-done-btn w-full text-[11px] font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-full px-2.5 py-1.5 transition disabled:opacity-40" data-id="${r.ID}">Mark Done</button>`;
+  }
+  function wireMarkDoneBtn(btnEl) {
+    if (!btnEl) return;
+    btnEl.addEventListener("click", (ev) => { ev.stopPropagation(); startMarkDone(btnEl.dataset.id, btnEl); });
+  }
+  function startMarkDone(recordId, btnEl) {
+    const r = crateRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r || r.Crating_Status1 === "Done") return;
+    askConfirm("Mark this crate as done?", "This marks the crating checklist complete.", "Yes, Mark Done").then((confirmed) => {
+      if (!confirmed) return;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = "…"; }
+      updateRecordField(CONFIG.REPORTS.crate, r, { Crating_Status1: "Done" }).then((response) => {
+        if (response && response.code === 3000) {
+          r.Crating_Status1 = "Done";
+          refreshNextStep(r.ID, nsCrateFor(r));
+          toast("Marked done.", "success");
+          renderCrateColumns();
+          if (crateDetailRecord && String(crateDetailRecord.ID) === String(r.ID)) openCrateDetail(r.ID);
+        } else {
+          if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Mark Done"; }
+          toast("Couldn't mark done.", "error");
+        }
+      }).catch((err) => {
+        console.error(err);
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Mark Done"; }
+        toast("Couldn't mark done.", "error");
+      });
+    });
+  }
+
+  function cratingStatusHtml(r) {
+    return r.Crating_Status1 === "Done" ? badgePill("Done", "emerald") : badgePill("Pending", "amber");
+  }
+
+  function crateCardHtml(r, showActions) {
+    return `
+      <div class="kb-card cursor-pointer bg-white border border-slate-200 rounded-xl p-3 shadow-sm" data-id="${r.ID}">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <span class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(r.SO))}</span>
+          ${cratingStatusHtml(r)}
+        </div>
+        <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(displayVal(r.Item_Name))}</p>
+        <p class="kb-mono text-[11px] text-slate-500 mb-2">${escapeHtml(displayVal(r.SKU))} · Qty ${escapeHtml(displayVal(r.Quantity))}</p>
+        <div class="flex flex-wrap gap-1 mb-2">${badgePill(displayVal(r.Package_Order), "slate")}</div>
+        <p class="text-[11px] text-slate-400 italic mb-2">Checker: <span class="not-italic text-slate-600 font-medium">${!isBlank(r.Assigned_Checker) ? escapeHtml(r.Assigned_Checker) : "— none —"}</span></p>
+        <div class="mb-2">${nextStepCell(r.ID, nsCrateFor(r))}</div>
+        ${showActions ? `
+          <div class="crt-crater-cell border-t border-slate-100 pt-2 space-y-1.5" data-id="${r.ID}">
+            ${craterSelectMarkup(r)}
+            ${markDoneHtml(r)}
+          </div>` : `
+          <p class="text-[11px] text-slate-500 border-t border-slate-100 pt-2">Crater: <span class="text-slate-700 font-medium">${escapeHtml(displayVal(r.Assign_Crater))}</span></p>`}
+        <p class="text-[10px] text-slate-300 mt-2">${escapeHtml(formatDateTime(r.Added_Time))}</p>
+      </div>`;
+  }
+
+  function renderCrateColumns() {
+    const crating = crateCratingRows();
+    const done = crateDoneRows();
+    setColumn("crating", crating, (r) => crateCardHtml(r, true), "No items");
+    setColumn("done", done, (r) => crateCardHtml(r, false), "Nothing done yet");
+
+    document.querySelectorAll("#col-crating .kb-card, #col-done .kb-card").forEach((card) => {
+      card.addEventListener("click", () => openCrateDetail(card.dataset.id));
+    });
+    document.querySelectorAll("#col-crating .crt-crater-select").forEach(wireCraterSelect);
+    document.querySelectorAll("#col-crating .crt-done-btn").forEach(wireMarkDoneBtn);
+  }
+
+  function refreshCrateDetail(r) {
+    if (crateDetailRecord && String(crateDetailRecord.ID) === String(r.ID)) openCrateDetail(r.ID);
+  }
+
+  // --- Crate: detail view ----------------------------------------------
+  function renderCrateDocumentation(r) {
+    const rawImages = Array.isArray(r.Photo_Documentation) ? r.Photo_Documentation : (isBlank(r.Photo_Documentation) ? [] : [r.Photo_Documentation]);
+    const rawVideo = Array.isArray(r.Video_Documentation) ? r.Video_Documentation[0] : (isBlank(r.Video_Documentation) ? null : r.Video_Documentation);
+    document.getElementById("crtDetailDocumentation").innerHTML = `
+      <div><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Photos ${rawImages.length ? `(${rawImages.length})` : ""}</p><div id="crtDocImagesGrid" class="flex flex-wrap gap-2">${rawImages.length ? "" : `<span class="text-slate-300 text-sm">—</span>`}</div></div>
+      <div class="mt-4"><p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">Video</p><div id="crtDocVideoBox">${rawVideo ? "" : `<span class="text-slate-300 text-sm">—</span>`}</div></div>`;
+    if (rawImages.length) {
+      const grid = document.getElementById("crtDocImagesGrid");
+      rawImages.forEach((rawVal, i) => {
+        const filename = filenameFromRawValue(rawVal, `photo-${i + 1}.png`);
+        const wrap = document.createElement("div");
+        wrap.className = "w-20 h-20 rounded-lg border border-slate-200 bg-slate-100 overflow-hidden cursor-zoom-in";
+        const img = document.createElement("img");
+        img.className = "w-full h-full object-cover";
+        img.addEventListener("error", () => { wrap.innerHTML = `<div class="w-full h-full flex items-center justify-center text-[9px] text-slate-400 text-center px-1">Preview unavailable</div>`; });
+        wrap.addEventListener("click", () => openLightbox(rawVal, filename));
+        wrap.appendChild(img); grid.appendChild(wrap);
+        applyCreatorImage(img, rawVal);
+      });
+    }
+    if (rawVideo) {
+      const box = document.getElementById("crtDocVideoBox");
+      box.innerHTML = `<video width="320" height="240" controls preload="metadata">Preview unavailable.</video><button type="button" id="crtVideoFullscreenBtn" class="flex items-center gap-1 mt-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>Fullscreen</button>`;
+      const videoEl = box.querySelector("video");
+      document.getElementById("crtVideoFullscreenBtn").addEventListener("click", () => openVideoLightbox(videoEl, box));
+      if (typeof ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData) {
+        const hiddenImg = new Image();
+        ZOHO.CREATOR.UTIL.setImageData(hiddenImg, imgUrlFromRawValue(rawVideo), function () {
+          const resolvedSrc = hiddenImg.src || "";
+          if (resolvedSrc && (resolvedSrc.startsWith("blob:") || resolvedSrc.startsWith("data:"))) videoEl.src = resolvedSrc;
+          else box.innerHTML = `<span class="text-slate-800 text-sm font-medium">1 attached</span><p class="text-[11px] text-slate-400 mt-1">Preview unavailable.</p>`;
+        });
+      }
+    }
+  }
+
+  function openCrateDetail(recordId) {
+    const r = crateRecords.find((rec) => String(rec.ID) === String(recordId));
+    if (!r) return;
+    crateDetailRecord = r;
+    document.getElementById("crtEditRecordBtn").onclick = () => openCrateEdit(r);
+
+    document.getElementById("crtDetailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
+    document.getElementById("crtDetailSoNo").textContent = displayVal(r.SO) !== "—" ? displayVal(r.SO) : "Crate Checklist";
+    document.getElementById("crtDetailCustomer").textContent = displayVal(r.Customer_Name);
+    document.getElementById("crtDetailSubline").textContent = `${displayVal(r.Order_Type)} · ${displayVal(r.Delivery_Type)}`;
+
+    document.getElementById("crtDetailFields").innerHTML = [
+      ["SO #", displayVal(r.SO)], ["PACK #", displayVal(r.Package_Order)], ["PR # (if any)", displayVal(r.PR_if_any)], ["RR # (if any)", displayVal(r.RR_if_any)],
+      ["Order Type", displayVal(r.Order_Type)], ["Delivery Type", displayVal(r.Delivery_Type)], ["Added Time", escapeHtml(formatDateTime(r.Added_Time))],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("crtDetailCustomerFields").innerHTML = [
+      ["Customer Name", displayVal(r.Customer_Name)], ["Customer Type", displayVal(r.Customer_Type)], ["Customer Address", displayVal(r.Customer_Address)],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("crtDetailItemFields").innerHTML = [
+      ["Item Name", displayVal(r.Item_Name)], ["SKU", displayVal(r.SKU)], ["Qty", displayVal(r.Quantity)],
+    ].map(([label, val]) => `<div><dt class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">${escapeHtml(label)}</dt><dd class="text-sm text-slate-800 font-medium mt-0.5">${escapeHtml(val)}</dd></div>`).join("");
+
+    document.getElementById("crtDetailChecklists").innerHTML = checklistGroupHtml("Crating Checklist", toArray(r.Crating_Checklist)) || `<p class="text-xs text-slate-400">No checklist items recorded.</p>`;
+
+    renderCrateDocumentation(r);
+
+    document.getElementById("crtDetailCratingStatus").innerHTML = cratingStatusHtml(r);
+    document.getElementById("crtDetailAssignCrater").textContent = displayVal(r.Assign_Crater);
+    document.getElementById("crtDetailAssignedChecker").textContent = displayVal(r.Assigned_Checker);
+
+    showView("crt-detail");
+  }
+  document.getElementById("crtBackBtn").addEventListener("click", () => { crateDetailRecord = null; showBoard(); });
+
+  // --- Crate: edit view --------------------------------------------------
+  const crtCraterSelect = document.getElementById("crtf_Assign_Crater");
+  const crtCraterOtherInput = document.getElementById("crtf_Assign_Crater_Other");
+  crtCraterSelect.addEventListener("change", () => { crtCraterOtherInput.classList.toggle("hidden", crtCraterSelect.value !== OTHER_CRATER_VALUE); });
+  function populateCrtCrater(currentValue) {
+    const val = textVal(currentValue);
+    if (val && !CONFIG.CRATER_OPTIONS.includes(val)) { crtCraterSelect.value = OTHER_CRATER_VALUE; crtCraterOtherInput.value = val; crtCraterOtherInput.classList.remove("hidden"); }
+    else { crtCraterSelect.value = val; crtCraterOtherInput.value = ""; crtCraterOtherInput.classList.add("hidden"); }
+  }
+  function collectCrtCrater() { return crtCraterSelect.value === OTHER_CRATER_VALUE ? crtCraterOtherInput.value.trim() : crtCraterSelect.value; }
+
+  function populateCrateEditForm(r) {
+    document.getElementById("crtEditTitle").textContent = !isBlank(r.SO) ? `Edit Crate Checklist — ${r.SO}` : "Edit Crate Checklist";
+    populateCrtCrater(r.Assign_Crater);
+    document.getElementById("crtf_Assigned_Checker").value = textVal(r.Assigned_Checker);
+    document.getElementById("crtf_SO").value = textVal(r.SO);
+    document.getElementById("crtf_Package_Order").value = textVal(r.Package_Order);
+    document.getElementById("crtf_PR_if_any").value = textVal(r.PR_if_any);
+    document.getElementById("crtf_RR_if_any").value = textVal(r.RR_if_any);
+    document.getElementById("crtf_Order_Type").value = textVal(r.Order_Type);
+    document.getElementById("crtf_Delivery_Type").value = textVal(r.Delivery_Type);
+    document.getElementById("crtf_Customer_Name").value = textVal(r.Customer_Name);
+    document.getElementById("crtf_Customer_Type").value = textVal(r.Customer_Type);
+    document.getElementById("crtf_Customer_Address").value = textVal(r.Customer_Address);
+    document.getElementById("crtf_Item_Name").value = textVal(r.Item_Name);
+    document.getElementById("crtf_SKU").value = textVal(r.SKU);
+    document.getElementById("crtf_Quantity").value = textVal(r.Quantity);
+
+    renderCheckboxGroup("crtg_Crating_Checklist", CRATING_CHECKLIST_OPTIONS, toArray(r.Crating_Checklist));
+
+    const imageCount = toArray(r.Photo_Documentation).length;
+    document.getElementById("crtImageStatusNote").textContent = imageCount ? `${imageCount} currently attached.` : "None attached yet.";
+    document.getElementById("crtf_Images").value = "";
+    const videoCount = toArray(r.Video_Documentation).length;
+    document.getElementById("crtVideoStatusNote").textContent = videoCount ? "A video is currently attached." : "None attached yet.";
+    document.getElementById("crtf_Video").value = "";
+
+    const status = textVal(r.Crating_Status1);
+    document.getElementById("crtf_Status_Pending").checked = status !== "Done";
+    document.getElementById("crtf_Status_Done").checked = status === "Done";
+  }
+
+  function collectCrateEditFormData() {
+    const statusEl = document.querySelector('input[name="crtCratingStatus"]:checked');
+    return {
+      Assign_Crater: collectCrtCrater(), Assigned_Checker: document.getElementById("crtf_Assigned_Checker").value.trim(),
+      SO: document.getElementById("crtf_SO").value.trim(), Package_Order: document.getElementById("crtf_Package_Order").value.trim(),
+      PR_if_any: document.getElementById("crtf_PR_if_any").value.trim(), RR_if_any: document.getElementById("crtf_RR_if_any").value.trim(),
+      Order_Type: document.getElementById("crtf_Order_Type").value.trim(), Delivery_Type: document.getElementById("crtf_Delivery_Type").value.trim(),
+      Customer_Name: document.getElementById("crtf_Customer_Name").value.trim(), Customer_Type: document.getElementById("crtf_Customer_Type").value.trim(),
+      Customer_Address: document.getElementById("crtf_Customer_Address").value.trim(),
+      Item_Name: document.getElementById("crtf_Item_Name").value.trim(), SKU: document.getElementById("crtf_SKU").value.trim(),
+      Quantity: document.getElementById("crtf_Quantity").value.trim(),
+      Crating_Checklist: readCheckboxGroup("crtg_Crating_Checklist"),
+      Crating_Status1: statusEl ? statusEl.value : "Pending",
+    };
+  }
+
+  async function saveCrateEditForm() {
+    if (!crateEditRecord) return;
+    const data = collectCrateEditFormData();
+    const saveBtns = [document.getElementById("crtSaveEditBtn"), document.getElementById("crtSaveEditBtn2")];
+    saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
+
+    const recordId = crateEditRecord.ID;
+    const imageFiles = Array.from(document.getElementById("crtf_Images").files || []);
+    const videoFiles = Array.from(document.getElementById("crtf_Video").files || []);
+
+    try {
+      const response = await updateRecordField(CONFIG.REPORTS.crate, crateEditRecord, data);
+      if (!response || response.code !== 3000) throw new Error("update-failed");
+      Object.assign(crateEditRecord, data);
+
+      const failures = [];
+      if (imageFiles.length) {
+        const failCount = await uploadFilesSequentially(CONFIG.REPORTS.crate, recordId, "Photo_Documentation", imageFiles);
+        if (failCount) failures.push(`${failCount} photo${failCount === 1 ? "" : "s"}`); else crateEditRecord.Photo_Documentation = "uploaded";
+      }
+      if (videoFiles.length) {
+        const resp = await uploadFileToField(CONFIG.REPORTS.crate, recordId, "Video_Documentation", videoFiles[0]);
+        if (!resp || resp.code !== 3000) failures.push("video"); else crateEditRecord.Video_Documentation = "uploaded";
+      }
+
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast(failures.length ? `Saved, but failed to upload: ${failures.join(", ")}.` : "Crate checklist saved.", failures.length ? "error" : "success");
+      renderCrateColumns();
+      openCrateDetail(recordId);
+    } catch (err) {
+      console.error(err);
+      saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
+      toast("Couldn't save changes.", "error");
+    }
+  }
+
+  function openCrateEdit(r) {
+    crateEditRecord = r;
+    populateCrateEditForm(r);
+    showView("crt-edit");
+  }
+  function cancelCrateEdit() {
+    if (crateEditRecord) openCrateDetail(crateEditRecord.ID); else showBoard();
+  }
+  document.getElementById("crtCancelEditBtn").addEventListener("click", cancelCrateEdit);
+  document.getElementById("crtCancelEditBtn2").addEventListener("click", cancelCrateEdit);
+  document.getElementById("crtSaveEditBtn").addEventListener("click", saveCrateEditForm);
+  document.getElementById("crtSaveEditBtn2").addEventListener("click", saveCrateEditForm);
+
+  // ---------------------------------------------------------------------
+  // Board rendering — pulls each stage's own bucketed rows into its column
+  // ---------------------------------------------------------------------
+  function renderBoard() {
+    renderPickColumn();
+    renderPackColumn();
+    renderQcColumns();
+    renderCrateColumns();
+  }
+
+  // ---------------------------------------------------------------------
+  // Init — fetch all 5 reports in parallel, then render
+  // ---------------------------------------------------------------------
+  // DEBUG=true prints a load report to the browser console (F12 → Console)
+  // on every load: raw record count per report, how many survived the
+  // "empty row" filter, and how many landed in each stage's active bucket.
+  // Flip to false once the Pick / Pack columns are confirmed populated
+  // correctly — safe to leave on otherwise, it's just logging.
+  const DEBUG = true;
+
+  function fetchReport(reportName) {
+    return ZOHO.CREATOR.DATA.getRecords({
+      app_name: CONFIG.APP_NAME,
+      report_name: reportName,
+      field_config: "all",
+      max_records: CONFIG.MAX_RECORDS,
+    }).then((response) => {
+      if (DEBUG) console.log(`[Kanban] ${reportName} → raw response:`, response);
+      return (response && response.data) || [];
+    });
+  }
+
+  function stageLoadPromise(label, reportName, loaderFn) {
+    return fetchReport(reportName)
+      .then((records) => {
+        if (DEBUG) console.log(`[Kanban] ${label} (${reportName}) → ${records.length} raw record(s) fetched.`);
+        loaderFn(records);
+      })
+      .catch((e) => {
+        console.error(`[Kanban] ${label} (${reportName}) failed to load:`, e);
+        toast(`Failed to load ${label} data — check console (F12) for details.`, "error");
+      });
+  }
+
+  function loadAll() {
+    renderColumnShells();
+    Promise.all([
+      stageLoadPromise("Pick", CONFIG.REPORTS.pick, loadPickRecords),
+      stageLoadPromise("Pack", CONFIG.REPORTS.pack, loadPackRecords),
+      stageLoadPromise("QC", CONFIG.REPORTS.qc, loadQcRecords),
+      stageLoadPromise("Crate", CONFIG.REPORTS.crate, loadCrateRecords),
+    ]).then(() => {
+      renderBoard();
+      if (DEBUG) {
+        console.log("[Kanban] Board render summary:", {
+          pick: pickActiveRows().length + " (of " + pickRows.length + " non-empty pick rows)",
+          pack: packActiveRows().length + " (of " + packRows.length + " non-empty pack rows)",
+          qc: qcPendingRows().length,
+          rework: qcReworkRows().length,
+          crating: crateCratingRows().length,
+          done: crateDoneRows().length,
+        });
+      }
+    });
+  }
+
+  globalSearch.addEventListener("input", () => renderBoard());
+
+  // ---------------------------------------------------------------------
+  // Live auto-refresh — ADDED 2026-09-03, per direct user request ("dapat
+  // di na kailangan irefresh para makita lang na lumipat na siya... kaya ba
+  // yun?"): loadAll() previously only ever ran once, on page load — an item
+  // moving stage elsewhere (e.g. Pick -> Pack once it's marked Picked in the
+  // separate Pick widget) never showed up here until the browser tab was
+  // manually reloaded. Polls all 4 reports on an interval and silently
+  // re-renders the board. Zoho Creator widgets have no push/websocket
+  // mechanism, so this is polling, not true real-time — kept deliberately
+  // conservative (20s) to stay easy on the API rather than chasing
+  // instant sync. SKIPS reloading while any detail/edit panel is open
+  // (isBoardVisible()), so an in-progress edit — e.g. someone mid-way
+  // through the QC Checklist form — is never silently disrupted by a
+  // background reload; it resumes the moment the user returns to the board.
+  // Also pauses while the browser tab itself isn't visible (Page
+  // Visibility API), so an idle background tab doesn't keep polling for no
+  // one to see it, and catches up immediately (rather than waiting out
+  // whatever's left of the interval) the moment the tab regains focus.
+  // ---------------------------------------------------------------------
+  const BOARD_POLL_MS = 20000;
+  let boardPollTimer = null;
+
+  function isBoardVisible() {
+    const el = document.getElementById("boardView");
+    return !!el && !el.classList.contains("hidden");
+  }
+
+  function scheduleBoardPoll() {
+    if (boardPollTimer) clearTimeout(boardPollTimer);
+    boardPollTimer = setTimeout(pollBoard, BOARD_POLL_MS);
+  }
+
+  function pollBoard() {
+    if (document.visibilityState === "visible" && isBoardVisible()) loadAll();
+    scheduleBoardPoll();
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && isBoardVisible()) loadAll();
+  });
+
+  const sdkReady = typeof window.ZOHO !== "undefined" && ZOHO.CREATOR && ZOHO.CREATOR.DATA;
+  if (sdkReady) {
+    loadAll();
+    scheduleBoardPoll();
+  } else {
+    toast("This widget must be opened inside Zoho Creator to load data.", "error");
+  }
+})();
+</script>
+</body>
+</html>

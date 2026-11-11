@@ -1,0 +1,147 @@
+// form: Pick1 Marked to Pack Sync  form=Pick1 event=on add or edit on success  [.ds line 42639]
+    // ===== FULFILLMENT_STAGE SYNC (dinagdag 2026-07-28): kahit hindi pa naka-Mark Picked,
+// ang pagkakaroon na ng Pick1 record para dito ay nangangahulugang "Picking" na ang
+// stage nito sa Sales_Order_Fulfillment — i-update agad. Isang Sales_Order_Fulfillment
+// record per item (see so_fulfillment_sync.txt), kaya SO + Item + SKU ang batayan ng
+// pagtugma. =====
+soValStage = input.SO + "";
+skuValStage = input.SKU + "";
+itemNameForSOF = input.Item_Name + "";
+sofMatches = Sales_Order_Fulfillment[SO_No == soValStage];
+for each  sofRec in sofMatches
+{
+    sofFullList = Sales_Order_Fulfillment[ID == sofRec.ID];
+    for each  sofFull in sofFullList
+    {
+        sofFound = false;
+        for each  sofRow in sofFull.Item_Details1
+        {
+            if(sofRow.Item + "" == itemNameForSOF && sofRow.SKU + "" == skuValStage)
+            {
+                sofFound = true;
+            }
+        }
+        if(sofFound == true && sofFull.Fulfillment_Stage != "Picking")
+        {
+            update sofFull
+            [
+                Fulfillment_Stage="Picking"
+            ];
+            info "Fulfillment_Stage updated to Picking for SO " + soValStage + " / SKU " + skuValStage;
+        }
+    }
+}
+// Ang Form Event ay tatakbo lang PAGKATAPOS ma-save ang record — kaya kailangan pa rin
+// ng sariling check dito kung TALAGANG naka-check na ang Marked, para hindi ito tumakbo
+// kapag ibang field lang ang na-edit.
+if(input.Marked != true)
+{
+    info "Marked (Mark Picked) is not checked — skipping Pack sync.";
+    return;
+}
+soVal = input.SO + "";
+skuVal = input.SKU + "";
+pacVal = input.Package_Order + "";
+// ADDED 2026-08-13, real bug found live (SO-16468, Aqi/JF-001) — an RR replacement
+// now deliberately REUSES the same original Package_Order (per this same day's
+// checker_checklist_qc_sync.txt redesign, so a replacement never needs its own new
+// Books package). That means SO+SKU+PAC alone can no longer tell the ORIGINAL
+// item's Pick1->Pack row apart from its RR REPLACEMENT's — both can legitimately
+// share all three. Without this, marking the replacement's Pick1 record Picked
+// silently UPDATED the original's already-Marked (already hidden) Pack record
+// instead of creating its own — looked like "walang nangyari" / the record just
+// vanished. Widened to also match RR (blank RR on the original still matches
+// blank RR consistently, since both sides are the same stringified input.RR).
+// Guards the "null" + "" -> literal string "null" gotcha (see [[deluge_creator_
+// gotchas]]) so a genuinely blank RR normalizes to "" here, matching how existing
+// records with a blank RR actually read back, not the literal word "null".
+rrVal = input.RR + "";
+if(rrVal == "null")
+{
+    rrVal = "";
+}
+alreadyExists = false;
+for each  existingRec in Pack[SO == soVal && SKU == skuVal && PAC == pacVal && RR == rrVal]
+{
+    alreadyExists = true;
+    update existingRec
+    [
+        PR=input.PR_if_any
+        RR=input.RR
+        Demo=input.Demo
+        Delivery_Type=input.Delivery_Type
+        Order_Type=input.Order_Type
+        Target_Delivery_Date=input.Target_Delivery_Date
+        For_Crate=input.For_Crate
+        Customer_Name=input.Customer_Name
+        Customer_Address=input.Customer_Address
+        Customer_Type=input.Customer_Type
+        Item_Name=input.Item_Name
+        Quantity=input.Quantity_to_Pick
+        Bin_Location=input.Bin_Location
+    ];
+    info "Updated existing Pack record for SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal;
+}
+if(alreadyExists == false)
+{
+    // ===== CREATE Pack RECORD =====
+    newId = insert into Pack
+    [
+        SO=soVal
+        PAC=pacVal
+        PR=input.PR_if_any
+        RR=input.RR
+        Demo=input.Demo
+        Delivery_Type=input.Delivery_Type
+        Order_Type=input.Order_Type
+        Target_Delivery_Date=input.Target_Delivery_Date
+        For_Crate=input.For_Crate
+        Customer_Name=input.Customer_Name
+        Customer_Address=input.Customer_Address
+        Customer_Type=input.Customer_Type
+        Item_Name=input.Item_Name
+        SKU=skuVal
+        Quantity=input.Quantity_to_Pick
+        Bin_Location=input.Bin_Location
+        Added_User=zoho.loginuser
+    ];
+    info "Pack record created from Pick1 (SO " + soVal + " / SKU " + skuVal + " / PAC " + pacVal + "), new ID: " + newId;
+}
+// ===== FULFILLMENT_STAGE SYNC — "Pack", ADDED 2026-09-02 per direct user instruction
+// ("if true na yung pick dapat mag update ang fulfillment stage ng Pack") — mirrors
+// the "Picking" sync block at the top of this same file exactly, just placed here so
+// it only runs once Marked (Mark Picked) is genuinely true AND the Pack record above
+// has actually been created/updated (this workflow already returned early above if
+// Marked wasn't checked). Same SO+Item+SKU match against Sales_Order_Fulfillment's
+// Item_Details1 subform, same "only bump if not already at this stage" guard so a
+// later unrelated edit to this same Pick1 record can't re-fire this needlessly. =====
+sofMatches3 = Sales_Order_Fulfillment[SO_No == soVal];
+for each  sofRec3 in sofMatches3
+{
+    sofFullList3 = Sales_Order_Fulfillment[ID == sofRec3.ID];
+    for each  sofFull3 in sofFullList3
+    {
+        sofFound3 = false;
+        for each  sofRow3 in sofFull3.Item_Details1
+        {
+            if(sofRow3.Item + "" == input.Item_Name + "" && sofRow3.SKU + "" == skuVal)
+            {
+                sofFound3 = true;
+            }
+        }
+        if(sofFound3 == true && sofFull3.Fulfillment_Stage != "Pack")
+        {
+            update sofFull3
+            [
+                Fulfillment_Stage="Pack"
+            ];
+            info "Fulfillment_Stage updated to Pack for SO " + soVal + " / SKU " + skuVal;
+        }
+    }
+}
+// ===== HINDI na dinedelete ang Pick1 record. Nananatili ito bilang record — ang
+// Marked (Mark Picked) checkbox mismo (naka-TRUE na dahil ito na ang nag-trigger ng
+// workflow na ito) ang siyang ginagamit bilang Report Criteria sa Pick1 report para
+// itago/i-hide ito sa view kapag na-mark Picked na, kahit nasa database pa rin ito.
+// Setup ng criteria ay sa Report Designer mismo ng Zoho Creator (hindi kaya ng
+// Deluge script), see WORKFLOW notes sa taas.

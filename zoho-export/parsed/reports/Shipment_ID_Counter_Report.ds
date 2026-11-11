@@ -1,0 +1,9 @@
+
+			displayName = "Shipment ID Counter Report"
+			show all rows from Shipment_ID_Counter    
+			(
+				LCL_Counter as "LCL Counter"
+				Air_Counter as "Air Counter"
+				FCL_Counter as "FCL Counter"
+			)
+		

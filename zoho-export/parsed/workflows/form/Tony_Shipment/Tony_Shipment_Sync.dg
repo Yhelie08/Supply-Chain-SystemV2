@@ -1,0 +1,168 @@
+// form: Tony_Shipment_Sync  form=Tony_Shipment event=on edit on success  [.ds line 45485]
+    fsT = Tony_Shipment[ID == input.ID];
+counterExistingT = Shipment_ID_Counter[ID != 0];
+if(counterExistingT.count() == 0)
+{
+    insert into Shipment_ID_Counter
+    [
+        Air_Counter=1
+        LCL_Counter=1
+        FCL_Counter=1
+        Added_User=zoho.loginuser
+    ]
+}
+counterRecT = Shipment_ID_Counter[ID != 0];
+counterIdValT = counterRecT.ID;
+airCounterLocalT = counterRecT.Air_Counter;
+lclCounterLocalT = counterRecT.LCL_Counter;
+fclCounterLocalT = counterRecT.FCL_Counter;
+counterChangedT = false;
+shipParentRecT = Shipments[ID == fsT.Parent_Shipment_ID.toLong()];
+shipParentIdValT = shipParentRecT.ID;
+finalShipOutDateT = null;
+finalEstArrivalT = null;
+datesChangedT = false;
+modeMapT = Map();
+for each  rowT in fsT.Supplier2_Shipment_Details
+{
+    if(rowT.Select_To_Ship == true && rowT.Synced != true)
+    {
+        modeValT = rowT.Shipment_Mode + "";
+        if(modeValT != null && modeValT != "" && modeValT != "null")
+        {
+            prefixT = "";
+            seqNumT = 0;
+            if(modeValT == "Airfreight")
+            {
+                prefixT = "AIR";
+                seqNumT = airCounterLocalT;
+                airCounterLocalT = airCounterLocalT + 1;
+            }
+            else if(modeValT == "LCL")
+            {
+                prefixT = "LCL";
+                seqNumT = lclCounterLocalT;
+                lclCounterLocalT = lclCounterLocalT + 1;
+            }
+            else if(modeValT == "FCL")
+            {
+                prefixT = "FCL";
+                seqNumT = fclCounterLocalT;
+                fclCounterLocalT = fclCounterLocalT + 1;
+            }
+            if(prefixT != "")
+            {
+                counterChangedT = true;
+                seqStrT = "";
+                if(seqNumT < 10)
+                {
+                    seqStrT = "0000" + seqNumT;
+                }
+                else if(seqNumT < 100)
+                {
+                    seqStrT = "000" + seqNumT;
+                }
+                else if(seqNumT < 1000)
+                {
+                    seqStrT = "00" + seqNumT;
+                }
+                else if(seqNumT < 10000)
+                {
+                    seqStrT = "0" + seqNumT;
+                }
+                else
+                {
+                    seqStrT = "" + seqNumT;
+                }
+                shipmentIdValT = "SHP-" + prefixT + "-" + seqStrT;
+                newParentRowT = Shipments.Supplier_Shipment_Details();
+                newParentRowT.Shipment_ID=shipmentIdValT;
+                newParentRowT.SO_No=shipParentRecT.Sales_Order;
+                newParentRowT.PR_No=rowT.PR_No;
+                newParentRowT.RR_No=rowT.RR_No;
+                newParentRowT.SKU=rowT.SKU;
+                newParentRowT.Item_Name=rowT.Item_Name;
+                newParentRowT.Date_Shipped=rowT.Date_Shipped + "";
+                newParentRowT.Shipment_Mode=modeValT;
+                newParentRowT.Status="In Transit";
+                shipParentRecT.Supplier_Shipment_Details.insert(newParentRowT);
+                finalShipOutDateT = rowT.Date_Shipped;
+                datesChangedT = true;
+                if(modeValT == "LCL")
+                {
+                    finalEstArrivalT = rowT.Date_Shipped.addDay(67);
+                }
+                else if(modeValT == "FCL")
+                {
+                    finalEstArrivalT = rowT.Date_Shipped.addDay(47);
+                }
+                else if(modeValT == "Airfreight")
+                {
+                    finalEstArrivalT = rowT.Date_Shipped.addDay(12);
+                }
+                modeMapT.put(rowT.SKU,modeValT);
+                rowT.Synced=true;
+            }
+        }
+    }
+}
+if(counterChangedT == true)
+{
+    update Shipment_ID_Counter[ID == counterIdValT]
+    [
+        Air_Counter=airCounterLocalT
+        LCL_Counter=lclCounterLocalT
+        FCL_Counter=fclCounterLocalT
+    ];
+}
+if(datesChangedT == true)
+{
+    update Shipments[ID == shipParentIdValT]
+    [
+        Ship_Out_Date=finalShipOutDateT
+        Estimated_Warehouse_Arrival=finalEstArrivalT
+    ];
+}
+if(modeMapT.size() > 0)
+{
+    existingLinesT = List();
+    for each  lnCapT in shipParentRecT.PO_Shipments
+    {
+        rowMapT2a = Map();
+        rowMapT2a.put("PR_No",lnCapT.PR_No);
+        rowMapT2a.put("SKU",lnCapT.SKU);
+        rowMapT2a.put("Item_Name",lnCapT.Item_Name);
+        rowMapT2a.put("Ordered_QTY",lnCapT.Ordered_QTY);
+        rowMapT2a.put("Shipment_QTY",lnCapT.Shipment_QTY);
+        rowMapT2a.put("Remaining_QTY",lnCapT.Remaining_QTY);
+        rowMapT2a.put("Shipping_Mode",lnCapT.Shipping_Mode);
+        rowMapT2a.put("Line_Status",lnCapT.Line_Status);
+        rowMapT2a.put("Fully_Shipped",lnCapT.Fully_Shipped);
+        newModeT = modeMapT.get(lnCapT.SKU);
+        if(newModeT != null)
+        {
+            rowMapT2a.put("Shipment_Mode_When_Received",newModeT);
+        }
+        else
+        {
+            rowMapT2a.put("Shipment_Mode_When_Received",lnCapT.Shipment_Mode_When_Received);
+        }
+        existingLinesT.add(rowMapT2a);
+    }
+    shipParentRecT.PO_Shipments.clear();
+    for each  rowMapT2b in existingLinesT
+    {
+        rebuiltLnT = Shipments.PO_Shipments();
+        rebuiltLnT.PR_No=rowMapT2b.get("PR_No");
+        rebuiltLnT.SKU=rowMapT2b.get("SKU");
+        rebuiltLnT.Item_Name=rowMapT2b.get("Item_Name");
+        rebuiltLnT.Ordered_QTY=rowMapT2b.get("Ordered_QTY");
+        rebuiltLnT.Shipment_QTY=rowMapT2b.get("Shipment_QTY");
+        rebuiltLnT.Remaining_QTY=rowMapT2b.get("Remaining_QTY");
+        rebuiltLnT.Shipping_Mode=rowMapT2b.get("Shipping_Mode");
+        rebuiltLnT.Line_Status=rowMapT2b.get("Line_Status");
+        rebuiltLnT.Fully_Shipped=rowMapT2b.get("Fully_Shipped");
+        rebuiltLnT.Shipment_Mode_When_Received=rowMapT2b.get("Shipment_Mode_When_Received");
+        shipParentRecT.PO_Shipments.insert(rebuiltLnT);
+    }
+}

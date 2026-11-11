@@ -1,0 +1,13 @@
+
+			displayName = "Package Shipments Report"
+			show all rows from Package_Shipments    
+			(
+				Service_Appointment_ID
+				Sales_Order
+				Package_Number
+				Shipment_Order_No
+				Shipment_Order_ID
+				Created_Time
+				Shipment_Created
+			)
+		

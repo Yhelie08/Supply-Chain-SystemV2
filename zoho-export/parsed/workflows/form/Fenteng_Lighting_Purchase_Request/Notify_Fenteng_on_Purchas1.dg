@@ -1,0 +1,14 @@
+// form: Notify Fenteng on Purchase Request added  form=Fenteng_Lighting_Purchase_Request event=on add on success  [.ds line 45670]
+    targetUrl = "https://creator.zoho.com/homecartel/supply-chain-app/#Page:Fenteng_Lighting_PR?fentengprid=" + input.PR_No_Supplier1;
+insert into Fenteng_Notifications
+[
+    Recipient_Email="admin@Fentenglighting.com"
+    Notification_Type="Purchase Request added"
+    Message="New purchase request " + input.PR_No_Supplier1 + " has been added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=targetUrl
+    Source_Record_No=input.PR_No_Supplier1
+    Source_Record_ID=input.ID
+    Added_User=zoho.loginuser
+]

@@ -1,0 +1,15 @@
+
+			displayName = "All Fuel Entries"
+			show all rows from Fuel_Entries    
+			(
+				Vehicle
+				Date_field as "Date"
+				Gas_Bar as "Gas Bar"
+				Odometer
+				Price_Unit as "Price/Unit"
+				Vendor
+				Invoice_No as "Invoice No#"
+				Invoice_Receipt as "Invoice Receipt"
+				Remarks
+			)
+		

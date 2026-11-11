@@ -1,0 +1,42 @@
+// form: SA_Scheduling_Engine  form=Service_Appointment_Form event=on add or edit on success  [.ds line 41498]
+    if(input.Type_of_Delivery == "Pick Up" && input.Installer != null && input.Installer != "")
+{
+    rec4 = Service_Appointment_Form[ID == input.ID];
+    rec4.Installer=null;
+    rec4.Assigned_to_Driver=null;
+    rec4.Suggested_Schedule_Date=null;
+    rec4.Suggested_Time_Slot=null;
+    rec4.Fleet_Assignment="Customer Pickup";
+    if(input.Confirmed_Schedule_Date != null)
+    {
+        fNameEvR = "";
+        lNameEvR = "";
+        if(rec4.Customer_Name != null)
+        {
+            fNameEvR = rec4.Customer_Name.first_name;
+            lNameEvR = rec4.Customer_Name.last_name;
+        }
+        if(fNameEvR == null)
+        {
+            fNameEvR = "";
+        }
+        if(lNameEvR == null)
+        {
+            lNameEvR = "";
+        }
+        custNameEvR = (fNameEvR + " " + lNameEvR).trim();
+        timeSlotStrR = "";
+        if(input.Confirmed_Time_Slot != null)
+        {
+            timeSlotStrR = input.Confirmed_Time_Slot.toString();
+        }
+        rec4.Calendar_Event_Summary="Title: " + rec4.Sales_Order + " - " + custNameEvR + " | Date: " + rec4.Confirmed_Schedule_Date + " | Time: " + timeSlotStrR + " | Type: Pick Up | Notes: Converted from delivery to Pick Up - original team released";
+        rec4.Calendar_Entry_Created=true;
+        rec4.Appointment_Status="Scheduled";
+    }
+    else
+    {
+        rec4.Calendar_Entry_Created=false;
+        rec4.Appointment_Status="Queued";
+    }
+}

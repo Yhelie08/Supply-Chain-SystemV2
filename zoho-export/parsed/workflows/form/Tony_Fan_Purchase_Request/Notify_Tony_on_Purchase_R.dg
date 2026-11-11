@@ -1,0 +1,17 @@
+// form: Notify Tony on Purchase Request added  form=Tony_Fan_Purchase_Request event=on add on success  [.ds line 45737]
+    page_base_url = "https://creator.zoho.com/homecartel/supply-chain-app";
+ts = zoho.currenttime.toString().replaceAll(" ","").replaceAll(":","").replaceAll("-","");
+deep_link_token = "PR-" + input.ID + "-" + ts;
+insert into Tony_Notifications
+[
+    Recipient_Email="184319330@qq.com"
+    Notification_Type="Purchase Request added"
+    Message="A new purchase request " + input.PR_No_Supplier2 + " was added."
+    Created_On=zoho.currenttime
+    Read=false
+    Target_URL=page_base_url + "/#Page:Tony_Fan_PR?tonyprid=" + deep_link_token
+    Source_Record_No=input.PR_No_Supplier2
+    Source_Record_ID=input.ID
+    Deep_Link_Token=deep_link_token
+    Added_User=zoho.loginuser
+]

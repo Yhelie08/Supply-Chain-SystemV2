@@ -1,0 +1,57 @@
+
+			displayName = "Tony Fan Purchase Request Report"
+			show all rows from Tony_Fan_Purchase_Request    
+			(
+				PR_No_Supplier2 as "PR No"
+				Items_Supplier2 as "Items"
+				Description1_Supplier2 as "Description"
+				PR_Date_Supplier2 as "PR Date"
+				sku_Supplier2 as "SKU"
+				unit_Supplier2 as "Unit"
+				Target_Delivery_Supplier2 as "Target  Delivery"
+				quantity_Supplier2 as "Quantity"
+				category_Supplier2 as "Category"
+				description_Supplier2 as "Description"
+				Priority_PR_Supplier2 as "Priority"
+				Additional_Details_Supplier2 as "Additional Details"
+				Similar_Item_Supplier2 as "Similar Item"
+				Attachments_Supplier2 as "Attachments"
+				Selected_Supplier_Supplier2 as "Selected Supplier"
+				Selcted_Final_Cost_Supplier2 as "Selected Final Cost"
+				Followed_Recommendation_Supplier2 as "Followed Recommendation"
+				Shipment_Mode_Supplier2 as "Shipment Mode"
+				Required_Days_Lead_Supplier2 as "Required Days (Lead)"
+				Production_Date_Supplier2 as "Production Date"
+				supplier_target_date_Supplier2 as "Supplier  Target Date"
+				Remaining_Days_Supplier2 as "Remaining Days"
+				Delay_Status_Supplier2 as "Delay Status"
+				Selected_Supplier1_Supplier2 as "Selected Supplier"
+				Final_price_confirmed_Supplier2 as "Final price confirmed"
+				Shipping_mode_selected_Supplier2 as "Shipping mode selected"
+				Target_date_exists_Supplier2 as "Target date exists"
+				PR_READY_FOR_PO_Supplier2 as "PR READY FOR PO"
+				PR_Approved_Supplier2 as "PR Approved"
+				edit_counter
+				Response_Status as "Response Status"
+				custom action "Submit Response"
+				(
+	  			workflow = Submit_Response_PRbtn
+				show action in edit record menu = true
+				column header = "Submit Response"
+				condition = (Response_Status != "Not Selected" && Response_Status != "Selected" && edit_counter == 1)
+				)
+				Product_Image_Supplier2_PR as "Product Image"
+				SRP_Rate_PR_Supplier2 as "SRP (Hidden)"
+				Supplier_Selected_Supplier2 as "Supplier Selected"
+				(
+					field = Supplier_Selected_Supplier2.Suppliers_Supplier2 + " " + Supplier_Selected_Supplier2.Availability_Supplier2 + " " + Supplier_Selected_Supplier2.Initial_Price_Supplier2 + " " + Supplier_Selected_Supplier2.Final_Price_Supplier2 + " " + Supplier_Selected_Supplier2.Lead_Time_Supplier2 + " " + Supplier_Selected_Supplier2.Negotiated_Supplier2 + " " + Supplier_Selected_Supplier2.Selected_Supplier2 + " " + Supplier_Selected_Supplier2.Status_Supplier2
+				)
+				inquiry_reference_Supplier2 as "INQ Reference"
+				Dimension_Supplier as "Dimension"
+				Color_Body_Supplier as "Color Body"
+				Color_Temperature_Supplier as "Color Temperature"
+				Type_of_Bulb_Supplier as "Type of Bulb"
+				Voltage_Supplier as "Voltage"
+				Lumens_Supplier as "Lumens"
+			)
+		
