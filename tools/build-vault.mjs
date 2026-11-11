@@ -300,6 +300,18 @@ function parseScreens(specPages) {
     SupplierPO: { dir: 'src/pages/supplier', files: ['POPage.jsx'], path: 'tonfan/po', title: 'Purchase Order', reads: ['pos', 'prs'] },
     SupplierShipments: { dir: 'src/pages/supplier', files: ['ShipmentsPage.jsx'], path: 'tonfan/shipments', title: 'Shipments', reads: ['shipments'] },
     SupplierRR: { dir: 'src/pages/supplier', files: ['RRPage.jsx'], path: 'tonfan/replacement', title: 'Replacement Request', reads: ['rrs', 'exceptions'] },
+    DeliveryAnalytics: { dir: 'src/pages/delivery', files: ['DeliveryAnalytics.jsx'], path: 'delivery/analytics', title: 'Delivery Analytics', reads: ['serviceRequests', 'teams'] },
+    TeamsScreen: { dir: 'src/pages/delivery', files: ['TeamsScreen.jsx'], path: 'delivery/availability', title: 'Daily Team Availability', reads: ['serviceRequests', 'teams'] },
+    InitialSchedulingScreen: { dir: 'src/pages/delivery', files: ['InitialSchedulingScreen.jsx'], path: 'delivery/initial', title: 'Initial Scheduling', reads: ['serviceRequests'] },
+    ServiceRequestScreen: { dir: 'src/pages/delivery', files: ['ServiceRequestScreen.jsx'], path: 'delivery/requests', title: 'Service Request', reads: ['serviceRequests'] },
+    AppointmentScreen: { dir: 'src/pages/delivery', files: ['AppointmentScreen.jsx'], path: 'delivery/appointments', title: 'Service Appointment', reads: ['serviceRequests', 'teams'] },
+    OngoingScreen: { dir: 'src/pages/delivery', files: ['OngoingScreen.jsx'], path: 'delivery/ongoing', title: 'Ongoing Service', reads: ['serviceRequests', 'teams'] },
+    Archived: { dir: 'src/pages/delivery', files: ['ArchivedScreen.jsx'], path: 'delivery/archived', title: 'Archived', reads: ['serviceRequests', 'salesReturns', 'teams'] },
+    SiteVisits: { dir: 'src/pages/delivery', files: ['SiteVisitsScreen.jsx'], path: 'delivery/site-visits', title: 'Field Service Site Visits', reads: ['siteVisits', 'serviceRequests'] },
+    SalesReturns: { dir: 'src/pages/delivery', files: ['SalesReturnsScreen.jsx'], path: 'delivery/returns', title: 'Sales Returns', reads: ['salesReturns', 'serviceRequests'] },
+    DmsExceptionScreen: { dir: 'src/pages/delivery', files: ['DmsExceptionScreen.jsx'], path: 'delivery/exceptions', title: 'DMS Exception Queue', reads: ['serviceRequests', 'teams'] },
+    TruckMaintenance: { dir: 'src/pages/delivery', files: ['TruckMaintenanceScreen.jsx'], path: 'delivery/trucks', title: 'Truck Maintenance', reads: ['truckChecks', 'truckEntries'] },
+    ScheduleRequests: { dir: 'src/pages/delivery', files: ['ScheduleRequestsScreen.jsx'], path: 'delivery/schedule-requests', title: 'Schedule Requests', reads: ['scheduleRequests', 'serviceRequests'] },
   };
   for (const [component, info] of Object.entries(DIR_PAGES)) {
     const dir = path.join(ROOT, info.dir);

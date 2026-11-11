@@ -73,17 +73,23 @@ function InquiryList() {
     <section className="screen">
       <header className="screen-head">
         <div>
-          <h1>Inquiry</h1>
+          <h1>Inquiries</h1>
           <p className="muted">Quote suppliers, clear the five readiness conditions, then create the estimate and convert it to a Sales Order.</p>
         </div>
-        <div className="head-actions"><button className="btn btn-primary" onClick={() => goTo('new')}>+ New Inquiry</button></div>
+        <div className="head-actions">
+          <div className="status-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'var(--card-bg, #fff)', border: '1px solid var(--border, #e5e7eb)', borderRadius: '20px', fontSize: '13px', marginRight: '10px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span>
+            <span>{counts.all} Open · {counts.Ready} Ready</span>
+          </div>
+          <button className="btn btn-primary" onClick={() => goTo('new')}>+ New Inquiry</button>
+        </div>
       </header>
 
       <div className="stats">
-        <div className="stat"><div className="stat-value">{counts.all}</div><div className="stat-label">Open Inquiries</div><div className="stat-sub">{newThisWeek > 0 ? `+${newThisWeek} this week` : 'All records'}</div></div>
-        <div className="stat stat-ok"><div className="stat-value">{counts.Ready}</div><div className="stat-label">Ready for Estimate</div></div>
-        <div className="stat stat-bad"><div className="stat-value">{counts['Not Ready']}</div><div className="stat-label">Not Ready</div></div>
+        <div className="stat"><div className="stat-value">{counts.all}</div><div className="stat-label">Open INQs</div><div className="stat-sub">{newThisWeek > 0 ? `+${newThisWeek} this week` : 'All records'}</div></div>
         <div className="stat"><div className="stat-value">{groups.length}</div><div className="stat-label">Quote Groups</div><div className="stat-sub">{groupsInProgress} in progress</div></div>
+        <div className="stat stat-ok"><div className="stat-value">{counts.Ready}</div><div className="stat-label">Ready for Estimate</div></div>
+        <div className="stat stat-bad"><div className="stat-value">{counts['Not Ready']}</div><div className="stat-label">Blocked / Not Ready</div></div>
         <div className="stat stat-ok"><div className="stat-value">{fullyReady}</div><div className="stat-label">Fully Ready Groups</div></div>
       </div>
 
@@ -112,7 +118,7 @@ function InquiryList() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>INQ #</th><th>Quote Group</th><th>Customer</th><th>Item</th><th>SKU</th><th>Description</th><th>Qty</th>
+                      <th>INQ #</th><th>Quote Group</th><th>Customer</th><th>Image</th><th>Item</th><th>SKU</th><th>Description</th><th>Qty</th>
                       <th>Target</th><th>Status</th><th>Next step</th><th>Estimate</th><th>Created</th>
                     </tr>
                   </thead>
@@ -124,6 +130,7 @@ function InquiryList() {
                           <td data-label="INQ #"><a className="cell-link" href={`#/procurement/inquiry/${q.id}`} onClick={(e) => e.stopPropagation()}>{q.no}</a></td>
                           <td data-label="Quote Group">{q.quoteGroup || '—'}</td>
                           <td data-label="Customer">{q.customer}</td>
+                          <td data-label="Image"><span style={{ display: 'inline-block', width: '28px', height: '28px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'center', lineHeight: '26px', fontSize: '11px' }}>🖼</span></td>
                           <td data-label="Item" className="desc" title={q.item}>{q.item}</td>
                           <td data-label="SKU"><span className="mono">{q.sku || '—'}</span></td>
                           <td data-label="Description" className="desc" title={q.description}>{q.description || '—'}</td>

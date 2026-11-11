@@ -17,8 +17,9 @@ export function dayOfWeek(iso) {
 
 export function fmtDate(iso) {
   if (!iso) return '—';
-  const d = new Date(iso + 'T00:00:00Z');
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const clean = String(iso).includes('T') ? String(iso).split('T')[0] : String(iso);
+  const d = new Date(clean + 'T00:00:00Z');
+  return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
 // Supplier prices are in CNY, selling prices (SRP) in PHP. A zero or missing value reads as a dash.

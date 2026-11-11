@@ -10,6 +10,7 @@ import {
 import { fmtDate, fmtMoneyIn, fmtPHP } from '../../domain/util.js';
 import { forecastRows, resolveSettings } from '../../domain/forecast.js';
 import { ConfirmModal, NextStepPill } from '../inquiry/parts.jsx';
+import PRDecisionWorkspace from './PRDecisionWorkspace.jsx';
 
 const productOf = (db, r) => db.products.find((p) => p.sku === r.sku);
 const priorityTone = { HIGH: 'bad', MEDIUM: 'warn', LOW: 'neutral' };
@@ -19,6 +20,7 @@ const realSuppliers = (db) => db.suppliers.filter((s) => !s.stock).map((s) => s.
 
 export default function PRPage({ sub = '' }) {
   const { db, today } = useStore();
+  const [selectedPRId, setSelectedPRId] = useState(null);
   const rows = db.prs;
   const readyQueue = (r) => r.status === 'Ready for PO' && !isInactive(r);
   const count = (fn) => rows.filter(fn).length;
@@ -27,23 +29,53 @@ export default function PRPage({ sub = '' }) {
   const atRisk = new Set(forecast.filter((f) => f.sev.code === 'atrisk' || f.sev.code === 'miss').map((f) => f.o.prNo));
 
   const columns = [
-    { key: 'no', label: 'PR' },
-    { key: 'soNo', label: 'Sales Order' },
-    { key: 'customer', label: 'Customer' },
-    { key: 'item', label: 'Product' },
-    { key: 'sku', label: 'SKU' },
-    { key: 'qty', label: 'Qty', render: (r) => `${r.qty} ${r.unit || ''}`.trim(), csv: (r) => r.qty },
-    { key: 'supplier', label: 'Supplier' },
-    { key: 'price', label: 'Final price', render: (r, d) => { const i = priceInfo(r, productOf(d, r)); return i.final > 0 ? fmtMoneyIn(i.final, i.currency) : <span className="muted">—</span>; }, csv: (r, d) => priceInfo(r, productOf(d, r)).final },
-    { key: 'mode', label: 'Ship mode', render: (r) => (r.sourcingType === 'Local' ? 'Local' : r.mode || <span className="muted">—</span>), csv: (r) => (r.sourcingType === 'Local' ? 'Local' : r.mode) },
-    { key: 'targetDate', label: 'Target', render: (r) => fmtDate(r.targetDate), csv: (r) => r.targetDate },
-    { key: 'priority', label: 'Priority', render: (r) => <Pill tone={priorityTone[r.priority] || 'neutral'}>{r.priority}</Pill>, csv: (r) => r.priority },
+    { key: 'no', label: 'PR NO.' },
     {
-      key: 'status', label: 'Status',
-      render: (r) => (<><Pill>{r.status}</Pill>{r.hold && <> <Pill tone={r.hold === 'Cancelled' ? 'bad' : 'warn'}>{r.hold.toUpperCase()}</Pill></>}</>),
+      key: 'workspace',
+      label: 'DECISION WORKSPACE',
+      render: (r) => (
+        <button
+          className="btn btn-sm"
+          style={{
+            background: 'var(--orange, #EA580C)',
+            border: 'none',
+            color: '#FFF',
+            fontWeight: 700,
+            padding: '3px 10px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedPRId(r.id);
+          }}
+        >
+          Workspace ↗
+        </button>
+      ),
+    },
+    { key: 'next', label: 'NEXT STEP', render: (r, d) => <NextStepPill ns={nextStep(r, productOf(d, r))} />, csv: (r, d) => nextStep(r, productOf(d, r)).action },
+    { key: 'inqNo', label: 'INQ #', render: (r) => r.inqNo || '—' },
+    { key: 'soNo', label: 'SO NO.' },
+    { key: 'image', label: 'IMAGE', render: () => <span style={{ display: 'inline-block', width: '28px', height: '28px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'center', lineHeight: '26px', fontSize: '11px' }}>🖼</span> },
+    { key: 'item', label: 'PRODUCT' },
+    { key: 'sku', label: 'SKU', render: (r) => <span className="mono">{r.sku}</span> },
+    { key: 'qty', label: 'QTY', render: (r) => `${r.qty} ${r.unit || ''}`.trim(), csv: (r) => r.qty },
+    { key: 'customer', label: 'CUSTOMER' },
+    { key: 'recSupplier', label: 'REC. SUPPLIER', render: (r, d) => recommendedSupplier(r, productOf(d, r)) || '—' },
+    { key: 'supplier', label: 'SELECTED SUPPLIER', render: (r) => r.supplier || '—' },
+    { key: 'price', label: 'FINAL PRICE', render: (r, d) => { const i = priceInfo(r, productOf(d, r)); return i.final > 0 ? fmtMoneyIn(i.final, i.currency) : <span className="muted">—</span>; }, csv: (r, d) => priceInfo(r, productOf(d, r)).final },
+    { key: 'targetDate', label: 'TARGET DATE', render: (r) => fmtDate(r.targetDate), csv: (r) => r.targetDate },
+    { key: 'priority', label: 'PRIORITY', render: (r) => <Pill tone={priorityTone[r.priority] || 'neutral'}>{r.priority}</Pill>, csv: (r) => r.priority },
+    {
+      key: 'status', label: 'PR STATUS',
+      render: (r) => (<><Pill tone={r.status === 'Ready for PO' ? 'ok' : 'neutral'}>● {r.status}</Pill>{r.hold && <> <Pill tone={r.hold === 'Cancelled' ? 'bad' : 'warn'}>{r.hold.toUpperCase()}</Pill></>}</>),
       csv: (r) => `${r.status}${r.hold ? ` (${r.hold})` : ''}`,
     },
-    { key: 'next', label: 'Next step', render: (r, d) => <NextStepPill ns={nextStep(r, productOf(d, r))} />, csv: (r, d) => nextStep(r, productOf(d, r)).action },
+    { key: 'createdAt', label: 'PR DATE', render: (r) => (r.createdAt ? fmtDate(r.createdAt) : fmtDate(today)) },
+    { key: 'forecast', label: 'FORECAST', render: (r) => atRisk.has(r.no) ? <span className="pill pill-bad" style={{ fontSize: '11px' }}>⚠ At Risk</span> : <span className="pill pill-ok" style={{ fontSize: '11px' }}>On Track</span> },
+    // Keep mode for backward compatibility
+    { key: 'mode', label: 'Ship mode', render: (r) => (r.sourcingType === 'Local' ? 'Local' : r.mode || <span className="muted">—</span>), csv: (r) => (r.sourcingType === 'Local' ? 'Local' : r.mode) },
   ];
 
   const holdFields = [
@@ -51,36 +83,49 @@ export default function PRPage({ sub = '' }) {
     { key: 'notes', label: 'Notes', type: 'textarea', hint: 'Required when the reason is Other.' },
   ];
 
-  return (
-    <Screen
-      title="Purchase Request"
-      subtitle="One PR per item. A PR becomes Ready for PO by itself once four conditions pass, then its Sales Order group is turned into a PO."
-      rows={rows}
-      columns={columns}
-      searchKeys={['no', 'soNo', 'customer', 'item', 'sku', 'supplier', 'status', 'hold']}
-      stats={[
-        { label: 'Total Ready PRs', value: () => count(readyQueue), sub: 'in the Ready for PO queue', tone: 'ok' },
-        { label: 'High Priority', value: () => count((r) => readyQueue(r) && r.priority === 'HIGH'), sub: 'ready and urgent', tone: 'bad' },
-        { label: 'At Risk', value: () => count((r) => atRisk.has(r.no) && !isInactive(r)), sub: 'forecast may miss the client date', tone: 'warn' },
-        { label: 'Supplier Overrides', value: () => count((r) => r.followedRecommendation === 'No' && r.status !== 'Converted to PO'), sub: 'not the recommended supplier' },
-        { label: 'Near Capacity Suppliers', value: () => portfolioLoad(db.suppliers, db.pos).filter((s) => s.status !== 'Normal').length, sub: '80% of capacity or more', tone: 'warn' },
-        { label: 'On Hold', value: () => count((r) => r.hold === 'On Hold'), sub: 'waiting on the client', tone: 'warn' },
-      ]}
-      tabs={[
-        { key: 'all', label: 'All PRs', test: () => true },
-        { key: 'queue', label: 'Ready for PO Queue', test: readyQueue },
-        { key: 'converted', label: 'Converted to PO', test: (r) => r.status === 'Converted to PO' },
-        { key: 'onhold', label: 'On Hold', test: (r) => r.hold === 'On Hold' },
-        { key: 'cancelled', label: 'Cancelled', test: (r) => r.hold === 'Cancelled' },
+  if (selectedPRId) {
+    return <PRDecisionWorkspace prId={selectedPRId} onBack={() => setSelectedPRId(null)} />;
+  }
+
+    return (
+      <Screen
+        title="Purchase Requests"
+        subtitle="One PR per item. A PR becomes Ready for PO by itself once four conditions pass, then its Sales Order group is turned into a PO."
+        rows={rows}
+        columns={columns}
+        searchKeys={['no', 'soNo', 'customer', 'item', 'sku', 'supplier', 'status', 'hold']}
+        stats={[
+          { label: 'Total Ready PRs', value: () => count(readyQueue), sub: 'Ready for PO', tone: 'ok' },
+          { label: 'High Priority', value: () => count((r) => readyQueue(r) && r.priority === 'HIGH'), sub: 'Urgent action', tone: 'bad' },
+          { label: 'At Risk', value: () => count((r) => atRisk.has(r.no) && !isInactive(r)), sub: 'Target date close', tone: 'warn' },
+          { label: 'Supplier Overrides', value: () => count((r) => r.followedRecommendation === 'No' && r.status !== 'Converted to PO'), sub: 'Deviation logged' },
+          { label: 'Near Capacity Suppliers', value: () => portfolioLoad(db.suppliers, db.pos).filter((s) => s.status !== 'Normal').length, sub: '80-99% load', tone: 'warn' },
+          { label: 'On Hold', value: () => count((r) => r.hold === 'On Hold'), sub: 'Waiting on client', tone: 'warn' },
+        ]}
+        tabs={[
+          { key: 'all', label: 'All PRs', test: () => true },
+          { key: 'queue', label: 'Ready for PO Queue', test: readyQueue },
+          { key: 'converted', label: 'Converted to PO', test: (r) => r.status === 'Converted to PO' },
+          { key: 'onhold', label: 'On Hold', test: (r) => r.hold === 'On Hold' },
+          { key: 'cancelled', label: 'Cancelled', test: (r) => r.hold === 'Cancelled' },
         { key: 'groups', label: 'PR Groups', test: () => true, render: () => <PRGroups /> },
         { key: 'load', label: 'Supplier Load View', test: () => true, render: () => <LoadView /> },
       ]}
       initialTab={sub}
       create={{ label: 'New PR', Modal: NewPRModal }}
-      headExtra={({ setTab }) => <button className="btn" onClick={() => setTab('groups')}>PO Grouping Workspace</button>}
+      headExtra={({ setTab }) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="pill pill-warn" style={{ fontWeight: 600 }}>● {count(readyQueue)} Ready for PO</span>
+          <button className="btn" onClick={() => setTab('groups')}>PO Grouping Workspace</button>
+        </div>
+      )}
       actions={[
         {
-          name: 'prGroupCreatePO', label: 'Create PO', title: 'Create Purchase Order', tone: 'primary',
+          name: 'openWorkspace', label: 'Workspace', title: 'Open Decision Workspace', tone: 'primary',
+          run: (r) => setSelectedPRId(r.id),
+        },
+        {
+          name: 'prGroupCreatePO', label: 'Group→PO', title: 'Create Purchase Order (Group→PO)', tone: 'primary',
           when: (r) => readyQueue(r),
           payload: (r) => ({ soNo: r.soNo, customer: r.customer }),
           confirm: (r) => `Approve the active PRs for ${r.soNo || 'this order'} · ${r.customer} and convert them to a Purchase Order? Held or cancelled PRs are left out.`,
@@ -115,14 +160,14 @@ export default function PRPage({ sub = '' }) {
         { name: 'prResume', label: 'Resume', when: (r) => r.hold === 'On Hold' },
         { name: 'prResume', label: 'Restore', when: (r) => r.hold === 'Cancelled' },
       ]}
-      drawerExtra={(r, d) => <PRPanels pr={r} db={d} today={today} />}
+      drawerExtra={(r, d) => <PRPanels pr={r} db={d} today={today} onOpenWorkspace={(id) => setSelectedPRId(id)} />}
     />
   );
 }
 
 // ───────────── detail panels: readiness, pricing, hold, supplier recommendation ─────────────
 
-function PRPanels({ pr, db, today }) {
+function PRPanels({ pr, db, today, onOpenWorkspace }) {
   const product = productOf(db, pr);
   const r = readiness(pr, product);
   const info = r.info;
@@ -131,6 +176,15 @@ function PRPanels({ pr, db, today }) {
   const days = holdDays(pr, today);
   return (
     <>
+      {onOpenWorkspace && (
+        <button
+          className="btn btn-primary"
+          style={{ width: '100%', marginBottom: '16px', background: 'var(--orange, #EA580C)', borderColor: '#EA580C', color: '#FFF', fontWeight: 700 }}
+          onClick={() => onOpenWorkspace(pr.id)}
+        >
+          Open Full Decision Workspace →
+        </button>
+      )}
       <h4>Readiness for PO ({r.passed} of 4)</h4>
       <div className="pr-checks">
         {r.checks.map((c) => (

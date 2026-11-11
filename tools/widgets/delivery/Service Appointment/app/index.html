@@ -1,0 +1,1818 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service Appointment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+
+<!--
+  NEW WIDGET 2026-10-23 — the middle stage of the DMS pipeline.
+
+    Service Request (Delivery Queue)  ->  SERVICE APPOINTMENT  ->  Ongoing Service
+            Queued                            Scheduled              Dispatched...
+
+  Plan: Proposals/DMS_Pipeline_Handoff_Plan_2026-10-22.md §6, and the field list in
+  Proposals/DMS_Field_Gap_By_Module_2026-10-22.md §4. The six gate conditions are
+  Tier 1 of Proposals/Pre_Delivery_Gate_Plan_2026-10-09.md, written 2026-10-09 with
+  nowhere to live until this stage existed.
+
+  WHAT THIS STAGE OWNS: the Dispatch Checklist. This is the ONLY place an order
+  becomes Dispatched. Per the user, it is PER PACKAGE and a HARD BLOCK — no
+  override, because one Service Appointment is not one package: OrderAggregation
+  puts a PAC on every Item_Details row while the header Package_Number is only the
+  first of them ("Primary/display-only package", its own comment).
+
+  Design: Widget/DMS/_shared/design/ — change the CSS THERE and re-copy, never here.
+
+  MATCHED 2026-10-23 to the real form the user built, DMS IDE/Dispatch_checklist.
+  Four things differed from what this widget first assumed, and the live export
+  wins every time:
+    - the report is All_Dispatch_Checklists, not Dispatch_Checklist_Report
+    - the field is Dispatch_By, not Dispatched_By, and it is a PICKLIST of the
+      three real dispatchers, not free text (see DISPATCHERS below)
+    - the datetime field is Dispatched_At2 — Dispatched_At is taken by a section
+      on the same form, so Creator numbered the field
+    - DR_No does not exist on the form yet. It is condition 5 and this widget
+      requires it, so the field has to be added before a dispatch will save.
+
+  ADDED 2026-10-29 — the dispatcher checklist. MATCHED the same day to the live
+  export the user pasted, which the user had just built:
+      DR_No                 text        written
+      Check_SO_Number       checkbox    written
+      Check_SKU_Match       checkbox    written
+      Check_Box_Quality     checkbox    written
+      Check_Box_Count       checkbox    written
+      Signature_Dispatcher  signature   uploaded after the record is saved
+  Two things came back different from what this widget first assumed, and as
+  always the form wins:
+    - the field is Signature_Dispatcher, not Dispatcher_Signature, and it is a
+      native type=signature, not an image. See attachSignature() for why the
+      type matters and what to do if the upload is refused.
+    - there is NO Boxes_Released number field; the count was folded into
+      Check_Box_Count's own label instead. Nothing writes a box count, because
+      writing to a field that does not exist fails the whole dispatch with 3001.
+  The four Check_* here are the PHYSICAL checks the dispatcher performs on the
+  crates. They are not the four conditions the gate computes from the order -
+  those are Check_Items_Complete / Check_Contact_Details / Check_Payment /
+  Check_No_Exception and they already existed.
+  The autonumber is Dis, not Dispatch_ID; nothing here writes it.
+
+  SDK notes kept from every other DMS widget:
+    - SDK 2.0, ZOHO.CREATOR.DATA.*
+    - NO blocking ZOHO.CREATOR.init() — it never resolves (Widget/DMS/CLAUDE.md,
+      2026-09-18: it is what left DailyChecklistVehicle stuck on "Loading...").
+      Identity is resolved on a side chain that nothing waits for.
+    - max_records only accepts 200 / 500 / 1000 (code 9250 otherwise, found live
+      2026-09-04).
+-->
+<link rel="stylesheet" href="dms-tokens.css">
+<link rel="stylesheet" href="dms-shell.css">
+<style>
+  /* Standalone inside a Creator page — no sidebar, so .app is not used. */
+  body{background:var(--bg)}
+  .hidden{display:none!important}
+  .kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+  @media (max-width:1100px){ .kpis{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  @media (max-width:640px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (max-width:420px){ .kpis{grid-template-columns:1fr} }
+
+  .modal.sheet{width:min(820px,calc(100% - 32px))}
+  .modal .body{padding:10px 20px 20px}
+
+  /* One gate condition: a pass/fail row with its own evidence line. */
+  .cond{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)}
+  .cond:last-child{border-bottom:0}
+  .cond .mark{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:12px;font-weight:700;margin-top:1px}
+  .cond .mark.ok{background:var(--ok-soft);color:var(--ok)}
+  .cond .mark.bad{background:var(--bad-soft);color:var(--bad)}
+  .cond .mark.na{background:var(--surface-2);color:var(--muted)}
+  .cond .ttl{font-size:var(--fs-md);font-weight:600}
+  .cond .why{font-size:var(--fs-sm);color:var(--muted);margin-top:2px}
+
+  /* One package = one Dispatch_Checklist record. */
+  .pkg{border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-top:10px}
+  .pkg.done{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 25%,var(--border))}
+  .pkg-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pkg-top .no{font-weight:700;font-size:var(--fs-base)}
+  .pkg-top .sp{flex:1}
+  .pkg .items{font-size:var(--fs-sm);color:var(--muted);margin-top:3px}
+  .pkg .dr{display:flex;gap:8px;align-items:flex-end;margin-top:10px;flex-wrap:wrap}
+  .pkg .dr .field{flex:1;min-width:180px;margin:0}
+  .blocked-note{margin-top:10px}
+
+  /* A hard block has to LOOK blocked — the shared shell styles aria-busy but not
+     a plain disabled button. */
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.primary:disabled:hover{filter:none}
+
+  /* Stage 1 — the approve/override step, restored 2026-10-26. */
+  .sugg{border:1px solid var(--border);border-radius:11px;padding:12px 14px;background:var(--surface-2)}
+  .sugg .lbl{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}
+  .sugg .val{font-size:var(--fs-lg);font-weight:600;margin-top:3px}
+  .sugg .team{font-size:var(--fs-sm);color:var(--muted);margin-top:3px}
+  .sugg.stale{background:var(--bad-soft);border-color:var(--bad)}
+  .sugg.stale .val{color:var(--bad);font-size:var(--fs-md)}
+  .sugg.none{background:var(--surface-2)}
+  .sugg.none .val{font-size:var(--fs-md);color:var(--muted)}
+  #overrideFields{margin-top:14px}
+  #overrideFields.hidden{display:none!important}
+  /* Top tabs — the two stages used to be stacked panels, one above the other.
+     Made tabs 2026-10-27 per user; same markup/behaviour as the Archived widget. */
+  #topTabs{margin:16px 0}
+  #topTabs .tcount{display:inline-block;min-width:18px;margin-left:6px;padding:1px 6px;border-radius:999px;
+    background:var(--surface-3);color:var(--muted);font-size:var(--fs-xs);font-weight:600;font-variant-numeric:tabular-nums}
+  #topTabs button.on .tcount{background:var(--accent-soft);color:var(--accent)}
+/* ---- calendar, Build Plan D.5 (2026-10-29) ---- */
+.cal-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.cal-bar input[type=date]{height:32px;padding:0 8px;border:1px solid var(--line,#cbd5e1);border-radius:8px;font-size:13px}
+.cal-nav{border:1px solid var(--line,#cbd5e1);background:#fff;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px;line-height:1}
+.cal-scroll{overflow-x:auto;border:1px solid var(--line,#e2e8f0);border-radius:12px;background:#fff}
+.cal-grid{min-width:760px}
+.cal-row{display:flex;border-top:1px solid var(--line,#eef2f7)}
+.cal-row:first-child{border-top:0}
+.cal-lane-h{flex:0 0 132px;padding:8px 10px;font-size:12px;font-weight:600;color:#334155;border-right:1px solid var(--line,#e2e8f0);background:#f8fafc;display:flex;flex-direction:column;justify-content:center}
+.cal-lane-h small{font-weight:400;color:#64748b;font-size:11px}
+.cal-track{position:relative;flex:1;height:54px;background-image:repeating-linear-gradient(to right,#f1f5f9 0 1px,transparent 1px var(--slot))}
+.cal-hours{display:flex;padding-left:132px;border-bottom:1px solid var(--line,#e2e8f0);background:#f8fafc}
+.cal-hours span{flex:1;font-size:10px;color:#94a3b8;padding:4px 0 4px 3px;border-left:1px solid var(--line,#eef2f7)}
+.cal-ev{position:absolute;top:6px;bottom:6px;border-radius:7px;padding:4px 7px;color:#fff;font-size:11px;line-height:1.25;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.18)}
+.cal-ev b{display:block;font-weight:700;font-size:11px}
+.cal-ev small{opacity:.9;font-size:10px}
+.cal-empty{padding:26px;text-align:center;color:#94a3b8;font-size:13px}
+.cal-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#64748b}
+.cal-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.cal-daybar{font-size:12px;font-weight:700;color:#334155;padding:7px 10px;background:#f1f5f9;border-top:1px solid var(--line,#e2e8f0)}
+/* ---- dispatch checklist + signature (2026-10-29) ---- */
+.chk-box{margin:10px 0 0;padding:10px 12px;border:1px solid var(--line,#e2e8f0);border-radius:10px;background:#fff}
+.chk-box h5{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#64748b}
+.chk-item{display:flex;gap:8px;align-items:flex-start;padding:5px 0;font-size:13px;line-height:1.35;cursor:pointer}
+.chk-item input{margin-top:2px;width:16px;height:16px;flex:none;cursor:pointer}
+.chk-count{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px}
+.chk-count input{width:90px;height:32px;padding:0 8px;border:1px solid var(--line,#cbd5e1);border-radius:8px;font-size:13px}
+.sig-wrap{margin-top:10px}
+.sig-wrap canvas{width:100%;height:120px;border:1px dashed #94a3b8;border-radius:10px;background:#fff;touch-action:none;display:block}
+.sig-bar{display:flex;justify-content:space-between;align-items:center;margin-top:5px;font-size:11px;color:#64748b}
+.sig-bar button{border:1px solid var(--line,#cbd5e1);background:#fff;border-radius:7px;padding:3px 10px;font-size:11px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<main class="main">
+  <div class="main-in">
+
+    <div class="top">
+      <div>
+        <h1 style="margin:0;font-size:var(--fs-2xl);letter-spacing:-.02em">Service Appointment</h1>
+        <p class="muted" style="margin:3px 0 0;font-size:var(--fs-md)">Two steps live here. First the engine's schedule is approved or overridden; then the order is dispatched, one package at a time, and only when the checklist passes.</p>
+      </div>
+      <div class="top-actions">
+        <button class="btn" onclick="loadAll()" data-tip="Reload from Creator">Refresh</button>
+      </div>
+    </div>
+
+    <div class="kpis" id="statCards"></div>
+
+    <!-- The two stages used to sit stacked on one long page. Made tabs 2026-10-27
+         per user — same `.seg` tablist the Archived widget already uses. Nothing
+         about either stage's own logic changed; only one is on screen at a time. -->
+    <div class="seg" id="topTabs" role="tablist">
+      <button class="on" role="tab" data-tab="pending" onclick="switchTopTab('pending')">Awaiting approval<span class="tcount" id="tabCountPending">0</span></button>
+      <button role="tab" data-tab="scheduled" onclick="switchTopTab('scheduled')">Scheduled appointments<span class="tcount" id="tabCountSA">0</span></button>
+      <button role="tab" data-tab="calendar" onclick="switchTopTab('calendar')">Calendar</button>
+    </div>
+
+    <!-- STAGE 1 — Approve / Override. Restored 2026-10-26.
+         Between 2026-10-23 (when the Delivery Queue widget was retired) and today
+         there was NO UI for this step anywhere: the engine wrote a suggestion and
+         nobody could accept it except on the native form. The logic here is lifted
+         from that retired widget, which had been live-proven, not rewritten:
+         to24Hour/to12Hour, isCalendarFullStale(), the override-mismatch rule, and
+         the Pick Up / 3rd Party bypasses that mirror SA_Scheduling_Override_Validate. -->
+    <section class="panel" id="pendingPanel">
+      <div class="panel-head">
+        <h2>Awaiting approval</h2>
+        <span class="hint">Site confirmed, engine has run — they leave this list the moment a schedule is confirmed</span>
+        <div class="spacer"></div>
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <label class="sr-only" for="pendSearch">Search appointments awaiting approval</label>
+          <input id="pendSearch" type="search" placeholder="Search SO#, customer…" oninput="renderPending()">
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="q">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Type</th>
+              <th>System suggestion</th>
+              <th>Team</th>
+              <th>State</th>
+              <th style="text-align:right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="pendBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- STAGE 3 (view only) — Build Plan D.5, "Calendar Daily View Layout".
+         One lane per team, blocks placed by confirmed time and duration, coloured
+         by delivery type per D.6. Nothing is scheduled here: this is the picture
+         of what the engine and the officers already decided, which is exactly
+         what was missing - the plan calls the calendar "the execution truth" and
+         there was no way to look at it. -->
+    <section class="panel hidden" id="calendarPanel">
+      <div class="panel-head">
+        <h2>Calendar</h2>
+        <span class="hint">Build Plan D.5 — isang lane kada team, kulay ayon sa delivery type</span>
+      </div>
+      <div style="padding:12px 14px 16px">
+        <div class="cal-bar">
+          <button class="cal-nav" onclick="calStep(-1)" aria-label="Previous">&#8249;</button>
+          <input type="date" id="calDate" onchange="renderCalendar()">
+          <button class="cal-nav" onclick="calStep(1)" aria-label="Next">&#8250;</button>
+          <button class="btn" onclick="calToday()">Today</button>
+          <div class="seg" role="tablist" style="margin-left:4px">
+            <button class="on" id="calModeDay" onclick="calSetMode('day')">Day</button>
+            <button id="calModeWeek" onclick="calSetMode('week')">Week</button>
+          </div>
+        </div>
+        <div id="calBody"></div>
+        <div class="cal-legend" id="calLegend"></div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="scheduledPanel">
+      <div class="panel-head">
+        <h2>Scheduled appointments</h2>
+        <span class="hint">Status <strong>Scheduled</strong> — they leave this list once every package is dispatched</span>
+        <div class="spacer"></div>
+        <div class="chips" id="filterPills">
+          <button class="fchip on" data-filter="all" onclick="setFilter('all')">All</button>
+          <button class="fchip" data-filter="ready" onclick="setFilter('ready')">Ready</button>
+          <button class="fchip" data-filter="blocked" onclick="setFilter('blocked')">Blocked</button>
+          <button class="fchip" data-filter="partial" onclick="setFilter('partial')">Part-dispatched</button>
+        </div>
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <label class="sr-only" for="searchInput">Search appointments</label>
+          <input id="searchInput" type="search" placeholder="Search SO#, customer, PAC#…" oninput="renderList()">
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="q">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Type</th>
+              <th>Confirmed date</th>
+              <th>Team</th>
+              <th>Packages</th>
+              <th>Dispatch gate</th>
+              <th>Forecast</th>
+              <th style="text-align:right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="listBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<div class="scrim" id="scrim" onclick="closeAnyModal()"></div>
+
+<div class="modal sheet" id="checklistModal" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+  <header>
+    <h3 id="cTitle">—</h3>
+    <p id="cSub">—</p>
+  </header>
+  <div class="body">
+    <h4 style="margin:0 0 4px;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--faint)">Dispatch gate — this whole order</h4>
+    <div id="cConditions"></div>
+
+    <h4 style="margin:18px 0 0;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--faint)">Packages</h4>
+    <div class="field hidden" id="cDispatchBy" style="margin-top:8px">
+      <label for="dispatchBy">Dispatched by <span class="req">*</span></label>
+      <select id="dispatchBy" onchange="syncDispatchButtons()">
+        <option value="">— Select —</option>
+        <option value="Jhi">Jhi</option>
+        <option value="Flor">Flor</option>
+        <option value="Queen">Queen</option>
+      </select>
+    </div>
+    <div id="cPackages"></div>
+    <!-- Filled by renderChecklist(); one signature for the whole run, attached
+         to every package's record. -->
+    <div id="cSignature" class="hidden"></div>
+
+    <div class="m-foot">
+      <button class="btn" onclick="closeChecklist()">Close</button>
+      <button class="btn primary" id="cDispatchAll" onclick="dispatchAll()">Dispatch all packages</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal sheet" id="approveModal" role="dialog" aria-modal="true" aria-labelledby="aTitle">
+  <header>
+    <h3 id="aTitle">—</h3>
+    <p id="aSub">—</p>
+  </header>
+  <div class="body">
+    <div class="sugg" id="aSugg">
+      <div class="lbl" id="aSuggLbl">System suggestion</div>
+      <div class="val" id="aSuggVal">—</div>
+      <div class="team" id="aSuggTeam">—</div>
+    </div>
+
+    <div class="row2" style="margin-top:14px">
+      <div class="field">
+        <label for="aDate">Confirmed date <span class="req">*</span></label>
+        <input id="aDate" type="date" onchange="refreshOverrideVis()">
+      </div>
+      <div class="field">
+        <label for="aTime">Confirmed time</label>
+        <input id="aTime" type="time" onchange="refreshOverrideVis()">
+      </div>
+    </div>
+
+    <!-- Mirrors SA_Scheduling_Override_Validate exactly: required whenever the
+         confirmed date/time differs from the suggestion, skipped for Pick Up and
+         for a 3rd Party fleet decision (neither ever gets a suggestion to override). -->
+    <div id="overrideFields" class="hidden">
+      <div class="notice">Iba ito sa ni-suggest ng engine, kaya kailangang maitala kung sino at bakit.</div>
+      <div class="row2" style="margin-top:10px">
+        <div class="field">
+          <label for="aOvrBy">Override by <span class="req">*</span></label>
+          <select id="aOvrBy"><option value="">— Select —</option></select>
+        </div>
+        <div class="field">
+          <label for="aOvrReason">Override reason <span class="req">*</span></label>
+          <input id="aOvrReason" type="text" placeholder="e.g. ASAP request ng client">
+        </div>
+      </div>
+    </div>
+
+    <div class="m-foot">
+      <button class="btn" onclick="closeApprove()">Close</button>
+      <button class="btn ghost" id="aReschedule" onclick="runReschedule()">Re-run engine</button>
+      <button class="btn" id="aUseSugg" onclick="useSuggestion()">Use the suggestion</button>
+      <button class="btn primary" id="aSave" onclick="saveApprove()">Confirm schedule</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<div class="sr-only" id="srLive" aria-live="polite"></div>
+
+<script>
+/* ==================== CONFIG ==================== */
+const APP_NAME = 'supply-chain-app';
+const REPORT_SA  = 'Service_Appointment';
+const REPORT_SOF = 'Sales_Order_Fulfillment_Report';      // condition 1 + 2 (expected items, contact no)
+const REPORT_RG  = 'Sales_Order_Readiness_Gate_Report';   // condition 3 (payment)
+const REPORT_EXC = 'Exception_Control_Report';            // condition 4 (open exceptions)
+/* The new form and its report — names taken from the live export, not guessed. */
+const FORM_DISPATCH_CHECKLIST   = 'Dispatch_Checklist';
+const DISPATCH_CHECKLIST_REPORT = 'All_Dispatch_Checklists';
+const REPORT_DTA = 'All_Daily_Team_Availability';         // calendar lanes
+
+/* Dispatch_By is a picklist on the form, so only these three values will save.
+   "Allow Other Choice" does not help: the Data API ignores it and rejects
+   anything else with code 3001 — proved on Fleet_Assignment, 2026-09-14. */
+const DISPATCHERS = ['Jhi', 'Flor', 'Queen'];
+
+/* This widget shows exactly one stage. A record that is not Scheduled belongs to
+   the Delivery Queue (before) or Ongoing Service (after). */
+const STAGE_STATUS = 'Scheduled';
+
+/* Stage 1. A record is awaiting approval when the site is confirmed but the
+   calendar is not locked yet, and it has not already moved past this stage.
+   Appointment_Status is normally "Queued" here, but a blank or "Rescheduled"
+   one belongs in this list too, so the test is on what it is NOT. */
+const PAST_APPROVAL = ['Dispatched','Started','In Transit','Delivered','Completed','Failed','Archived'];
+
+/* The user's own published Custom API wrapping reScheduleDelivery. Key carried
+   over from the retired Delivery Queue widget, where it was working live. */
+const CUSTOM_API_RESCHEDULE     = 'dms_reschedule';
+const CUSTOM_API_RESCHEDULE_KEY = '6vMBZhKvq6Gh9nnJS9XveCO9H';
+
+/* Delivery-type swatches, the same D.6 tokens the calendar uses. */
+const TYPE_COLOR = {
+  "Delivery Only":"var(--c-delivery)", "With Installation":"var(--c-install)",
+  "Full-Day Install":"var(--c-fullday)", "Multi-Day Install":"var(--c-multiday)",
+  "Replacement":"var(--c-replace)", "Site Visit":"var(--c-site)",
+  "Pullout":"var(--c-pullout)", "Pick Up":"var(--c-3p)"
+};
+
+/* ==================== STATE ==================== */
+var ALL_SA = [];              // Scheduled appointments only
+var ALL_SA_RAW = [];          // every appointment, whatever its status — the calendar
+                              // shows dispatched and completed work too, otherwise the
+                              // day looks emptier than it was
+var ALL_AVAIL = [];           // Daily_Team_Availability rows, one lane each
+var CAL_MODE = 'day';
+var EXPECTED_BY_SO = {};      // SO -> [ "Item (SKU)" ] from Sales_Order_Fulfillment
+var CONTACT_BY_SO = {};       // SO -> first non-blank Contact_No
+var PAY_BY_SO = {};           // SO -> { blocked, detail }
+var EXC_BY_SO = {};           // SO -> [ open exception labels ]
+var CHECKS_BY_SA = {};        // appointment ID -> [ Dispatch_Checklist rows ]
+var ALL_CHECKS = [];          // every Dispatch_Checklist row, for the DR series
+var DR_TAKEN = [];            // DR numbers handed out in THIS modal, not saved yet
+var PKG_DRAFT = {};           // PAC -> what the dispatcher has filled in so far
+var SIG_DIRTY = false;        // has the dispatcher actually drawn anything
+
+/* The four physical checks the dispatcher performs on the boxes themselves,
+   added 2026-10-29 at the user's request. These are NOT the four conditions
+   above them in the modal: those are computed by the system from the order
+   (payment, exceptions, contact details). These four are human, done standing
+   in front of the crate, and nothing but the dispatcher can answer them. */
+var PHYSICAL_CHECKS = [
+  { key: 'Check_SO_Number',   label: 'I-check ang Sales Order Number kung tama' },
+  { key: 'Check_SKU_Match',   label: 'I-check ang SKU ng box kung tugma sa item list sa Shipment Order' },
+  { key: 'Check_Box_Quality', label: 'I-check ang quality ng boxes/crates' },
+  { key: 'Check_Box_Count',   label: 'I-check ang bilang ng boxes na ilalabas' }
+];
+var CURRENT_FILTER = 'all';
+var CURRENT_SA = null;
+var ALL_PENDING = [];         // awaiting approval (stage 1)
+var CURRENT_PENDING = null;
+
+window.addEventListener('load', loadAll);
+
+/* ==================== HELPERS ==================== */
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function isTrue(v){ return v === true || v === "true"; }
+function custName(r){
+  if(!r) return '';
+  if(r.Customer_Name && typeof r.Customer_Name === 'object'){
+    return ((r.Customer_Name.first_name||'') + ' ' + (r.Customer_Name.last_name||'')).trim();
+  }
+  return r.Customer_Name || '';
+}
+function errCode(e){
+  try {
+    if(e && e.responseText) return JSON.parse(e.responseText).code;
+    var s = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+    return JSON.parse(JSON.parse(s).responseText || s).code;
+  } catch(_){ return null; }
+}
+function showToast(msg, tone){
+  var wrap = document.getElementById('toasts');
+  var t = document.createElement('div');
+  t.className = 'toast' + (tone ? ' ' + tone : '');
+  t.setAttribute('role','status');
+  t.innerHTML = '<i></i><span></span>';
+  t.querySelector('span').textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 4600);
+}
+function announce(msg){
+  var r = document.getElementById('srLive');
+  if(r){ r.textContent = ''; setTimeout(function(){ r.textContent = msg; }, 30); }
+}
+function typeCell(v){
+  if(!v) return '<span class="muted">—</span>';
+  return '<span class="type" style="--c:' + (TYPE_COLOR[v] || 'var(--border-strong)') + '"><i></i>' + esc(v) + '</span>';
+}
+function nowStamp(){
+  var d = new Date(), p = function(n){ return (n<10?'0':'')+n; };
+  // Creator's write API wants plain ISO 24-hour. The DD-MMM-YYYY shape is a GET
+  // display format only — sending it back is code 3002 (found live 2026-07-28).
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':00';
+}
+function todayStamp(){
+  var d = new Date(), p = function(n){ return (n<10?'0':'')+n; };
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function itemKey(name, sku){
+  return (String(name||'').trim() + ' (' + String(sku||'').trim() + ')');
+}
+
+/* ==================== FETCH ==================== */
+/* ADDED 2026-11-06 — the user asked why this screen takes so long to load, and
+   nothing here could answer it. This page issues SIX full-report reads at once
+   and Promise.all shows nothing until the SLOWEST one lands, so "it is slow"
+   was impossible to pin on a report without measuring. Timing only; the reads
+   themselves are unchanged. Open the console (F12) to see the table. */
+var PENDING_REPORTS = {};
+var LOAD_TIMING = [];
+var LOAD_WATCHDOG = null;
+function nowMs(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
+
+function fetchReport(reportName){
+  var t0 = nowMs();
+  PENDING_REPORTS[reportName] = true;
+  var settle = function(rows, note){
+    var ms = Math.round(nowMs() - t0);
+    delete PENDING_REPORTS[reportName];
+    LOAD_TIMING.push({ report: reportName, ms: ms, rows: rows.length, note: note || '' });
+    console.log('[ServiceAppointment] ' + reportName + ' — ' + rows.length + ' row(s) in ' + ms + ' ms' + (note ? (' — ' + note) : ''));
+    return rows;
+  };
+  return ZOHO.CREATOR.DATA.getRecords({
+    report_name: reportName, page: 1, pageSize: 200, max_records: 1000, field_config: 'all'
+  }).then(function(resp){
+    var rows = (resp && resp.code===3000 && resp.data) ? resp.data : [];
+    /* 1000 is the max_records ceiling. Landing exactly on it almost certainly
+       means the report was TRUNCATED, which is not just slow — it is the
+       reason a gate condition can say "no Sales Order Fulfillment record
+       found" for an SO that plainly has one. Worth shouting about. */
+    return settle(rows, rows.length >= 1000 ? 'AT THE 1000-ROW CAP — this report is probably truncated' : '');
+  }).catch(function(e){
+    var c = errCode(e);
+    if(c===9220) return settle([], 'empty report');   // genuinely empty, not an error
+    console.error('[ServiceAppointment] fetch error', reportName, c, e);
+    return settle([], 'FAILED, code ' + c);
+  });
+}
+
+/* Nothing here ever times out: fetchReport's catch resolves, but a request that
+   simply never settles leaves the page on "Loading..." with no explanation for
+   as long as the tab is open. After 12s say what is still outstanding. */
+function startLoadWatchdog(){
+  clearTimeout(LOAD_WATCHDOG);
+  LOAD_WATCHDOG = setTimeout(function(){
+    var left = Object.keys(PENDING_REPORTS);
+    if(!left.length) return;
+    var el = document.getElementById('listBody');
+    if(el) el.innerHTML = rowMessage('Still loading…',
+      'Waiting on ' + left.length + ' of 6 reports: ' + left.join(', ') +
+      '. These are whole-report reads, so a big report holds up the whole page. Press F12 for per-report timings.');
+  }, 12000);
+}
+
+function loadAll(){
+  document.getElementById('listBody').innerHTML = rowMessage('Loading…', 'Reading appointments, fulfillment, payment and exceptions.');
+  document.getElementById('pendBody').innerHTML = pendMessage('Loading…', '');
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    console.error('[ServiceAppointment] SDK not available');
+    showToast('Widget SDK not available — see console', 'bad');
+    return;
+  }
+  LOAD_TIMING = []; PENDING_REPORTS = {};
+  var loadT0 = nowMs();
+  startLoadWatchdog();
+  Promise.all([
+    fetchReport(REPORT_SA),
+    fetchReport(REPORT_SOF),
+    fetchReport(REPORT_RG),
+    fetchReport(REPORT_EXC),
+    fetchReport(DISPATCH_CHECKLIST_REPORT),
+    fetchReport(REPORT_DTA)
+  ]).then(function(res){
+    clearTimeout(LOAD_WATCHDOG);
+    var totalMs = Math.round(nowMs() - loadT0);
+    LOAD_TIMING.sort(function(a, b){ return b.ms - a.ms; });
+    console.log('[ServiceAppointment] all 6 reports in ' + totalMs +
+      ' ms. Slowest: ' + (LOAD_TIMING[0] ? (LOAD_TIMING[0].report + ' (' + LOAD_TIMING[0].ms + ' ms, ' + LOAD_TIMING[0].rows + ' rows)') : '—') +
+      '. The page waits for ALL of them, so this total is the slowest one, not the sum.');
+    if(console.table) console.table(LOAD_TIMING);
+
+    var sa = res[0], sof = res[1], rg = res[2], exc = res[3], checks = res[4];
+    ALL_AVAIL = res[5] || [];
+
+    ALL_SA_RAW = sa;
+    ALL_SA = sa.filter(function(r){ return r.Appointment_Status === STAGE_STATUS; });
+    ALL_PENDING = sa.filter(isAwaitingApproval);
+
+    /* Condition 1 + 2 — the authoritative item list for an SO is every
+       Sales_Order_Fulfillment record for it (one per item), each contributing
+       its own Item_Details1 rows. Same source the Deluge gate plan uses. */
+    EXPECTED_BY_SO = {}; CONTACT_BY_SO = {};
+    sof.forEach(function(s){
+      var so = String(s.SO_No||'').trim();
+      if(!so) return;
+      if(!EXPECTED_BY_SO[so]) EXPECTED_BY_SO[so] = [];
+      (s.Item_Details1||[]).forEach(function(row){
+        var k = itemKey(row.Item, row.SKU);
+        if(k !== ' ()' && EXPECTED_BY_SO[so].indexOf(k) === -1) EXPECTED_BY_SO[so].push(k);
+      });
+      var c = String(s.Contact_No||'').trim();
+      if(c && c !== 'null' && !CONTACT_BY_SO[so]) CONTACT_BY_SO[so] = c;
+    });
+
+    /* Condition 3 — read the already-synced Readiness Gate value, the same one
+       the Deluge gate reads. Credit terms and a matching recorded override both
+       clear it, exactly as at the Readiness Gate itself. */
+    PAY_BY_SO = {};
+    rg.forEach(function(g){
+      var so = String(g.sales_order_number||'').trim();
+      if(!so) return;
+      var pay = String(g.payment_status||'').trim();
+      if(!pay || pay === 'null' || pay === 'Yes') return;
+      if(isTrue(g.Has_Credit_Terms)) return;
+      if(isTrue(g.Override_Approved) && String(g.Override_Approved_For_Status||'').trim() === pay) return;
+      PAY_BY_SO[so] = { blocked: true, detail: pay };
+    });
+
+    /* Condition 4 — any Exception Control row for this SO that is not Completed. */
+    EXC_BY_SO = {};
+    exc.forEach(function(e){
+      var so = String(e.Sales_Order||'').trim();
+      if(!so) return;
+      if(String(e.Status||'').trim() === 'Completed') return;
+      var label = String(e.Exception_Number||'').trim() || String(e.SKU||'').trim() || 'EXC';
+      if(!EXC_BY_SO[so]) EXC_BY_SO[so] = [];
+      if(EXC_BY_SO[so].indexOf(label) === -1) EXC_BY_SO[so].push(label);
+    });
+
+    CHECKS_BY_SA = {};
+    ALL_CHECKS = checks || [];
+    checks.forEach(function(c){
+      var id = String(c.Service_Appointment_ID||'').trim();
+      if(!id) return;
+      if(!CHECKS_BY_SA[id]) CHECKS_BY_SA[id] = [];
+      CHECKS_BY_SA[id].push(c);
+    });
+
+    renderStats();
+    renderPending();
+    renderList();
+    renderCalendar();
+  });
+}
+
+/* ==================== DR NUMBER ====================
+   Was typed by hand for every package. It is a running series, so the machine
+   can keep it: read the highest DR already issued, add one. The box stays
+   editable on purpose — a pre-printed DR booklet has its own numbers, and when
+   the paper disagrees with us, the paper wins.
+
+   DR_TAKEN holds the numbers already shown in this modal but not yet saved, so
+   three packages in one run get three different numbers instead of three copies
+   of the same one. */
+function drSeqOf(val){
+  var m = String(val || '').match(/(\d+)\s*$/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+function nextDrNumber(){
+  var top = 0;
+  ALL_CHECKS.forEach(function(c){ top = Math.max(top, drSeqOf(c.DR_No)); });
+  DR_TAKEN.forEach(function(v){ top = Math.max(top, drSeqOf(v)); });
+  var next = 'DR-' + String(top + 1).padStart(5, '0');
+  DR_TAKEN.push(next);
+  return next;
+}
+
+/* renderChecklist() runs again after every single dispatch, which used to wipe
+   the form underneath the dispatcher: the remaining packages got brand-new DR
+   numbers (so the one already written on the paper DR no longer matched) and
+   their ticked checks came back empty, as if nobody had inspected those crates.
+   What is on screen is therefore saved before each rebuild and put back after.
+   Dispatching package 1 does not un-inspect package 2. */
+function captureDraft(){
+  var r = CURRENT_SA;
+  if(!r) return;
+  dispatchProgress(r).packages.forEach(function(pk, idx){
+    var dr = document.getElementById('dr' + idx);
+    if(!dr) return;
+    var d = PKG_DRAFT[pk.pac] || (PKG_DRAFT[pk.pac] = {});
+    d.dr = dr.value;
+    d.checks = PHYSICAL_CHECKS.map(function(c, ci){
+      var el = document.getElementById('pc' + idx + '_' + ci);
+      return !!(el && el.checked);
+    });
+  });
+}
+function restoreDraft(){
+  var r = CURRENT_SA;
+  if(!r) return;
+  dispatchProgress(r).packages.forEach(function(pk, idx){
+    var d = PKG_DRAFT[pk.pac];
+    if(!d) return;
+    (d.checks || []).forEach(function(on, ci){
+      var el = document.getElementById('pc' + idx + '_' + ci);
+      if(el) el.checked = on;
+    });
+  });
+}
+/* One DR per package, decided once. Re-rendering must not burn a new number. */
+function drForPac(pac){
+  var d = PKG_DRAFT[pac] || (PKG_DRAFT[pac] = {});
+  if(!d.dr) d.dr = nextDrNumber();
+  return d.dr;
+}
+
+/* ==================== PACKAGES ==================== */
+/* One Service_Appointment is NOT one package. The real package set is the
+   distinct PAC values across Item_Details; the header Package_Number is only the
+   first of them. Fall back to the header, then to a single unnamed package, so an
+   older record without PACs can still be dispatched. */
+function packagesOf(r){
+  var seen = [], out = [];
+  (r.Item_Details||[]).forEach(function(it){
+    var pac = String(it.PAC||'').trim();
+    if(!pac) return;
+    if(seen.indexOf(pac) === -1){
+      seen.push(pac);
+      out.push({ pac: pac, items: [] });
+    }
+    out[seen.indexOf(pac)].items.push(it);
+  });
+  if(!out.length){
+    var hdr = String(r.Package_Number||'').trim();
+    out.push({ pac: hdr || '(no package number)', items: (r.Item_Details||[]).slice() });
+  }
+  return out;
+}
+function checklistFor(saId, pac){
+  var rows = CHECKS_BY_SA[String(saId)] || [];
+  for(var i=0;i<rows.length;i++){
+    if(String(rows[i].Package_Number||'').trim() === String(pac).trim()) return rows[i];
+  }
+  return null;
+}
+function isDispatched(saId, pac){
+  var row = checklistFor(saId, pac);
+  return !!(row && String(row.Dispatch_Status||'').trim() === 'Dispatched');
+}
+function dispatchProgress(r){
+  var pkgs = packagesOf(r), done = 0;
+  pkgs.forEach(function(p){ if(isDispatched(r.ID, p.pac)) done++; });
+  return { done: done, total: pkgs.length, packages: pkgs };
+}
+
+/* ==================== THE GATE ====================
+   Tier 1 of the Pre-Delivery Gate. Conditions 1-4 are properties of the whole
+   order, so they are evaluated per appointment. Condition 5 (DR number) is
+   per package, and 6 (who, when) is stamped on dispatch. HARD BLOCK: there is
+   no override field anywhere in here, by the user's own decision. */
+function gateFor(r){
+  var so = String(r.Sales_Order||'').trim();
+  var conds = [];
+
+  // 1 — order completeness
+  var expected = EXPECTED_BY_SO[so] || [];
+  var present = (r.Item_Details||[]).map(function(it){ return itemKey(it.Item_Name, it.SKU); });
+  var missing = expected.filter(function(k){ return present.indexOf(k) === -1; });
+  if(!expected.length){
+    conds.push({ ok:null, ttl:'Order is complete',
+      why:'No Sales Order Fulfillment record found for ' + (so||'this order') + ', so there is nothing to compare against. Not counted either way.' });
+  } else {
+    conds.push({ ok: missing.length===0, ttl:'Order is complete',
+      why: missing.length ? ('Not in Item Details yet: ' + missing.join('; '))
+                          : (expected.length + ' item' + (expected.length===1?'':'s') + ' on the SO, all present.') });
+  }
+
+  // 2 — deliverable contact details
+  var addr = String(r.Customer_Address||'').trim();
+  var contact = String(r.Contact||'').trim() || CONTACT_BY_SO[so] || '';
+  var miss2 = [];
+  if(!addr || addr === 'null') miss2.push('no delivery address');
+  if(!contact || contact === 'null') miss2.push('no contact number');
+  conds.push({ ok: miss2.length===0, ttl:'Deliverable contact details',
+    why: miss2.length ? (miss2.join(' · ') + ' — fix it on the appointment or the Sales Order Fulfillment record')
+                      : (addr + (contact ? (' · ' + contact) : '')) });
+
+  // 3 — payment, re-checked now
+  var pay = PAY_BY_SO[so];
+  conds.push({ ok: !pay, ttl:'Payment re-checked at dispatch',
+    why: pay ? ('Readiness Gate payment status is "' + pay.detail + '" with no credit terms and no matching approved override.')
+             : 'Settled, on credit terms, or covered by an approved override at the Readiness Gate.' });
+
+  // 4 — no open exception anywhere on this SO
+  var open = EXC_BY_SO[so] || [];
+  conds.push({ ok: open.length===0, ttl:'No open exception on this order',
+    why: open.length ? ('Still open: ' + open.join(', ')) : 'Nothing open in Exception Control for this SO.' });
+
+  var blocked = conds.some(function(c){ return c.ok === false; });
+  return { conds: conds, blocked: blocked };
+}
+
+/* ==================== LIST ==================== */
+/* ───────── FORECAST (added 2026-11-05) ─────────
+   Read-only. Written by the instant fcStampDelivery workflow (and, for the
+   appointment and the service request, also by Forecast_Stamp_Daily) onto
+   this form's
+   Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+   displays them.
+
+   The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+   title attribute rather than the cell, so the column stays one line wide. The
+   date shown is the midpoint of that window, never a promise.
+
+   Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+   #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+   separation. Status also carries its own word, so it is never colour-alone.
+
+   fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+   esc there), so this picks whichever exists and carries its own as a last
+   resort - it must never be the reason a row fails to render. */
+var fcEsc = (function () {
+  if (typeof escapeHtml === "function") return escapeHtml;
+  if (typeof esc === "function") return esc;
+  return function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+})();
+
+var FORECAST_TONE = {
+  "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+  "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+  "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+};
+
+/* Creator hands dates back in whichever format the app is set to; this accepts the
+   four shapes seen across this app and returns "" rather than "Invalid Date". */
+function forecastDateText(v) {
+  if (!v) return "";
+  var s = String(v).trim();
+  var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  if (m) return m[2] + " " + m[1] + ", " + m[3];
+  var d = new Date(s.replace(/-/g, "/"));
+  if (isNaN(d.getTime())) return s.split(" ")[0];
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+function forecastCell(r) {
+  r = r || {};
+  var raw = r.Forecast_Delivery;
+  var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+  var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+  var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+  var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+  var tip = fcEsc(win || status || "");
+
+  return (
+    '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+    "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+    "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+    ';flex:none"></span>' + date +
+    (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+    "</span>"
+  );
+}
+
+function rowMessage(title, hint){
+  return '<tr class="static"><td colspan="8"><div class="empty"><b>' + esc(title) + '</b>' +
+    (hint ? '<span>' + esc(hint) + '</span>' : '') + '</div></td></tr>';
+}
+function renderStats(){
+  var ready = 0, blocked = 0, pkgPending = 0;
+  ALL_SA.forEach(function(r){
+    var p = dispatchProgress(r);
+    pkgPending += (p.total - p.done);
+    if(gateFor(r).blocked) blocked++; else ready++;
+  });
+  var cards = [
+    { label:'Awaiting approval',      value: ALL_PENDING.length, tab:'pending',                     c:'var(--warn)' },
+    { label:'Scheduled appointments', value: ALL_SA.length, tab:'scheduled', filter:'all',     c:'var(--muted)' },
+    { label:'Ready to dispatch',      value: ready,         tab:'scheduled', filter:'ready',   c:'var(--ok)' },
+    { label:'Blocked by the gate',    value: blocked,       tab:'scheduled', filter:'blocked', c:'var(--bad)' },
+    { label:'Packages still here',    value: pkgPending,                                       c:'var(--accent)' }
+  ];
+  document.getElementById('statCards').innerHTML = cards.map(function(c){
+    // Since 2026-10-27 the two stages are tabs, so a card has to switch tab first
+    // and only then apply its filter — it used to just scroll the page down.
+    var on = c.tab ? ' onclick="goTab(\'' + c.tab + '\'' + (c.filter ? ',\'' + c.filter + '\'' : '') + ')"'
+                   : ' style="cursor:default"';
+    return '<button class="kpi" type="button"' + on + '>' +
+      '<div class="lbl"><i style="background:' + c.c + '"></i>' + esc(c.label) + '</div>' +
+      '<div class="val">' + esc(c.value) + '</div></button>';
+  }).join('');
+  var tp = document.getElementById('tabCountPending'); if(tp) tp.textContent = ALL_PENDING.length;
+  var ts = document.getElementById('tabCountSA');      if(ts) ts.textContent = ALL_SA.length;
+}
+/* Top tabs — added 2026-10-27. */
+function switchTopTab(tab){
+  document.querySelectorAll('#topTabs button').forEach(function(b){
+    b.classList.toggle('on', b.getAttribute('data-tab') === tab);
+  });
+  document.getElementById('pendingPanel').classList.toggle('hidden', tab !== 'pending');
+  document.getElementById('scheduledPanel').classList.toggle('hidden', tab !== 'scheduled');
+  document.getElementById('calendarPanel').classList.toggle('hidden', tab !== 'calendar');
+  if(tab === 'calendar') renderCalendar();
+}
+
+/* ==================== CALENDAR (Build Plan D.5) ====================
+   Read-only on purpose. Everything here already happened somewhere else: the
+   engine suggested, an officer approved or overrode, the dispatcher released.
+   What the plan asked for and nobody had was a way to SEE it - where the gaps
+   are, which team is stacked, what is going out tomorrow. */
+var CAL_START_HOUR = 7, CAL_END_HOUR = 19;   // 7AM-7PM, the working window
+
+function calToday(){
+  document.getElementById('calDate').value = isoToday();
+  renderCalendar();
+}
+function calStep(delta){
+  var el = document.getElementById('calDate');
+  var base = el.value ? new Date(el.value + 'T00:00:00') : new Date();
+  base.setDate(base.getDate() + delta * (CAL_MODE === 'week' ? 7 : 1));
+  el.value = isoOfDate(base);
+  renderCalendar();
+}
+function calSetMode(mode){
+  CAL_MODE = mode;
+  document.getElementById('calModeDay').classList.toggle('on', mode === 'day');
+  document.getElementById('calModeWeek').classList.toggle('on', mode === 'week');
+  renderCalendar();
+}
+function isoOfDate(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function isoToday(){ return isoOfDate(new Date()); }
+
+/* Minutes from midnight. Accepts the 12-hour shape the appointment stores
+   ("02:30:00 PM") through the widget's own to24Hour, and a bare 24-hour one. */
+function calMinutes(timeStr){
+  var t = to24Hour(String(timeStr || '').trim());
+  var m = String(t).match(/^(\d{1,2}):(\d{2})/);
+  if(!m) return null;
+  return (parseInt(m[1],10) * 60) + parseInt(m[2],10);
+}
+function calDuration(r){
+  var d = parseFloat(r.Estimated_Duration);
+  if(!isFinite(d) || d <= 0){
+    /* Same defaults the engine falls back on when the field is blank, which it
+       usually is - B.3 of the plan. A block drawn at the wrong length is worse
+       than one drawn at the documented guess. */
+    var t = String(r.Type_of_Delivery || '');
+    d = t === 'With Installation' ? 4 : (t === 'Full-Day Install' ? 8 : 2);
+  }
+  return d * 60;
+}
+
+/* The lanes for a day: whoever Daily_Team_Availability says is working, in the
+   order the roster lists them. Anyone with a booking that day but no
+   availability row still gets a lane - hiding real work because the officer
+   forgot to tick a row would be the worst possible lie for this screen. */
+function calLanes(iso, events){
+  var lanes = [], seen = {};
+  ALL_AVAIL.forEach(function(a){
+    if(String(a.Availability_Date||'').slice(0,10) !== iso) return;
+    if(String(a.Availability_Status||'') === 'Not Available') return;
+    var name = String(a.Installer||'').trim();
+    if(!name || seen[name]) return;
+    seen[name] = 1;
+    lanes.push({ name: name, sub: [a.Driver, a.Vehicle].filter(Boolean).join(' · '), ghost: false });
+  });
+  events.forEach(function(e){
+    var name = String(e.r.Installer||'').trim() || '(walang team)';
+    if(seen[name]) return;
+    seen[name] = 1;
+    lanes.push({ name: name, sub: name === '(walang team)' ? 'hindi naka-assign' : 'walang availability row', ghost: true });
+  });
+  return lanes;
+}
+
+function calEventsFor(iso){
+  return ALL_SA_RAW.filter(function(r){
+    return String(r.Confirmed_Schedule_Date||'').slice(0,10) === iso;
+  }).map(function(r){
+    var start = calMinutes(r.Confirmed_Time_Slot);
+    return { r: r, start: start, mins: calDuration(r) };
+  }).filter(function(e){ return e.start !== null; });
+}
+
+function calDayHtml(iso, withHeader){
+  var events = calEventsFor(iso);
+  var lanes = calLanes(iso, events);
+  var span = (CAL_END_HOUR - CAL_START_HOUR) * 60;
+  var d = new Date(iso + 'T00:00:00');
+  var title = d.toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' }).toUpperCase();
+
+  if(!lanes.length){
+    return (withHeader ? '<div class="cal-daybar">' + esc(title) + '</div>' : '') +
+      '<div class="cal-empty">Walang team at walang delivery sa araw na ito.<br>' +
+      'Kung may dapat sana, tingnan ang <b>Daily Team Availability</b> — walang row, walang lane.</div>';
+  }
+
+  var rows = lanes.map(function(lane){
+    var mine = events.filter(function(e){
+      var nm = String(e.r.Installer||'').trim() || '(walang team)';
+      return nm === lane.name;
+    });
+    var blocks = mine.map(function(e){
+      var from = Math.max(e.start, CAL_START_HOUR*60);
+      var to = Math.min(e.start + e.mins, CAL_END_HOUR*60);
+      if(to <= from) return '';
+      var left = ((from - CAL_START_HOUR*60) / span) * 100;
+      var width = ((to - from) / span) * 100;
+      var colour = TYPE_COLOR[e.r.Type_of_Delivery] || 'var(--c-replace)';
+      var label = (e.r.Sales_Order || '—') + ' · ' + (custName(e.r) || '—');
+      return '<div class="cal-ev" style="left:' + left.toFixed(2) + '%;width:' + Math.max(width,3).toFixed(2) + '%;background:' + colour + '" ' +
+        'title="' + esc(label + ' — ' + (e.r.Type_of_Delivery||'') + ' ' + (e.r.Confirmed_Time_Slot||'')) + '" ' +
+        'onclick="openChecklist(\'' + esc(String(e.r.ID)) + '\')">' +
+        '<b>' + esc(e.r.Sales_Order || '—') + '</b>' +
+        '<small>' + esc(e.r.Confirmed_Time_Slot || '') + '</small></div>';
+    }).join('');
+    return '<div class="cal-row"><div class="cal-lane-h">' + esc(lane.name) +
+      (lane.sub ? '<small>' + esc(lane.sub) + '</small>' : '') + '</div>' +
+      '<div class="cal-track" style="--slot:' + (100/(CAL_END_HOUR-CAL_START_HOUR)).toFixed(4) + '%">' + blocks + '</div></div>';
+  }).join('');
+
+  var hours = '';
+  for(var h = CAL_START_HOUR; h < CAL_END_HOUR; h++){
+    hours += '<span>' + ((h % 12) || 12) + (h < 12 ? 'AM' : 'PM') + '</span>';
+  }
+  return (withHeader ? '<div class="cal-daybar">' + esc(title) + '</div>' : '') +
+    '<div class="cal-hours">' + hours + '</div>' + rows;
+}
+
+function renderCalendar(){
+  var el = document.getElementById('calDate');
+  if(!el) return;
+  if(!el.value) el.value = isoToday();
+  var host = document.getElementById('calBody');
+  var html = '';
+  if(CAL_MODE === 'week'){
+    var base = new Date(el.value + 'T00:00:00');
+    base.setDate(base.getDate() - base.getDay());   // week starts Sunday
+    for(var i = 0; i < 7; i++){
+      var d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+      html += calDayHtml(isoOfDate(d), true);
+    }
+  } else {
+    html = calDayHtml(el.value, true);
+  }
+  host.innerHTML = '<div class="cal-scroll"><div class="cal-grid">' + html + '</div></div>';
+
+  var legend = document.getElementById('calLegend');
+  if(legend){
+    legend.innerHTML = Object.keys(TYPE_COLOR).map(function(k){
+      return '<span><i style="background:' + TYPE_COLOR[k] + '"></i>' + esc(k) + '</span>';
+    }).join('');
+  }
+}
+function goTab(tab, filter){
+  switchTopTab(tab);
+  if(filter) setFilter(filter);
+}
+function setFilter(f){
+  CURRENT_FILTER = f;
+  document.querySelectorAll('#filterPills .fchip').forEach(function(p){
+    p.classList.toggle('on', p.getAttribute('data-filter')===f);
+  });
+  renderList();
+}
+function renderList(){
+  var q = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+  var rows = ALL_SA.filter(function(r){
+    var p = dispatchProgress(r), g = gateFor(r);
+    if(CURRENT_FILTER==='ready'   && g.blocked) return false;
+    if(CURRENT_FILTER==='blocked' && !g.blocked) return false;
+    if(CURRENT_FILTER==='partial' && !(p.done > 0 && p.done < p.total)) return false;
+    if(q){
+      var hay = [r.Sales_Order, custName(r), p.packages.map(function(x){ return x.pac; }).join(' ')].join(' ').toLowerCase();
+      if(hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+  rows.sort(function(a,b){
+    var d = String(a.Confirmed_Schedule_Date||'').localeCompare(String(b.Confirmed_Schedule_Date||''));
+    return d !== 0 ? d : String(a.Sales_Order||'').localeCompare(String(b.Sales_Order||''));
+  });
+
+  var body = document.getElementById('listBody');
+  if(!rows.length){
+    body.innerHTML = ALL_SA.length===0
+      ? rowMessage('Nothing scheduled right now', 'An order appears here once its schedule is confirmed in the list above.')
+      : rowMessage('No appointment matches this filter', 'Clear the search box or pick the All chip.');
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    var p = dispatchProgress(r), g = gateFor(r);
+    var team = [r.Installer, r.Assigned_to_Driver].filter(Boolean).join(' / ') || '—';
+    var city = r.City ? (' · ' + esc(r.City)) : '';
+    var gatePill = g.blocked
+      ? '<span class="pill p-bad">Blocked</span>'
+      : '<span class="pill p-ok">Ready</span>';
+    var pkgPill = p.done === 0
+      ? '<span class="pill p-gray">' + p.total + ' package' + (p.total===1?'':'s') + '</span>'
+      : '<span class="pill p-warn">' + p.done + ' of ' + p.total + ' dispatched</span>';
+    return '<tr tabindex="0" onclick="openChecklist(\'' + r.ID + '\')" onkeydown="if(event.key===\'Enter\')openChecklist(\'' + r.ID + '\')">' +
+      '<td class="c-ord"><div class="ord"><div class="so">' + esc(r.Sales_Order||'—') + '</div><div class="cust">' + esc(custName(r)) + city + '</div></div></td>' +
+      '<td data-label="Type">' + typeCell(r.Type_of_Delivery) + '</td>' +
+      '<td data-label="Confirmed date">' + esc(r.Confirmed_Schedule_Date || '—') + '</td>' +
+      '<td data-label="Team">' + esc(team) + '</td>' +
+      '<td data-label="Packages">' + pkgPill + '</td>' +
+      '<td data-label="Dispatch gate">' + gatePill + '</td>' +
+      '<td data-label="Forecast">' + forecastCell(r) + '</td>' +
+      '<td class="c-act" onclick="event.stopPropagation()"><div class="acts">' +
+        '<button class="btn sm" onclick="openChecklist(\'' + r.ID + '\')">Dispatch Checklist</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+/* ==================== CHECKLIST ==================== */
+function openChecklist(id){
+  var r = ALL_SA.find(function(x){ return String(x.ID)===String(id); });
+  if(!r) return;
+  CURRENT_SA = r;
+  /* Fresh modal, fresh run: release the DR numbers reserved last time and
+     throw away any signature still on the pad. Without this, reopening would
+     keep skipping DR numbers and could attach the previous dispatcher's hand. */
+  DR_TAKEN = [];
+  PKG_DRAFT = {};
+  SIG_DIRTY = false;
+  var sigHost = document.getElementById('cSignature');
+  if(sigHost){ sigHost.innerHTML = ''; delete sigHost.dataset.built; }
+  document.getElementById('cTitle').textContent = (r.Sales_Order||'—') + ' — ' + (custName(r)||'—');
+  /* Chain trace ADDED 2026-10-27 — the SR number and the initial schedule the
+     engine anchored on, so a dispatcher can tell where this appointment came
+     from without opening Creator. Both read off fields the step-3 Deluge
+     stamps; a pre-chain appointment simply shows neither. */
+  var chain = [];
+  if(r.Service_Request) chain.push('SR ' + r.Service_Request);
+  if(r.Requested_Delivery_Date) chain.push('asked ' + r.Requested_Delivery_Date + (r.Requested_Delivery_Time ? (' ' + r.Requested_Delivery_Time) : ''));
+  document.getElementById('cSub').textContent =
+    (r.Type_of_Delivery||'—') + ' · ' + (r.Confirmed_Schedule_Date||'no date') +
+    ' · ' + ([r.Installer, r.Assigned_to_Driver].filter(Boolean).join(' / ') || 'no team') +
+    (chain.length ? ' · ' + chain.join(' · ') : '');
+  renderChecklist();
+  document.getElementById('checklistModal').classList.add('on');
+  document.getElementById('scrim').classList.add('on');
+}
+function closeChecklist(){
+  document.getElementById('checklistModal').classList.remove('on');
+  document.getElementById('scrim').classList.remove('on');
+  CURRENT_SA = null;
+}
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  if(document.getElementById('checklistModal').classList.contains('on')) closeChecklist();
+  if(document.getElementById('approveModal').classList.contains('on')) closeApprove();
+});
+function closeAnyModal(){
+  if(document.getElementById('approveModal').classList.contains('on')) closeApprove();
+  else closeChecklist();
+}
+
+function renderChecklist(){
+  var r = CURRENT_SA;
+  if(!r) return;
+  captureDraft();
+  var g = gateFor(r);
+
+  document.getElementById('cConditions').innerHTML = g.conds.map(function(c, i){
+    var cls = c.ok === true ? 'ok' : (c.ok === false ? 'bad' : 'na');
+    var glyph = c.ok === true ? '✓' : (c.ok === false ? '✕' : '–');
+    return '<div class="cond"><div class="mark ' + cls + '">' + glyph + '</div>' +
+      '<div><div class="ttl">' + (i+1) + '. ' + esc(c.ttl) + '</div>' +
+      '<div class="why">' + esc(c.why) + '</div></div></div>';
+  }).join('');
+
+  var p = dispatchProgress(r);
+  document.getElementById('cPackages').innerHTML = p.packages.map(function(pk, idx){
+    var done = isDispatched(r.ID, pk.pac);
+    var row = checklistFor(r.ID, pk.pac);
+    var names = pk.items.map(function(it){ return it.Item_Name; }).filter(Boolean).join(', ');
+    var head = '<div class="pkg-top"><span class="no mono">' + esc(pk.pac) + '</span>' +
+      (done ? '<span class="pill p-ok">Dispatched</span>' : '<span class="pill p-gray">Pending</span>') +
+      '<span class="sp"></span></div>' +
+      (names ? '<div class="items">' + esc(names) + '</div>' : '');
+
+    if(done){
+      return '<div class="pkg done">' + head +
+        '<div class="items">DR # ' + esc((row && row.DR_No) || '—') +
+        ' · by ' + esc((row && row.Dispatch_By) || '—') +
+        ' · ' + esc((row && row.Dispatched_At2) || '—') + '</div></div>';
+    }
+    if(g.blocked){
+      return '<div class="pkg">' + head +
+        '<div class="notice blocked-note" style="margin:10px 0 0">Blocked — clear the failed conditions above before this package can be dispatched.</div></div>';
+    }
+    /* The four physical checks, per package — each box is inspected on its own,
+       so one tick cannot release five crates. */
+    var checksHtml = '<div class="chk-box"><h5>Bago ilabas ang package na ito</h5>' +
+      PHYSICAL_CHECKS.map(function(c, ci){
+        return '<label class="chk-item"><input type="checkbox" id="pc' + idx + '_' + ci + '" onchange="syncDispatchButtons()">' +
+          '<span>' + esc(c.label) + '</span></label>';
+      }).join('') +
+      '</div>';
+
+    return '<div class="pkg">' + head + checksHtml +
+      '<div class="dr">' +
+        '<div class="field"><label for="dr' + idx + '">DR number <span class="req">*</span></label>' +
+        '<input id="dr' + idx + '" type="text" value="' + esc(drForPac(pk.pac)) + '" oninput="syncDispatchButtons()"></div>' +
+        '<button class="btn primary" id="btnPkg' + idx + '" disabled onclick="dispatchPackage(' + idx + ')">Dispatch this package</button>' +
+      '</div></div>';
+  }).join('');
+
+  /* Who is dispatching, asked once for the whole modal rather than per package —
+     one person does the run. Condition 6. */
+  var picker = document.getElementById('cDispatchBy');
+  var pendingCount = p.total - p.done;
+  picker.classList.toggle('hidden', g.blocked || pendingCount === 0);
+
+  /* The signature is asked ONCE, like the dispatcher's name: one person signs
+     for the run, and the same image is attached to every package's record. */
+  var sigHost = document.getElementById('cSignature');
+  if(sigHost){
+    var needSig = !g.blocked && pendingCount > 0;
+    sigHost.classList.toggle('hidden', !needSig);
+    if(needSig && !sigHost.dataset.built){
+      sigHost.innerHTML = '<div class="chk-box"><h5>Pirma ng dispatcher</h5>' +
+        '<div class="sig-wrap"><canvas id="sigPadDispatch"></canvas>' +
+        '<div class="sig-bar"><span>Pumirma sa loob ng kahon.</span>' +
+        '<button type="button" onclick="clearDispatchSig()">Clear</button></div></div></div>';
+      sigHost.dataset.built = '1';
+      initDispatchSigPad();
+    }
+  }
+
+  var all = document.getElementById('cDispatchAll');
+  var pending = p.total - p.done;
+  all.classList.toggle('hidden', g.blocked || pending === 0);
+  all.textContent = 'Dispatch all ' + pending + ' package' + (pending===1?'':'s');
+  restoreDraft();
+  syncDispatchButtons();
+}
+
+/* The signature pad. Lifted from FieldServiceSiteVisits, which is the pattern
+   that already works in this app: draw on a canvas, turn it into a PNG File,
+   and upload it to the record's image field AFTER the record exists. */
+function initDispatchSigPad(){
+  var canvas = document.getElementById('sigPadDispatch');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var drawing = false, last = null;
+  SIG_DIRTY = false;
+  function size(){
+    var rect = canvas.getBoundingClientRect();
+    var ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, rect.width * ratio);
+    canvas.height = Math.max(1, rect.height * ratio);
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1e293b';
+  }
+  function pt(ev){
+    var rect = canvas.getBoundingClientRect();
+    var t = ev.touches && ev.touches[0];
+    return { x: (t ? t.clientX : ev.clientX) - rect.left, y: (t ? t.clientY : ev.clientY) - rect.top };
+  }
+  function start(ev){ ev.preventDefault(); drawing = true; last = pt(ev); }
+  function move(ev){
+    if(!drawing) return;
+    ev.preventDefault();
+    var p2 = pt(ev);
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+    last = p2; SIG_DIRTY = true; syncDispatchButtons();
+  }
+  function end(){ drawing = false; last = null; }
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', end);
+  canvas.addEventListener('mouseleave', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', end);
+  canvas._sigSize = size;
+  size();
+}
+function clearDispatchSig(){
+  var canvas = document.getElementById('sigPadDispatch');
+  if(!canvas) return;
+  if(canvas._sigSize) canvas._sigSize();
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  SIG_DIRTY = false;
+  syncDispatchButtons();
+}
+function dispatchSigFile(){
+  return new Promise(function(resolve){
+    var canvas = document.getElementById('sigPadDispatch');
+    if(!canvas || !SIG_DIRTY) return resolve(null);
+    canvas.toBlob(function(blob){
+      resolve(blob ? new File([blob], 'dispatcher_signature.png', { type: 'image/png' }) : null);
+    }, 'image/png');
+  });
+}
+/* Attached after the record exists — uploadFile needs an id. A failure here
+   leaves the dispatch itself standing and says so, rather than pretending the
+   package never left. */
+function attachSignature(recordId){
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.FILE) return Promise.resolve(false);
+  return dispatchSigFile().then(function(file){
+    if(!file || !recordId || String(recordId).indexOf('local-') === 0) return false;
+    return ZOHO.CREATOR.FILE.uploadFile({
+      report_name: DISPATCH_CHECKLIST_REPORT,
+      id: String(recordId),
+      /* The live form calls it Signature_Dispatcher, and it is a native
+         type=signature field, not an image one. The form is the authority, so
+         the name follows it. The TYPE is the open question: Field_Work keeps a
+         separate Receiver_s_Signature_Upload (type=image) alongside its native
+         Receiver_s_Signature, which reads like evidence that a drawn PNG could
+         not be pushed into the native field. If this upload comes back refused,
+         that is the reason, and changing Signature_Dispatcher to Image
+         (source = file) is the whole fix - nothing else here changes. The
+         dispatch itself is already saved by this point either way. */
+      field_name: 'Signature_Dispatcher',
+      file: file
+    }).then(function(resp){
+      var ok = resp && (resp.code === 3000 || String(resp.code) === '3000');
+      if(!ok) console.warn('[ServiceAppointment] signature upload failed', JSON.stringify(resp));
+      return !!ok;
+    }).catch(function(e){
+      console.error('[ServiceAppointment] signature upload error', e);
+      return false;
+    });
+  });
+}
+
+function physicalChecksOf(idx){
+  var out = {}, all = true;
+  PHYSICAL_CHECKS.forEach(function(c, ci){
+    var el = document.getElementById('pc' + idx + '_' + ci);
+    var on = !!(el && el.checked);
+    out[c.key] = on;
+    if(!on) all = false;
+  });
+  return { values: out, all: all };
+}
+
+/* A package leaves only when the DR number, the dispatcher, all four physical
+   checks and the signature are all there — condition 5, extended 2026-10-29. */
+function syncDispatchButtons(){
+  var r = CURRENT_SA;
+  if(!r) return;
+  var who = dispatcherValue();
+  var p = dispatchProgress(r), anyReady = false;
+  p.packages.forEach(function(pk, idx){
+    var input = document.getElementById('dr' + idx);
+    var btn = document.getElementById('btnPkg' + idx);
+    if(!input || !btn) return;
+    var ok = input.value.trim().length > 0 && !!who && physicalChecksOf(idx).all && SIG_DIRTY;
+    btn.disabled = !ok;
+    if(ok) anyReady = true;
+  });
+  var all = document.getElementById('cDispatchAll');
+  if(all && !all.classList.contains('hidden')) all.disabled = !anyReady;
+}
+
+/* ==================== WRITE ====================
+   One Dispatch_Checklist record per (appointment x package), carrying a snapshot
+   of what was true at the moment of dispatch. The four Decision Boxes are stored
+   even though the system computes them live: a month later, "why did this leave
+   with an open exception?" has an answer only if it was recorded. */
+function dispatcherValue(){
+  var sel = document.getElementById('dispatchBy');
+  return sel ? sel.value : '';
+}
+
+function buildChecklistPayload(r, pac, drNo, conds, who, physical){
+  var out = {
+    Service_Appointment_ID: String(r.ID),
+    Sales_Order: r.Sales_Order || '',
+    Package_Number: String(pac),
+    Dispatch_Status: 'Dispatched',
+    DR_No: drNo,
+    Dispatch_By: who,
+    Dispatched_At2: nowStamp(),
+    Check_Items_Complete:  conds[0].ok !== false,
+    Check_Contact_Details: conds[1].ok !== false,
+    Check_Payment:         conds[2].ok !== false,
+    Check_No_Exception:    conds[3].ok !== false
+  };
+  /* The four physical checks. Recorded even though the UI refuses to dispatch
+     without them: a month later, "who said these crates were fit to leave?" has
+     an answer only if it was written down.
+
+     The box COUNT is not stored. There is no number field for it on the live
+     form - the count was folded into Check_Box_Count's label instead - and
+     writing to a field that does not exist fails the whole dispatch with 3001.
+     Create a Number field named Boxes_Released and this becomes two lines. */
+  if(physical){ Object.keys(physical).forEach(function(k){ out[k] = physical[k]; }); }
+  return out;
+}
+
+function dispatchPackage(idx){
+  var r = CURRENT_SA;
+  if(!r) return;
+  var g = gateFor(r);
+  if(g.blocked){ showToast('This order is blocked by the dispatch gate.', 'bad'); return; }
+  var p = dispatchProgress(r);
+  var pk = p.packages[idx];
+  if(!pk) return;
+  var input = document.getElementById('dr' + idx);
+  var drNo = input ? input.value.trim() : '';
+  if(!drNo){ showToast('A DR number is required before dispatch.', 'bad'); return; }
+  var who = dispatcherValue();
+  if(!who){ showToast('Pick who is dispatching first.', 'bad'); return; }
+  var phys = physicalChecksOf(idx);
+  if(!phys.all){ showToast('Tapusin muna ang apat na check sa package na ito.', 'bad'); return; }
+  if(!SIG_DIRTY){ showToast('Kailangan ng pirma ng dispatcher bago ilabas.', 'bad'); return; }
+
+  var btn = document.getElementById('btnPkg' + idx);
+  if(btn){ btn.disabled = true; btn.setAttribute('aria-busy','true'); btn.textContent = 'Dispatching…'; }
+
+  writeDispatch(r, pk.pac, drNo, g.conds, who, phys.values).then(function(ok){
+    if(!ok){
+      if(btn){ btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = 'Dispatch this package'; }
+      return;
+    }
+    return afterDispatch(r, 'Package ' + pk.pac + ' dispatched.');
+  });
+}
+
+function dispatchAll(){
+  var r = CURRENT_SA;
+  if(!r) return;
+  var g = gateFor(r);
+  if(g.blocked){ showToast('This order is blocked by the dispatch gate.', 'bad'); return; }
+  var p = dispatchProgress(r);
+  var targets = [], unchecked = [];
+  p.packages.forEach(function(pk, idx){
+    if(isDispatched(r.ID, pk.pac)) return;
+    var input = document.getElementById('dr' + idx);
+    var drNo = input ? input.value.trim() : '';
+    if(!drNo) return;
+    /* Every package carries its own four checks. A box nobody inspected is
+       left behind rather than quietly released with the rest. */
+    var phys = physicalChecksOf(idx);
+    if(!phys.all){ unchecked.push(pk.pac); return; }
+    targets.push({ pac: pk.pac, dr: drNo, phys: phys.values });
+  });
+  if(unchecked.length){
+    showToast('Kulang pa ang checklist ng: ' + unchecked.join(', ') + ' — hindi muna sila ilalabas.', 'warn');
+  }
+  if(!targets.length){ showToast('Give each package a DR number and finish its checklist first.', 'warn'); return; }
+  var who = dispatcherValue();
+  if(!who){ showToast('Pick who is dispatching first.', 'bad'); return; }
+  if(!SIG_DIRTY){ showToast('Kailangan ng pirma ng dispatcher bago ilabas.', 'bad'); return; }
+
+  var btn = document.getElementById('cDispatchAll');
+  btn.disabled = true; btn.setAttribute('aria-busy','true'); btn.textContent = 'Dispatching…';
+
+  /* Sequential and best-effort — one package failing must not stop the rest.
+     Same convention as OrderAggregation's own per-package insert loop. */
+  var okCount = 0, failed = [];
+  var chain = Promise.resolve();
+  targets.forEach(function(t){
+    chain = chain.then(function(){
+      return writeDispatch(r, t.pac, t.dr, g.conds, who, t.phys).then(function(ok){
+        if(ok) okCount++; else failed.push(t.pac);
+      });
+    });
+  });
+  chain.then(function(){
+    btn.disabled = false; btn.removeAttribute('aria-busy');
+    return afterDispatch(r, okCount + '/' + targets.length + ' package(s) dispatched.' +
+      (failed.length ? ' Failed: ' + failed.join(', ') : ''));
+  });
+}
+
+function writeDispatch(r, pac, drNo, conds, who, physical){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    showToast('Widget SDK not available — see console', 'bad');
+    return Promise.resolve(false);
+  }
+  var payload = buildChecklistPayload(r, pac, drNo, conds, who, physical);
+  return ZOHO.CREATOR.DATA.addRecords({
+    form_name: FORM_DISPATCH_CHECKLIST,
+    payload: { data: payload }
+  }).then(function(resp){
+    console.log('[ServiceAppointment] dispatch', pac, JSON.stringify(resp));
+    if(!resp || resp.code !== 3000){
+      showToast('Dispatch failed for ' + pac + ' — code ' + (resp && resp.code) + ', see console', 'bad');
+      return false;
+    }
+    // Reflect it locally so the modal and the list update without a full reload.
+    if(!CHECKS_BY_SA[String(r.ID)]) CHECKS_BY_SA[String(r.ID)] = [];
+    var saved = JSON.parse(JSON.stringify(payload));
+    saved.ID = (resp.data && resp.data.ID) || ('local-' + pac);
+    CHECKS_BY_SA[String(r.ID)].push(saved);
+    ALL_CHECKS.push(saved);
+    /* The signature goes on in a second call, because uploadFile needs the id
+       that only exists now. Deliberately not awaited into the result: the
+       package HAS left, and reporting a dispatch as failed because an image
+       did not attach would be a lie. A failure is logged and said out loud. */
+    attachSignature(saved.ID).then(function(sigOk){
+      if(!sigOk) showToast('Na-dispatch ang ' + pac + ', pero hindi naka-attach ang pirma — tingnan ang console.', 'warn');
+    });
+    return true;
+  }).catch(function(err){
+    console.error('[ServiceAppointment] dispatch error', pac, JSON.stringify(err));
+    showToast('Dispatch failed for ' + pac + ' — see console', 'bad');
+    return false;
+  });
+}
+
+/* The appointment only becomes Dispatched once EVERY package has left. Until
+   then it stays Scheduled and keeps its place in this list — that is what makes
+   a partial dispatch visible instead of silent. */
+function afterDispatch(r, msg){
+  var p = dispatchProgress(r);
+  var done = (p.done >= p.total);
+  showToast(msg + (done ? ' Appointment moved to Ongoing Service.' : ' ' + (p.total - p.done) + ' package(s) still here.'));
+  announce(msg);
+  renderChecklist();
+  renderStats();
+  renderList();
+  if(!done) return Promise.resolve();
+
+  return ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_SA,
+    id: String(r.ID),
+    payload: { data: { Appointment_Status: 'Dispatched', Dispatch_Date: todayStamp() } }
+  }).then(function(resp){
+    console.log('[ServiceAppointment] status -> Dispatched', JSON.stringify(resp));
+    if(!resp || resp.code !== 3000){
+      showToast('Packages dispatched, but the appointment status did not update — code ' + (resp && resp.code), 'warn');
+      return;
+    }
+    closeChecklist();
+    loadAll();
+  }).catch(function(err){
+    console.error('[ServiceAppointment] status update failed', JSON.stringify(err));
+    showToast('Packages dispatched, but the appointment status did not update — see console', 'warn');
+  });
+}
+
+/* No identity lookup here any more. Condition 6 is answered by the Dispatch_By
+   picker above, because the form's own field is a picklist of the three real
+   dispatchers — not a free-text login name. */
+
+
+/* ==================== STAGE 1 — APPROVE / OVERRIDE ====================
+   Restored 2026-10-26. The engine (SA_Scheduling_Engine Action 1) writes
+   Suggested_Schedule_Date/Time + Installer/Driver/Fleet and leaves the record
+   Queued. Action 2 turns it into Scheduled the moment Confirmed_Schedule_Date
+   is saved — so this panel does not set a status itself. It writes the confirmed
+   date/time (plus the override paperwork when they differ) and lets the backend
+   do the rest, exactly as the retired widget did. */
+
+function isAwaitingApproval(r){
+  if(!r) return false;
+  if(String(r.Site_Confirmation_Status||'') !== 'Confirmed') return false;
+  if(isTrue(r.Calendar_Entry_Created)) return false;
+  return PAST_APPROVAL.indexOf(String(r.Appointment_Status||'')) === -1;
+}
+
+/* Pick Up and a 3rd Party fleet decision never get a suggestion at all — the
+   engine returns before the slot search for both — so there is no team to
+   approve and no override paperwork to demand. Same two bypasses the backend's
+   own validation workflow has. */
+function noTeamNeeded(r){
+  return String(r.Type_of_Delivery||'') === 'Pick Up' || String(r.Fleet_Decision||'') === '3rd Party';
+}
+
+/* A suggestion left over from an earlier run is NOT approvable once the engine
+   has since found no team at all. Carried over verbatim from the retired widget
+   (2026-09-16) — it is also the widget-side safety net for records that went
+   stale before the backend started clearing those fields itself. */
+function isCalendarFullStale(r){
+  return !!(r && r.Exception_Status === 'Flagged' &&
+    (r.Exception_Reason === 'Calendar Full' || r.Exception_Reason === 'Slot Pushed — Overtime Declined'));
+}
+function hasLiveSuggestion(r){
+  return !!(r && r.Suggested_Schedule_Date && !isCalendarFullStale(r));
+}
+
+/* Confirmed_Time_Slot reads back like "08:00:00 AM"; <input type=time> needs
+   24-hour HH:MM, and the write API needs the 12-hour shape back. Both halves
+   are the pair that was already working live, not a rewrite. */
+function to24Hour(t){
+  if(!t) return '';
+  var m = String(t).match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
+  if(!m) return '';
+  var h = parseInt(m[1],10), min = m[2], ap = (m[3]||'').toUpperCase();
+  if(ap==='PM' && h!==12) h+=12;
+  if(ap==='AM' && h===12) h=0;
+  return String(h).padStart(2,'0') + ':' + min;
+}
+function to12Hour(t){
+  if(!t) return '';
+  var parts = String(t).split(':');
+  var h = parseInt(parts[0],10), min = parts[1];
+  var ap = h>=12 ? 'PM' : 'AM';
+  var h12 = h%12; if(h12===0) h12=12;
+  return String(h12).padStart(2,'0') + ':' + min + ':00 ' + ap;
+}
+
+function pendMessage(title, hint){
+  return '<tr class="static"><td colspan="6"><div class="empty"><b>' + esc(title) + '</b>' +
+    (hint ? '<span>' + esc(hint) + '</span>' : '') + '</div></td></tr>';
+}
+
+function suggestionText(r){
+  if(noTeamNeeded(r)) return 'No team needed — set the date';
+  if(isCalendarFullStale(r)) return '⚠ No team available (' + esc(r.Exception_Reason) + ')';
+  if(!r.Suggested_Schedule_Date) return 'No suggestion yet';
+  return esc(r.Suggested_Schedule_Date) + (r.Suggested_Time_Slot ? (' · ' + esc(r.Suggested_Time_Slot)) : '');
+}
+function statePill(r){
+  if(isTrue(r.Priority)) return '<span class="pill p-vio">Priority</span>';
+  if(r.Exception_Status === 'Flagged') return '<span class="pill p-bad">' + esc(r.Exception_Reason || 'Flagged') + '</span>';
+  if(noTeamNeeded(r)) return '<span class="pill p-gray">No team</span>';
+  if(hasLiveSuggestion(r)) return '<span class="pill p-warn">Suggested</span>';
+  return '<span class="pill p-gray">Waiting for engine</span>';
+}
+
+function renderPending(){
+  var q = (document.getElementById('pendSearch').value||'').toLowerCase().trim();
+  var rows = ALL_PENDING.filter(function(r){
+    if(!q) return true;
+    return [r.Sales_Order, custName(r), r.Installer].join(' ').toLowerCase().indexOf(q) !== -1;
+  });
+  rows.sort(function(a,b){
+    var pa = isTrue(a.Priority) ? 0 : 1, pb = isTrue(b.Priority) ? 0 : 1;
+    if(pa !== pb) return pa - pb;
+    return String(a.Suggested_Schedule_Date||'9999').localeCompare(String(b.Suggested_Schedule_Date||'9999'));
+  });
+
+  var body = document.getElementById('pendBody');
+  if(!rows.length){
+    body.innerHTML = ALL_PENDING.length === 0
+      ? pendMessage('Nothing waiting for approval', 'An order lands here once its site is confirmed and the engine has run.')
+      : pendMessage('No order matches this search', 'Clear the search box.');
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    var team = [r.Installer, r.Assigned_to_Driver].filter(Boolean).join(' / ') || '—';
+    var city = r.City ? (' · ' + esc(r.City)) : '';
+    return '<tr tabindex="0" onclick="openApprove(\'' + r.ID + '\')" onkeydown="if(event.key===\'Enter\')openApprove(\'' + r.ID + '\')">' +
+      '<td class="c-ord"><div class="ord"><div class="so">' + esc(r.Sales_Order||'—') + '</div><div class="cust">' + esc(custName(r)) + city + '</div></div></td>' +
+      '<td data-label="Type">' + typeCell(r.Type_of_Delivery) + '</td>' +
+      '<td data-label="System suggestion">' + suggestionText(r) + '</td>' +
+      '<td data-label="Team">' + esc(team) + '</td>' +
+      '<td data-label="State">' + statePill(r) + '</td>' +
+      '<td class="c-act" onclick="event.stopPropagation()"><div class="acts">' +
+        '<button class="btn sm" onclick="openApprove(\'' + r.ID + '\')">Review</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function openApprove(id){
+  var r = ALL_PENDING.find(function(x){ return String(x.ID)===String(id); });
+  if(!r) return;
+  CURRENT_PENDING = r;
+
+  document.getElementById('aTitle').textContent = (r.Sales_Order||'—') + ' — ' + (custName(r)||'—');
+  document.getElementById('aSub').textContent =
+    (r.Type_of_Delivery||'—') + ' · ' + (r.Estimated_Duration ? (r.Estimated_Duration + ' hrs') : 'no duration set') +
+    ' · ' + (r.Customer_Address || 'no address');
+
+  var box = document.getElementById('aSugg');
+  box.className = 'sugg' + (isCalendarFullStale(r) ? ' stale' : (hasLiveSuggestion(r) ? '' : ' none'));
+  document.getElementById('aSuggVal').innerHTML = suggestionText(r);
+  document.getElementById('aSuggTeam').textContent = noTeamNeeded(r)
+    ? (String(r.Type_of_Delivery||'') === 'Pick Up' ? 'Pick Up — the customer collects it' : '3rd party courier')
+    : ([r.Installer, r.Assigned_to_Driver].filter(Boolean).join(' / ') || 'no team assigned') +
+      (r.Fleet_Assignment ? (' · ' + r.Fleet_Assignment) : '');
+
+  /* Deliberately NOT pre-filled with the suggestion. Approving has to be an
+     explicit click, otherwise an officer who only opened the record and saved
+     would silently be recorded as having approved it. */
+  document.getElementById('aDate').value = r.Confirmed_Schedule_Date || '';
+  document.getElementById('aTime').value = to24Hour(r.Confirmed_Time_Slot);
+
+  var sel = document.getElementById('aOvrBy');
+  sel.innerHTML = '<option value="">— Select —</option>' +
+    DISPATCHERS.map(function(d){ return '<option value="' + esc(d) + '">' + esc(d) + '</option>'; }).join('');
+  sel.value = r.Override_By && DISPATCHERS.indexOf(r.Override_By) !== -1 ? r.Override_By : '';
+  document.getElementById('aOvrReason').value = r.Override_Reason || '';
+
+  document.getElementById('aUseSugg').style.display = hasLiveSuggestion(r) ? '' : 'none';
+  document.getElementById('aSave').disabled = false;
+  document.getElementById('aSave').textContent = 'Confirm schedule';
+  document.getElementById('aReschedule').disabled = false;
+
+  refreshOverrideVis();
+  document.getElementById('approveModal').classList.add('on');
+  document.getElementById('scrim').classList.add('on');
+}
+function closeApprove(){
+  document.getElementById('approveModal').classList.remove('on');
+  document.getElementById('scrim').classList.remove('on');
+  CURRENT_PENDING = null;
+}
+
+function useSuggestion(){
+  var r = CURRENT_PENDING;
+  if(!r) return;
+  if(!hasLiveSuggestion(r)){
+    showToast('There is no live suggestion to accept — re-run the engine first.', 'warn');
+    return;
+  }
+  document.getElementById('aDate').value = r.Suggested_Schedule_Date;
+  document.getElementById('aTime').value = to24Hour(r.Suggested_Time_Slot);
+  refreshOverrideVis();
+}
+
+function refreshOverrideVis(){
+  var r = CURRENT_PENDING;
+  if(!r) return;
+  var box = document.getElementById('overrideFields');
+  if(noTeamNeeded(r)){ box.classList.add('hidden'); return; }
+  var date = document.getElementById('aDate').value;
+  var time = document.getElementById('aTime').value;
+  var sDate = r.Suggested_Schedule_Date || '';
+  var sTime = to24Hour(r.Suggested_Time_Slot);
+  var mismatch = !!date && (!sDate || date !== sDate || (!!time && time !== sTime));
+  box.classList.toggle('hidden', !mismatch);
+}
+
+function saveApprove(){
+  var r = CURRENT_PENDING;
+  if(!r) return;
+  var date = document.getElementById('aDate').value;
+  var time = document.getElementById('aTime').value;
+  if(!date){ showToast('Pick a confirmed date first.', 'bad'); return; }
+
+  var needsOverride = !document.getElementById('overrideFields').classList.contains('hidden');
+  var by = document.getElementById('aOvrBy').value;
+  var why = document.getElementById('aOvrReason').value.trim();
+  /* The same two fields SA_Scheduling_Override_Validate blocks the save over.
+     Checked here as well so the officer gets a plain message instead of a
+     Creator validation error coming back through the SDK. */
+  if(needsOverride && (!by || !why)){
+    showToast('Override by and override reason are both required.', 'bad');
+    return;
+  }
+
+  var data = { Confirmed_Schedule_Date: date };
+  if(time) data.Confirmed_Time_Slot = to12Hour(time);
+  if(needsOverride){ data.Override_By = by; data.Override_Reason = why; }
+
+  var btn = document.getElementById('aSave');
+  btn.disabled = true; btn.setAttribute('aria-busy','true'); btn.textContent = 'Saving…';
+
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_SA,
+    id: String(r.ID),
+    payload: { data: data }
+  }).then(function(resp){
+    btn.removeAttribute('aria-busy');
+    console.log('[ServiceAppointment] confirm schedule', JSON.stringify(resp));
+    if(!resp || resp.code !== 3000){
+      btn.disabled = false; btn.textContent = 'Confirm schedule';
+      showToast('Could not confirm — code ' + (resp && resp.code) + ', see console', 'bad');
+      return;
+    }
+    showToast(needsOverride ? 'Override saved — the order is now scheduled.' : 'Approved — the order is now scheduled.');
+    announce('Schedule confirmed for ' + (r.Sales_Order||'this order'));
+    closeApprove();
+    loadAll();
+  }).catch(function(err){
+    btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = 'Confirm schedule';
+    console.error('[ServiceAppointment] confirm failed', JSON.stringify(err));
+    showToast('Could not confirm — see console', 'bad');
+  });
+}
+
+/* Re-runs the engine on this one record through the user's own published Custom
+   API. The function behind it returns a Map with status + message; "success"
+   is the shape the existing function already returns, so that is what is
+   treated as a win here. */
+function runReschedule(){
+  var r = CURRENT_PENDING;
+  if(!r) return;
+  var btn = document.getElementById('aReschedule');
+  btn.disabled = true; btn.setAttribute('aria-busy','true');
+  showToast('Re-running the scheduling engine…');
+
+  ZOHO.CREATOR.DATA.invokeCustomApi({
+    api_name: CUSTOM_API_RESCHEDULE,
+    http_method: 'POST',
+    content_type: 'application/json',
+    payload: { recordId: String(r.ID) },
+    public_key: CUSTOM_API_RESCHEDULE_KEY
+  }).then(function(resp){
+    var out = (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp);
+    console.log('[ServiceAppointment] reschedule result', JSON.stringify(out));
+    btn.disabled = false; btn.removeAttribute('aria-busy');
+    var st = out && out.status;
+    if(st === 'success' || st === 'ok' || st === 'confirmed'){
+      showToast((out && out.message) || 'New suggestion ready');
+    } else if(st === 'flagged'){
+      showToast((out && out.message) || 'Flagged — see the Exception Queue', 'warn');
+    } else if(st === 'blocked' || st === 'skipped'){
+      showToast((out && out.message) || 'The engine did not run on this record', 'warn');
+    } else {
+      showToast('Re-schedule failed — see console', 'bad');
+    }
+    closeApprove();
+    loadAll();
+  }).catch(function(err){
+    btn.disabled = false; btn.removeAttribute('aria-busy');
+    console.error('[ServiceAppointment] reschedule error', JSON.stringify(err));
+    showToast('Re-schedule failed — see console', 'bad');
+  });
+}
+</script>
+</body>
+</html>

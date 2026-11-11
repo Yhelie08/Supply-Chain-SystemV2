@@ -1,0 +1,1048 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archived</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+
+<!--
+  REDESIGNED 2026-10-23 against hc-dms-widget (5).html, the design the user sent.
+  Source of the design: Delivery Management System/reference/hc-dms-widget-v5_2026-10-22.html
+  Design module: Widget/DMS/_shared/design/modules/archived__Archived.js
+  Shared CSS: Widget/DMS/_shared/design/ — change it THERE and re-copy, never here.
+
+  Tailwind is gone from this widget — it was the LAST of the five that still
+  shipped a precompiled app/tailwind.css, so the whole staleness class of bug
+  (DMSExceptionQueue 2026-09-21, FieldServiceSiteVisits + SalesReturns 2026-09-25,
+  Archived + DeliveryAnalytics 2026-10-22) can no longer happen anywhere in DMS.
+
+  KEPT verbatim — none of it came from the prototype, which runs on demo data:
+    - reports Service_Appointment / Field_Work_Report / Package_Shipments_Report,
+      SDK 2.0, DATA.getRecords, DATA.invokeCustomApi
+    - NO ZOHO.CREATOR.init() — it never resolves (Widget/DMS/CLAUDE.md, 2026-09-18)
+    - ARCHIVED_STATUSES = Completed + Failed, the exact complement of OngoingService
+    - fieldWorkFor(): join on Service_Appointment_ID first, FW_BY_SO fallback
+      (the 2026-08-07 SO-16415 two-dispatches-on-one-SO fix)
+    - the whole Create Shipment path: per-package Package_Shipments rows, the
+      single and the bulk "Create All" best-effort loop, every Books dropdown
+      list captured from live screenshots on 2026-07-30
+    - Failed rows excluded from the Create Shipment tab (2026-08-06)
+    - createSalesReturn()'s deep link — creator.zoho.com, no environment segment
+      (the 2026-08-06 "still goes to dev" fix)
+
+  CHANGED in this round — presentation only:
+    - the page chrome, stat cards, tabs, filter chips, tables, pills and modals
+      now come from the shared design instead of Tailwind utility classes
+    - the single #toast element became the design's stacked .toasts container
+    - modals moved from .modal-overlay/.show to the design's .scrim + .modal/.on
+    - tables carry data-label, so they become readable cards under 820px instead
+      of a horizontally scrolling 960px-wide grid
+    - dark mode, inherited from the shared tokens
+-->
+<link rel="stylesheet" href="dms-tokens.css">
+<link rel="stylesheet" href="dms-shell.css">
+<style>
+  /* This widget runs standalone inside a Creator page — no sidebar, so .app is
+     deliberately not used. .main / .main-in carry the layout on their own. */
+  body{background:var(--bg)}
+  .hidden{display:none!important}
+  .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+  @media (max-width:900px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (max-width:520px){ .kpis{grid-template-columns:1fr} }
+
+  /* Two modals can be open at once here: the Shipment Detail list, and the
+     Create Shipment form launched from a row inside it. One scrim, and the
+     form sits above the list rather than replacing it. */
+  .modal.layer2{z-index:70}
+
+  /* Per-package rows inside the Shipment Detail modal. */
+  .pkg-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .pkg-row:last-child{border-bottom:0}
+  .pkg-row .nm{font-weight:600;font-size:var(--fs-md)}
+  .pkg-row .meta{color:var(--muted);font-size:var(--fs-sm);margin-top:2px}
+  .modal .body{padding:10px 20px 20px}
+</style>
+</head>
+<body>
+
+<main class="main">
+  <div class="main-in">
+
+    <div class="top">
+      <div>
+        <h1 style="margin:0;font-size:var(--fs-2xl);letter-spacing:-.02em">Archived</h1>
+        <p class="muted" style="margin:3px 0 0;font-size:var(--fs-md)">Completed and failed deliveries with their installation outcome — read-only, native logic untouched.</p>
+      </div>
+      <div class="top-actions">
+        <button class="btn" onclick="loadList()" data-tip="Reload from Creator">Refresh</button>
+      </div>
+    </div>
+
+    <!-- ADDED 2026-07-29, per user ("can we make a different tab like this in archive?
+         only for create shipment") — mirrors the old logistics-management app's own
+         "All Shipment Orders" report as a SEPARATE tab, same underlying ALL_ROWS data,
+         no second fetch needed. Existing Archived list/filters/detail view untouched. -->
+    <div class="seg" id="topTabs" role="tablist" style="margin-bottom:14px">
+      <button class="on" role="tab" data-tab="archived" onclick="switchTopTab('archived')">Archived</button>
+      <button role="tab" data-tab="shipment" onclick="switchTopTab('shipment')">Create Shipment</button>
+    </div>
+
+    <div id="archivedView">
+      <div class="kpis" id="statCards"></div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Completed deliveries</h2>
+          <span class="hint">Appointments marked Completed or Failed</span>
+          <div class="spacer"></div>
+          <div class="chips" id="filterPills">
+            <button class="fchip on" data-filter="all" onclick="setFilter('all')">All</button>
+            <button class="fchip" data-filter="Completed" onclick="setFilter('Completed')">Completed</button>
+            <button class="fchip" data-filter="Failed" onclick="setFilter('Failed')">Failed</button>
+          </div>
+          <div class="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <label class="sr-only" for="searchInput">Search archived deliveries</label>
+            <input id="searchInput" type="search" placeholder="Search SO#, customer…" oninput="renderList()">
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="q">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Type</th>
+                <th>Team</th>
+                <th>Confirmed date</th>
+                <th>Delivery status</th>
+                <th>Installation status</th>
+                <th>Rating</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="listBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div id="shipmentOrdersView" class="hidden">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>All Shipment Orders</h2>
+          <span class="hint">Failed deliveries are excluded — they never need a shipment</span>
+          <div class="spacer"></div>
+          <div class="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <label class="sr-only" for="shipSearchInput">Search shipment orders</label>
+            <input id="shipSearchInput" type="search" placeholder="Search SO#, PAC#, customer…" oninput="renderShipmentOrdersList()">
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="q">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Package number</th>
+                <th>Shipped date</th>
+                <th>Delivery date</th>
+                <th>Type of delivery</th>
+                <th>Create shipment</th>
+              </tr>
+            </thead>
+            <tbody id="shipmentOrdersBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+  </div>
+</main>
+
+<div class="scrim" id="scrim" onclick="closeTopModal()"></div>
+
+<!-- Detail modal — read-only -->
+<div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+  <header>
+    <h3 id="dTitle">—</h3>
+    <p>Read-only — this record is archived.</p>
+  </header>
+  <div class="body">
+    <div class="kv" id="dBody"></div>
+    <div class="m-foot">
+      <button class="btn" onclick="closeDetail()">Close</button>
+      <button class="btn primary" id="dCreateSRBtn" onclick="createSalesReturn(DETAIL_ID)">Create Sales Return</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shipment Detail modal — ADDED 2026-08-06, per user request: per-package Create
+     Shipment actions moved OUT of the read-only Archived detail modal above, into
+     their own detail view reachable only from the "Create Shipment" tab's own list
+     rows. Also gained a "Create All" bulk-create action for every not-yet-shipped
+     package under this appointment in one go. -->
+<div class="modal" id="shipmentDetailModal" role="dialog" aria-modal="true" aria-labelledby="sdTitle">
+  <header>
+    <h3 id="sdTitle">—</h3>
+    <p>One row per package on this appointment.</p>
+  </header>
+  <div class="body">
+    <div id="sdPackageShipmentsList"></div>
+    <div class="m-foot">
+      <button class="btn" onclick="closeShipmentDetail()">Close</button>
+      <button class="btn primary" id="sdCreateAllBtn" onclick="openCreateAllShipmentsModal()">Create All</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Shipment modal — ADDED 2026-07-29, per user request, real reference: the old
+     logistics-management app's own "Create Shipment" Report Action Item (Temp.txt), ported
+     as a Custom Function + widget modal (see DelugeScripts/dms_create_shipment_order.txt).
+     Requires a real Inventory Package (Package_Number) to already exist for this SO. -->
+<div class="modal wide layer2" id="shipmentModal" role="dialog" aria-modal="true" aria-labelledby="smTitle">
+  <header>
+    <h3 id="smTitle">Create Shipment</h3>
+    <p>Creates a real Shipment Order in Zoho Inventory for SO <span id="smSalesOrder" class="mono">—</span> / Package <span id="smPackageNumber" class="mono">—</span>.</p>
+  </header>
+  <form onsubmit="return false">
+    <div class="field">
+      <label for="smTypeOfDelivery">Type of Delivery</label>
+      <select id="smTypeOfDelivery"></select>
+      <small class="muted" id="smTypeOfDeliveryHint" style="font-size:var(--fs-sm)">Auto-filled from this record if set — pick one if blank.</small>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="smShipDate">Ship Date</label>
+        <input type="date" id="smShipDate">
+      </div>
+      <div class="field">
+        <label for="smDeliveryDate">Delivery Date</label>
+        <input type="date" id="smDeliveryDate">
+      </div>
+    </div>
+    <div class="row2">
+      <!-- CHANGED 2026-07-30, per user follow-up ("missing Carrier, Prepared By and
+           Delivery Team - still dont have dropdown") — converted despite the earlier
+           flag that Books' own live data for both was messy: Carrier's real dropdown
+           had literal "null"/numeric junk (13493/12999)/duplicate casing ("Pick Up" vs
+           "PICK UP") mixed in with genuine choices — only the distinct, clean-looking
+           values are kept here (Manual/Pick Up/Delivery and Installation/Delivery/Site
+           Visit/Installation); the junk entries are deliberately NOT copied. Books'
+           own field still allows free-text add-new, so this list may not be
+           exhaustive — flag if a real Carrier value used in practice isn't here. -->
+      <div class="field">
+        <label for="smCarrier">Carrier</label>
+        <select id="smCarrier">
+          <option value="">— Select —</option>
+          <option value="Manual">Manual</option>
+          <option value="Pick Up">Pick Up</option>
+          <option value="Delivery and Installation">Delivery and Installation</option>
+          <option value="Delivery">Delivery</option>
+          <option value="Site Visit">Site Visit</option>
+          <option value="Installation">Installation</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="smShippingCharge">Shipping Charges</label>
+        <input type="number" min="0" step="0.01" id="smShippingCharge" placeholder="0.00">
+      </div>
+    </div>
+    <div class="row2">
+      <!-- CHANGED 2026-07-30, per user ("i noticed that it is dropdown in books. so
+           can we just copy books choices here to avoid problems") — Ceiling Material/
+           Ceiling Height/Site Wiring Ready converted from free text (or, for Site
+           Wiring Ready, an incomplete 2-choice select) to real dropdowns matching
+           Books' exact live picklist values (confirmed via screenshots of the real
+           Books Edit Shipment form, not guessed) — same "match Books exactly" reasoning
+           already applied to Type of Delivery/BOOKS_DELIVERY_TYPES. -->
+      <div class="field">
+        <label for="smCeilingMaterial">Ceiling Material</label>
+        <select id="smCeilingMaterial">
+          <option value="">— Select —</option>
+          <option value="Gypsum">Gypsum</option>
+          <option value="Concrete">Concrete</option>
+          <option value="Wood">Wood</option>
+          <option value="N/A (no installation required)">N/A (no installation required)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="smCeilingHeight">Ceiling Height</label>
+        <select id="smCeilingHeight">
+          <option value="">— Select —</option>
+          <option value="Standard: 2.4 M - 2.7 M">Standard: 2.4 M - 2.7 M</option>
+          <option value="Mid: 2.8 M - 3.0 M">Mid: 2.8 M - 3.0 M</option>
+          <option value="High: above 3.0 M (please specify)">High: above 3.0 M (please specify)</option>
+          <option value="N/A (no installation required)">N/A (no installation required)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="smSiteWiringReady">Site Wiring Ready</label>
+        <select id="smSiteWiringReady">
+          <option value="">— Select —</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+          <option value="Existing light installed">Existing light installed</option>
+          <option value="N/A (no installation required)">N/A (no installation required)</option>
+        </select>
+      </div>
+      <!-- Prepared By: real Books staff-name list, captured from live screenshots
+           2026-07-30. Scrollbar hadn't reached the bottom of the real list when
+           captured — this may be INCOMPLETE, flag if a name used in practice is
+           missing. Unlike Carrier, every name seen looked like a genuine person, no
+           junk to filter out. -->
+      <div class="field">
+        <label for="smPreparedBy">Prepared By</label>
+        <select id="smPreparedBy">
+          <option value="">— Select —</option>
+          <option value="Joy">Joy</option>
+          <option value="CJ">CJ</option>
+          <option value="Jayvon">Jayvon</option>
+          <option value="Edmond">Edmond</option>
+          <option value="Hendel">Hendel</option>
+          <option value="Jonard">Jonard</option>
+          <option value="Jonrey">Jonrey</option>
+          <option value="Joselito">Joselito</option>
+          <option value="Kurt">Kurt</option>
+          <option value="Nherwin">Nherwin</option>
+          <option value="Rio">Rio</option>
+          <option value="Jomar">Jomar</option>
+          <option value="Manny">Manny</option>
+          <option value="Roger">Roger</option>
+          <option value="Petz">Petz</option>
+          <option value="Rash">Rash</option>
+          <option value="Jazz">Jazz</option>
+          <option value="Marco">Marco</option>
+        </select>
+      </div>
+    </div>
+    <!-- Delivery Team: real Books dropdown choices, confirmed via live screenshot
+         2026-07-30. Same team-name format Carrier's own "Own Fleet/3rd Party" idea
+         was gesturing at, just the actual real values. -->
+    <div class="field">
+      <label for="smDeliveryTeam">Delivery Team</label>
+      <select id="smDeliveryTeam">
+        <option value="">— Select —</option>
+        <option value="Edmon &amp; Darell">Edmon &amp; Darell</option>
+        <option value="Norben &amp; Seb">Norben &amp; Seb</option>
+        <option value="3rd Party">3rd Party</option>
+        <option value="Pick Up">Pick Up</option>
+        <option value="Field Team">Field Team</option>
+      </select>
+    </div>
+    <div class="m-foot">
+      <button type="button" class="btn" onclick="closeCreateShipmentModal()">Cancel</button>
+      <button type="button" class="btn primary" id="smSubmitBtn" onclick="doCreateShipment()">Create Shipment</button>
+    </div>
+  </form>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<div class="sr-only" id="srLive" aria-live="polite"></div>
+
+<script>
+/* Archived — new 2026-07-18, per plan's "Completed deliveries with installation
+   status" (1.1, marked "Keep as-is" — pure read-only UI, zero native logic
+   change). "Archived" = Appointment_Status IN (Completed, Failed) — the exact
+   opposite filter of OngoingService's own "active" set, so between the 2
+   widgets every Service_Appointment record is accounted for exactly once.
+   Joins in Field_Work's own Installation_Status/Customer_Rating per record by
+   matching Sales_Order — the only real shared key confirmed present on both
+   forms (no direct lookup/relation field between them exists). Last-write-wins
+   if a Sales_Order has multiple Field_Work rows (rare — one appointment
+   should map to one field visit in practice). */
+const REPORT_SA = 'Service_Appointment';
+const REPORT_FW = 'Field_Work_Report';
+// ADDED 2026-08-06 — see docs/2026-08-06-dms-multi-package-service-appointment-design.md.
+// Confirmed real report name (Zoho auto-created default report on form
+// creation) 2026-08-06 — not the guessed "All_Package_Shipments".
+const REPORT_PACKAGE_SHIPMENTS = 'Package_Shipments_Report';
+const ARCHIVED_STATUSES = ['Completed', 'Failed'];
+// Same 7 real DMS picklist choices as UI/FF Widget/OrderAggregation's own
+// DMS_DELIVERY_TYPES — mirrored here (this app's own per-file duplication
+// convention, no shared JS library between widgets) since Type_of_Delivery
+// can genuinely be blank on an archived record (Dispatch only sets it when
+// the source value matches one of these exactly, confirmed live 2026-07-29 —
+// several archived test records never matched and landed blank).
+const DMS_DELIVERY_TYPES = ["Delivery Only", "With Installation", "Full-Day Install", "Multi-Day Install", "Replacement", "Site Visit", "Pullout"];
+// CHANGED 2026-07-29, per user ("but the dropdown choices in shipment
+// creation copy books") — the Create Shipment modal's Type of Delivery
+// dropdown shows BOOKS' own real "Type of Delivery" choices (confirmed live
+// via a screenshot of that field's own picklist on the shipmentorders
+// module), not our own 7 DMS values — sent straight to Books as-is, no
+// translation needed server-side. Only used to PRE-SELECT a sensible default
+// from the record's own DMS value (BOOKS_DELIVERY_TYPE_MAP below); the
+// officer can freely pick any real Books choice regardless. Best-guess where
+// no exact DMS analog exists (flagged, correct if wrong — Books has no
+// day-count distinction so both Install durations map to the same choice;
+// "Site Visit" has no obvious 1:1 Books equivalent, mapped to "Service" as
+// the closest real choice). List possibly incomplete — the live screenshot's
+// own dropdown had a scrollbar suggesting more choices below "Service" that
+// were never confirmed; add them here if the officer needs one not listed.
+const BOOKS_DELIVERY_TYPES = ["Deliver & Install", "Deliver Only", "Demo", "Demo - Design Partner", "Pick Up", "Replacement", "Service"];
+const BOOKS_DELIVERY_TYPE_MAP = {
+  "Delivery Only": "Deliver Only",
+  "With Installation": "Deliver & Install",
+  "Full-Day Install": "Deliver & Install",
+  "Multi-Day Install": "Deliver & Install",
+  "Replacement": "Replacement",
+  "Site Visit": "Service",
+  "Pullout": "Pick Up"
+};
+
+/* Delivery-type colour coding — the design's own D.6 swatches, read from the
+   shared tokens so the Type column matches the calendar in DeliveryQueue. */
+const TYPE_COLOR = {
+  "Delivery Only": "var(--c-delivery)",
+  "With Installation": "var(--c-install)",
+  "Full-Day Install": "var(--c-fullday)",
+  "Multi-Day Install": "var(--c-multiday)",
+  "Replacement": "var(--c-replace)",
+  "Site Visit": "var(--c-site)",
+  "Pullout": "var(--c-pullout)",
+  "Pick Up": "var(--c-3p)"
+};
+
+var ALL_ROWS = [];
+var FW_BY_SO = {};
+/* ADDED 2026-08-07, real bug found live (SO-16415, 2 dispatches on the same SO
+   post-Multi-Package-redesign) — same root fix as DeliveryQueue/OngoingService,
+   see either of those files' own header comment for the full writeup. Field_Work_
+   Form now stamps its own Service_Appointment_ID — join by that first, FW_BY_SO
+   kept only as a fallback for pre-fix records (NOT retroactive). */
+var FW_BY_ID = {};
+function fieldWorkFor(r){
+  if(!r) return null;
+  if(r.ID && FW_BY_ID[String(r.ID)]) return FW_BY_ID[String(r.ID)];
+  return r.Sales_Order ? FW_BY_SO[r.Sales_Order] : null;
+}
+var CURRENT_FILTER = 'all';
+
+window.addEventListener('load', loadList);
+
+function errCode(e){
+  try {
+    if(e && e.responseText) return JSON.parse(e.responseText).code;
+    var s = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+    return JSON.parse(JSON.parse(s).responseText || s).code;
+  } catch(_){ return null; }
+}
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+// ADDED 2026-08-06 — not previously defined in this file; same convention used
+// across every other widget in this app (Pick/Pack/SO/OrderAggregation/
+// FulfillmentKanban/ReadinessGate/PreOrderReport all define it identically).
+function isTrue(v){
+  return v === true || v === "true";
+}
+function custName(r){
+  if(!r) return '';
+  if(r.Customer_Name && typeof r.Customer_Name === 'object'){
+    var f = r.Customer_Name.first_name || '';
+    var l = r.Customer_Name.last_name || '';
+    return (f + ' ' + l).trim();
+  }
+  return r.Customer_Name || '';
+}
+function statusBadge(s){
+  if(!s) return '<span class="pill p-gray">—</span>';
+  var cls = s==='Completed' ? 'p-ok' : (s==='Failed' ? 'p-bad' : 'p-gray');
+  return '<span class="pill ' + cls + '">' + esc(s) + '</span>';
+}
+function installBadge(s){
+  if(!s) return '<span class="pill p-gray">—</span>';
+  var cls = s==='Complete' ? 'p-ok' : 'p-warn';
+  return '<span class="pill ' + cls + '">' + esc(s) + '</span>';
+}
+function typeCell(v){
+  if(!v) return '<span class="muted">—</span>';
+  var c = TYPE_COLOR[v] || 'var(--border-strong)';
+  return '<span class="type" style="--c:' + c + '"><i></i>' + esc(v) + '</span>';
+}
+/* The design stacks toasts in a .toasts container and animates each one in; it
+   has no .show toggle on a single element. tone drives the leading dot colour. */
+function showToast(msg, tone){
+  var wrap = document.getElementById('toasts');
+  var t = document.createElement('div');
+  t.className = 'toast' + (tone ? ' ' + tone : '');
+  t.setAttribute('role', 'status');
+  t.innerHTML = '<i></i><span></span>';
+  t.querySelector('span').textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 4200);
+}
+function announce(msg){
+  var r = document.getElementById('srLive');
+  if(r){ r.textContent = ''; setTimeout(function(){ r.textContent = msg; }, 30); }
+}
+/* One scrim serves all three modals. It stays up while any of them is open,
+   and a click on it closes whichever is on top. */
+function syncScrim(){
+  var anyOpen = !!document.querySelector('.modal.on');
+  document.getElementById('scrim').classList.toggle('on', anyOpen);
+}
+function closeTopModal(){
+  if(document.getElementById('shipmentModal').classList.contains('on')) return closeCreateShipmentModal();
+  if(document.getElementById('shipmentDetailModal').classList.contains('on')) return closeShipmentDetail();
+  if(document.getElementById('detailModal').classList.contains('on')) return closeDetail();
+}
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeTopModal();
+});
+/* An 8-column table body message, styled as the design's empty state. */
+function listMessage(colspan, title, hint){
+  return '<tr class="static"><td colspan="' + colspan + '"><div class="empty"><b>' + esc(title) + '</b>' +
+    (hint ? '<span>' + esc(hint) + '</span>' : '') + '</div></td></tr>';
+}
+
+function loadList(){
+  document.getElementById('listBody').innerHTML = listMessage(8, 'Loading…', 'Reading Service Appointments and Field Work.');
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    console.error('[Archived] SDK not available');
+    showToast('Widget SDK not available — see console', 'bad');
+    return;
+  }
+  Promise.all([fetchReport(REPORT_SA), fetchReport(REPORT_FW)]).then(function(results){
+    var sa = results[0], fw = results[1];
+    ALL_ROWS = sa.filter(function(r){ return ARCHIVED_STATUSES.indexOf(r.Appointment_Status) >= 0; });
+    FW_BY_SO = {};
+    FW_BY_ID = {};
+    // FIXED 2026-08-08, real live bug — an already-ID-stamped row must never
+    // also populate the SO-only fallback (leaks into a DIFFERENT, unrelated
+    // Service_Appointment's lookup on the same SO). Only genuinely unstamped
+    // legacy rows may populate FW_BY_SO now. See DeliveryQueue's own copy of
+    // this fix for the full live repro.
+    fw.forEach(function(r){
+      if(r.Service_Appointment_ID){
+        FW_BY_ID[String(r.Service_Appointment_ID)] = r;
+      } else if(r.Sales_Order){
+        FW_BY_SO[r.Sales_Order] = r;
+      }
+    });
+    renderStats();
+    renderList();
+    renderShipmentOrdersList();
+  });
+}
+
+/* ADDED 2026-07-29 — "Create Shipment" top tab, same underlying ALL_ROWS data as
+   the existing Archived list, no second fetch. */
+function switchTopTab(tab){
+  document.querySelectorAll('#topTabs button').forEach(function(b){
+    b.classList.toggle('on', b.getAttribute('data-tab')===tab);
+  });
+  document.getElementById('archivedView').classList.toggle('hidden', tab!=='archived');
+  document.getElementById('shipmentOrdersView').classList.toggle('hidden', tab!=='shipment');
+}
+function fmtDisp(v){
+  return (v && String(v).trim()) ? esc(v) : '—';
+}
+/* ADDED 2026-11-06, per user ("dapat naka descend rin to hah").
+   Both lists used to sort by Sales_Order ASCENDING, which is neither a number
+   nor a date -- SO-16744 delivered today sat at the BOTTOM, under an SO-16489
+   from August. Archived is a history: the most recent delivery belongs on top.
+
+   The date compared is the one the row actually shows: Actual_Delivery_Date
+   when it exists, otherwise Confirmed_Schedule_Date.
+
+   Creator hands dates back in whichever format the app is set to, so the four
+   shapes this app really produces are all accepted (the same set the Delivery
+   Forecast widget's parseCreatorDate handles). An unreadable or empty value
+   returns null and SINKS -- an undated row must never float to the top, which
+   is exactly what a naive string compare would do with ''. */
+var ARCH_MON = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6,
+                 jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+function archivedWhen(r){
+  var s = String((r && (r.Actual_Delivery_Date || r.Confirmed_Schedule_Date)) || '').trim();
+  if(!s) return null;
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);                 /* yyyy-MM-dd  */
+  if(m) return Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3]);
+  m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/);                  /* dd-MMM-yyyy */
+  if(m && ARCH_MON[m[2].toLowerCase()]) return Number(m[3]) * 10000 + ARCH_MON[m[2].toLowerCase()] * 100 + Number(m[1]);
+  m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);             /* MM/dd/yyyy, MM-dd-yyyy */
+  if(m) return Number(m[3]) * 10000 + Number(m[1]) * 100 + Number(m[2]);
+  return null;
+}
+/* Newest first. Ties (same day, or both undated) fall back to the newest
+   RECORD. The ID compare is NUMERIC on purpose: Creator IDs are 16+ digits and
+   a string compare puts '9...' above '10...'. */
+function archivedNewestFirst(a, b){
+  var wa = archivedWhen(a), wb = archivedWhen(b);
+  if(wa !== wb){
+    if(wa === null) return 1;
+    if(wb === null) return -1;
+    return wb - wa;
+  }
+  return (Number(b && b.ID) || 0) - (Number(a && a.ID) || 0);
+}
+
+function renderShipmentOrdersList(){
+  var body = document.getElementById('shipmentOrdersBody');
+  if(!body) return;
+  var q = (document.getElementById('shipSearchInput').value||'').toLowerCase().trim();
+  // ADDED 2026-08-06, per user request — a Failed delivery never needs a real
+  // shipment created for it, so it has no business in the Create Shipment
+  // tab even though it's still a valid ARCHIVED_STATUSES entry (it still
+  // shows under the "Archived" tab itself, just not here).
+  var rows = ALL_ROWS.filter(function(r){
+    if(r.Appointment_Status === 'Failed') return false;
+    if(!q) return true;
+    var hay = ((r.Sales_Order||'') + ' ' + (r.Package_Number||'') + ' ' + custName(r)).toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+  rows.sort(archivedNewestFirst);
+  if(rows.length===0){
+    var nonFailedCount = ALL_ROWS.filter(function(r){ return r.Appointment_Status !== 'Failed'; }).length;
+    body.innerHTML = nonFailedCount===0
+      ? listMessage(6, 'No archived deliveries yet', 'Completed appointments appear here once they leave Ongoing Service.')
+      : listMessage(6, 'No deliveries match this search', 'Try a different SO#, PAC# or customer name.');
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    // CHANGED 2026-07-29, per user ("we shouldnt rename it same as old dms") —
+    // the old app's own "All Shipment Orders" report labels this column
+    // "Carrier" even though it displays Type_of_Delivery-style values
+    // ("Delivery and Install", "Pick Up") — Service_Appointment has no real
+    // Carrier field at all. Kept the same SOURCE field but renamed the column
+    // to "Type of Delivery" here instead of copying the old app's misleading
+    // label verbatim.
+    // ADDED 2026-08-06, per user request — row now opens its own Shipment
+    // Detail modal (per-package Create Shipment list + Create All), replacing
+    // the earlier attempt at putting these actions inside the read-only
+    // Archived detail modal.
+    return '<tr tabindex="0" onclick="openShipmentDetail(\'' + r.ID + '\')" onkeydown="if(event.key===\'Enter\')openShipmentDetail(\'' + r.ID + '\')">' +
+      '<td class="c-ord"><div class="ord"><div class="so">' + fmtDisp(r.Sales_Order) + '</div><div class="cust">' + fmtDisp(custName(r)) + '</div></div></td>' +
+      '<td data-label="Package number" class="mono">' + fmtDisp(r.Package_Number) + '</td>' +
+      '<td data-label="Shipped date">' + fmtDisp(r.Confirmed_Schedule_Date) + '</td>' +
+      '<td data-label="Delivery date">' + fmtDisp(r.Actual_Delivery_Date || r.Confirmed_Schedule_Date) + '</td>' +
+      '<td data-label="Type of delivery">' + typeCell(r.Type_of_Delivery) + '</td>' +
+      '<td data-label="Create shipment" class="sub2">' + packageShipmentCountLabel(r) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+function fetchReport(reportName){
+  return ZOHO.CREATOR.DATA.getRecords({ report_name: reportName, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){ return (resp && resp.code===3000 && resp.data) ? resp.data : []; })
+    .catch(function(e){
+      var c = errCode(e);
+      if(c===9220) return [];
+      console.error('[Archived] fetch error', reportName, e);
+      return [];
+    });
+}
+
+function renderStats(){
+  var completed = ALL_ROWS.filter(function(r){ return r.Appointment_Status==='Completed'; }).length;
+  var failed = ALL_ROWS.filter(function(r){ return r.Appointment_Status==='Failed'; }).length;
+  var withInstall = ALL_ROWS.filter(function(r){
+    var fw = fieldWorkFor(r);
+    return fw && fw.Installation_Status === 'Complete';
+  }).length;
+  var cards = [
+    { label:'Total Archived', value: ALL_ROWS.length, filter:'all',       c:'var(--muted)' },
+    { label:'Completed',      value: completed,       filter:'Completed', c:'var(--ok)' },
+    { label:'Failed',         value: failed,          filter:'Failed',    c:'var(--bad)' },
+    { label:'Installation Complete', value: withInstall, filter:null,     c:'var(--accent)' }
+  ];
+  document.getElementById('statCards').innerHTML = cards.map(function(c){
+    // The three status cards double as filters, matching the design's own
+    // clickable KPIs; "Installation Complete" is not a status, so it is inert.
+    var onclick = c.filter ? ' onclick="setFilter(\'' + c.filter + '\')"' : ' style="cursor:default"';
+    return '<button class="kpi" type="button"' + onclick + '>' +
+      '<div class="lbl"><i style="background:' + c.c + '"></i>' + esc(c.label) + '</div>' +
+      '<div class="val">' + esc(c.value) + '</div></button>';
+  }).join('');
+}
+
+function setFilter(f){
+  CURRENT_FILTER = f;
+  document.querySelectorAll('#filterPills .fchip').forEach(function(p){
+    p.classList.toggle('on', p.getAttribute('data-filter')===f);
+  });
+  switchTopTab('archived');
+  renderList();
+}
+
+function renderList(){
+  var q = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+  var rows = ALL_ROWS.filter(function(r){
+    if(CURRENT_FILTER!=='all' && r.Appointment_Status!==CURRENT_FILTER) return false;
+    if(!q) return true;
+    var hay = ((r.Sales_Order||'') + ' ' + custName(r)).toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+  rows.sort(archivedNewestFirst);
+
+  var body = document.getElementById('listBody');
+  if(rows.length===0){
+    body.innerHTML = ALL_ROWS.length===0
+      ? listMessage(8, 'No archived deliveries yet', 'An appointment lands here once it is marked Completed or Failed.')
+      : listMessage(8, 'No deliveries match this filter', 'Clear the search box or pick the All chip.');
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    var team = [r.Installer, r.Assigned_to_Driver].filter(Boolean).join(' / ') || '—';
+    var fw = fieldWorkFor(r);
+    var city = r.City ? (' · ' + esc(r.City)) : '';
+    return '<tr tabindex="0" onclick="openDetail(\'' + r.ID + '\')" onkeydown="if(event.key===\'Enter\')openDetail(\'' + r.ID + '\')">' +
+      '<td class="c-ord"><div class="ord"><div class="so">' + esc(r.Sales_Order) + '</div><div class="cust">' + esc(custName(r)) + city + '</div></div></td>' +
+      '<td data-label="Type">' + typeCell(r.Type_of_Delivery) + '</td>' +
+      '<td data-label="Team">' + esc(team) + '</td>' +
+      '<td data-label="Confirmed date">' + esc(r.Confirmed_Schedule_Date || '—') + '</td>' +
+      '<td data-label="Delivery status">' + statusBadge(r.Appointment_Status) + '</td>' +
+      '<td data-label="Installation status">' + installBadge(fw ? fw.Installation_Status : null) + '</td>' +
+      '<td data-label="Rating" class="stars">' + esc(fw ? (fw.Customer_Rating || '—') : '—') + '</td>' +
+      '<td class="c-act" onclick="event.stopPropagation()"><div class="acts">' +
+        '<button class="btn sm" onclick="createSalesReturn(\'' + r.ID + '\')">Create Sales Return</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+/* ════════════════════════════════
+   CREATE SHIPMENT — ADDED 2026-07-29, per user request, real reference: the old
+   logistics-management app's own "Create Shipment" Report Action Item (see
+   DelugeScripts/dms_create_shipment_order.txt for the full writeup + Deluge side).
+   Gate: requires a real Package_Number on the record (a Shipment Order needs a
+   real Inventory Package to attach to) and blocks once Shipment_Order_No is
+   already set (one Shipment per delivery, matches this app's own "Sent ✓"
+   one-shot-action convention used elsewhere, e.g. Sales Return's own gate).
+════════════════════════════════ */
+const CUSTOM_API_NAME_CREATE_SHIPMENT = 'create_shipment_order';
+const CUSTOM_API_KEY_CREATE_SHIPMENT = 'jY80mKYMCXqbb8df8a9pnt8tz';
+
+function invokeCustomApi(apiName, publicKey, params){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({
+    app_name: REAL_APP_NAME,
+    api_name: apiName,
+    public_key: publicKey,
+    http_method: 'POST',
+    payload: params || {}
+  }).then(function(resp){
+    return (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+  });
+}
+
+// CHANGED 2026-08-06 — supersedes the same-day single-Package_Number gate.
+// Package_Shipments (one row per appointment×package) is now the real
+// source of truth; this widget fetches+caches them per open detail view
+// rather than embedding shipment state on the Service_Appointment row
+// itself. PACKAGE_SHIPMENTS_BY_SA_ID: appointment ID (string) -> array of
+// its own Package_Shipments rows, populated by loadPackageShipmentsFor().
+var PACKAGE_SHIPMENTS_BY_SA_ID = {};
+
+function packageShipmentCountLabel(r){
+  var rows = PACKAGE_SHIPMENTS_BY_SA_ID[String(r.ID)];
+  if(!rows) return '<span class="muted">Open to load</span>'; // list view never triggers the fetch — detail view does
+  var shipped = rows.filter(function(x){ return isTrue(x.Shipment_Created); }).length;
+  return rows.length + ' package' + (rows.length===1?'':'s') + ' (' + shipped + ' shipped)';
+}
+
+function loadPackageShipmentsFor(saId){
+  return ZOHO.CREATOR.DATA.getRecords({
+    app_name: REAL_APP_NAME,
+    report_name: REPORT_PACKAGE_SHIPMENTS,
+    criteria: '(Service_Appointment_ID == "' + saId + '")',
+    field_config: 'all',
+  }).then(function(resp){
+    var rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+    PACKAGE_SHIPMENTS_BY_SA_ID[String(saId)] = rows;
+    return rows;
+  }).catch(function(err){
+    var c = errCode(err);
+    if(c!==9220) console.error('[Archived] loadPackageShipmentsFor failed', err);
+    PACKAGE_SHIPMENTS_BY_SA_ID[String(saId)] = [];
+    return [];
+  });
+}
+
+// CHANGED 2026-08-06, per user request — now also shows item name(s) for this
+// specific package (cross-referenced from the parent appointment's own
+// Item_Details by matching row.PAC === ps.Package_Number) and always surfaces
+// the SHP number as its own line once shipped, not just inline in the badge.
+function packageShipmentRowHtml(ps, itemNames){
+  var shipped = isTrue(ps.Shipment_Created);
+  var statusHtml = shipped
+    ? '<span class="pill p-ok">Shipped</span>'
+    : '<button class="btn sm primary" onclick="openCreateShipmentModal(\'' + ps.ID + '\')">Create Shipment</button>';
+  var itemsLine = itemNames ? ('<div class="meta">' + esc(itemNames) + '</div>') : '';
+  var shpLine = shipped ? ('<div class="meta">SHP # ' + esc(ps.Shipment_Order_No||'—') + '</div>') : '';
+  return '<div class="pkg-row">' +
+    '<div><div class="nm mono">' + esc(ps.Package_Number||'—') + '</div>' + itemsLine + shpLine + '</div>' +
+    statusHtml +
+    '</div>';
+}
+
+var SHIPMENT_MODAL_ID = null; // a Package_Shipments record ID, or the literal string 'ALL' for bulk mode
+var SHIPMENT_MODAL_SA_ID = null; // the parent appointment's own ID, kept alongside for the Create call
+
+// ADDED 2026-08-06 — shared field-defaulting logic, factored out of
+// openCreateShipmentModal so openCreateAllShipmentsModal (bulk mode) can reuse
+// it exactly instead of duplicating it.
+function populateShipmentModalDefaults(r){
+  var todSel = document.getElementById('smTypeOfDelivery');
+  var todVal = r.Type_of_Delivery || '';
+  todSel.innerHTML = '<option value="">— Select —</option>' + BOOKS_DELIVERY_TYPES.map(function(t){
+    return '<option value="' + esc(t) + '">' + esc(t) + '</option>';
+  }).join('');
+  var mappedDefault = BOOKS_DELIVERY_TYPE_MAP[todVal] || '';
+  todSel.value = BOOKS_DELIVERY_TYPES.indexOf(mappedDefault) !== -1 ? mappedDefault : '';
+  var today = new Date().toISOString().slice(0,10);
+  document.getElementById('smShipDate').value = today;
+  document.getElementById('smDeliveryDate').value = (r.Actual_Delivery_Date || r.Confirmed_Schedule_Date || today).toString().slice(0,10);
+  document.getElementById('smCarrier').value = '';
+  document.getElementById('smShippingCharge').value = '';
+  document.getElementById('smCeilingMaterial').value = '';
+  document.getElementById('smCeilingHeight').value = '';
+  document.getElementById('smSiteWiringReady').value = '';
+  document.getElementById('smPreparedBy').value = '';
+  document.getElementById('smDeliveryTeam').value = '';
+}
+function openCreateShipmentModal(packageShipmentId){
+  var saId = SHIPMENT_DETAIL_ID; // Shipment Detail modal is always open when this is called
+  var r = ALL_ROWS.find(function(x){ return String(x.ID)===String(saId); });
+  var psRows = PACKAGE_SHIPMENTS_BY_SA_ID[String(saId)] || [];
+  var ps = psRows.find(function(x){ return String(x.ID)===String(packageShipmentId); });
+  if(!r || !ps) return;
+  if(isTrue(ps.Shipment_Created)){ showToast('Shipment already created for this package.', 'warn'); return; }
+  SHIPMENT_MODAL_ID = packageShipmentId;
+  SHIPMENT_MODAL_SA_ID = saId;
+  document.getElementById('smSalesOrder').textContent = r.Sales_Order || '—';
+  document.getElementById('smPackageNumber').textContent = ps.Package_Number || '—';
+  populateShipmentModalDefaults(r);
+  document.getElementById('shipmentModal').classList.add('on');
+  syncScrim();
+}
+// ADDED 2026-08-06, per user request — "Create All" bulk-creates a shipment
+// for every not-yet-shipped package under the currently-open Shipment Detail
+// modal's appointment, reusing ONE set of entered field values (ship date,
+// carrier, etc.) across all of them rather than requiring the officer to
+// re-fill the same form once per package.
+function openCreateAllShipmentsModal(){
+  var saId = SHIPMENT_DETAIL_ID;
+  var r = ALL_ROWS.find(function(x){ return String(x.ID)===String(saId); });
+  var psRows = PACKAGE_SHIPMENTS_BY_SA_ID[String(saId)] || [];
+  var unshipped = psRows.filter(function(x){ return !isTrue(x.Shipment_Created); });
+  if(!r || !unshipped.length){ showToast('No unshipped packages to create.', 'warn'); return; }
+  SHIPMENT_MODAL_ID = 'ALL';
+  SHIPMENT_MODAL_SA_ID = saId;
+  document.getElementById('smSalesOrder').textContent = r.Sales_Order || '—';
+  document.getElementById('smPackageNumber').textContent = unshipped.length + ' unshipped package' + (unshipped.length===1?'':'s') + ' (' + unshipped.map(function(x){ return x.Package_Number; }).join(', ') + ')';
+  populateShipmentModalDefaults(r);
+  document.getElementById('shipmentModal').classList.add('on');
+  syncScrim();
+}
+function closeCreateShipmentModal(){
+  document.getElementById('shipmentModal').classList.remove('on');
+  syncScrim();
+}
+function doCreateShipment(){
+  if(!SHIPMENT_MODAL_ID) return;
+  var btn = document.getElementById('smSubmitBtn');
+  var fieldPayload = {
+    typeOfDelivery: document.getElementById('smTypeOfDelivery').value,
+    shipDate: document.getElementById('smShipDate').value,
+    deliveryDate: document.getElementById('smDeliveryDate').value,
+    carrier: document.getElementById('smCarrier').value.trim(),
+    shippingCharge: document.getElementById('smShippingCharge').value.trim(),
+    ceilingMaterial: document.getElementById('smCeilingMaterial').value.trim(),
+    ceilingHeight: document.getElementById('smCeilingHeight').value.trim(),
+    siteWiringReady: document.getElementById('smSiteWiringReady').value,
+    preparedBy: document.getElementById('smPreparedBy').value.trim(),
+    deliveryTeam: document.getElementById('smDeliveryTeam').value.trim()
+  };
+
+  // ADDED 2026-08-06 — bulk "Create All" path: same field values, one
+  // sequential Custom API call per not-yet-shipped package, best-effort (one
+  // package's failure doesn't stop the rest — matches this app's own
+  // established "report what failed, don't abort" convention used elsewhere,
+  // e.g. OrderAggregation's per-package Package_Shipments insert loop).
+  if(SHIPMENT_MODAL_ID === 'ALL'){
+    var saId = SHIPMENT_MODAL_SA_ID;
+    var psRows = PACKAGE_SHIPMENTS_BY_SA_ID[String(saId)] || [];
+    var targets = psRows.filter(function(x){ return !isTrue(x.Shipment_Created); });
+    if(!targets.length){ showToast('No unshipped packages to create.', 'warn'); return; }
+    btn.disabled = true; btn.setAttribute('aria-busy','true'); btn.textContent = 'Creating…';
+    var succeeded = [], failed = [];
+    var chain = Promise.resolve();
+    targets.forEach(function(ps){
+      chain = chain.then(function(){
+        var payload = { recordId: String(saId), packageShipmentId: String(ps.ID) };
+        for(var k in fieldPayload){ payload[k] = fieldPayload[k]; }
+        return invokeCustomApi(CUSTOM_API_NAME_CREATE_SHIPMENT, CUSTOM_API_KEY_CREATE_SHIPMENT, payload).then(function(result){
+          console.log('[Archived] createShipmentOrder (bulk) result for', ps.Package_Number, ':', JSON.stringify(result));
+          if(result && result.status === 'success'){ succeeded.push(ps.Package_Number); }
+          else { failed.push(ps.Package_Number + ((result && result.message) ? (' — ' + result.message) : '')); }
+        }).catch(function(err){
+          console.error('[Archived] createShipmentOrder (bulk) error for', ps.Package_Number, ':', JSON.stringify(err));
+          failed.push(ps.Package_Number + ' — see console');
+        });
+      });
+    });
+    chain.then(function(){
+      btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = 'Create Shipment';
+      closeCreateShipmentModal();
+      showToast(succeeded.length + '/' + targets.length + ' shipment(s) created.' + (failed.length ? ' Failed: ' + failed.join('; ') : ''), failed.length ? 'warn' : '');
+      loadList();
+      loadPackageShipmentsFor(saId).then(function(){
+        renderPackageShipmentsList(saId);
+        renderShipmentOrdersList();
+      });
+    });
+    return;
+  }
+
+  btn.disabled = true; btn.setAttribute('aria-busy','true'); btn.textContent = 'Creating…';
+  var singlePayload = { recordId: String(SHIPMENT_MODAL_SA_ID), packageShipmentId: String(SHIPMENT_MODAL_ID) };
+  for(var k2 in fieldPayload){ singlePayload[k2] = fieldPayload[k2]; }
+  invokeCustomApi(CUSTOM_API_NAME_CREATE_SHIPMENT, CUSTOM_API_KEY_CREATE_SHIPMENT, singlePayload).then(function(result){
+    btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = 'Create Shipment';
+    console.log('[Archived] createShipmentOrder result:', JSON.stringify(result));
+    if(result && result.status === 'success'){
+      showToast(result.message || 'Shipment created.');
+      closeCreateShipmentModal();
+      loadList();
+      loadPackageShipmentsFor(SHIPMENT_MODAL_SA_ID).then(function(){
+        renderPackageShipmentsList(SHIPMENT_MODAL_SA_ID);
+        renderShipmentOrdersList();
+      });
+    } else {
+      showToast((result && result.message) || 'Create Shipment failed — see console.', 'bad');
+    }
+  }).catch(function(err){
+    btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = 'Create Shipment';
+    console.error('[Archived] createShipmentOrder error:', JSON.stringify(err));
+    showToast('Create Shipment failed — see console.', 'bad');
+  });
+}
+
+var DETAIL_ID = null;
+function openDetail(id){
+  var r = ALL_ROWS.find(function(x){ return String(x.ID)===String(id); });
+  if(!r) return;
+  DETAIL_ID = id;
+  var fw = fieldWorkFor(r);
+  document.getElementById('dTitle').textContent = (r.Sales_Order||'—') + ' — ' + (custName(r)||'—');
+  var rows = [
+    ['Type of Delivery', r.Type_of_Delivery || '—'],
+    ['Delivery Status', r.Appointment_Status || '—'],
+    ['Installer / Driver', [r.Installer, r.Assigned_to_Driver].filter(Boolean).join(' / ') || '—'],
+    ['Fleet Assignment', r.Fleet_Assignment || '—'],
+    ['Confirmed Schedule', r.Confirmed_Schedule_Date ? (r.Confirmed_Schedule_Date + ' · ' + (r.Confirmed_Time_Slot||'')) : '—'],
+    ['Address', [r.Customer_Address, r.City].filter(Boolean).join(', ') || '—'],
+    ['Installation Status', fw ? (fw.Installation_Status || '—') : '— (no Field_Work record found)'],
+    ['Customer Rating', fw ? (fw.Customer_Rating || '—') : '—'],
+    ['Exception Status', r.Exception_Status || '—'],
+    ['Exception Reason', r.Exception_Reason || '—'],
+    ['Package Number', r.Package_Number || '—']
+  ];
+  document.getElementById('dBody').innerHTML = rows.map(function(row){
+    return '<div><span>' + esc(row[0]) + '</span><b>' + esc(row[1]) + '</b></div>';
+  }).join('');
+
+  document.getElementById('detailModal').classList.add('on');
+  syncScrim();
+}
+function closeDetail(){
+  document.getElementById('detailModal').classList.remove('on');
+  syncScrim();
+}
+
+// ADDED 2026-08-06 — separate detail view for the "Create Shipment" tab,
+// see shipmentDetailModal in the HTML above. SHIPMENT_DETAIL_ID is deliberately
+// its own variable, not reused from Archived's own DETAIL_ID — the two modals
+// are now fully independent (a row in one tab no longer implies anything about
+// the other tab's modal state).
+var SHIPMENT_DETAIL_ID = null;
+function openShipmentDetail(id){
+  var r = ALL_ROWS.find(function(x){ return String(x.ID)===String(id); });
+  if(!r) return;
+  SHIPMENT_DETAIL_ID = id;
+  document.getElementById('sdTitle').textContent = (r.Sales_Order||'—') + ' — ' + (custName(r)||'—');
+  document.getElementById('sdPackageShipmentsList').innerHTML = '<p class="muted" style="font-size:var(--fs-md)">Loading packages…</p>';
+  loadPackageShipmentsFor(id).then(function(){
+    renderPackageShipmentsList(id);
+  });
+  document.getElementById('shipmentDetailModal').classList.add('on');
+  syncScrim();
+}
+function closeShipmentDetail(){
+  document.getElementById('shipmentDetailModal').classList.remove('on');
+  syncScrim();
+}
+function renderPackageShipmentsList(saId){
+  var rows = PACKAGE_SHIPMENTS_BY_SA_ID[String(saId)] || [];
+  var container = document.getElementById('sdPackageShipmentsList');
+  if(!rows.length){
+    container.innerHTML = '<div class="empty"><b>No packages registered</b><span>This appointment has no Package_Shipments rows, so there is nothing to ship.</span></div>';
+    return;
+  }
+  var sa = ALL_ROWS.find(function(x){ return String(x.ID)===String(saId); });
+  var itemDetails = (sa && Array.isArray(sa.Item_Details)) ? sa.Item_Details : [];
+  container.innerHTML = rows.map(function(ps){
+    var names = itemDetails.filter(function(it){ return it.PAC === ps.Package_Number; }).map(function(it){ return it.Item_Name; }).filter(Boolean);
+    return packageShipmentRowHtml(ps, names.join(', '));
+  }).join('');
+}
+
+/* ADDED 2026-07-23, per user (matching the old logistics-management app's
+   "Archives - Pickup" → "Create Sales Return" button pattern, screenshots
+   confirmed). Cross-widget navigate to the Sales Returns Creator Page with this
+   record's own ID as a query param — same navigateParentURL+getQueryParams
+   deep-link pattern already proven working for POs→PRs (UI/EndUser/POs/app/PO.html's
+   navigateToPR / UI/EndUser/PRs/app/index.html's checkDeepLinkOpenPR). SalesReturns'
+   own openNewFromArchive() reads it on load and pre-fills the New Sales Return
+   modal with whatever this Archived record actually carries (SO#, Customer,
+   Address, City, Contact, Email) — Service_Appointment has no per-item/SKU data
+   at all (confirmed 2026-07-23), so the Items grid still starts empty, officer
+   fills it manually same as before.
+   NEEDS 2 manual Creator setup steps before this works (same class as the PO→PR
+   deep link): (1) confirm the real Page link name for the Sales Returns page —
+   'Sales_Returns' below is a best-guess, fix if wrong; (2) register a Page
+   Variable named 'fromArchiveId' on that page (Page Builder → Variables tab →
+   Add Variable → text type) — getQueryParams() silently returns {} without it. */
+const SALES_RETURNS_PAGE_LINK_NAME = 'Sales_Returns1'; // confirmed live 2026-07-23
+const ACCOUNT_OWNER = 'homecartel';
+const REAL_APP_NAME = 'supply-chain-app';
+/* FIXED 2026-07-23 — first version passed a bare relative hash string + wrong
+   call signature (button did nothing, silently). Real proven shape, ported from
+   UI/EndUser/POs/app/PO.html's navigateToPR(): full absolute URL, query string
+   AFTER the page hash (not before — getQueryParams() only reads that position),
+   and navigateParentURL takes an OBJECT ({action:'open',url,window:'same'}), not
+   a bare string.
+   FIXED 2026-08-06, real bug found live per user report ("archive create sales
+   return still go to dev, not production") — this had DEVIATED from the proven
+   navigateToPR() pattern it claims to be ported from in 2 ways: (1) a literal
+   `/environment/development/` URL segment, hardcoded, so the button always sent
+   the user to Dev regardless of which environment they were actually working in;
+   (2) `creatorapp.zoho.com` instead of `creator.zoho.com`. navigateToPR() itself
+   has neither — no environment segment at all (omitting it keeps navigation
+   within whichever environment the user is CURRENTLY in, same "omit = current
+   environment" convention already established for REST call headers elsewhere
+   in this app) and uses the plain creator.zoho.com domain. Matched exactly now. */
+function createSalesReturn(id){
+  if(!id) return;
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.navigateParentURL!=='function'){
+    showToast('Navigation not available — see console', 'bad');
+    console.error('[Archived] navigateParentURL not available');
+    return;
+  }
+  try{
+    var url = 'https://creator.zoho.com/' + ACCOUNT_OWNER + '/' + REAL_APP_NAME + '/#Page:' + SALES_RETURNS_PAGE_LINK_NAME + '?fromArchiveId=' + encodeURIComponent(id);
+    ZOHO.CREATOR.UTIL.navigateParentURL({ action:'open', url:url, window:'same' });
+  }catch(e){
+    console.warn('[Archived] createSalesReturn failed', e);
+  }
+}
+</script>
+</body>
+</html>

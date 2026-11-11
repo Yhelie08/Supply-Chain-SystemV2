@@ -1,0 +1,2174 @@
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shipments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="timeline_history_component/timeline-history.css">
+<link rel="stylesheet" href="internal-notes_component/internal-notes.css">
+<link rel="stylesheet" href="notification_component/notification.css">
+<style>
+  :root {
+    --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+    --green:#16A34A; --green-light:#DCFCE7; --green-mid:#86EFAC;
+    --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+    --red:#DC2626; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+    --purple:#7C3AED; --purple-light:#EDE9FE; --purple-mid:#C4B5FD;
+    --orange:#EA580C; --orange-dark:#C2410C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0;
+    --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B;
+    --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+    --white:#FFFFFF;
+    --radius-sm:4px; --radius:8px; --radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+    --t:150ms ease;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  button,input,select{font-family:inherit}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-sm{height:32px;padding:0 13px;font-size:13px}
+  .btn-orange{background:var(--orange);color:var(--white);font-weight:600;box-shadow:0 1px 3px rgba(234,88,12,.3)}
+  .btn-orange:hover{background:var(--orange-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(234,88,12,.3)}
+  .btn-orange:disabled{background:var(--gray-300);color:var(--gray-500);box-shadow:none;cursor:not-allowed;transform:none}
+
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transform:translateY(6px);transition:opacity 200ms ease,transform 200ms ease;pointer-events:none;max-width:340px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  .page{padding:24px;display:flex;flex-direction:column;gap:20px;min-height:100vh;box-sizing:border-box}
+  .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;flex-shrink:0}
+  .page-header-left h1{font-size:24px;font-weight:700;color:#1A1A2E;letter-spacing:-.02em;line-height:1.2}
+  .page-header-left p{font-size:13px;color:var(--gray-500);margin-top:4px}
+
+  /* CHANGED 2026-07-16 — was a fixed repeat(6,1fr), broke visually once a 7th stat
+     card (Ship Mode Unmatched) was added (6 cards top row, 1 lonely card + 5 empty
+     cells on row 2). auto-fit wraps gracefully regardless of how many cards exist. */
+  .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;flex-shrink:0}
+  @media(max-width:640px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:14px 18px;box-shadow:var(--shadow)}
+  .stat-label{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em}
+  .stat-value{font-size:26px;font-weight:700;line-height:1.1;margin:6px 0 2px;color:var(--gray-800);font-variant-numeric:tabular-nums}
+  .stat-value.orange{color:var(--orange)}
+  .stat-value.blue{color:var(--blue)}
+  .stat-value.red{color:var(--red)}
+  .stat-value.green{color:var(--green)}
+
+  /* CHANGED 2026-08-20, per user report (screenshot, "gawin mo din dito yung border")
+     — same fix already applied to the sibling Purchase Order (POs.zip) widget the
+     same day: .main-card used to be sized to its own content only, so once the
+     table had just a few rows the page ended in a tall, un-boxed blank area below
+     it. .page (above) is already a flex column with min-height:100vh — .main-card
+     just needed flex:1/min-height:0 to actually claim that remaining space, same
+     "one continuous bordered card fills the page" pattern the Purchase Request
+     widget already uses for its own .main-card. */
+  .main-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;flex:1;min-height:0}
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap;flex-shrink:0}
+  .filter-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 14px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .pill:hover{border-color:var(--orange);color:var(--orange)}
+  .pill.active{background:var(--orange);border-color:var(--orange);color:var(--white)}
+  .search-wrap{position:relative;flex:0 1 240px;min-width:160px}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400);pointer-events:none}
+  .search-input{width:100%;height:32px;padding:0 10px 0 32px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--gray-50);color:var(--gray-700);font-size:13px;outline:none;transition:all var(--t);box-sizing:border-box}
+  .search-input:focus{border-color:var(--orange);background:var(--white)}
+
+  .table-wrap{overflow-x:auto}
+  /* ADDED 2026-08-20 — scoped to .main-card specifically (the main Shipments list),
+     not the shared base rule above, so the Detail view's own line-items table and
+     Shipment Grouping's per-group tables (both also .table-wrap, both inside
+     non-flex parents) are unaffected. Lets the list's own table region grow to fill
+     whatever space .main-card's new flex:1 claims. */
+  .main-card .table-wrap{flex:1;min-height:0}
+  .shp-table{width:100%;border-collapse:collapse;min-width:1000px}
+  .shp-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .shp-table th{padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+  .shp-table tbody tr{border-bottom:1px solid var(--gray-100);border-left:3px solid transparent;transition:background var(--t);cursor:pointer}
+  .shp-table tbody tr:hover{background:var(--gray-50)}
+  .shp-table tbody tr:last-child{border-bottom:none}
+  .shp-table tbody tr.row-pending{border-left-color:var(--gray-300)}
+  .shp-table tbody tr.row-transit{border-left-color:var(--blue)}
+  .shp-table tbody tr.row-arriving{border-left-color:var(--orange)}
+  .shp-table tbody tr.row-delayed{border-left-color:var(--red);background:rgba(220,38,38,.03)}
+  .shp-table tbody tr.row-delivered{border-left-color:var(--green)}
+  .shp-table td{padding:12px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle}
+  .empty-state{padding:60px 20px;text-align:center;color:var(--gray-400)}
+  .empty-state svg{width:40px;height:40px;margin:0 auto 12px;opacity:.5}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .badge-gray{background:var(--gray-100);color:var(--gray-600);border-color:var(--gray-200)}
+  .badge-blue{background:var(--blue-light);color:var(--blue-dark);border-color:var(--blue-mid)}
+  .badge-amber{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+  .badge-green{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .badge-red{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+  .badge-orange{background:var(--orange-light);color:var(--orange-dark);border-color:var(--orange-mid)}
+
+  .back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--gray-500);cursor:pointer;transition:color var(--t)}
+  .back-link:hover{color:var(--orange)}
+
+  .detail-grid{display:grid;grid-template-columns:2fr 1fr;gap:18px}
+  @media(max-width:980px){.detail-grid{grid-template-columns:1fr}}
+  .card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px 20px}
+  .card h3{font-size:13px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px}
+  .info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 20px}
+  .info-item label{display:block;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+  .info-item .val{font-size:14px;font-weight:600;color:var(--gray-800)}
+  .info-item input,.info-item select{width:100%;font-family:inherit;font-size:13px;color:var(--gray-800);background:var(--white);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:6px 9px;outline:none}
+  .info-item input:focus,.info-item select:focus{border-color:var(--orange)}
+
+  .header-strip{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hs-field{font-size:12.5px;font-weight:600;color:var(--gray-700);white-space:nowrap}
+  .hs-field.hs-ship{font-size:15px;color:var(--orange-dark)}
+  .hs-field.hs-po{color:var(--green)}
+  .hs-field.hs-so{color:var(--purple)}
+  .hs-field.hs-muted{color:var(--gray-400);font-weight:500}
+
+  .delay-banner{margin-top:12px;border-radius:6px;padding:10px 14px;font-size:12px;font-weight:600}
+  .delay-banner.behind{background:var(--red-light);color:var(--red);border:1px solid rgba(220,38,38,.2)}
+  .delay-banner.ontrack{background:var(--green-light);color:var(--green);border:1px solid rgba(22,163,74,.2)}
+  .delay-banner.unknown{background:var(--gray-50);color:var(--gray-500);border:1px solid var(--gray-200)}
+
+  .line-table{width:100%;border-collapse:collapse;min-width:820px}
+  .line-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;background:var(--gray-50);border-bottom:1.5px solid var(--gray-200);white-space:nowrap}
+  .line-table td{padding:8px 10px;font-size:13px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+  .line-table tr{border-left:3px solid transparent}
+  .line-table tr.lr-full{border-left-color:var(--green);background:rgba(22,163,74,.03)}
+  .line-table tr.lr-partial{border-left-color:var(--amber);background:rgba(217,119,6,.03)}
+  .line-table input[type=number]{width:80px;height:30px;padding:0 8px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+  .line-table input[type=number]:focus{border-color:var(--orange);outline:none}
+  .cell-sku{font-family:monospace;font-size:11.5px;color:var(--gray-500);background:var(--gray-100);padding:2px 6px;border-radius:var(--radius-sm);white-space:nowrap}
+
+  .spinner{width:28px;height:28px;border:3px solid var(--gray-200);border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-wrap{padding:60px 20px;text-align:center;color:var(--gray-400);font-size:13px}
+  .loading-wrap .spinner{margin-bottom:12px}
+
+  /* ADDED 2026-07-21 — Shipment Grouping view. Reuses .stat-cards/.filter-row/.pill/
+     .search-wrap/.table-wrap/.empty-state/.back-link from above unchanged; only
+     genuinely new classes are added here. */
+  .section-title{font-size:13px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 2px;display:flex;align-items:center;gap:8px}
+  .section-title .badge-count{font-size:11px;font-weight:600;color:var(--gray-400);background:var(--gray-100);border-radius:999px;padding:2px 9px}
+  .group-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .group-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  /* CHANGED 2026-08-20, per user report ("ayusin mo din ang UI kasi di siya na align
+     ang mga row") — each shipment group renders its own separate <table>, so plain
+     content-based column sizing let every card's columns land at different widths
+     depending on that card's own longest cell — SKU/Item/Status columns didn't line
+     up from one group-card to the next. table-layout:fixed + a shared <colgroup>
+     (see sgGroupCardHtml()) forces every card's table to use the exact same column
+     widths, so rows line up consistently down the whole page regardless of content. */
+  .grp-table{width:100%;border-collapse:collapse;min-width:900px;table-layout:fixed}
+  .grp-table th{padding:9px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;background:var(--white);border-bottom:1.5px solid var(--gray-100);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grp-table td{padding:9px 12px;font-size:13px;color:var(--gray-700);border-bottom:1px solid var(--gray-100);vertical-align:middle;overflow-wrap:break-word}
+  .grp-table tr:last-child td{border-bottom:none}
+  /* ADDED 2026-08-20 — Shipment Grouping's own tab bar, replacing the old 3-pill
+     filter row (All/Not Delivered/Delivered) with a real 2-tab bar (In Transit /
+     Delivered, no "All"). New class names, doesn't touch the main list view's own
+     .filter-pills/.pill, same "only new classes added here" convention as the rest
+     of this block. */
+  .sg-tabs{display:flex;gap:4px;border-bottom:2px solid var(--gray-200)}
+  .sg-tab{display:inline-flex;align-items:center;gap:8px;padding:10px 4px;margin-bottom:-2px;border:none;background:transparent;border-bottom:2px solid transparent;color:var(--gray-500);font-size:13.5px;font-weight:600;cursor:pointer;transition:all var(--t);font-family:inherit}
+  .sg-tab:hover{color:var(--gray-700)}
+  .sg-tab.active{color:var(--orange);border-bottom-color:var(--orange)}
+  .sg-tab .badge-count{font-size:11px;font-weight:600;color:var(--gray-400);background:var(--gray-100);border-radius:999px;padding:2px 8px}
+  .sg-tab.active .badge-count{color:var(--orange-dark);background:var(--orange-light)}
+  .sg-mode-tabs{display:flex;gap:6px;margin:12px 0 4px}
+  .sg-mode-tab{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--gray-200);background:#fff;color:var(--gray-500);font-size:12.5px;font-weight:600;cursor:pointer;transition:all var(--t);font-family:inherit}
+  .sg-mode-tab:hover{border-color:var(--gray-300);color:var(--gray-700)}
+  .sg-mode-tab.active{color:var(--orange-dark);background:var(--orange-light);border-color:var(--orange)}
+  .sg-mode-tab .badge-count{font-size:11px;font-weight:600;color:var(--gray-400);background:var(--gray-100);border-radius:999px;padding:1px 7px}
+  .sg-mode-tab.active .badge-count{color:var(--orange-dark);background:#fff}
+  select.st-select{height:30px;padding:0 8px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-size:12.5px;background:var(--white)}
+  select.st-select:focus{border-color:var(--orange);outline:none}
+  .row-save-btn{height:28px;padding:0 11px;font-size:12px}
+  .row-dirty{background:rgba(234,88,12,.05)}
+
+  .hidden{display:none !important}
+</style>
+<script>
+/* ════════════════════════════════
+   PR ON HOLD — PR On Hold plan, Phase 3 (ADDED 2026-10-01)
+   A PR can be put On Hold / Cancelled in the Purchase Request widget
+   (Purchase_Request1.Hold_Status). Every line in this widget carries its PR No,
+   so this looks up the held PRs and lets the widget badge and lock just that
+   line. Read-only here: Hold / Resume / Cancel / Restore live only in the
+   Purchase Request widget.
+════════════════════════════════ */
+var PRHold = (function(){
+  var map = {}, busy = false, waiters = [];
+  function v(x){
+    if(x===null||x===undefined) return '';
+    if(typeof x==='object') return x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'';
+    return String(x);
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function zh(){ try{ return typeof LANG!=='undefined' && LANG==='zh'; }catch(e){ return false; } }
+  function key(prNo){ return String(prNo===null||prNo===undefined ? '' : prNo).trim(); }
+  /* Re-fetches every call (cheap: only held PRs match), so a Resume/Restore shows up
+     on the next list load. A failed fetch keeps the last known map. */
+  function load(cb){
+    if(cb) waiters.push(cb);
+    if(busy) return;
+    busy = true;
+    function done(next){
+      if(next) map = next;
+      busy = false;
+      var w = waiters; waiters = [];
+      w.forEach(function(f){ try{ f(); }catch(e){ console.warn('[PRHold] callback error', e); } });
+    }
+    if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function'){ done(null); return; }
+    ZOHO.CREATOR.DATA.getRecords({ report_name:'All_Purchase_Request', criteria:'(Hold_Status == "On Hold" || Hold_Status == "Cancelled")', field_config:'all', max_records:200 })
+      .then(function(resp){
+        var next = {};
+        if(resp && resp.code===3000 && Array.isArray(resp.data)){
+          resp.data.forEach(function(r){
+            var pr = key(v(r.PR_No)), st = v(r.Hold_Status);
+            if(pr && (st==='On Hold' || st==='Cancelled')) next[pr] = { state:st, reason:v(r.Hold_Reason), date:v(r.Hold_Date) };
+          });
+        }
+        done(next);
+      })
+      .catch(function(err){
+        /* 9220 = no PR is held right now, which is a real (empty) answer. */
+        var empty = false;
+        try{
+          var txt = err && (err.responseText || (err.content && err.content.responseText));
+          var p = txt ? JSON.parse(txt) : err;
+          if(p && String(p.code)==='9220') empty = true;
+        }catch(e){}
+        if(!empty) console.warn('[PRHold] could not load held PRs:', err);
+        done(empty ? {} : null);
+      });
+  }
+  function state(prNo){ var m = map[key(prNo)]; return m ? m.state : ''; }
+  function locked(prNo){ return !!state(prNo); }
+  function label(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消' : 'CANCELLED';
+    return zh() ? '暂停' : 'ON HOLD';
+  }
+  function text(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消 — 客户已取消此产品，请勿继续。' : 'CANCELLED — the client cancelled this item. Do not proceed.';
+    return zh() ? '暂停 — 客户已暂停此产品，请勿继续。' : 'ON HOLD — the client paused this item. Do not proceed.';
+  }
+  function badge(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    var m = map[key(prNo)];
+    var c = s==='Cancelled' ? 'background:#FEE2E2;color:#DC2626;border:1px solid #FCA5A5' : 'background:#FEF3C7;color:#92400E;border:1px solid #FCD34D';
+    var tip = text(prNo) + (m.date ? ' (' + m.date + ')' : '');
+    return ' <span class="pr-hold-badge" title="'+esc(tip)+'" style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;'+c+'">'+label(prNo)+'</span>';
+  }
+  /* Which of these PR numbers are held (for PO / shipment level summaries). */
+  function heldOf(prNos){ return (prNos||[]).filter(function(p){ return locked(p); }); }
+  return { load:load, state:state, locked:locked, label:label, text:text, badge:badge, heldOf:heldOf };
+})();
+</script>
+<style id="nsStyles">.ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}.ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}.ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}.ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}.ns-who{font-weight:400;opacity:.85}.ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}.ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}.ns-arrow{opacity:.5}</style><style id="trkStyles">.trk-chip{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;line-height:1.3;padding:2px 7px;border-radius:6px;white-space:nowrap;margin:1px 2px 1px 0}.trk-exc{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}.trk-rr{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}.trk-none{color:#94a3b8}</style></head>
+<body>
+
+<div id="listView" class="page">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>Shipments</h1>
+      <p>Execution queue — PO acknowledgment to warehouse arrival</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="showGrouping()">Shipment Grouping →</button>
+  </div>
+
+  <div class="stat-cards" id="statCards"><div class="stat-card"><div class="stat-label">Total</div><div class="stat-value ">11</div></div><div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value ">3</div></div><div class="stat-card"><div class="stat-label">In Transit</div><div class="stat-value blue">0</div></div><div class="stat-card"><div class="stat-label">Arriving in 1 Week</div><div class="stat-value orange">0</div></div><div class="stat-card"><div class="stat-label">Delayed</div><div class="stat-value red">1</div></div><div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-value green">7</div></div><div class="stat-card"><div class="stat-label">Needs Attention</div><div class="stat-value orange">6</div></div><div class="stat-card"><div class="stat-label">Ship Mode Unmatched</div><div class="stat-value red">2</div></div></div>
+
+  <div class="main-card">
+    <div class="filter-row">
+      <div class="filter-pills" id="filterPills"><button class="pill active" onclick="setFilter('all')">All</button><button class="pill " onclick="setFilter('pending')">Pending</button><button class="pill " onclick="setFilter('transit')">In Transit</button><button class="pill " onclick="setFilter('arriving')">Arriving in 1 Week</button><button class="pill " onclick="setFilter('delayed')">Delayed</button><button class="pill " onclick="setFilter('delivered')">Delivered</button><button class="pill " onclick="setFilter('attention')">Needs Attention</button><button class="pill " onclick="setFilter('shipmode_unmatched')">Ship Mode Unmatched</button></div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input class="search-input" id="searchInput" placeholder="Search Shipment#, PO, SO, Customer, EXC#, RR#..." oninput="renderList()">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="shp-table">
+        <thead>
+          <tr>
+            <th>Shipment #</th><th>PO #</th><th>SO #</th><th>EXC #</th><th>RR #</th><th>Customer</th><th>Supplier</th>
+            <th>Status</th><th>Next Step</th><th>ETA</th><th>Required Days</th><th>Remaining Days</th><th>Timeline</th>
+            <th>Forecast</th><th>Needs Attn.</th><th>Receiving</th>
+          </tr>
+        </thead>
+        <tbody id="listBody"><tr class="row-delivered" onclick="openDetail('4662244000016417270')"><td><strong>SHP-00011</strong> <span class="badge" style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4">Fulfillment EXC</span></td><td></td><td>SO-16586</td><td><span class="trk-chip trk-exc">EXC-FF-00006</span></td><td><span class="trk-chip trk-rr">RR-00008</span></td><td>FURNITURE REPUBLIC</td><td>Fenteng Lighting</td><td><span class="badge badge-green">Delivered</span></td><td><span data-ns-id="4662244000016417270"><span class="ns-pill ns-done">✓ Receiving created — continue in Receiving <span class="ns-who">— Warehouse</span></span></span></td><td>2026-10-31</td><td>—</td><td>—</td><td><span class="badge badge-gray" style="font-size:10.5px">No timeline data</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-gray">No</span></td><td><span class="badge badge-green">Created</span></td></tr><tr class="row-delivered" onclick="openDetail('4662244000016390008')"><td><strong>SHP-00009</strong></td><td>PO-00007</td><td>SO-16946</td><td><span class="trk-chip trk-exc">EXC-00007</span><span class="trk-chip trk-exc">EXC-00006</span><span class="trk-chip trk-exc">EXC-00005</span></td><td><span class="trk-chip trk-rr">RR-00007</span></td><td>Ellen Joy S. Data</td><td>Tony</td><td><span class="badge badge-green">Delivered</span></td><td><span data-ns-id="4662244000016390008"><span class="ns-pill ns-done">✓ Receiving created — continue in Receiving <span class="ns-who">— Warehouse</span></span></span></td><td>2026-10-26</td><td>30</td><td>30</td><td><span class="badge badge-green" style="font-size:10.5px">On track (30d left / 30d needed)</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-red">YES</span></td><td><span class="badge badge-green">Created</span></td></tr><tr class="row-pending" onclick="openDetail('4662244000016388008')"><td><strong>SHP-00008</strong></td><td>PO-00006</td><td>SO-16945</td><td><span class="trk-none">—</span></td><td><span class="trk-none">—</span></td><td>(TEST ORDER) BY CPY PAM TAN</td><td>Tony</td><td><span class="badge badge-gray">Pending</span></td><td><span data-ns-id="4662244000016388008"><span class="ns-pill ns-wait">Waiting on: Supplier to ship <span class="ns-who">— Tony</span></span></span></td><td>2026-10-30</td><td>20</td><td>20</td><td><span class="badge badge-green" style="font-size:10.5px">On track (20d left / 20d needed)</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-gray">No</span></td><td><span class="badge badge-gray">No</span></td></tr><tr class="row-pending" onclick="openDetail('4662244000016381038')"><td><strong>SHP-00010</strong></td><td>PO-00007</td><td>SO-16946</td><td><span class="trk-chip trk-exc">EXC-00005</span></td><td><span class="trk-chip trk-rr">RR-00007</span></td><td>Ellen Joy S. Data</td><td>Tony</td><td><span class="badge badge-gray">Pending</span></td><td><span data-ns-id="4662244000016381038"><span class="ns-pill ns-wait">Waiting on: Supplier to ship <span class="ns-who">— Tony</span></span></span></td><td>2026-10-28</td><td>—</td><td>—</td><td><span class="badge badge-gray" style="font-size:10.5px">No timeline data</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-gray">No</span></td><td><span class="badge badge-green">Created</span></td></tr><tr class="row-delayed" onclick="openDetail('4662244000016377094')"><td><strong>SHP-00007</strong></td><td>PO-00005</td><td>SO-16650</td><td><span class="trk-none">—</span></td><td><span class="trk-none">—</span></td><td>House of Goyen</td><td>Tony</td><td><span class="badge badge-red">Delayed</span></td><td><span data-ns-id="4662244000016377094"><span class="ns-pill ns-wait">Waiting on: Supplier to update ETD / ETA <span class="ns-who">— Tony</span></span></span></td><td>2026-10-28</td><td>20</td><td>20</td><td><span class="badge badge-green" style="font-size:10.5px">On track (20d left / 20d needed)</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-gray">No</span></td><td><span class="badge badge-gray">No</span></td></tr><tr class="row-delivered" onclick="openDetail('4662244000016221006')"><td><strong>SHP-00006</strong></td><td>PO-00002</td><td>SO-0000</td><td><span class="trk-chip trk-exc">EXC-00004</span></td><td><span class="trk-chip trk-rr">RR-00006</span></td><td>Test 3 Customer</td><td>HC System</td><td><span class="badge badge-green">Delivered</span></td><td><span data-ns-id="4662244000016221006"><span class="ns-pill ns-done">✓ Receiving created — continue in Receiving <span class="ns-who">— Warehouse</span></span></span></td><td>2026-11-03</td><td>—</td><td>—</td><td><span class="badge badge-gray" style="font-size:10.5px">No timeline data</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-red">YES</span></td><td><span class="badge badge-green">Created</span></td></tr><tr class="row-delivered" onclick="openDetail('4662244000015550006')"><td><strong>SHP-00005</strong></td><td>PO-00004</td><td>SO-16707</td><td><span class="trk-chip trk-exc">EXC-00003</span></td><td><span class="trk-chip trk-rr">RR-00005</span></td><td>(TEST ORDER) BY CPY PAM TAN</td><td>Tony</td><td><span class="badge badge-green">Delivered</span></td><td><span data-ns-id="4662244000015550006"><span class="ns-pill ns-next">Next: Create the Receiving record <span class="ns-who">— Warehouse</span></span></span></td><td>2026-10-06</td><td>20</td><td>20</td><td><span class="badge badge-green" style="font-size:10.5px">On track (20d left / 20d needed)</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-red">YES</span></td><td><span class="badge badge-gray">No</span></td></tr><tr class="row-delivered" onclick="openDetail('4662244000015538082')"><td><strong>SHP-00003</strong></td><td>PO-00002</td><td>SO-0000</td><td><span class="trk-chip trk-exc">EXC-00004</span></td><td><span class="trk-chip trk-rr">RR-00006</span></td><td>Test 3 Customer</td><td>HC System</td><td><span class="badge badge-green">Delivered</span></td><td><span data-ns-id="4662244000015538082"><span class="ns-pill ns-next">Next: Create the Receiving record <span class="ns-who">— Warehouse</span></span></span></td><td>2026-10-06</td><td>0</td><td>0</td><td><span class="badge badge-green" style="font-size:10.5px">On track (0d left / 0d needed)</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-red">YES</span></td><td><span class="badge badge-gray">No</span></td></tr><tr class="row-pending" onclick="openDetail('4662244000015522606')"><td><strong>SHP-00004</strong></td><td>PO-00003</td><td>SO-16705</td><td><span class="trk-none">—</span></td><td><span class="trk-none">—</span></td><td>(TEST ORDER) BY CPY PAM TAN</td><td>Tony</td><td><span class="badge badge-gray">Pending</span> <span class="pr-hold-badge" title="CANCELLED — the client cancelled this item. Do not proceed. (2026-10-01)" style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;background:#FEE2E2;color:#DC2626;border:1px solid #FCA5A5">CANCELLED</span> <span style="font-size:11px;color:#64748b">1/1</span></td><td><span data-ns-id="4662244000015522606"><span class="ns-pill ns-wait">Waiting on: Supplier to ship <span class="ns-who">— Tony</span></span></span></td><td>2026-10-06</td><td>20</td><td>20</td><td><span class="badge badge-green" style="font-size:10.5px">On track (20d left / 20d needed)</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-gray">No</span></td><td><span class="badge badge-gray">No</span></td></tr><tr class="row-delivered" onclick="openDetail('4662244000014978006')"><td><strong>SHP-00001</strong></td><td>PO-00001</td><td>SO-16570</td><td><span class="trk-chip trk-exc">EXC-00001</span></td><td><span class="trk-chip trk-rr">RR-00001</span></td><td>Charlene Cruz</td><td>Tony</td><td><span class="badge badge-green">Delivered</span></td><td><span data-ns-id="4662244000014978006"><span class="ns-pill ns-done">✓ Receiving created — continue in Receiving <span class="ns-who">— Warehouse</span></span></span></td><td>2026-09-21</td><td>15</td><td>15</td><td><span class="badge badge-green" style="font-size:10.5px">On track (15d left / 15d needed)</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-red">YES</span></td><td><span class="badge badge-green">Created</span></td></tr><tr class="row-delivered" onclick="openDetail('4662244000014977008')"><td><strong>SHP-00002</strong></td><td>PO-00001</td><td>SO-16570</td><td><span class="trk-chip trk-exc">EXC-00001</span></td><td><span class="trk-chip trk-rr">RR-00001</span></td><td>Charlene Cruz</td><td>Tony</td><td><span class="badge badge-green">Delivered</span></td><td><span data-ns-id="4662244000014977008"><span class="ns-pill ns-done">✓ Receiving created — continue in Receiving <span class="ns-who">— Warehouse</span></span></span></td><td>2026-08-14</td><td>—</td><td>—</td><td><span class="badge badge-gray" style="font-size:10.5px">No timeline data</span></td><td><span style="color:#cbd5e1">—</span></td><td><span class="badge badge-red">YES</span></td><td><span class="badge badge-green">Created</span></td></tr></tbody>
+      </table>
+    </div>
+    <div id="listEmpty" class="empty-state hidden">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v13H3zM1 16h22v5H1zM8 21h8"></path></svg>
+      <div>No shipments match this view</div>
+    </div>
+  </div>
+</div>
+
+<div id="detailView" class="page hidden">
+  <div class="header-strip">
+    <div class="back-link" onclick="showList()">← Back</div>
+    <span class="hs-field hs-ship" id="hsShipNo">—</span>
+    <span class="hs-field hs-po" id="hsPO">—</span>
+    <span class="hs-field hs-so" id="hsSO">—</span>
+    <span class="hs-field" id="hsCustomer">—</span>
+    <span class="hs-field hs-muted" id="hsSupplier">—</span>
+    <span id="statusBadgeDetail"></span>
+    <span id="attnBadgeDetail" class="hidden"></span>
+    <span id="recvBadgeDetail" class="hidden"></span>
+    <span id="fulfExcBadgeDetail" class="badge hidden" style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4">Fulfillment EXC — Exception #</span>
+    <!-- ADDED 2026-10-21 — EXC # / RR # trace chips (see TRACKING REFS block below). -->
+    <span id="trkExcDetail" class="hidden"></span>
+    <span id="trkRRDetail" class="hidden"></span>
+    <div style="flex:1;min-width:20px"></div>
+    <button class="btn btn-orange btn-sm" onclick="saveShipment()" id="btnSave">Save</button>
+  </div>
+  <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+  <div id="nsBanner" style="padding:12px 16px 0"></div>
+
+  <div class="detail-grid">
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <div class="card">
+        <h3>Core Shipment Summary</h3>
+        <div class="info-grid">
+          <div class="info-item"><label>Supplier</label><div class="val" id="infoSupplier">—</div></div>
+          <div class="info-item"><label>Customer</label><div class="val" id="infoCustomer">—</div></div>
+          <div class="info-item"><label>PO #</label><div class="val" id="infoPO">—</div></div>
+          <div class="info-item"><label>SO #</label><div class="val" id="infoSO">—</div></div>
+          <div class="info-item"><label>Sales Owner</label><input type="text" id="fldSalesOwner"></div>
+          <div class="info-item"><label>Required Days (Lead)</label><input type="number" id="fldRequiredDays"></div>
+          <div class="info-item"><label>Remaining Days</label><input type="number" id="fldRemainingDays"></div>
+          <div class="info-item"><label>Shipment Days</label><input type="number" id="fldShipmentDays"></div>
+          <div class="info-item"><label>Target Date</label><input type="date" id="fldTargetDate"></div>
+          <div class="info-item"><label>Supplier Target Date</label><input type="date" id="fldSupplierTargetDate"></div>
+          <div class="info-item"><label>Production Date</label><input type="date" id="fldProductionDate"></div>
+        </div>
+        <div id="delayBanner"></div>
+      </div>
+
+      <div class="card">
+        <h3>Status</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Shipment Status</label>
+            <select id="fldShipmentStatus">
+              <option value="Pending">Pending</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Arriving in 1 Week">Arriving in 1 Week</option>
+              <option value="Delayed">Delayed</option>
+              <option value="Delivered">Delivered</option>
+            </select>
+          </div>
+          <div class="info-item"><label>Previous Status</label><div class="val" id="infoPrevStatus">—</div></div>
+          <div class="info-item">
+            <label>Risk Status</label>
+            <select id="fldRiskStatus">
+              <option value="">—</option>
+              <option value="On Track">On Track</option>
+              <option value="At Risk">At Risk</option>
+              <option value="Delayed">Delayed</option>
+            </select>
+          </div>
+          <div class="info-item"><label>Needs Attention</label><div class="val" id="infoNeedsAttn">—</div></div>
+          <div class="info-item"><label>Received Flag</label><div class="val" id="infoReceivedFlag">—</div></div>
+          <div class="info-item"><label>ETD</label><input type="date" id="fldETD"></div>
+          <div class="info-item"><label>ETA</label><input type="date" id="fldETA"></div>
+          <div class="info-item"><label>Ship Out Date</label><input type="date" id="fldShipOutDate"></div>
+          <div class="info-item"><label>Estimated Warehouse Arrival</label><input type="date" id="fldEstWarehouseArrival"></div>
+          <div class="info-item"><label>Arrival Date</label><input type="date" id="fldArrivalDate"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Shipment Line Items <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(PO_Shipments — PO contents in this shipment)</span></h3>
+        <div class="table-wrap">
+          <table class="line-table">
+            <thead>
+              <tr>
+                <th>PR #</th><th>SKU</th><th>Item</th><th>Ordered</th><th>Shipment Qty</th>
+                <th>Remaining</th><th>Ship Mode</th><th>Ship Mode Received</th><th>Ship Mode Match</th><th>Line Status</th><th>Fully Shipped</th>
+              </tr>
+            </thead>
+            <tbody id="lineBody"></tbody>
+          </table>
+        </div>
+        <div id="lineEmpty" class="loading-wrap hidden" style="padding:24px">No line items on this shipment</div>
+      </div>
+
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="card">
+        <h3>Receiving Handoff</h3>
+        <div class="info-grid">
+          <div class="info-item"><label>Receiving Record Created</label><div class="val" id="infoRecvCreated">—</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Notes</h3>
+        <div class="info-grid">
+          <div class="info-item" id="notesHint" style="display:none;color:var(--red);font-size:12px;margin-bottom:8px">Ship Mode mismatch on this shipment — add a note below.</div>
+          <textarea id="fldNotes" rows="5" style="width:100%;resize:vertical;font-family:inherit;font-size:13px;padding:8px;border:1px solid var(--gray-200);border-radius:6px" placeholder="No mismatch — nothing to note." disabled=""></textarea>
+        </div>
+      </div>
+      <div id="tlhcMount"><div class="tlhc-card"><div class="tlhc-header"><span class="tlhc-title">Timeline History</span><div class="tlhc-header-right"><span class="tlhc-count"></span><button type="button" class="tlhc-toggle-btn">Show</button></div></div><div class="tlhc-body" style="display: none;"><div class="tlhc-empty">No activity logged yet.</div></div></div></div>
+      <div id="incMount"><div class="inc-wrap" style="display:none"><div class="inc-card"><div class="inc-header"><div class="inc-header-top"><span class="inc-title">Internal Conversation</span><button type="button" class="inc-toggle-btn">Show</button></div><span class="inc-sub"></span></div><div class="inc-body" style="display: none;"><div class="inc-msgs"></div><div class="inc-inputbar"><div class="inc-mention-popup" style="display:none"></div><textarea rows="1" placeholder="Message… (@ to mention)"></textarea><button type="button" class="inc-send-btn" disabled="">Send</button></div></div></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADDED 2026-07-21, per plan.txt — Shipment Grouping, in-widget view (same
+     show/hide-a-sibling-.page pattern as Receiving's own Partial Receive Timeline,
+     not a separate widget/page). Reads from SG_REPORT_NAME (Shipment_Groupings),
+     kept separate from the main list/detail's own REPORT_NAME. -->
+<div id="groupingView" class="page hidden">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="back-link" onclick="showList()" style="margin-bottom:8px">← Back to Shipments</div>
+      <h1>Shipment Grouping</h1>
+      <p>Supplier-reported shipments — grouped by shipment, split by delivery status and mode</p>
+    </div>
+  </div>
+
+  <div class="stat-cards" id="sgStatCards"></div>
+
+  <div class="filter-row" style="padding:0">
+    <div class="sg-tabs" id="sgFilterPills"></div>
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+      <input class="search-input" id="sgSearchInput" placeholder="Search Shipment ID, SKU, SO/PR/RR#..." oninput="sgOnSearchInput()">
+    </div>
+  </div>
+
+  <div class="sg-mode-tabs" id="sgModePills"></div>
+
+  <div id="sgBody" style="display:flex;flex-direction:column;gap:16px"></div>
+  <div id="sgEmptyState" class="empty-state hidden">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v13H3zM1 16h22v5H1zM8 21h8"></path></svg>
+    <div>No supplier-reported shipment items yet</div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="timeline_history_component/timeline-history.js"></script>
+<script src="internal-notes_component/internal-notes.js"></script>
+<script src="notification_component/notification.js"></script>
+<div id="notifMount" style="display: none;"><button type="button" class="nsys-bell" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span class="nsys-badge"></span></button><div class="nsys-panel"><div class="nsys-hdr"><span class="nsys-title">Notifications</span><div class="nsys-hdr-actions"><button type="button" class="nsys-refresh-btn" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button><button type="button" class="nsys-mark-all">Mark all read</button></div></div><div class="nsys-list"></div></div></div>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* ==================== CONFIG ====================
+   Field list CONFIRMED FOR REAL 2026-07-13 via the actual live form schema dump
+   (user pasted the full native "form Shipments { ... }" definition, Temp.txt) — this
+   supersedes every earlier "best-guess link name" note that used to be here. Real
+   fields:
+   Header: Shipment_No, Customer, Target_Date (date), ETD (date, "Estimated Time of
+   Departure from supplier"), Risk_Status (picklist, displayname "Delay Status" —
+   NOTE the display label says "Delay Status" but the real LINK NAME is Risk_Status,
+   values On Track/At Risk/Delayed — this widget had it wrong as `Delay_Status` before
+   this fix, silently never saved), Shipment_Days, Sales_Owner, PO_No (lookup->
+   Purchase_Order.ID), Supplier, Production_Date (date), Required_Days_Lead,
+   ETA (date, "Estimated Time of Arrival at warehouse"), Ship_Out_Date (date — real,
+   previously assumed to be a mock-only invented field and dropped; it's genuinely on
+   the form), Receiving_Record_Created (checkbox), Need_Attention (checkbox,
+   displayname "Received Flag", "True when SHP_Status = Received" — a SEPARATE field
+   from Need_Attention1, previously unknown), Need_Attention1 (checkbox, displayname
+   "Need Attention", "True if Delayed/At Risk/Missing ETA/No Prod Start"),
+   Sales_Order, Previous_Status, Shipment_Status (picklist: Pending/In Transit/
+   Delivered/Delayed), Remaining_Days, Arrival_Date, Notes (textarea, not yet
+   surfaced in this widget). Subform PO_Shipments ("Shipment Line Items"): PR_No,
+   SKU, Item_Name, Ordered_QTY, Shipment_QTY, Remaining_QTY, Shipping_Mode (displayname
+   "Shipment Mode", choices still literally "Choice 1/2/3" — never finished being
+   configured natively, not this widget's bug), Line_Status (real choices: In Transit/
+   Partial/Arrived/Received), Fully_Shipped.
+   `Supplier_Target_Date` does NOT exist as a field yet — added to this widget's UI
+   ahead of the field actually being created (per user's 2026-07-13 request to source
+   it from PO_Line_Items.supplier_target_date) — user needs to add a plain Date field
+   with this exact link name to the native Shipments form before it will actually save
+   (same silent-drop-on-mismatch risk as any other guessed link name).
+   CHANGED 2026-07-13, per user request ("get shipments values from PO"): Target_Date,
+   Supplier_Target_Date, and Production_Date are now auto-populated from the matching
+   Purchase_Order's own PO_Line_Items row (Target_Delivery/supplier_target_date/
+   Production_Date columns respectively) at Acknowledge time — see
+   `purchase_order_scripts.txt`/`acknowledge_po_custom_api.txt`'s
+   `Acknowledged_PO_Supplier1/2`, same "last write wins across lines" pattern already
+   used there for Required_Days_Lead/Remaining_Days/Shipment_Days. Still left editable
+   in this widget (same rationale as those 3 fields — auto-populated but not locked).
+   No native Disable_All_Fields-style lock script exists for Shipments (unlike the
+   supplier PO forms), so the whole native form is presumably editable — but this
+   widget only exposes editing for fields that make operational sense to touch by hand
+   (Shipment_Status, Risk_Status, Arrival_Date, Target_Date, Supplier_Target_Date, ETD,
+   ETA, Ship_Out_Date, Production_Date, Sales_Owner, Required/Remaining/Shipment Days,
+   and per-line Shipment_QTY) and keeps identity fields (Shipment_No/PO_No/Sales_Order/
+   Customer/Supplier) and system-managed flags (Previous_Status, Receiving_Record_
+   Created, Need_Attention, Need_Attention1) read-only display, same "system-driven
+   fields become read-only in the widget" convention already used in the POs widget for
+   Sent_On/Acknowledge_On/Completed_On. No Custom Function/API wrapper needed for CRUD
+   here — plain getRecords/getRecordById/updateRecordById are enough (unlike
+   Receiving/PR/PO widgets, which needed wrappers only for un-callable Report Action
+   Items — Shipments has none of those). */
+const REPORT_NAME = 'All_Shipments'; // confirmed live 2026-07-10 (Receiving widget's SHIPMENTS_REPORT)
+/* ADDED 2026-07-21 — Shipment Grouping view's own dedicated report, confirmed live by
+   user (same "separate report so a subform can be added to its own Configure Fields
+   panel" pattern already used for Receiving_Group/Partial_Receive_Timeline) — reads
+   Supplier_Shipment_Details specifically for the grouping view, kept separate from
+   REPORT_NAME so the main list/detail's own Configure Fields exposure is untouched. */
+const SG_REPORT_NAME = 'Shipment_Groupings';
+
+/* ADDED — Timeline History card (Detail view, right column). Same component/pattern
+   as PRs/app's own prTimeline (see timeline_history_component/README.md). REAL_APP_NAME/
+   ACCOUNT_OWNER start as best-guess defaults (same values PRs resolved live) and get
+   corrected below via getInitParams() once the SDK is up, same "don't trust the
+   hardcoded guess" rationale as PRs' loadFromCreator(). */
+let REAL_APP_NAME = 'supply-chain-app';
+let ACCOUNT_OWNER = 'homecartel';
+/* Same dev/prod URL-switching signal as PRs'/INQsv2's/POs' own ZC_ENV — this widget
+   never tracked environment before notification_component needed it (see that
+   component's _isProd()). Updated in loadList()'s existing getInitParams() callback. */
+let ZC_ENV = 'development';
+var shipTimeline = TimelineHistory.init({
+  mountId: 'tlhcMount',
+  appName: function(){ return REAL_APP_NAME; },
+  formName: 'Shipment_Timeline',
+  reportName: 'Shipment_Timeline_Report',
+  parentField: 'Shipment_No',
+  actor: 'Logistics',
+  title: 'Timeline History'
+});
+
+/* Internal Conversation (HC Purchasing <-> HC Sales) — see internal-notes_component/README.md.
+   Per user's full cross-module layout (2026-07-30): Shipments pairs HC Purchasing
+   with HC Sales. 'hcinvanalyst@gmail.com' ("HC Systems") is also included per its
+   "access on all modules" rule, even though it wasn't named as this module's
+   conversational partner — it's a genuine 3-way roleMap here, not solo.
+   CURRENT_USER_EMAIL is resolved in loadList()'s existing getInitParams() callback
+   (see below), same place REAL_APP_NAME/ACCOUNT_OWNER already get resolved. */
+let CURRENT_USER_EMAIL = '';
+var INTERNAL_CONVERSATION_ENABLED = true;
+var internalNotes = INTERNAL_CONVERSATION_ENABLED ? InternalNotes.init({
+  mountId:          'incMount',
+  appName:          function(){ return REAL_APP_NAME; },
+  formName:         'Shipment_Internal_Messages',
+  reportName:       'Shipment_Internal_Messages_Report',
+  parentField:      'Shipment_No',
+  currentUserEmail: function(){ return CURRENT_USER_EMAIL; },
+  roleMap:          { 'homecartelpacker@gmail.com':'HC Purchasing', 'homecartelsales@gmail.com':'HC Sales', 'hcinvanalyst@gmail.com':'HC Systems' },
+  /* Per user request (2026-07-30): mentionableMap is every known account
+     EXCLUDING whoever is already in this module's own roleMap. */
+  mentionableMap:   { 'hcdamageofficer@gmail.com':'HC Damage Officer', 'homecartelff@gmail.com':'HC Pack & Fulfill' },
+  title:            'Internal Conversation'
+}) : { open:function(){}, close:function(){}, refresh:function(){} };
+
+/* Notification System — bottom-right bell, not scoped to this (or any) record; see
+   notification_component/README.md. Same shared App_Notifications form as PRs/INQsv2/
+   POs. roleMap independent of internalNotes' own roleMap above (that one's a 3-way
+   Purchasing/Sales/Systems pairing specific to Shipments) — this one's the same HC
+   Purchasing + HC Systems pair used everywhere else, since the notification matrix
+   always routes to Purchasing. */
+var notifications = NotificationSystem.init({
+  mountId:          'notifMount',
+  appName:          function(){ return REAL_APP_NAME; },
+  reportName:       'App_Notifications_Report',
+  currentUserEmail: function(){ return CURRENT_USER_EMAIL; },
+  environment:      function(){ return ZC_ENV; },
+  roleMap:          { 'homecartelpacker@gmail.com':'HC Purchasing', 'hcinvanalyst@gmail.com':'HC Systems' },
+  fullAccessRoles:  ['HC Systems'],
+  title:            'Notifications'
+});
+
+/* ==================== STATE ==================== */
+var ALL_ROWS = [];
+var CURRENT_FILTER = 'all';
+var CURRENT_RECORD = null;
+
+/* Shipment Grouping view's own isolated state — SG_ prefix throughout to avoid any
+   collision with the main list/detail's own vars/functions above. */
+var SG_PARENT_RAW = {};    // parentId -> live-editable copy of that record's own Supplier_Shipment_Details array
+/* ADDED 2026-08-20 — last-known-SAVED copy of each parent's array, separate from the
+   live-editable SG_PARENT_RAW above. Needed because Save is a per-ROW action but the
+   Creator API only supports a full-subform replace: without this, saving one row's
+   Status re-sent the WHOLE live array, silently persisting any other row's not-yet-
+   saved edit too (even a row belonging to a different SO_No) — "nadadamay lahat ng
+   SO" bug reported 2026-08-20. sgSaveRow() now builds its payload from this pristine
+   copy with only the one saved index overwritten, so an in-progress edit on another
+   row stays purely local until ITS OWN Save is clicked. */
+var SG_PARENT_SAVED = {};  // parentId -> pristine copy of that record's array, updated only on a successful per-row save
+var SG_PARENT_META = {};   // parentId -> {shipmentNo, poNo, soNo, customer, supplier}
+var SG_FLAT_ITEMS = [];    // flattened {parentId, idx, item}
+var SG_FILTER = 'not_delivered'; // ADDED 2026-08-20 — Shipment Grouping is now a 2-tab view (In Transit / Delivered), no more "All"
+/* ADDED 2026-09-07, per user request — second-level tabs under Status, filtering by
+   Shipment_Mode (the grouping item's own field, confirmed live values LCL/Airfreight
+   from screenshot — NOT the same field as the main list/detail's Shipping_Mode, which
+   still has unconfigured "Choice 1/2/3" choices, see schema note above). No "All" tab,
+   same convention as the Status tabs. */
+var SG_MODE_CHOICES = [['LCL','LCL'], ['FCL','FCL'], ['Airfreight','Air Freight'], ['Local','Local (HC System)']]; // [matchValue, label]
+var SG_MODE_FILTER = 'LCL';
+var SG_DIRTY = {};         // "parentId|idx" -> true, tracks unsaved Status edits
+var SG_LOADED = false;     // only fetch once per widget session, refresh button re-fetches
+
+/* ZOHO.CREATOR.init() is not a real SDK method (confirmed live elsewhere in this app) —
+   the SDK auto-initializes once its script tag loads. */
+window.addEventListener('load', loadList);
+
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3200);
+}
+
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+/* PO_No is a lookup to Purchase_Order — v2.1 read shape for a lookup field can come
+   back as a plain object ({ID, zc_display_value, ...}) rather than a plain string,
+   depending on field_config. Handled defensively rather than assumed. */
+function dispVal(field){
+  if(field === null || field === undefined) return '';
+  if(typeof field === 'object') return field.zc_display_value || field.display_value || field.ID || '';
+  return field;
+}
+
+/* ==================== LIST ==================== */
+function loadList(){
+  /* PR On Hold (Phase 3): status only here. Marking an item to ship is done (and locked) in the supplier's own Shipment widget. */
+  PRHold.load(function(){ if(ALL_ROWS && ALL_ROWS.length) renderList(); });
+  document.getElementById('listBody').innerHTML = '<tr><td colspan="16"><div class="loading-wrap"><div class="spinner"></div>Loading shipments…</div></td></tr>';
+
+  /* Resolve the REAL app_name/owner from the SDK instead of trusting the hardcoded
+     guess — same rationale/pattern as PRs/app's loadFromCreator(): addRecords (which
+     TimelineHistory.log() uses) fails outright on a wrong app_name, unlike getRecords. */
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams==='function'){
+    ZOHO.CREATOR.UTIL.getInitParams().then(function(params){
+      if(params && params.appLinkName) REAL_APP_NAME = params.appLinkName;
+      if(params && params.scope) ACCOUNT_OWNER = params.scope;
+      if(params && (params.environment || params.env)) ZC_ENV = params.environment || params.env;
+      /* Who's logged in — needed for the Internal Conversation card's currentUserEmail
+         (currently disabled, see INTERNAL_CONVERSATION_ENABLED). Same candidate-key
+         fallback chain used elsewhere in this app family. */
+      var email = params && (params.loginUser || params.login_user || params.userEmail || params.user_email || params.user || '');
+      email = String(email||'').trim().toLowerCase();
+      if(email){ CURRENT_USER_EMAIL = email; internalNotes.refresh(); notifications.refresh(); }
+      console.log('[Init] Resolved app_name:', REAL_APP_NAME, 'owner:', ACCOUNT_OWNER, 'user:', CURRENT_USER_EMAIL||'(unresolved)');
+    }).catch(function(err){ console.warn('[Init] getInitParams failed, keeping defaults:', err&&err.message||err); });
+  }
+  /* Defensive second attempt — some widgets in this app family found user identity via
+     ZOHO.CREATOR.init() instead of getInitParams(); harmless no-op if unavailable here. */
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && typeof ZOHO.CREATOR.init==='function'){
+    ZOHO.CREATOR.init().then(function(initData){
+      if(initData && (initData.environment || initData.env)) ZC_ENV = initData.environment || initData.env;
+      var email = initData && (initData.loginUser || initData.login_user || initData.userEmail || initData.user || '');
+      email = String(email||'').trim().toLowerCase();
+      if(email && !CURRENT_USER_EMAIL){ CURRENT_USER_EMAIL = email; internalNotes.refresh(); notifications.refresh(); }
+    }).catch(function(){});
+  }
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    console.error('[Shipments] SDK not available');
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  var _timeout = setTimeout(function(){ showToast('Still loading — this can take a moment'); }, 8000);
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: REPORT_NAME,
+    page: 1,
+    pageSize: 200,
+    field_config: 'all'
+  }).then(function(resp){
+    clearTimeout(_timeout);
+    console.log('[Shipments] getRecords code:', resp && resp.code, '| records:', resp && resp.data && resp.data.length);
+    ALL_ROWS = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    renderStats();
+    renderFilterPills();
+    renderList();
+    trkLoad().then(function(){ renderList(); });
+  }).catch(function(err){
+    clearTimeout(_timeout);
+    var isEmptyReport = false;
+    try{
+      var text = err && (err.responseText || (err.content && err.content.responseText));
+      var parsed = text ? JSON.parse(text) : null;
+      if(parsed && (parsed.code === 9220 || String(parsed.code) === '9220')) isEmptyReport = true;
+    } catch(e){ }
+    if(isEmptyReport){
+      ALL_ROWS = [];
+      renderStats(); renderFilterPills(); renderList();
+      return;
+    }
+    console.error('[Shipments] getRecords failed', err);
+    showToast('Could not load shipments — see console');
+    document.getElementById('listBody').innerHTML = '';
+    document.getElementById('listEmpty').classList.remove('hidden');
+  });
+}
+
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+function nextStepFor(r){
+  var k = statusKey(r);
+  var recv = r.Receiving_Record_Created===true || r.Receiving_Record_Created==='true';
+  var sup = r.Supplier || 'Supplier';
+  if(k==='delivered') return recv
+    ? {here:'Delivered', action:'Receiving created — continue in Receiving', who:'Warehouse', tone:'done'}
+    : {here:'Delivered', action:'Create the Receiving record', who:'Warehouse', tone:'next'};
+  if(k==='delayed') return {here:'Delayed', action:'Supplier to update ETD / ETA', who:sup, tone:'wait'};
+  if(k==='transit' || k==='arriving') return {here:(k==='arriving'?'Arriving in 1 week':'In Transit'), action:'Arrival'+(r.ETA?' (ETA '+r.ETA+')':''), who:'', tone:'wait'};
+  return {here:'Pending', action:'Supplier to ship', who:sup, tone:'wait'};
+}
+
+function statusKey(row){
+  var s = (row.Shipment_Status || '').toLowerCase();
+  if(s === 'in transit') return 'transit';
+  if(s === 'arriving in 1 week') return 'arriving';
+  if(s === 'delayed') return 'delayed';
+  if(s === 'delivered') return 'delivered';
+  return 'pending';
+}
+function statusBadge(row){
+  var map = {
+    pending:   ['badge-gray',  'Pending'],
+    transit:   ['badge-blue',  'In Transit'],
+    arriving:  ['badge-orange','Arriving in 1 Week'],
+    delayed:   ['badge-red',   'Delayed'],
+    delivered: ['badge-green', 'Delivered']
+  };
+  var m = map[statusKey(row)] || map.pending;
+  return '<span class="badge ' + m[0] + '">' + m[1] + '</span>';
+}
+
+/* This "Timeline" badge is a SEPARATE, purely client-computed thing from the real
+   Risk_Status field (see fldRiskStatus) — computed here from the two real fields
+   snapshotted at Acknowledge time (Required_Days_Lead/Remaining_Days), same
+   "compute a display-only badge from real fields" convention already used for the
+   POs widget's per-line Priority/Delay columns. Risk_Status itself is a genuine
+   native picklist (On Track/At Risk/Delayed, confirmed via live form dump
+   2026-07-13) — deliberately left as a manual pick in this widget rather than
+   auto-deriving it from this same math, since no native workflow sets it either and
+   overwriting a value nothing else touches wasn't asked for. */
+function timelineInfo(row){
+  var req = row.Required_Days_Lead, rem = row.Remaining_Days;
+  if(req === null || req === undefined || req === '' || rem === null || rem === undefined || rem === '') {
+    return { key: 'unknown', label: 'No timeline data', cls: 'badge-gray' };
+  }
+  req = parseFloat(req); rem = parseFloat(rem);
+  if(isNaN(req) || isNaN(rem)) return { key: 'unknown', label: 'No timeline data', cls: 'badge-gray' };
+  if(rem < req) return { key: 'behind', label: 'Behind (' + rem + 'd left / ' + req + 'd needed)', cls: 'badge-red' };
+  return { key: 'ontrack', label: 'On track (' + rem + 'd left / ' + req + 'd needed)', cls: 'badge-green' };
+}
+
+/* ADDED 2026-07-16, per user request — same Ship Mode mismatch check as the detail
+   view's "Ship Mode Match" column/Notes gate (see renderDetail()), just operating on
+   the raw list row's own PO_Shipments subform data instead of the mapped
+   getLineItems() shape used in detail view. Kept as its own small helper rather than
+   sharing code with detail view since the two operate on different record shapes
+   (raw API row here vs CURRENT_RECORD there). */
+function rowHasShipModeMismatch(r){
+  var lines = Array.isArray(r.PO_Shipments) ? r.PO_Shipments : [];
+  return lines.some(function(ln){
+    var planned = (ln.Shipping_Mode||'').trim();
+    var received = (ln.Shipment_Mode_When_Received||'').trim();
+    return received && planned !== received;
+  });
+}
+
+function renderStats(){
+  var total = ALL_ROWS.length;
+  var pending = ALL_ROWS.filter(function(r){ return statusKey(r)==='pending'; }).length;
+  var transit = ALL_ROWS.filter(function(r){ return statusKey(r)==='transit'; }).length;
+  var arriving = ALL_ROWS.filter(function(r){ return statusKey(r)==='arriving'; }).length;
+  var delayed = ALL_ROWS.filter(function(r){ return statusKey(r)==='delayed'; }).length;
+  var delivered = ALL_ROWS.filter(function(r){ return statusKey(r)==='delivered'; }).length;
+  var attn = ALL_ROWS.filter(function(r){ return r.Need_Attention1===true || r.Need_Attention1==='true'; }).length;
+  var shipModeUnmatched = ALL_ROWS.filter(rowHasShipModeMismatch).length;
+  document.getElementById('statCards').innerHTML =
+    statCard('Total', total, '') +
+    statCard('Pending', pending, '') +
+    statCard('In Transit', transit, 'blue') +
+    statCard('Arriving in 1 Week', arriving, 'orange') +
+    statCard('Delayed', delayed, 'red') +
+    statCard('Delivered', delivered, 'green') +
+    statCard('Needs Attention', attn, 'orange') +
+    statCard('Ship Mode Unmatched', shipModeUnmatched, 'red');
+}
+function statCard(label, val, cls){
+  return '<div class="stat-card"><div class="stat-label">' + label + '</div><div class="stat-value ' + cls + '">' + val + '</div></div>';
+}
+
+function renderFilterPills(){
+  var filters = [
+    ['all','All'], ['pending','Pending'], ['transit','In Transit'],
+    ['arriving','Arriving in 1 Week'],
+    ['delayed','Delayed'], ['delivered','Delivered'], ['attention','Needs Attention'],
+    ['shipmode_unmatched','Ship Mode Unmatched']
+  ];
+  document.getElementById('filterPills').innerHTML = filters.map(function(f){
+    return '<button class="pill ' + (CURRENT_FILTER===f[0]?'active':'') + '" onclick="setFilter(\'' + f[0] + '\')">' + f[1] + '</button>';
+  }).join('');
+}
+function setFilter(f){ CURRENT_FILTER = f; renderFilterPills(); renderList(); }
+
+/* PR On Hold (Phase 3): only the held item's row is affected, never the whole shipment. */
+function shipHoldBadge(r){
+  var lines = Array.isArray(r.PO_Shipments) ? r.PO_Shipments : [];
+  var prNos = lines.map(function(ln){ return ln.PR_No; });
+  var held = PRHold.heldOf(prNos);
+  if(!held.length) return '';
+  return PRHold.badge(held[0]) + ' <span style="font-size:11px;color:#64748b">' + held.length + '/' + prNos.length + '</span>';
+}
+/* ════════════════════════════════
+   TRACKING REFS — EXC # / RR # — ADDED 2026-10-21, per user request
+   ("pwede bang pag may exception number ito sa Shipment -> receiving. exception
+   number at RR number. dapat kasama ito para mabilis matrack ito").
+
+   DISPLAY ONLY — never writes anything. Two extra list columns plus two detail
+   chips, so a shipment can be traced to its Exception and its Replacement Request
+   without opening either of the other two widgets.
+
+   How the links are derived (all confirmed field names, not guessed):
+     EXC # - Exceptions_Report.Exception_No, matched on Exceptions.Shipment_No ==
+             this Shipment_No (the Exception widget reads exactly these two fields,
+             see Widget/Proc/Exception app/index.html's row mapper). The shipment's
+             OWN Exception_Number field is listed first when present — that one is
+             stamped by the Fulfillment EXC path and is already shown as a badge.
+     RR #  - Replacement_Request_Report.RR_No, from BOTH directions:
+             (a) RR.Cloned_Shipment_No == this Shipment_No — this shipment IS the
+                 replacement shipment created for that RR (same link sgLoadRRMap
+                 below already relies on), and
+             (b) RR.Source_Exception_No == an Exception_No whose Shipment_No is this
+                 shipment — the RR was raised FROM this shipment. Source_Exception_No
+                 is stamped with the source Exception's Exception_No by
+                 create_rr_button.txt / create_rr_custom_api.txt.
+
+   Both fetches are non-blocking: if either report is unavailable the columns just
+   render "—" and the rest of the widget is untouched.
+════════════════════════════════ */
+var TRK_EXC_BY_SHIP = {};
+var TRK_RR_BY_SHIP  = {};
+/* ADDED 2026-10-21 — per-LINE maps for the Shipment Groupings item table, where one
+   chip per shipment is not enough: a grouping card lists several SKUs and each can
+   have its own Exception. Exceptions carries `Exception_Line_Key` = Receive_No||SKU
+   (Receiving_Auto_Exception's own dedup key, 2026-10-12), so the SKU is the half after
+   the separator; `Receiving_Line_ID` holds the PR_No and is the fallback for Exceptions
+   raised before that key existed. Both are combined with the Exception's own
+   Shipment_No so a SKU that appears on two shipments cannot cross over. */
+var TRK_EXC_BY_SHIP_SKU = {};   // Shipment_No||SKU   -> [Exception_No]
+var TRK_EXC_BY_SHIP_PR  = {};   // Shipment_No||PR_No -> [Exception_No]
+/* ADDED 2026-10-21 — the grouping table's RR # column reads
+   Supplier_Shipment_Details.RR_No, which clone_shipment_for_replacement.txt writes as
+   an empty string ON PURPOSE (lines 653 and 672, the documented "RR_No-always-blank
+   convention"). So that column has always shown a dash for every supplier-reported row.
+   The RR is instead derived, exactly the way the EXC # column is:
+     - RR.Source_Exception_No -> the Exception -> that Exception's own line, or
+     - RR.Cloned_Shipment_No + RR.RR_SKU for a replacement shipment.
+   DISPLAY ONLY — sgSaveRow() still writes it.RR_No, so nothing new is persisted and the
+   blank-by-design convention is left exactly as it is. */
+var TRK_RR_BY_EXC      = {};   // Exception_No      -> [RR_No]
+var TRK_RR_BY_SHIP_SKU = {};   // Shipment_No||SKU  -> [RR_No]
+/* ADDED 2026-10-21, user: "bat yung iba walang exception pero may RR naman sila?"
+   A REPLACEMENT shipment (SHP-00002, SHP-00011) is matched to its RR through
+   RR.Cloned_Shipment_No, but the Exception that caused that RR was raised against the
+   ORIGINAL shipment, so an Exceptions.Shipment_No lookup on the replacement finds
+   nothing and the EXC # column was blank next to a filled RR #. The RR itself knows the
+   answer — Source_Exception_No — so that is read back here. It also reaches the
+   Fulfillment side (EXC-FF-xxxxx on Exception_Control1), which Exceptions_Report does
+   not contain at all. */
+var TRK_SRC_EXC_BY_RR = {};   // RR_No -> [Source_Exception_No]
+var TRK_LOADED = false;
+(function injectTrkCss(){
+  if(document.getElementById('trkStyles')) return;
+  var st = document.createElement('style');
+  st.id = 'trkStyles';
+  st.textContent =
+    '.trk-chip{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;' +
+    'font-weight:600;line-height:1.3;padding:2px 7px;border-radius:6px;white-space:nowrap;margin:1px 2px 1px 0}' +
+    '.trk-exc{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}' +
+    '.trk-rr{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}' +
+    '.trk-none{color:#94a3b8}';
+  document.head.appendChild(st);
+})();
+function trkVal(v){
+  if(v == null) return '';
+  if(typeof v === 'object') return String(v.zc_display_value || v.display_value || v.ID || '');
+  return String(v);
+}
+function trkPush(map, key, val){
+  if(!key || !val) return;
+  var list = map[key] = map[key] || [];
+  if(list.indexOf(val) === -1) list.push(val);
+}
+function trkGet(opts){
+  return ZOHO.CREATOR.DATA.getRecords(opts).then(function(resp){
+    return (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+  }).catch(function(err){
+    console.warn('[Shipments] tracking refs fetch failed (non-blocking)', opts.report_name, err);
+    return [];
+  });
+}
+function trkLoad(){
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA ||
+     typeof ZOHO.CREATOR.DATA.getRecords !== 'function') return Promise.resolve();
+  return Promise.all([
+    trkGet({ report_name: 'Exceptions_Report', page: 1, pageSize: 500, field_config: 'all' }),
+    trkGet({ report_name: 'Replacement_Request_Report', page: 1, pageSize: 500, field_config: 'all' })
+  ]).then(function(res){
+    var excMap = {}, rrMap = {}, shipByExcNo = {}, excBySku = {}, excByPr = {};
+    res[0].forEach(function(e){
+      var no = trkVal(e.Exception_No).trim();
+      var sn = trkVal(e.Shipment_No).trim();
+      if(!no || !sn) return;
+      trkPush(excMap, sn, no);
+      shipByExcNo[no] = sn;
+      var lineKey = trkVal(e.Exception_Line_Key).trim();
+      var sep = lineKey.indexOf('||');
+      if(sep > -1) trkPush(excBySku, sn + '||' + lineKey.slice(sep + 2).trim(), no);
+      var prNo = trkVal(e.Receiving_Line_ID).trim();
+      if(prNo) trkPush(excByPr, sn + '||' + prNo, no);
+    });
+    var rrByExc = {}, rrBySku = {}, srcExcByRr = {};
+    res[1].forEach(function(rr){
+      var no = trkVal(rr.RR_No).trim();
+      if(!no) return;
+      var cloned = trkVal(rr.Cloned_Shipment_No).trim();
+      var srcExc = trkVal(rr.Source_Exception_No).trim();
+      trkPush(rrMap, cloned, no);
+      trkPush(rrMap, shipByExcNo[srcExc] || '', no);
+      trkPush(rrByExc, srcExc, no);
+      trkPush(srcExcByRr, no, srcExc);
+      var rrSku = trkVal(rr.RR_SKU).trim();
+      if(cloned && rrSku) trkPush(rrBySku, cloned + '||' + rrSku, no);
+    });
+    TRK_EXC_BY_SHIP     = excMap;
+    TRK_RR_BY_SHIP      = rrMap;
+    TRK_EXC_BY_SHIP_SKU = excBySku;
+    TRK_EXC_BY_SHIP_PR  = excByPr;
+    TRK_RR_BY_EXC       = rrByExc;
+    TRK_RR_BY_SHIP_SKU  = rrBySku;
+    TRK_SRC_EXC_BY_RR   = srcExcByRr;
+    TRK_LOADED = true;
+  });
+}
+function trkExcFor(r){
+  var out = [];
+  var own = trkVal(r && r.Exception_Number).trim();
+  if(own) out.push(own);
+  (TRK_EXC_BY_SHIP[trkVal(r && r.Shipment_No).trim()] || []).forEach(function(n){
+    if(out.indexOf(n) === -1) out.push(n);
+  });
+  return out;
+}
+function trkRRFor(r){
+  return TRK_RR_BY_SHIP[trkVal(r && r.Shipment_No).trim()] || [];
+}
+/* The Exception covering ONE grouping row. Deliberately never falls back to "any
+   Exception on this shipment" — that would print the wrong EXC # against the wrong SKU,
+   which is worse than printing nothing. The card header carries the whole-shipment list. */
+/* The RR routes that do NOT need an Exception to resolve: the subform's own value (HC
+   System local rows) and the replacement-shipment link. Kept separate from
+   trkRRForSgRow so trkExcForSgRow can use it without the two calling each other. */
+function trkRRDirectForSgRow(shipNo, it){
+  var out = [];
+  function add(n){ n = trkVal(n).trim(); if(n && out.indexOf(n) === -1) out.push(n); }
+  add(it && it.RR_No);
+  var sn = trkVal(shipNo).trim();
+  var sku = trkVal(it && it.SKU).trim();
+  if(sn && sku) (TRK_RR_BY_SHIP_SKU[sn + '||' + sku] || []).forEach(add);
+  return out;
+}
+function trkExcForSgRow(shipNo, it){
+  var out = [];
+  function add(n){ n = trkVal(n).trim(); if(n && out.indexOf(n) === -1) out.push(n); }
+  var sn = trkVal(shipNo).trim();
+  if(sn){
+    var sku = trkVal(it && it.SKU).trim();
+    var bySku = TRK_EXC_BY_SHIP_SKU[sn + '||' + sku];
+    if(bySku && bySku.length){
+      bySku.forEach(add);
+    } else {
+      var prNo = trkVal(it && it.PR_No).trim();
+      if(prNo) (TRK_EXC_BY_SHIP_PR[sn + '||' + prNo] || []).forEach(add);
+    }
+  }
+  /* A replacement shipment carries no Exception of its own — borrow the one its RR
+     names. Row-specific, because the RR was matched on this row's SKU. */
+  trkRRDirectForSgRow(shipNo, it).forEach(function(rrNo){
+    (TRK_SRC_EXC_BY_RR[rrNo] || []).forEach(add);
+  });
+  return out;
+}
+/* The RR(s) for ONE grouping row. Starts from the subform value so a row that really
+   does carry an RR_No (the HC System local rows, filled by sgApplyRRMap) keeps showing
+   it, then adds the two derived routes. Like trkExcForSgRow, it never falls back to the
+   shipment-wide list — the card header carries that. */
+function trkRRForSgRow(shipNo, it){
+  var out = [];
+  function add(n){ n = trkVal(n).trim(); if(n && out.indexOf(n) === -1) out.push(n); }
+  trkRRDirectForSgRow(shipNo, it).forEach(add);
+  trkExcForSgRow(shipNo, it).forEach(function(excNo){
+    (TRK_RR_BY_EXC[excNo] || []).forEach(add);
+  });
+  return out;
+}
+function trkChips(list, cls){
+  if(!list || !list.length) return '<span class="trk-none">&mdash;</span>';
+  return list.map(function(n){ return '<span class="trk-chip ' + cls + '">' + esc(n) + '</span>'; }).join('');
+}
+/* Detail header chips — same two lists, shown next to the existing badges. */
+function trkRenderDetail(r){
+  var pairs = [['trkExcDetail', trkExcFor(r), 'trk-exc', 'EXC'], ['trkRRDetail', trkRRFor(r), 'trk-rr', 'RR']];
+  pairs.forEach(function(p){
+    var el = document.getElementById(p[0]);
+    if(!el) return;
+    if(!p[1].length){ el.classList.add('hidden'); el.innerHTML = ''; return; }
+    el.classList.remove('hidden');
+    el.innerHTML = '<span class="trk-chip ' + p[2] + '">' + p[3] + ' ' + p[1].map(esc).join(' &middot; ') + '</span>';
+  });
+}
+
+function renderList(){
+  var q = (document.getElementById('searchInput').value || '').toLowerCase();
+  var rows = ALL_ROWS.filter(function(r){
+    var needsAttn = r.Need_Attention1===true || r.Need_Attention1==='true';
+    if(CURRENT_FILTER === 'attention'){ if(!needsAttn) return false; }
+    else if(CURRENT_FILTER === 'shipmode_unmatched'){ if(!rowHasShipModeMismatch(r)) return false; }
+    else if(CURRENT_FILTER !== 'all' && statusKey(r) !== CURRENT_FILTER) return false;
+    if(!q) return true;
+    var hay = ((r.Shipment_No||'') + ' ' + dispVal(r.PO_No) + ' ' + (r.Sales_Order||'') + ' ' + (r.Customer||'') + ' ' + (r.Supplier||'') + ' ' +
+      trkExcFor(r).join(' ') + ' ' + trkRRFor(r).join(' ')).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  });
+  var body = document.getElementById('listBody');
+  var empty = document.getElementById('listEmpty');
+  if(rows.length === 0){
+    body.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  body.innerHTML = rows.map(function(r){
+    var sKey = statusKey(r);
+    var needsAttn = r.Need_Attention1===true || r.Need_Attention1==='true';
+    var recvCreated = r.Receiving_Record_Created===true || r.Receiving_Record_Created==='true';
+    var tl = timelineInfo(r);
+    var fulfExcBadge = (r.Source_Module === 'Fulfillment EXC') ? ' <span class="badge" style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4">Fulfillment EXC</span>' : '';
+    return '<tr class="row-' + sKey + '" onclick="openDetail(\'' + r.ID + '\')">' +
+      '<td><strong>' + esc(r.Shipment_No) + '</strong>' + fulfExcBadge + '</td>' +
+      '<td>' + esc(dispVal(r.PO_No)) + '</td>' +
+      '<td>' + esc(r.Sales_Order) + '</td>' +
+      '<td>' + trkChips(trkExcFor(r), 'trk-exc') + '</td>' +
+      '<td>' + trkChips(trkRRFor(r), 'trk-rr') + '</td>' +
+      '<td>' + esc(r.Customer) + '</td>' +
+      '<td>' + esc(r.Supplier) + '</td>' +
+      '<td>' + statusBadge(r) + shipHoldBadge(r) + '</td>' +
+      '<td>' + nextStepCell(r.ID, nextStepFor(r)) + '</td>' +
+      '<td>' + esc(r.ETA || '—') + '</td>' +
+      '<td>' + (r.Required_Days_Lead||'—') + '</td>' +
+      '<td>' + (r.Remaining_Days||'—') + '</td>' +
+      '<td><span class="badge ' + tl.cls + '" style="font-size:10.5px">' + tl.label + '</span></td>' +
+      '<td>' + forecastCell(r) + '</td>' +
+      '<td>' + (needsAttn ? '<span class="badge badge-red">YES</span>' : '<span class="badge badge-gray">No</span>') + '</td>' +
+      '<td>' + (recvCreated ? '<span class="badge badge-green">Created</span>' : '<span class="badge badge-gray">No</span>') + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+/* ───────── FORECAST (added 2026-11-04) ─────────
+   Read-only. Written by the Forecast_Stamp_Daily schedule onto this form's
+   Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+   displays them.
+
+   The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+   title attribute rather than the cell, so the column stays one line wide. The
+   date shown is the midpoint of that window, never a promise.
+
+   Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+   #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+   separation. Status also carries its own word, so it is never colour-alone.
+
+   fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+   esc there), so this picks whichever exists and carries its own as a last
+   resort - it must never be the reason a row fails to render. */
+var fcEsc = (function () {
+  if (typeof escapeHtml === "function") return escapeHtml;
+  if (typeof esc === "function") return esc;
+  return function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+})();
+
+var FORECAST_TONE = {
+  "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+  "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+  "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+};
+
+/* Creator hands dates back in whichever format the app is set to; this accepts the
+   four shapes seen across this app and returns "" rather than "Invalid Date". */
+function forecastDateText(v) {
+  if (!v) return "";
+  var s = String(v).trim();
+  var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  if (m) return m[2] + " " + m[1] + ", " + m[3];
+  var d = new Date(s.replace(/-/g, "/"));
+  if (isNaN(d.getTime())) return s.split(" ")[0];
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+function forecastCell(r) {
+  r = r || {};
+  var raw = r.Forecast_Delivery;
+  var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+  var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+  var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+  var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+  var tip = fcEsc(win || status || "");
+
+  return (
+    '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+    "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+    "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+    ';flex:none"></span>' + date +
+    (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+    "</span>"
+  );
+}
+
+function showList(){
+  document.getElementById('detailView').classList.add('hidden');
+  document.getElementById('groupingView').classList.add('hidden');
+  document.getElementById('listView').classList.remove('hidden');
+  internalNotes.close();
+  loadList();
+}
+
+/* ==================== DETAIL ==================== */
+function openDetail(id){
+  document.getElementById('listView').classList.add('hidden');
+  document.getElementById('groupingView').classList.add('hidden');
+  document.getElementById('detailView').classList.remove('hidden');
+  document.getElementById('lineBody').innerHTML = '<tr><td colspan="9"><div class="loading-wrap"><div class="spinner"></div>Loading…</div></td></tr>';
+  console.log('[SHIPNO-DEBUG] openDetail fetching id=' + id);
+  ZOHO.CREATOR.DATA.getRecordById({
+    report_name: REPORT_NAME,
+    id: String(id),
+    field_config: 'all'
+  }).then(function(resp){
+    CURRENT_RECORD = (resp && resp.code===3000 && resp.data) ? resp.data : null;
+    if(!CURRENT_RECORD){
+      showToast('Could not load this Shipment — code ' + (resp && resp.code));
+      showList();
+      return;
+    }
+    console.log('[SHIPNO-DEBUG] openDetail got Shipment_No=' + CURRENT_RECORD.Shipment_No + ' (record ID=' + CURRENT_RECORD.ID + ')');
+    renderDetail();
+  }).catch(function(err){
+    console.error('[Shipments] getRecordById failed', err);
+    showToast('Could not load this Shipment');
+  });
+}
+
+function renderDetail(){
+  var r = CURRENT_RECORD;
+  renderNextStepBanner("nsBanner", r.ID, nextStepFor(r));
+  shipTimeline.open(r.Shipment_No);
+  internalNotes.open(r.Shipment_No);
+  document.getElementById('hsShipNo').textContent = r.Shipment_No || '—';
+  document.getElementById('hsPO').textContent = dispVal(r.PO_No) || '—';
+  document.getElementById('hsSO').textContent = r.Sales_Order || '—';
+  document.getElementById('hsCustomer').textContent = r.Customer || '—';
+  document.getElementById('hsSupplier').textContent = r.Supplier || '—';
+  document.getElementById('statusBadgeDetail').innerHTML = statusBadge(r);
+
+  var needsAttn = r.Need_Attention1===true || r.Need_Attention1==='true';
+  var attnBadge = document.getElementById('attnBadgeDetail');
+  if(needsAttn){
+    attnBadge.classList.remove('hidden');
+    attnBadge.innerHTML = '<span class="badge badge-red">Needs Attention</span>';
+  } else {
+    attnBadge.classList.add('hidden');
+  }
+
+  var recvCreated = r.Receiving_Record_Created===true || r.Receiving_Record_Created==='true';
+  var recvBadge = document.getElementById('recvBadgeDetail');
+  if(recvCreated){
+    recvBadge.classList.remove('hidden');
+    recvBadge.innerHTML = '<span class="badge badge-green">Receiving Created</span>';
+  } else {
+    recvBadge.classList.add('hidden');
+  }
+
+  var fulfBadge = document.getElementById('fulfExcBadgeDetail');
+  if(r.Source_Module === 'Fulfillment EXC'){
+    fulfBadge.classList.remove('hidden');
+    fulfBadge.textContent = 'Fulfillment EXC — ' + (r.Exception_Number || '');
+  } else {
+    fulfBadge.classList.add('hidden');
+  }
+  trkRenderDetail(r); // ADDED 2026-10-21 — EXC # / RR # trace chips
+
+  document.getElementById('infoSupplier').textContent = r.Supplier || '—';
+  document.getElementById('infoCustomer').textContent = r.Customer || '—';
+  document.getElementById('infoPO').textContent = dispVal(r.PO_No) || '—';
+  document.getElementById('infoSO').textContent = r.Sales_Order || '—';
+  document.getElementById('fldSalesOwner').value = r.Sales_Owner || '';
+  document.getElementById('fldRequiredDays').value = (r.Required_Days_Lead !== null && r.Required_Days_Lead !== undefined) ? r.Required_Days_Lead : '';
+  document.getElementById('fldRemainingDays').value = (r.Remaining_Days !== null && r.Remaining_Days !== undefined) ? r.Remaining_Days : '';
+  document.getElementById('fldShipmentDays').value = (r.Shipment_Days !== null && r.Shipment_Days !== undefined) ? r.Shipment_Days : '';
+  document.getElementById('fldTargetDate').value = fmtDateForInput(r.Target_Date);
+  document.getElementById('fldSupplierTargetDate').value = fmtDateForInput(r.Supplier_Target_Date);
+  document.getElementById('fldProductionDate').value = fmtDateForInput(r.Production_Date);
+
+  var tl = timelineInfo(r);
+  var bannerCls = tl.key === 'behind' ? 'behind' : (tl.key === 'ontrack' ? 'ontrack' : 'unknown');
+  document.getElementById('delayBanner').innerHTML = '<div class="delay-banner ' + bannerCls + '">' + esc(tl.label) + '</div>';
+
+  document.getElementById('fldShipmentStatus').value = r.Shipment_Status || 'Pending';
+  document.getElementById('infoPrevStatus').textContent = r.Previous_Status || '—';
+  document.getElementById('fldRiskStatus').value = r.Risk_Status || '';
+  document.getElementById('fldETD').value = fmtDateForInput(r.ETD);
+  document.getElementById('fldETA').value = fmtDateForInput(r.ETA);
+  document.getElementById('fldShipOutDate').value = fmtDateForInput(r.Ship_Out_Date);
+  document.getElementById('fldEstWarehouseArrival').value = fmtDateForInput(r.Estimated_Warehouse_Arrival);
+  document.getElementById('fldArrivalDate').value = fmtDateForInput(r.Arrival_Date);
+  document.getElementById('infoNeedsAttn').textContent = needsAttn ? 'Yes' : 'No';
+  var receivedFlag = r.Need_Attention===true || r.Need_Attention==='true';
+  document.getElementById('infoReceivedFlag').textContent = receivedFlag ? 'Yes' : 'No';
+  document.getElementById('infoRecvCreated').textContent = recvCreated ? 'Yes' : 'No';
+
+  renderLineItems();
+
+  /* ADDED 2026-07-16, per user request — plain persistent Notes field (real, already-
+     existing `Notes` field on the native Shipments form, just never surfaced in this
+     widget before). Enabled only while this shipment currently has a Ship Mode
+     mismatch on at least one line — nothing more than that: no history, no per-line
+     notes, no auto-clear, just a normal field that saves with everything else and
+     stays exactly as typed until someone edits it again. Previously-saved text stays
+     visible (not blanked) even once resolved, just no longer editable — matches "no
+     extra feature just literally a note". */
+  document.getElementById('fldNotes').value = r.Notes || '';
+  refreshNotesGate();
+}
+
+/* Factored out of renderDetail() so a live Ship Mode Received edit (onLineShipModeInput)
+   can re-check the mismatch gate immediately, not just on initial record load. */
+function refreshNotesGate(){
+  var hasShipModeMismatch = getLineItems().some(function(ln){
+    var planned = (ln.Shipping_Mode||'').trim();
+    var received = (ln.Shipment_Mode_When_Received||'').trim();
+    return received && planned !== received;
+  });
+  document.getElementById('fldNotes').disabled = !hasShipModeMismatch;
+  document.getElementById('notesHint').style.display = hasShipModeMismatch ? 'block' : 'none';
+}
+
+/* Creator date fields commonly come back as "DD-MMM-YYYY" (e.g. "13-Jul-2026") — an
+   <input type="date"> needs "YYYY-MM-DD". Converts defensively; leaves blank if the
+   value isn't in a recognized shape rather than guessing. */
+function fmtDateForInput(val){
+  if(!val) return '';
+  var m = String(val).match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+  if(m){
+    var months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+    var mm = months[m[2]];
+    if(mm) return m[3] + '-' + mm + '-' + (m[1].length===1?'0'+m[1]:m[1]);
+  }
+  if(/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  return '';
+}
+/* FIXED 2026-07-16, per user ("why am i getting an error on save") — real, pre-existing
+   bug, not caused by today's changes. Console showed `{"code":3002,"error":{"Production_
+   Date":"Enter a valid date format...", ...}}` for every date field on save. This
+   function was converting the <input type="date">'s native ISO "YYYY-MM-DD" INTO
+   "DD-MMM-YYYY" before sending — backwards. Same already-documented gotcha as
+   CLAUDE.md's Deluge Gotchas / reference-deluge-quirks memory (confirmed 2026-07-08,
+   `PRs` widget hit this exact thing): the Creator v2.1 write API wants plain ISO
+   YYYY-MM-DD, which is already exactly what the date input provides natively — no
+   conversion needed at all, the DD-MMM-YYYY shape is a GET-response display format,
+   never a write-request format. Simplified to a straight pass-through. */
+function fmtDateForPayload(val){
+  return val || '';
+}
+
+function getLineItems(){
+  return (CURRENT_RECORD && CURRENT_RECORD.PO_Shipments) ? CURRENT_RECORD.PO_Shipments : [];
+}
+
+function renderLineItems(){
+  var lines = getLineItems();
+  var body = document.getElementById('lineBody');
+  var empty = document.getElementById('lineEmpty');
+  if(lines.length === 0){
+    body.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  body.innerHTML = lines.map(function(ln, idx){
+    return lineRowHtml(ln, idx);
+  }).join('');
+}
+
+/* ADDED 2026-07-16, per user request — Yes/No match badge between the planned
+   Shipping_Mode (from the PO) and Shipment_Mode_When_Received (set by Receiving at
+   inspection time). Blank/not-yet-received shows a neutral dash, not a red "No" —
+   there's nothing to mismatch yet, showing red there would misleadingly read as a
+   real discrepancy instead of "not received yet". Same badge classes/style as the
+   existing Fully Shipped column for visual consistency. */
+function shipModeMatchBadge(ln){
+  var planned = (ln.Shipping_Mode||'').trim();
+  var received = (ln.Shipment_Mode_When_Received||'').trim();
+  if(!received) return '<span class="badge badge-gray">&#8212;</span>';
+  return (planned === received) ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-red">No</span>';
+}
+/* ADDED — Ship Mode Received editable straight from Shipments (was read-only display
+   set only by the Receiving widget). Same 3 choices as Receiving's own dropdown
+   (Shipment_Mode_When_Received, Dropdown field, Airfreight/LCL/FCL). On save this
+   writes back onto PO_Shipments same as always; a new native workflow
+   (shipments_sync_shipment_mode_to_receiving.txt) pushes it down onto the matching
+   Receiving_Line_Items row (by PR_No) so both sides end up in sync regardless of which
+   widget last edited it. */
+var SHIP_MODE_RECEIVED_CHOICES = ['Airfreight','LCL','FCL'];
+function shipModeReceivedOptionsHtml(sel){
+  var html = '<option value=""' + (!sel ? ' selected' : '') + '>-Select-</option>';
+  SHIP_MODE_RECEIVED_CHOICES.forEach(function(c){
+    html += '<option value="' + c + '"' + (sel === c ? ' selected' : '') + '>' + c + '</option>';
+  });
+  return html;
+}
+function onLineShipModeInput(idx){
+  var lines = getLineItems();
+  var ln = lines[idx];
+  var row = document.querySelector('tr[data-idx="' + idx + '"]');
+  var sel = row.querySelector('select[data-idx="' + idx + '"]');
+  ln.Shipment_Mode_When_Received = sel.value;
+  document.getElementById('lineShipMatch' + idx).innerHTML = shipModeMatchBadge(ln);
+  refreshNotesGate();
+}
+function lineRowHtml(ln, idx){
+  var ordered = parseFloat(ln.Ordered_QTY || 0);
+  var shipped = parseFloat(ln.Shipment_QTY || 0);
+  var remaining = ordered - shipped;
+  if(remaining < 0) remaining = 0;
+  var fullyShipped = ordered > 0 && remaining <= 0;
+  var rowCls = fullyShipped ? 'lr-full' : (shipped > 0 ? 'lr-partial' : '');
+  return '<tr class="' + rowCls + '" data-idx="' + idx + '">' +
+    '<td>' + esc(ln.PR_No) + PRHold.badge(ln.PR_No) + '</td>' +
+    '<td><span class="cell-sku">' + esc(ln.SKU) + '</span></td>' +
+    '<td>' + esc(ln.Item_Name) + '</td>' +
+    '<td>' + ordered + '</td>' +
+    '<td><input type="number" min="0" max="' + ordered + '" value="' + shipped + '" data-idx="' + idx + '" oninput="onLineQtyInput(' + idx + ')" /></td>' +
+    '<td id="lineRemaining' + idx + '">' + remaining + '</td>' +
+    '<td>' + esc(ln.Shipping_Mode) + '</td>' +
+    '<td><select data-idx="' + idx + '" onchange="onLineShipModeInput(' + idx + ')">' + shipModeReceivedOptionsHtml(ln.Shipment_Mode_When_Received) + '</select></td>' +
+    '<td id="lineShipMatch' + idx + '">' + shipModeMatchBadge(ln) + '</td>' +
+    '<td>' + esc(ln.Line_Status) + '</td>' +
+    '<td id="lineFully' + idx + '">' + (fullyShipped ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-gray">No</span>') + '</td>' +
+    '</tr>';
+}
+
+function onLineQtyInput(idx){
+  var lines = getLineItems();
+  var ln = lines[idx];
+  var row = document.querySelector('tr[data-idx="' + idx + '"]');
+  var input = row.querySelector('input[type=number]');
+  var ordered = parseFloat(ln.Ordered_QTY || 0);
+  var val = input.value === '' ? 0 : parseFloat(input.value);
+  if(val > ordered){ val = ordered; input.value = val; showToast('Shipment Qty can\'t exceed Ordered Qty (' + ordered + ')'); }
+  if(val < 0){ val = 0; input.value = val; }
+  ln.Shipment_QTY = val;
+  var remaining = ordered - val;
+  if(remaining < 0) remaining = 0;
+  var fullyShipped = ordered > 0 && remaining <= 0;
+  document.getElementById('lineRemaining' + idx).textContent = remaining;
+  document.getElementById('lineFully' + idx).innerHTML = fullyShipped ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-gray">No</span>';
+  row.className = fullyShipped ? 'lr-full' : (val > 0 ? 'lr-partial' : '');
+}
+
+/* ==================== SAVE ====================
+   Plain updateRecordById — no Custom API wrapper needed (Shipments has no Report
+   Action Items, unlike Receiving/PR/PO). Native Edited > Validations workflows
+   (shipment_previous_status.txt's Shipment_Track_Previous_Status, if pasted live)
+   fire naturally on this write. */
+/* Human labels for the Timeline History diff — see TimelineHistory.diffFlat in
+   timeline_history_component/README.md. PO_Shipments (subform) intentionally
+   unlisted: it's a full-array rewrite on every save, not a diffable flat field. */
+const SHIPMENT_EDIT_FIELD_LABELS = {
+  Shipment_Status: 'Shipment Status', Risk_Status: 'Risk Status', Sales_Owner: 'Sales Owner',
+  Notes: 'Notes', Required_Days_Lead: 'Required Days (Lead)', Remaining_Days: 'Remaining Days',
+  Shipment_Days: 'Shipment Days', Target_Date: 'Target Date', Supplier_Target_Date: 'Supplier Target Date',
+  Production_Date: 'Production Date', ETD: 'ETD', ETA: 'ETA', Ship_Out_Date: 'Ship Out Date',
+  Estimated_Warehouse_Arrival: 'Estimated Warehouse Arrival', Arrival_Date: 'Arrival Date'
+};
+const SHIPMENT_EDIT_NUMERIC_FIELDS = { Required_Days_Lead: 1, Remaining_Days: 1, Shipment_Days: 1 };
+
+// ADDED 2026-08-08i, per user report ("shipment status not updating/reflecting")
+// — moved here from the native workflow shipment_status_back_sync.txt entirely:
+// that script's own fix (zoho.creator.v2_1.updateRecords, replacing a confirmed-
+// broken in-place subform mutation) turned out to be UNCALLABLE from a native
+// same-app Creator workflow ("Not able to find 'updateRecords' function", live
+// error, same platform gap already confirmed for createRecord). Shipments is
+// already edited exclusively via this widget (never the native form), so the fix
+// lives here instead — same proven widget-SDK full-subform-rebuild pattern
+// already used throughout this app. Match key is PR_No+SKU only (no RR_No) —
+// PO_Shipments has no RR_No column at all, same precision-loss the native script
+// already documented and accepted. Best-effort / fire-and-forget.
+function syncShipmentStatusBack(savedLines){
+  var shipId = CURRENT_RECORD.ID ? String(CURRENT_RECORD.ID) : '';
+  if(!shipId || typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA) return;
+  var statusMap = {};
+  (savedLines||[]).forEach(function(ln){
+    if(ln.Line_Status){
+      var key = (ln.PR_No||'') + '|' + (ln.SKU||'');
+      statusMap[key] = ln.Line_Status;
+    }
+  });
+  if(!Object.keys(statusMap).length) return;
+  var supplierVal = (CURRENT_RECORD.Supplier||'')+'';
+  var isFenteng = supplierVal==='Fenteng' || supplierVal.indexOf('Fenteng')>-1;
+  var isTony = supplierVal==='Tony' || supplierVal.indexOf('Tony')>-1;
+  if(!isFenteng && !isTony) return;
+  var suppReport = isFenteng ? 'Fenteng_Shipment_Report' : 'Tony_Shipment_Report';
+  var subformField = isFenteng ? 'Supplier1_Shipment_Details' : 'Supplier2_Shipment_Details';
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: suppReport, criteria: '(Parent_Shipment_ID=="'+shipId+'")', field_config: 'all', max_records: 200 }).then(function(suppResp){
+    if(!(suppResp && suppResp.code===3000 && Array.isArray(suppResp.data) && suppResp.data.length)) return;
+    var suppRec = suppResp.data[0];
+    var rows = suppRec[subformField] || [];
+    var changed = false;
+    var newRows = rows.map(function(row){
+      var key = (row.PR_No||'') + '|' + (row.SKU||'');
+      var status = statusMap[key] != null ? statusMap[key] : row.Status;
+      if(status !== row.Status) changed = true;
+      return {
+        Select_To_Ship: row.Select_To_Ship, SKU: row.SKU, Item_Name: row.Item_Name,
+        PR_No: row.PR_No, RR_No: row.RR_No, Date_Shipped: row.Date_Shipped,
+        Shipment_Mode: row.Shipment_Mode, Synced: row.Synced, Status: status
+      };
+    });
+    if(!changed) return;
+    var upd = {}; upd[subformField] = newRows;
+    var ubr = ZOHO.CREATOR.DATA.updateRecordById.bind(ZOHO.CREATOR.DATA);
+    return ubr({ report_name: suppReport, id: String(suppRec.ID), payload: { data: upd } }).then(function(r){
+      console.log('[Shipments] syncShipmentStatusBack resp:', JSON.stringify(r));
+    });
+  }).catch(function(err){ console.warn('[Shipments] syncShipmentStatusBack failed:', err); });
+}
+
+function saveShipment(){
+  var lines = getLineItems();
+  var btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  console.log('[SHIPNO-DEBUG] BEFORE save — CURRENT_RECORD.ID=' + CURRENT_RECORD.ID + ' Shipment_No=' + CURRENT_RECORD.Shipment_No);
+
+  var payload = {
+    Shipment_Status: document.getElementById('fldShipmentStatus').value,
+    Risk_Status: document.getElementById('fldRiskStatus').value,
+    Sales_Owner: document.getElementById('fldSalesOwner').value,
+    Notes: document.getElementById('fldNotes').value,
+    Required_Days_Lead: document.getElementById('fldRequiredDays').value,
+    Remaining_Days: document.getElementById('fldRemainingDays').value,
+    Shipment_Days: document.getElementById('fldShipmentDays').value,
+    Target_Date: fmtDateForPayload(document.getElementById('fldTargetDate').value),
+    Supplier_Target_Date: fmtDateForPayload(document.getElementById('fldSupplierTargetDate').value),
+    Production_Date: fmtDateForPayload(document.getElementById('fldProductionDate').value),
+    ETD: fmtDateForPayload(document.getElementById('fldETD').value),
+    ETA: fmtDateForPayload(document.getElementById('fldETA').value),
+    Ship_Out_Date: fmtDateForPayload(document.getElementById('fldShipOutDate').value),
+    Estimated_Warehouse_Arrival: fmtDateForPayload(document.getElementById('fldEstWarehouseArrival').value),
+    Arrival_Date: fmtDateForPayload(document.getElementById('fldArrivalDate').value),
+    PO_Shipments: lines.map(function(ln){
+      var ordered = parseFloat(ln.Ordered_QTY || 0);
+      var shipped = parseFloat(ln.Shipment_QTY || 0);
+      var remaining = ordered - shipped; if(remaining < 0) remaining = 0;
+      return {
+        PR_No: ln.PR_No, SKU: ln.SKU, Item_Name: ln.Item_Name, Ordered_QTY: ln.Ordered_QTY,
+        Shipment_QTY: shipped, Remaining_QTY: remaining,
+        Shipping_Mode: ln.Shipping_Mode || '', Line_Status: ln.Line_Status || '',
+        Shipment_Mode_When_Received: ln.Shipment_Mode_When_Received || ''
+      };
+    })
+  };
+  console.log('[Shipments] saveShipment payload:', JSON.stringify(payload));
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: String(CURRENT_RECORD.ID),
+    payload: { data: payload }
+  }).then(function(resp){
+    console.log('[Shipments] updateRecordById resp:', JSON.stringify(resp));
+    if(!(resp && (resp.code===3000 || String(resp.code)==='3000'))){
+      showToast('Save failed — code ' + (resp && resp.code) + ' ' + (resp && resp.message || ''));
+      btn.disabled = false; btn.textContent = 'Save';
+      return;
+    }
+    showToast('Saved');
+    var tlChanges = TimelineHistory.diffFlat(CURRENT_RECORD, payload, SHIPMENT_EDIT_FIELD_LABELS, null, SHIPMENT_EDIT_NUMERIC_FIELDS);
+    if(tlChanges.length) shipTimeline.log(CURRENT_RECORD.Shipment_No, TimelineHistory.titleFor(tlChanges, 'Updated Shipment'), 'Updated', tlChanges);
+    btn.disabled = false; btn.textContent = 'Save';
+    syncShipmentStatusBack(payload.PO_Shipments || []);
+    openDetail(String(CURRENT_RECORD.ID));
+  }).catch(function(err){
+    console.error('[Shipments] updateRecordById failed', err);
+    showToast('Save failed — see console');
+    btn.disabled = false; btn.textContent = 'Save';
+  });
+}
+
+/* ==================== SHIPMENT GROUPING ====================
+   ADDED 2026-07-21, per plan.txt — in-widget view (not a separate widget/page),
+   same show/hide-a-sibling-.page pattern as Receiving's own Partial Receive
+   Timeline. Reads SG_REPORT_NAME (Shipment_Groupings, confirmed live by user),
+   flattens every Supplier_Shipment_Details row across all Shipments records,
+   groups by parent Shipment (same-trip items cluster together), splits into
+   "Not Delivered"/"Delivered" sections per plan.txt's own framing ("if the
+   supplier shipped that item too, put it into same group — not delivered,
+   separate/delivered grouped"). Editing Status + Save writes back the FULL
+   Supplier_Shipment_Details array for that one parent (no-ID full replace, same
+   proven pattern as saveShipment() above) — fires that record's own Edited
+   workflow, which is exactly what shipment_status_back_sync.txt listens for, so
+   Status reflects to the supplier automatically with no extra call needed here.
+   Reuses esc()/dispVal()/showToast()/statCard() already defined above — only
+   genuinely new state/functions live in this block, all SG_-prefixed. */
+
+function showGrouping(){
+  document.getElementById('listView').classList.add('hidden');
+  document.getElementById('detailView').classList.add('hidden');
+  document.getElementById('groupingView').classList.remove('hidden');
+  /* ADDED 2026-10-21 — the EXC chips need the Exceptions map. loadList() normally has
+     it already; this covers the case where it has not finished (or failed) first. */
+  if(!TRK_LOADED) trkLoad().then(function(){ if(SG_LOADED) sgRenderBody(); });
+  if(!SG_LOADED){
+    sgLoadData();
+  } else {
+    sgRenderStats(); sgRenderFilterPills(); sgRenderModePills(); sgRenderBody();
+  }
+}
+
+function sgLoadData(){
+  sgLoadRRMap().then(function(){ sgApplyRRMap(); if(SG_LOADED) sgRenderBody(); });
+  document.getElementById('sgBody').innerHTML = '<div class="loading-wrap"><div class="spinner"></div>Loading shipment items…</div>';
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    console.error('[ShipmentGrouping] SDK not available');
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  var _timeout = setTimeout(function(){ showToast('Still loading — this can take a moment'); }, 8000);
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: SG_REPORT_NAME,
+    page: 1,
+    pageSize: 200,
+    field_config: 'all'
+  }).then(function(resp){
+    clearTimeout(_timeout);
+    console.log('[ShipmentGrouping] getRecords code:', resp && resp.code, '| records:', resp && resp.data && resp.data.length);
+    var rows = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    sgBuildState(rows);
+    SG_LOADED = true;
+    sgRenderStats();
+    sgRenderFilterPills();
+    sgRenderModePills();
+    sgRenderBody();
+  }).catch(function(err){
+    clearTimeout(_timeout);
+    var isEmptyReport = false;
+    try{
+      var text = err && (err.responseText || (err.content && err.content.responseText));
+      var parsed = text ? JSON.parse(text) : null;
+      if(parsed && (parsed.code === 9220 || String(parsed.code) === '9220')) isEmptyReport = true;
+    } catch(e){ }
+    if(isEmptyReport){
+      sgBuildState([]);
+      SG_LOADED = true;
+      sgRenderStats(); sgRenderFilterPills(); sgRenderModePills(); sgRenderBody();
+      return;
+    }
+    console.error('[ShipmentGrouping] getRecords failed', err);
+    showToast('Could not load shipment grouping — see console');
+    document.getElementById('sgBody').innerHTML = '';
+    document.getElementById('sgEmptyState').classList.remove('hidden');
+  });
+}
+
+function sgBuildState(rows){
+  SG_PARENT_RAW = {}; SG_PARENT_SAVED = {}; SG_PARENT_META = {}; SG_FLAT_ITEMS = []; SG_DIRTY = {};
+  rows.forEach(function(r){
+    var items = Array.isArray(r.Supplier_Shipment_Details) ? r.Supplier_Shipment_Details : [];
+    if(items.length === 0) return;
+    var pid = String(r.ID);
+    SG_PARENT_RAW[pid] = items.map(function(it){
+      return {
+        Shipment_ID: it.Shipment_ID, SO_No: it.SO_No, PR_No: it.PR_No, RR_No: it.RR_No,
+        SKU: it.SKU, Item_Name: it.Item_Name, Date_Shipped: it.Date_Shipped,
+        Shipment_Mode: it.Shipment_Mode, Status: it.Status
+      };
+    });
+    SG_PARENT_SAVED[pid] = SG_PARENT_RAW[pid].map(function(it){ return Object.assign({}, it); });
+    SG_PARENT_META[pid] = {
+      shipmentNo: r.Shipment_No, poNo: dispVal(r.PO_No), soNo: r.Sales_Order,
+      customer: r.Customer, supplier: r.Supplier
+    };
+    SG_PARENT_RAW[pid].forEach(function(it, idx){
+      SG_FLAT_ITEMS.push({ parentId: pid, idx: idx, item: it });
+    });
+  });
+  sgApplyRRMap();
+}
+
+function sgIsDelivered(status){
+  return (status || '').trim().toLowerCase() === 'arrived';
+}
+
+function sgRenderStats(){
+  var total = SG_FLAT_ITEMS.length;
+  var delivered = SG_FLAT_ITEMS.filter(function(f){ return sgIsDelivered(f.item.Status); }).length;
+  var notDelivered = total - delivered;
+  var groupCount = Object.keys(SG_PARENT_RAW).length;
+  document.getElementById('sgStatCards').innerHTML =
+    statCard('Total Items', total, '') +
+    statCard('In Transit', notDelivered, 'blue') +
+    statCard('Delivered', delivered, 'green') +
+    statCard('Shipments', groupCount, 'orange');
+}
+
+/* CHANGED 2026-08-20, per user request ("gawin mong dalawang tab, In transit and
+   Delivered") — was a 3-pill filter row (All/Not Delivered/Delivered) reusing the
+   main list view's own .pill styling; now a real 2-tab bar (own .sg-tab styling,
+   see CSS) with no "All" option — Shipment Grouping only ever shows one tab's
+   contents at a time. Counts shown per-tab factor in the current search query too,
+   same as the body itself, so they stay accurate while typing (see sgOnSearchInput). */
+function sgRenderFilterPills(){
+  var q = (document.getElementById('sgSearchInput').value || '').toLowerCase();
+  var matched = SG_FLAT_ITEMS.filter(function(f){ return sgMatchesSearch(f, q); });
+  var inTransitCount = matched.filter(function(f){ return !sgIsDelivered(f.item.Status); }).length;
+  var deliveredCount = matched.filter(function(f){ return sgIsDelivered(f.item.Status); }).length;
+  var tabs = [
+    ['not_delivered', 'In Transit', inTransitCount],
+    ['delivered', 'Delivered', deliveredCount]
+  ];
+  document.getElementById('sgFilterPills').innerHTML = tabs.map(function(t){
+    return '<button class="sg-tab ' + (SG_FILTER===t[0]?'active':'') + '" onclick="sgSetFilter(\'' + t[0] + '\')">' +
+      t[1] + '<span class="badge-count">' + t[2] + '</span></button>';
+  }).join('');
+}
+function sgSetFilter(f){ SG_FILTER = f; sgRenderFilterPills(); sgRenderModePills(); sgRenderBody(); }
+function sgOnSearchInput(){ sgRenderFilterPills(); sgRenderModePills(); sgRenderBody(); }
+
+/* Second-level tabs under Status — counts factor in the current Status tab + search,
+   same "stay accurate while typing/switching" rule as the Status tabs themselves. */
+/* CHANGED 2026-10-13 — 4th tab "Local (HC System)". HC System is local sourcing with no
+   portal and no LCL/FCL/Air, so its tab is decided by the parent Shipment's supplier,
+   not by Shipment_Mode (left blank for local rows — see sgMarkLocalShipped). */
+function sgIsLocalSupplier(s){ return String((s && typeof s === 'object') ? dispVal(s) : (s || '')).indexOf('HC') >= 0; }
+function sgModeMatches(f, mode){
+  var local = sgIsLocalSupplier((SG_PARENT_META[f.parentId] || {}).supplier);
+  if(mode === 'Local') return local;
+  if(local) return false;
+  return (f.item.Shipment_Mode || '').trim().toLowerCase() === mode.toLowerCase();
+}
+function sgRenderModePills(){
+  var q = (document.getElementById('sgSearchInput').value || '').toLowerCase();
+  var matched = SG_FLAT_ITEMS.filter(function(f){ return sgMatchesSearch(f, q); });
+  var statusMatched = matched.filter(function(f){
+    return SG_FILTER === 'delivered' ? sgIsDelivered(f.item.Status) : !sgIsDelivered(f.item.Status);
+  });
+  document.getElementById('sgModePills').innerHTML = SG_MODE_CHOICES.map(function(c){
+    var count = statusMatched.filter(function(f){ return sgModeMatches(f, c[0]); }).length;
+    if(c[0] === 'Local' && SG_FILTER !== 'delivered') count += sgLocalPending().length;
+    return '<button class="sg-mode-tab ' + (SG_MODE_FILTER===c[0]?'active':'') + '" onclick="sgSetModeFilter(\'' + c[0] + '\')">' +
+      esc(c[1]) + '<span class="badge-count">' + count + '</span></button>';
+  }).join('');
+}
+function sgSetModeFilter(m){ SG_MODE_FILTER = m; sgRenderModePills(); sgRenderBody(); }
+
+function sgMatchesSearch(f, q){
+  if(!q) return true;
+  var meta = SG_PARENT_META[f.parentId] || {};
+  var hay = ((f.item.Shipment_ID||'') + ' ' + (f.item.SKU||'') + ' ' + (f.item.Item_Name||'') + ' ' +
+    (f.item.SO_No||'') + ' ' + (f.item.PR_No||'') + ' ' + (f.item.RR_No||'') + ' ' +
+    (meta.shipmentNo||'') + ' ' + (meta.customer||'') + ' ' + (meta.supplier||'') + ' ' +
+    trkExcForSgRow(meta.shipmentNo, f.item).join(' ') + ' ' +
+    trkRRForSgRow(meta.shipmentNo, f.item).join(' ') + ' ' +
+    (TRK_EXC_BY_SHIP[trkVal(meta.shipmentNo).trim()] || []).join(' ') + ' ' +
+    (TRK_RR_BY_SHIP[trkVal(meta.shipmentNo).trim()] || []).join(' ')).toLowerCase();
+  return hay.indexOf(q) !== -1;
+}
+
+function sgGroupItems(items){
+  var byParent = {};
+  items.forEach(function(f){
+    if(!byParent[f.parentId]) byParent[f.parentId] = [];
+    byParent[f.parentId].push(f);
+  });
+  return Object.keys(byParent).map(function(pid){
+    return { parentId: pid, meta: SG_PARENT_META[pid] || {}, items: byParent[pid] };
+  }).sort(function(a,b){
+    return (a.meta.shipmentNo||'').localeCompare(b.meta.shipmentNo||'');
+  });
+}
+
+function sgRenderBody(){
+  var q = (document.getElementById('sgSearchInput').value || '').toLowerCase();
+  var matched = SG_FLAT_ITEMS.filter(function(f){ return sgMatchesSearch(f, q); });
+
+  /* CHANGED 2026-08-20 — real tabs now, one section shown at a time (was both
+     stacked together, gated only by pill selection).
+     CHANGED 2026-09-07 — also filtered by the second-level Mode tab (SG_MODE_FILTER). */
+  var statusFiltered = matched.filter(function(f){
+    return SG_FILTER === 'delivered' ? sgIsDelivered(f.item.Status) : !sgIsDelivered(f.item.Status);
+  });
+  var modeFiltered = statusFiltered.filter(function(f){ return sgModeMatches(f, SG_MODE_FILTER); });
+  var html = sgSectionHtml(SG_FILTER === 'delivered' ? 'Delivered' : 'In Transit', modeFiltered);
+  if(SG_MODE_FILTER === 'Local' && SG_FILTER !== 'delivered') html = sgLocalPendingHtml(q) + html;
+
+  var body = document.getElementById('sgBody');
+  var empty = document.getElementById('sgEmptyState');
+  if(!html){
+    body.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  body.innerHTML = html;
+}
+
+function sgSectionHtml(title, items){
+  var groups = sgGroupItems(items);
+  var inner = '<div class="section-title">' + esc(title) + '<span class="badge-count">' + items.length + '</span></div>';
+  if(groups.length === 0){
+    inner += '<div class="empty-state" style="padding:24px"><div>No items</div></div>';
+    return inner;
+  }
+  inner += groups.map(sgGroupCardHtml).join('');
+  return inner;
+}
+
+/* EXC / RR chips for a whole shipment — used by both the grouping card header and the
+   "Waiting to ship (HC System)" card, so the two read the same. */
+function sgRefChipsHtml(shipNo){
+  var excs = TRK_EXC_BY_SHIP[trkVal(shipNo).trim()] || [];
+  var rrs  = TRK_RR_BY_SHIP[trkVal(shipNo).trim()] || [];
+  var out = '';
+  if(excs.length) out += '<span class="trk-chip trk-exc">EXC ' + excs.map(esc).join(' · ') + '</span>';
+  if(rrs.length)  out += '<span class="trk-chip trk-rr">RR ' + rrs.map(esc).join(' · ') + '</span>';
+  return out;
+}
+function sgGroupCardHtml(g){
+  var m = g.meta;
+  var rows = g.items.map(function(f){ return sgItemRowHtml(f, m.shipmentNo); }).join('');
+  return '<div class="group-card">' +
+    '<div class="group-head">' +
+      '<span class="hs-field hs-ship">' + esc(m.shipmentNo || '—') + '</span>' +
+      '<span class="hs-field hs-po">' + esc(m.poNo || '—') + '</span>' +
+      '<span class="hs-field hs-so">' + esc(m.soNo || '—') + '</span>' +
+      '<span class="hs-field">' + esc(m.customer || '—') + '</span>' +
+      '<span class="hs-field hs-muted">' + esc(m.supplier || '—') + '</span>' +
+    '</div>' +
+    '<div class="table-wrap"><table class="grp-table">' +
+      '<colgroup><col style="width:10%"><col style="width:7%"><col style="width:7%"><col style="width:8%">' +
+      '<col style="width:9%"><col style="width:9%"><col style="width:16%"><col style="width:9%">' +
+      '<col style="width:7%"><col style="width:10%"><col style="width:8%"></colgroup>' +
+      '<thead><tr>' +
+      '<th>Shipment ID</th><th>SO #</th><th>PR #</th><th>RR #</th><th>EXC #</th><th>SKU</th><th>Item</th>' +
+      '<th>Date Shipped</th><th>Mode</th><th>Status</th><th></th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+  '</div>';
+}
+
+function sgItemRowHtml(f, shipNo){
+  var it = f.item;
+  var key = f.parentId + '|' + f.idx;
+  var rowId = 'sgRow_' + f.parentId + '_' + f.idx;
+  var dirtyCls = SG_DIRTY[key] ? 'row-dirty' : '';
+  return '<tr id="' + rowId + '" class="' + dirtyCls + '">' +
+    '<td><span class="cell-sku">' + esc(it.Shipment_ID) + '</span></td>' +
+    '<td>' + esc(it.SO_No) + '</td>' +
+    '<td>' + esc(it.PR_No) + PRHold.badge(it.PR_No) + '</td>' +
+    '<td>' + trkChips(trkRRForSgRow(shipNo, it), 'trk-rr') + '</td>' +
+    '<td>' + trkChips(trkExcForSgRow(shipNo, it), 'trk-exc') + '</td>' +
+    '<td><span class="cell-sku">' + esc(it.SKU) + '</span></td>' +
+    '<td>' + esc(it.Item_Name) + '</td>' +
+    '<td>' + esc(it.Date_Shipped || '—') + '</td>' +
+    '<td>' + esc(it.Shipment_Mode || '—') + '</td>' +
+    '<td>' + sgStatusCellHtml(f, key) + '</td>' +
+    '<td><button class="btn btn-orange row-save-btn" id="sgSave_' + f.parentId + '_' + f.idx + '" onclick="sgSaveRow(\'' + f.parentId + '\',' + f.idx + ')" ' + (SG_DIRTY[key] ? '' : 'disabled') + '>Save</button></td>' +
+  '</tr>';
+}
+
+var SG_STATUS_CHOICES = ['In Transit','Arrived'];
+function sgStatusCellHtml(f, key){
+  var cur = f.item.Status || '';
+  var opts = '<option value=""' + (!cur?' selected':'') + '>—</option>' +
+    SG_STATUS_CHOICES.map(function(c){
+      return '<option value="' + c + '"' + (cur===c?' selected':'') + '>' + c + '</option>';
+    }).join('');
+  return '<select class="st-select" onchange="sgOnStatusChange(\'' + f.parentId + '\',' + f.idx + ',this.value)">' + opts + '</select>';
+}
+
+function sgOnStatusChange(parentId, idx, val){
+  var rows = SG_PARENT_RAW[parentId];
+  if(!rows || !rows[idx]) return;
+  rows[idx].Status = val;
+  var key = parentId + '|' + idx;
+  SG_DIRTY[key] = true;
+  var rowEl = document.getElementById('sgRow_' + parentId + '_' + idx);
+  if(rowEl) rowEl.classList.add('row-dirty');
+  var saveBtn = document.getElementById('sgSave_' + parentId + '_' + idx);
+  if(saveBtn) saveBtn.disabled = false;
+}
+
+// ADDED 2026-08-08i — see sgSaveRow()'s own call-site comment. Keyed by
+// PR_No+RR_No+SKU (this row shape already carries real RR_No, unlike
+// syncShipmentStatusBack() above which only has PO_Shipments' 2-part key).
+function sgSyncSupplierStatus(parentId, rows){
+  if(!parentId || typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA) return;
+  var statusMap = {};
+  (rows||[]).forEach(function(it){
+    if(it.Status){
+      var key = (it.PR_No||'') + '|' + (it.RR_No||'') + '|' + (it.SKU||'');
+      statusMap[key] = it.Status;
+    }
+  });
+  if(!Object.keys(statusMap).length) return;
+  var meta = SG_PARENT_META[parentId] || {};
+  var supplierVal = (meta.supplier||'')+'';
+  var isFenteng = supplierVal==='Fenteng' || supplierVal.indexOf('Fenteng')>-1;
+  var isTony = supplierVal==='Tony' || supplierVal.indexOf('Tony')>-1;
+  if(!isFenteng && !isTony) return;
+  var suppReport = isFenteng ? 'Fenteng_Shipment_Report' : 'Tony_Shipment_Report';
+  var subformField = isFenteng ? 'Supplier1_Shipment_Details' : 'Supplier2_Shipment_Details';
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: suppReport, criteria: '(Parent_Shipment_ID=="'+String(parentId)+'")', field_config: 'all', max_records: 200 }).then(function(suppResp){
+    if(!(suppResp && suppResp.code===3000 && Array.isArray(suppResp.data) && suppResp.data.length)) return;
+    var suppRec = suppResp.data[0];
+    var suppRows = suppRec[subformField] || [];
+    var changed = false;
+    var newRows = suppRows.map(function(row){
+      var key = (row.PR_No||'') + '|' + (row.RR_No||'') + '|' + (row.SKU||'');
+      var status = statusMap[key] != null ? statusMap[key] : row.Status;
+      if(status !== row.Status) changed = true;
+      return {
+        Select_To_Ship: row.Select_To_Ship, SKU: row.SKU, Item_Name: row.Item_Name,
+        PR_No: row.PR_No, RR_No: row.RR_No, Date_Shipped: row.Date_Shipped,
+        Shipment_Mode: row.Shipment_Mode, Synced: row.Synced, Status: status
+      };
+    });
+    if(!changed) return;
+    var upd = {}; upd[subformField] = newRows;
+    var ubr = ZOHO.CREATOR.DATA.updateRecordById.bind(ZOHO.CREATOR.DATA);
+    return ubr({ report_name: suppReport, id: String(suppRec.ID), payload: { data: upd } }).then(function(r){
+      console.log('[ShipmentGrouping] sgSyncSupplierStatus resp:', JSON.stringify(r));
+    });
+  }).catch(function(err){ console.warn('[ShipmentGrouping] sgSyncSupplierStatus failed:', err); });
+}
+
+/* FIXED 2026-08-20, per user report ("pag nag save ako nadadamay lahat ng SO,
+   dapat kung ano lang yung nasave") — real live bug, not caused by today's tab/CSS
+   changes. Save has its own per-ROW button, but the Creator API only supports a full
+   Supplier_Shipment_Details replace, and this used to build that replace from the
+   LIVE SG_PARENT_RAW array — which includes whatever any OTHER row under this same
+   parent currently has in memory, saved or not. If a user edited two rows (possibly
+   different SO_No) and clicked Save on only the first, the second row's still-
+   unsaved edit got persisted too, silently, since it rode along in the same array.
+   Now builds the payload from SG_PARENT_SAVED (the pristine, last-actually-persisted
+   copy) with ONLY this row's index overwritten by its live edited value — every
+   other row is sent back exactly as it was last genuinely saved, regardless of any
+   unsaved edit sitting in SG_PARENT_RAW for it. */
+function sgSaveRow(parentId, idx){
+  var btn = document.getElementById('sgSave_' + parentId + '_' + idx);
+  if(btn){ btn.disabled = true; btn.textContent = 'Saving…'; }
+  var liveRows = SG_PARENT_RAW[parentId] || [];
+  var pristine = SG_PARENT_SAVED[parentId] || liveRows;
+  var savedRows = pristine.map(function(it, i){
+    var status = (i === idx && liveRows[i]) ? liveRows[i].Status : it.Status;
+    return {
+      Shipment_ID: it.Shipment_ID, SO_No: it.SO_No, PR_No: it.PR_No, RR_No: it.RR_No,
+      SKU: it.SKU, Item_Name: it.Item_Name, Date_Shipped: it.Date_Shipped,
+      Shipment_Mode: it.Shipment_Mode, Status: status
+    };
+  });
+  var payload = { Supplier_Shipment_Details: savedRows };
+  console.log('[ShipmentGrouping] saveRow payload:', JSON.stringify(payload));
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: SG_REPORT_NAME,
+    id: String(parentId),
+    payload: { data: payload }
+  }).then(function(resp){
+    console.log('[ShipmentGrouping] updateRecordById resp:', JSON.stringify(resp));
+    if(!(resp && (resp.code===3000 || String(resp.code)==='3000'))){
+      showToast('Save failed — code ' + (resp && resp.code) + ' ' + (resp && resp.message || ''));
+      if(btn){ btn.disabled = false; btn.textContent = 'Save'; }
+      return;
+    }
+    showToast('Saved — status reflected to supplier');
+    // Commit this save as the new pristine baseline for this parent — subsequent
+    // saves of OTHER rows on this same parent will now use this as their base too.
+    SG_PARENT_SAVED[parentId] = savedRows.map(function(it){ return Object.assign({}, it); });
+    // ADDED 2026-08-08i — this toast's own claim ("reflected to supplier") relied
+    // entirely on shipment_status_back_sync.txt, confirmed broken (in-place subform
+    // mutation never persists, then confirmed the REST-style fix isn't callable from
+    // a native workflow either). Push the same just-saved rows' Status directly here
+    // instead, same fix as saveShipment()'s own syncShipmentStatusBack() above but
+    // keyed by PR_No+RR_No+SKU (this row shape already has RR_No, more precise than
+    // PO_Shipments' own 2-part key). Uses savedRows (not liveRows) for the same
+    // reason as the payload above — must not propagate another row's unsaved edit.
+    sgSyncSupplierStatus(parentId, savedRows);
+    var key = parentId + '|' + idx;
+    delete SG_DIRTY[key];
+    sgRenderBody();
+  }).catch(function(err){
+    console.error('[ShipmentGrouping] updateRecordById failed', err);
+    showToast('Save failed — see console');
+    if(btn){ btn.disabled = false; btn.textContent = 'Save'; }
+  });
+}
+
+/* ════════════════════════════════
+   LOCAL (HC SYSTEM) — ADDED 2026-10-13, per user ("sa Shipment grouping niya ilalagay").
+   Fenteng/Tony get into Shipment Grouping from their own portal: they tick Select to
+   Ship + mode, and supplier_shipment_sync.txt appends rows to the parent Shipments'
+   Supplier_Shipment_Details. HC System has no portal, so nothing ever did that and its
+   shipments never appeared here. "Mark Shipped" below is the local team doing that same
+   step: one Supplier_Shipment_Details row per PO_Shipments line, Status "In Transit",
+   parent Shipment_Status "In Transit". From then on the row behaves like any other
+   (In Transit / Arrived + per-row Save). sgSyncSupplierStatus already skips anything
+   that isn't Fenteng/Tony, so no supplier record is touched.
+   Shipment_Mode is deliberately left blank (no LCL/FCL/Air for a local delivery, and it
+   may be a restricted picklist); the Local tab is keyed on the supplier instead.
+   The subform is written only while it is EMPTY, so this full-replace can't overwrite
+   anything — the button is not offered once rows exist.
+════════════════════════════════ */
+function sgLocalPending(){
+  return (ALL_ROWS || []).filter(function(r){
+    if(!sgIsLocalSupplier(r.Supplier)) return false;
+    if(SG_PARENT_RAW[String(r.ID)]) return false;
+    var subRows = Array.isArray(r.Supplier_Shipment_Details) ? r.Supplier_Shipment_Details : [];
+    if(subRows.length) return false;
+    var st = String(r.Shipment_Status || '').toLowerCase();
+    return st !== 'delivered' && st !== 'cancelled';
+  });
+}
+function sgTodayIso(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function sgLocalPendingHtml(q){
+  var rows = sgLocalPending().filter(function(r){
+    if(!q) return true;
+    var lines = Array.isArray(r.PO_Shipments) ? r.PO_Shipments : [];
+    var hay = [r.Shipment_No, dispVal(r.PO_No), dispVal(r.Sales_Order), dispVal(r.Customer), r.Exception_Number]
+      .concat(lines.map(function(l){ return (l.SKU||'') + ' ' + (l.Item_Name||'') + ' ' + (l.PR_No||''); }))
+      .join(' ').toLowerCase();
+    return hay.indexOf(q) !== -1;
+  });
+  var inner = '<div class="section-title">Waiting to ship (HC System)<span class="badge-count">' + rows.length + '</span></div>';
+  if(!rows.length) return inner + '<div class="empty-state" style="padding:16px"><div>Nothing waiting — every local shipment has been marked shipped.</div></div>';
+  return inner + rows.map(function(r){
+    var lines = Array.isArray(r.PO_Shipments) ? r.PO_Shipments : [];
+    var id = String(r.ID);
+    var lineRows = lines.map(function(l){
+      return '<tr><td>' + esc(l.PR_No || '—') + '</td><td><span class="cell-sku">' + esc(l.SKU) + '</span></td>' +
+        '<td>' + esc(l.Item_Name) + '</td><td>' + esc(l.Shipment_QTY != null ? l.Shipment_QTY : '—') + '</td></tr>';
+    }).join('');
+    return '<div class="group-card">' +
+      '<div class="group-head">' +
+        '<span class="hs-field hs-ship">' + esc(r.Shipment_No || '—') + '</span>' +
+        '<span class="hs-field hs-po">' + esc(dispVal(r.PO_No) || '—') + '</span>' +
+        '<span class="hs-field hs-so">' + esc(dispVal(r.Sales_Order) || '—') + '</span>' +
+        '<span class="hs-field">' + esc(dispVal(r.Customer) || '—') + '</span>' +
+        '<span class="hs-field hs-muted">' + esc(r.Supplier || '—') + (r.Exception_Number ? ' · ' + esc(r.Exception_Number) : '') + '</span>' +
+        /* ADDED 2026-10-21 — same chips as the grouping cards above. The Exception_Number
+           beside the supplier is the shipment's OWN Fulfillment EXC stamp and is left as
+           it was; these are the Exceptions_Report / Replacement_Request records. */
+        sgRefChipsHtml(r.Shipment_No) +
+        '<span style="margin-left:auto;display:inline-flex;gap:8px;align-items:center">' +
+          '<label style="font-size:12px;color:var(--gray-500)">Date shipped</label>' +
+          '<input type="date" id="sgLocDate_' + id + '" value="' + sgTodayIso() + '" style="font-family:inherit;font-size:12.5px;padding:4px 8px;border:1px solid var(--gray-200);border-radius:6px">' +
+          '<button class="btn btn-orange" id="sgLocBtn_' + id + '" onclick="sgMarkLocalShipped(&#39;' + id + '&#39;)"' + (lines.length ? '' : ' disabled title="No line items on this shipment"') + '>Mark Shipped</button>' +
+        '</span>' +
+      '</div>' +
+      '<div class="table-wrap"><table class="grp-table"><thead><tr><th>PR #</th><th>SKU</th><th>Item</th><th>Qty</th></tr></thead>' +
+      '<tbody>' + (lineRows || '<tr><td colspan="4">No line items</td></tr>') + '</tbody></table></div>' +
+    '</div>';
+  }).join('');
+}
+function sgMarkLocalShipped(id){
+  var r = null;
+  (ALL_ROWS || []).forEach(function(x){ if(String(x.ID) === String(id)) r = x; });
+  if(!r){ showToast('Shipment not loaded — reload the page'); return; }
+  var lines = Array.isArray(r.PO_Shipments) ? r.PO_Shipments : [];
+  if(!lines.length){ showToast('This shipment has no line items to ship'); return; }
+  var dateEl = document.getElementById('sgLocDate_' + id);
+  var date = dateEl && dateEl.value;
+  if(!date){ showToast('Pick the date shipped'); return; }
+  var shipNo = String(r.Shipment_No || id);
+  var rows = lines.map(function(l, i){
+    return {
+      Shipment_ID: 'SHP-LOCAL-' + shipNo.replace(/^SHP-/, '') + (lines.length > 1 ? '-' + (i + 1) : ''),
+      SO_No: dispVal(r.Sales_Order) || '', PR_No: l.PR_No || '', RR_No: sgRRFor(shipNo, l.SKU),
+      SKU: l.SKU || '', Item_Name: l.Item_Name || '', Date_Shipped: date,
+      Shipment_Mode: '', Status: 'In Transit'
+    };
+  });
+  var btn = document.getElementById('sgLocBtn_' + id);
+  if(btn){ btn.disabled = true; btn.textContent = 'Saving…'; }
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: String(id),
+    payload: { data: { Supplier_Shipment_Details: rows, Shipment_Status: 'In Transit' } }
+  }).then(function(resp){
+    if(!(resp && (resp.code === 3000 || String(resp.code) === '3000'))){
+      var detail = [resp && resp.message, resp && resp.error ? JSON.stringify(resp.error) : ''].join(' ');
+      showToast('Mark Shipped failed — code ' + (resp && resp.code) + ' ' + detail);
+      if(btn){ btn.disabled = false; btn.textContent = 'Mark Shipped'; }
+      return;
+    }
+    r.Supplier_Shipment_Details = rows;
+    r.Shipment_Status = 'In Transit';
+    showToast(shipNo + ' marked shipped — now In Transit');
+    sgLoadData();
+  }).catch(function(err){
+    console.error('[ShipmentGrouping] sgMarkLocalShipped failed', err);
+    showToast('Mark Shipped failed — ' + ((err && err.responseText) || 'see console'));
+    if(btn){ btn.disabled = false; btn.textContent = 'Mark Shipped'; }
+  });
+}
+
+
+/* ADDED 2026-10-13 — RR # for Local (HC System) rows. A replacement shipment is created
+   by cloneShipmentForReplacement, which stamps the new Shipment_No onto the main RR's
+   Cloned_Shipment_No — so that field is the link from a shipment back to its RR. Used by
+   Mark Shipped, and to fill in the blank RR # on rows marked shipped before this existed
+   (filled into the saved baseline too, so the next Save on that card persists it). */
+var SG_RR_BY_SHIP = {};
+function sgLoadRRMap(){
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA) return Promise.resolve();
+  return ZOHO.CREATOR.DATA.getRecords({
+    report_name: 'Replacement_Request_Report',
+    criteria: '(Cloned_Shipment_No != "")',
+    field_config: 'all',
+    max_records: 200
+  }).then(function(resp){
+    var map = {};
+    ((resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : []).forEach(function(rr){
+      var sn = String(rr.Cloned_Shipment_No || '');
+      if(!sn) return;
+      (map[sn] = map[sn] || []).push({ rrNo: rr.RR_No || '', sku: String(rr.RR_SKU || '') });
+    });
+    SG_RR_BY_SHIP = map;
+  }).catch(function(err){ console.warn('[ShipmentGrouping] RR map load failed (non-blocking)', err); });
+}
+function sgRRFor(shipNo, sku){
+  var list = SG_RR_BY_SHIP[String(shipNo || '')] || [];
+  for(var i = 0; i < list.length; i++){ if(list[i].sku && list[i].sku === String(sku || '')) return list[i].rrNo; }
+  return list.length === 1 ? list[0].rrNo : '';
+}
+function sgApplyRRMap(){
+  Object.keys(SG_PARENT_RAW).forEach(function(pid){
+    var meta = SG_PARENT_META[pid] || {};
+    if(!sgIsLocalSupplier(meta.supplier)) return;
+    SG_PARENT_RAW[pid].forEach(function(it, idx){
+      if(it.RR_No) return;
+      var rr = sgRRFor(meta.shipmentNo, it.SKU);
+      if(!rr) return;
+      it.RR_No = rr;
+      if(SG_PARENT_SAVED[pid] && SG_PARENT_SAVED[pid][idx]) SG_PARENT_SAVED[pid][idx].RR_No = rr;
+    });
+  });
+}
+</script>
+
+
+</body></html>

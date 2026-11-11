@@ -1,0 +1,645 @@
+[
+  {
+    "tab": "Purchase Order",
+    "slug": "04-purchase_order1",
+    "data": {
+      "title": "Purchase Orders",
+      "statusBadge": "Confirmed",
+      "buttons": [
+        "Grouping Workspace",
+        "All (7)",
+        "Draft (0)",
+        "Sent (1)",
+        "Confirmed (6)",
+        "Completed (0)",
+        "Cancelled (0)",
+        "Cancel",
+        "← PO List",
+        "Fenteng",
+        "Tony",
+        "Send",
+        "← Back to PO List",
+        "✕",
+        "Yes, proceed"
+      ],
+      "statCards": [
+        {
+          "label": "ACTIVE POS",
+          "value": "7",
+          "subtext": "Draft / Sent / Confirmed TOTAL VALUE ¥1,000 All non-cancelled POs AWAITING CONFIRM 1 Supplier action FOLLOWED REC. 0 0% adherence OVERRIDES 0 Reasons logged"
+        },
+        {
+          "label": "ACTIVE POS",
+          "value": "7",
+          "subtext": "Draft / Sent / Confirmed"
+        },
+        {
+          "label": "TOTAL VALUE",
+          "value": "¥1,000",
+          "subtext": "All non-cancelled POs"
+        },
+        {
+          "label": "AWAITING CONFIRM",
+          "value": "1",
+          "subtext": "Supplier action"
+        },
+        {
+          "label": "FOLLOWED REC.",
+          "value": "0",
+          "subtext": "0% adherence"
+        },
+        {
+          "label": "OVERRIDES",
+          "value": "0",
+          "subtext": "Reasons logged"
+        },
+        {
+          "label": "All (7)",
+          "value": "Draft (0)",
+          "subtext": "Sent (1) Confirmed (6) Completed (0) Cancelled (0) PO NO.\tSUPPLIER\tSO NO.\tCUSTOMER\tLINE COUNT\tTOTAL PO VALUE\tMIXED SHIPPING\tPO STATUS\tNEXT STEP\tFULFILLMENT\tCREATED ON\tACTIONS PO-00007\tTony\tSO-16946\tEllen Joy S. Data\t2\t¥200 No Confirmed\tWaiting on: Supplier to ship, then Warehouse receives — Tony Not Delivered\tOct 16\tCancel PO-00005\tTony\tSO-16650\tHouse of Goyen\t3\t¥400 No Confirmed\tWaiting on: Supplier to ship, then Warehouse receives — Tony Not Delivered\tOct 16\tCancel PO-00006\tTony\tSO-16945\t(TEST ORDER) BY CPY PAM TAN\t2\t¥200 No Confirmed\tWaiting on: Supplier to ship, then Warehouse receives — Tony Not Delivered\tOct 16\tCancel PO-00002\tHC System\tSO-0000\tTest 3 Customer\t1\t¥0 No Sent — Awaiting Confirm\tWaiting on: Supplier to confirm the PO — HC System Not Delivered\tSep 15\tCancel PO-00003\tTony\tSO-16705\t(TEST ORDER) BY CPY PAM TAN\t1\t¥100 No Confirmed CANCELLED 1/1\tWaiting on: Supplier to ship, then Warehouse receives — Tony Not Delivered\tSep 15\tCancel PO-00004\tTony\tSO-16707\t(TEST ORDER) BY CPY PAM TAN\t1\t¥100 No Confirmed\tWaiting on: Supplier to ship, then Warehouse receives — Tony Not Delivered\tSep 15\tCancel PO-00001\tTony\tSO-16570\tCharlene Cruz\t1\t¥0 No Confirmed\tWaiting on: Supplier to ship, then Warehouse receives — Tony Not Delivered\tAug 29\tCancel"
+        },
+        {
+          "label": "C · PO Line Items",
+          "value": "Image",
+          "subtext": "PR No. SKU Product Name Qty Final Price Line Total Shipping Mode Target Delivery Priority Delay Followed Rec."
+        },
+        {
+          "label": "Conversation",
+          "value": "Fenteng",
+          "subtext": "Tony Send"
+        }
+      ],
+      "tabs": [
+        "All (7)",
+        "Draft (0)",
+        "Sent (1)",
+        "Confirmed (6)",
+        "Completed (0)",
+        "Cancelled (0)"
+      ],
+      "tableHeaders": [
+        "PO NO.",
+        "SUPPLIER",
+        "SO NO.",
+        "CUSTOMER",
+        "LINE COUNT",
+        "TOTAL PO VALUE",
+        "MIXED SHIPPING",
+        "PO STATUS",
+        "NEXT STEP",
+        "FULFILLMENT",
+        "CREATED ON",
+        "ACTIONS",
+        "Image",
+        "PR No.",
+        "SKU",
+        "Product Name",
+        "Qty",
+        "Final Price",
+        "Line Total",
+        "Shipping Mode",
+        "Target Delivery",
+        "Priority",
+        "Delay",
+        "Followed Rec."
+      ],
+      "snippet": "Purchase Orders — PO List\n7 Active POs\nPurchase Orders\n\nTrack all created POs · sourced from PR Grouping Workspace\n\nGrouping Workspace\nACTIVE POS\n7\nDraft / Sent / Confirmed\nTOTAL VALUE\n¥1,000\nAll non-cancelled POs\nAWAITING CONFIRM\n1\nSupplier action\nFOLLOWED REC.\n0\n0% adherence\nOVERRIDES\n0\nReasons logged\nAll (7)\nDraft (0)\nSent (1)\nConfirmed (6)\nCompleted (0)\nCancelled (0)\nPO NO.\tSUPPLIER\tSO NO.\tCUSTOMER\tLINE COUNT\tTOTAL PO VALUE\tMIXED SHIPPING\tPO STATUS\tNEXT STEP\tFULFILLMENT\tCREATED ON\tACTIONS\nPO-00007\tTony\tSO-16946\tEllen Joy S. Data\t2\t¥200\t\nNo\t\nConfirmed\tWaiting on: Supplier to ship, then Warehouse receives\n— Tony\n\t\nNot Delivered\tOct 16\tCancel\nPO-00005\tTony\tSO-16650\tHouse of Goyen\t3\t¥400\t\nNo\t\nConfirmed\tWaiting on: Supplier to ship, then Warehouse receives\n— Tony\n\t\nNot Delivered\tOct 16\tCancel\nPO-00006\tTony\tSO-16945\t(TEST ORDER) BY CPY PAM TAN\t2\t¥200\t\nNo\t\nConfirmed\tWaiting on: Supplier to ship, then Warehouse receives\n— Tony\n\t\nNot Delivered\tOct 16\tCancel\nPO-00002\tHC System\tSO-0000\tTest 3"
+    }
+  },
+  {
+    "tab": "Shipments",
+    "slug": "05-shipments1",
+    "data": {
+      "title": "Shipments",
+      "statusBadge": "Fulfillment EXC",
+      "buttons": [
+        "Shipment Grouping →",
+        "All",
+        "Pending",
+        "In Transit",
+        "Arriving in 1 Week",
+        "Delayed",
+        "Delivered",
+        "Needs Attention",
+        "Ship Mode Unmatched",
+        "Save",
+        "Show",
+        "Send",
+        "Notifications",
+        "Refresh",
+        "Mark all read"
+      ],
+      "statCards": [
+        {
+          "label": "TOTAL",
+          "value": "11",
+          "subtext": "PENDING 3 IN TRANSIT 0 ARRIVING IN 1 WEEK 0 DELAYED 1 DELIVERED 7 NEEDS ATTENTION 6 SHIP MODE UNMATCHED 2"
+        },
+        {
+          "label": "TOTAL",
+          "value": "11",
+          "subtext": ""
+        },
+        {
+          "label": "PENDING",
+          "value": "3",
+          "subtext": ""
+        },
+        {
+          "label": "IN TRANSIT",
+          "value": "0",
+          "subtext": ""
+        },
+        {
+          "label": "ARRIVING IN 1 WEEK",
+          "value": "0",
+          "subtext": ""
+        },
+        {
+          "label": "DELAYED",
+          "value": "1",
+          "subtext": ""
+        },
+        {
+          "label": "DELIVERED",
+          "value": "7",
+          "subtext": ""
+        },
+        {
+          "label": "NEEDS ATTENTION",
+          "value": "6",
+          "subtext": ""
+        },
+        {
+          "label": "SHIP MODE UNMATCHED",
+          "value": "2",
+          "subtext": ""
+        },
+        {
+          "label": "All",
+          "value": "Pending",
+          "subtext": "In Transit Arriving in 1 Week Delayed Delivered Needs Attention Ship Mode Unmatched SHIPMENT #\tPO #\tSO #\tEXC #\tRR #\tCUSTOMER\tSUPPLIER\tSTATUS\tNEXT STEP\tETA\tREQUIRED DAYS\tREMAINING DAYS\tTIMELINE\tFORECAST\tNEEDS ATTN.\tRECEIVING SHP-00011 Fulfillment EXC\t\tSO-16586\tEXC-FF-00006\tRR-00008\tFURNITURE REPUBLIC\tFenteng Lighting\tDelivered\t✓ Receiving created — continue in Receiving — Warehouse 2026-10-31\t—\t—\tNo timeline data\t—\tNo\tCreated SHP-00009\tPO-00007\tSO-16946\tEXC-00007EXC-00006EXC-00005\tRR-00007\tEllen Joy S. Data\tTony\tDelivered\t✓ Receiving created — continue in Receiving — Warehouse 2026-10-26\t30\t30\tOn track (30d left / 30d needed)\t—\tYES\tCreated SHP-00008\tPO-00006\tSO-16945\t—\t—\t(TEST ORDER) BY CPY PAM TAN\tTony\tPending\tWaiting on: Supplier to ship — Tony 2026-10-30\t20\t20\tOn track (20d left / 20d needed)\t—\tNo\tNo SHP-00010\tPO-00007\tSO-16946\tEXC-00005\tRR-00007\tEllen Joy S. Data\tTony\tPending\tWaiting on: Supplier to ship — Tony 2026-10-28\t—\t—\tNo timeline data\t—\tNo\tCreated SHP-00007\tPO-00005\tSO-16650\t—\t—\tHouse of Goyen\tTony\tDelayed\tWaiting on: Supplier to update ETD / ETA — Tony 2026-10-28\t20\t20\tOn track (20d left / 20d needed)\t—\tNo\tNo SHP-00006\tPO-00002\tSO-0000\tEXC-00004\tRR-00006\tTest 3 Customer\tHC System\tDelivered\t✓ Receiving created — continue in Receiving — Warehouse 2026-11-03\t—\t—\tNo timeline data\t—\tYES\tCreated SHP-00005\tPO-00004\tSO-16707\tEXC-00003\tRR-00005\t(TEST ORDER) BY CPY PAM TAN\tTony\tDelivered\tNext: Create the Receiving record — Warehouse 2026-10-06\t20\t20\tOn track (20d left / 20d needed)\t—\tYES\tNo SHP-00003\tPO-00002\tSO-0000\tEXC-00004\tRR-00006\tTest 3 Customer\tHC System\tDelivered\tNext: Create the Receiving record — Warehouse 2026-10-06\t0\t0\tOn track (0d left / 0d needed)\t—\tYES\tNo SHP-00004\tPO-00003\tSO-16705\t—\t—\t(TEST ORDER) BY CPY PAM TAN\tTony\tPending CANCELLED 1/1\tWaiting on: Supplier to ship — Tony 2026-10-06\t20\t20\tOn track (20d left / 20d needed)\t—\tNo\tNo SHP-00001\tPO-00001\tSO-16570\tEXC-00001\tRR-00001\tCharlene Cruz\tTony\tDelivered\t✓ Receiving created — continue in Receiving — Warehouse 2026-09-21\t15\t15\tOn track (15d left / 15d needed)\t—\tYES\tCreated SHP-00002\tPO-00001\tSO-16570\tEXC-00001\tRR-00001\tCharlene Cruz\tTony\tDelivered\t✓ Receiving created — continue in Receiving — Warehouse 2026-08-14\t—\t—\tNo timeline data\t—\tYES\tCreated"
+        },
+        {
+          "label": "Core Shipment Summary",
+          "value": "Supplier—",
+          "subtext": "Customer— PO #— SO #— Sales Owner Required Days (Lead) Remaining Days Shipment Days Target Date Supplier Target Date Production Date"
+        },
+        {
+          "label": "Status",
+          "value": "Shipment Status",
+          "subtext": "Pending In Transit Arriving in 1 Week Delayed Delivered Previous Status— Risk Status — On Track At Risk Delayed Needs Attention— Received Flag— ETD ETA Ship Out Date Estimated Warehouse Arrival Arrival Date"
+        },
+        {
+          "label": "Receiving Handoff",
+          "value": "Receiving Record Created—",
+          "subtext": ""
+        },
+        {
+          "label": "Notes",
+          "value": "Ship Mode mismatch on this shipment — add a note below.",
+          "subtext": ""
+        }
+      ],
+      "tabs": [
+        "All",
+        "Pending",
+        "In Transit",
+        "Arriving in 1 Week",
+        "Delayed",
+        "Delivered",
+        "Needs Attention",
+        "Ship Mode Unmatched"
+      ],
+      "tableHeaders": [
+        "SHIPMENT #",
+        "PO #",
+        "SO #",
+        "EXC #",
+        "RR #",
+        "CUSTOMER",
+        "SUPPLIER",
+        "STATUS",
+        "NEXT STEP",
+        "ETA",
+        "REQUIRED DAYS",
+        "REMAINING DAYS",
+        "TIMELINE",
+        "FORECAST",
+        "NEEDS ATTN.",
+        "RECEIVING",
+        "PR #",
+        "SKU",
+        "Item",
+        "Ordered",
+        "Shipment Qty",
+        "Remaining",
+        "Ship Mode",
+        "Ship Mode Received",
+        "Ship Mode Match",
+        "Line Status",
+        "Fully Shipped"
+      ],
+      "snippet": "Shipments\n\nExecution queue — PO acknowledgment to warehouse arrival\n\nShipment Grouping →\nTOTAL\n11\nPENDING\n3\nIN TRANSIT\n0\nARRIVING IN 1 WEEK\n0\nDELAYED\n1\nDELIVERED\n7\nNEEDS ATTENTION\n6\nSHIP MODE UNMATCHED\n2\nAll\nPending\nIn Transit\nArriving in 1 Week\nDelayed\nDelivered\nNeeds Attention\nShip Mode Unmatched\nSHIPMENT #\tPO #\tSO #\tEXC #\tRR #\tCUSTOMER\tSUPPLIER\tSTATUS\tNEXT STEP\tETA\tREQUIRED DAYS\tREMAINING DAYS\tTIMELINE\tFORECAST\tNEEDS ATTN.\tRECEIVING\nSHP-00011 Fulfillment EXC\t\tSO-16586\tEXC-FF-00006\tRR-00008\tFURNITURE REPUBLIC\tFenteng Lighting\tDelivered\t✓ Receiving created — continue in Receiving\n— Warehouse\n\t2026-10-31\t—\t—\tNo timeline data\t—\tNo\tCreated\nSHP-00009\tPO-00007\tSO-16946\tEXC-00007EXC-00006EXC-00005\tRR-00007\tEllen Joy S. Data\tTony\tDelivered\t✓ Receiving created — continue in Receiving\n— Warehouse\n\t2026-10-26\t30\t30\tOn track (30d left / 30d needed)\t—\tYES\tCreated\nSHP-00008\tPO-00006\tSO-16945\t—\t—\t(TEST ORDER) BY CPY PAM TAN\tTony\tPending\tWaiting on: Supplier to ship\n— Tony\n\t2026-10-30\t20\t20\tOn track"
+    }
+  },
+  {
+    "tab": "Receiving",
+    "slug": "06-receiving1",
+    "data": {
+      "title": "Receiving",
+      "statusBadge": "0",
+      "buttons": [
+        "Partial Receive Timeline",
+        "Print Stickers",
+        "+ New Receiving",
+        "All",
+        "Pending Inspection",
+        "Incomplete Receive",
+        "Complete Receive",
+        "With Exceptions",
+        "Sent to Books",
+        "Awaiting Replacement (4)",
+        "Save",
+        "Create Exception",
+        "Create Receive",
+        "Show",
+        "Send",
+        "Preview",
+        "Print All Stickers (0)",
+        "Print",
+        "Close",
+        "×",
+        "Pick a Shipment",
+        "Create From Scratch",
+        "Cancel",
+        "Create Receiving",
+        "OK",
+        "✕"
+      ],
+      "statCards": [
+        {
+          "label": "PENDING INSPECTION",
+          "value": "3",
+          "subtext": "INCOMPLETE RECEIVE 6 COMPLETE RECEIVE 2 WITH EXCEPTIONS 5 SENT TO BOOKS 0"
+        },
+        {
+          "label": "PENDING INSPECTION",
+          "value": "3",
+          "subtext": ""
+        },
+        {
+          "label": "INCOMPLETE RECEIVE",
+          "value": "6",
+          "subtext": ""
+        },
+        {
+          "label": "COMPLETE RECEIVE",
+          "value": "2",
+          "subtext": ""
+        },
+        {
+          "label": "WITH EXCEPTIONS",
+          "value": "5",
+          "subtext": ""
+        },
+        {
+          "label": "SENT TO BOOKS",
+          "value": "0",
+          "subtext": ""
+        },
+        {
+          "label": "All",
+          "value": "Pending Inspection",
+          "subtext": "Incomplete Receive Complete Receive With Exceptions Sent to Books Awaiting Replacement (4) RECEIVE #\tPO #\tSO #\tSHIP #\tEXC #\tRR #\tSUPPLIER\tLINES\tACCEPTED / EXPECTED\tEXCEPTIONS\tSTATUS\tNEXT STEP\tFORECAST RCV-00011\tPO-00001\tSO-16570\tSHP-00001\tEXC-00001\tRR-00001\tTony\t0\t0 / 0\t0\tComplete Receive\tNext: Create Receive (send to Books) — Warehouse — RCV-00010\tPO-00007\tSO-16946\tSHP-00009\tEXC-00007EXC-00006EXC-00005\tRR-00007\tTony\t2\t1 / 2\t0\tIncomplete Receive\tNext: Raise an Exception for damaged / missing items — Warehouse — RCV-00009 Fulfillment EXC ↻ Replacement ARRIVED — RR-00008\t\tSO-16586\tSHP-00011\tEXC-FF-00006\tRR-00008\tFenteng Lighting\t1\t1 / 1\t0\tReceived — Closed (Fulfillment EXC)\tNext: Move 1 × LUNAFRO-TABLE-268 from Damage/Missing to Accepted, Save, then Create Receive — Warehouse — RCV-00008 ↻ Replacement incoming — RR-00007 (SHP-00010)\tPO-00007\tSO-16946\tSHP-00010\tEXC-00005\tRR-00007\tTony\t2 (1 incomplete)\t1 / 2\t1\tIncomplete Receive\tWaiting on: 1 × AGNAR-NNMGNTC-L-BLK on SHP-00010 — receive it here when it arrives — Tony — RCV-00007\tPO-00006\tSO-16945\tSHP-00008\t—\t—\tTony\t2 (2 incomplete)\t0 / 2\t0\tPending Inspection\tNext: Inspect and count the items — Warehouse — RCV-00006\tPO-00005\tSO-16650\tSHP-00007\t—\t—\tTony\t3 (3 incomplete)\t0 / 4\t0\tPending Inspection\tNext: Inspect and count the items — Warehouse — RCV-00005\tPO-00004\tSO-16707\tSHP-00005\tEXC-00003\tRR-00005\tTony\t1\t0 / 1\t1\tIncomplete Receive\tNext: Raise an Exception for damaged / missing items — Warehouse — RCV-00003 ↻ Replacement ARRIVED — RR-00006\tPO-00002\tSO-0000\tSHP-00006\tEXC-00004\tRR-00006\tHC System\t1\t0 / 1\t1\tIncomplete Receive\tNext: Move 1 × 10540C-BLACK from Damage/Missing to Accepted, Save, then Create Receive — Warehouse — RCV-00004\tPO-00003\tSO-16705\tSHP-00004\t—\t—\tTony\t1 (1 incomplete)\t0 / 1\t0\tPending Inspection CANCELLED 1/1\tNext: Inspect and count the items — Warehouse — RCV-00002 ↻ Replacement ARRIVED — RR-00001\tPO-00001\tSO-16570\tSHP-00002\tEXC-00001\tRR-00001\tTony\t1\t2 / 3\t1\tIncomplete Receive\tNext: Move 1 × BELLEGLA-B-PENDNT-1979 from Damage/Missing to Accepted, Save, then Create Receive — Warehouse — RCV-00001\t\tSO-0001\t—\tEXC-00002\tRR-00004\tTony Fan\t1\t0 / 1\t1\tIncomplete Receive\tNext: Raise an Exception for damaged / missing items — Warehouse —"
+        },
+        {
+          "label": "Totals (live)",
+          "value": "0Expected",
+          "subtext": "0Accepted 0Damage 0Missing 0Lines 0Incomplete"
+        },
+        {
+          "label": "Line Items",
+          "value": "SKUItemExpectedAcceptedDamageMissingBin LocationShip Mode ReceivedResult",
+          "subtext": ""
+        },
+        {
+          "label": "Receiving Info",
+          "value": "Receive #—",
+          "subtext": "Supplier— PO #— SO #— Customer— Sales Owner—"
+        },
+        {
+          "label": "Receive #PO #SO #SupplierCustomer",
+          "value": "EventsModes UsedLast Activity",
+          "subtext": "No partial receive activity logged yet"
+        }
+      ],
+      "tabs": [
+        "All",
+        "Pending Inspection",
+        "Incomplete Receive",
+        "Complete Receive",
+        "With Exceptions",
+        "Sent to Books",
+        "Awaiting Replacement (4)"
+      ],
+      "tableHeaders": [
+        "RECEIVE #",
+        "PO #",
+        "SO #",
+        "SHIP #",
+        "EXC #",
+        "RR #",
+        "SUPPLIER",
+        "LINES",
+        "ACCEPTED / EXPECTED",
+        "EXCEPTIONS",
+        "STATUS",
+        "NEXT STEP",
+        "FORECAST",
+        "SKU",
+        "Item",
+        "Expected",
+        "Accepted",
+        "Damage",
+        "Missing",
+        "Bin Location",
+        "Ship Mode Received",
+        "Result",
+        "PR #",
+        "Type",
+        "Qty",
+        "#",
+        "Books Receive No.",
+        "Receive #",
+        "Supplier",
+        "Customer",
+        "Events",
+        "Modes Used",
+        "Last Activity"
+      ],
+      "snippet": "Receiving\n\nWarehouse receiving — inspect shipments, log damage/missing, send to Books\n\nPartial Receive Timeline\nPrint Stickers\n+ New Receiving\nPENDING INSPECTION\n3\nINCOMPLETE RECEIVE\n6\nCOMPLETE RECEIVE\n2\nWITH EXCEPTIONS\n5\nSENT TO BOOKS\n0\nAll\nPending Inspection\nIncomplete Receive\nComplete Receive\nWith Exceptions\nSent to Books\nAwaiting Replacement (4)\nRECEIVE #\tPO #\tSO #\tSHIP #\tEXC #\tRR #\tSUPPLIER\tLINES\tACCEPTED / EXPECTED\tEXCEPTIONS\tSTATUS\tNEXT STEP\tFORECAST\nRCV-00011\tPO-00001\tSO-16570\tSHP-00001\tEXC-00001\tRR-00001\tTony\t0\t0 / 0\t0\tComplete Receive\tNext: Create Receive (send to Books)\n— Warehouse\n\t—\nRCV-00010\tPO-00007\tSO-16946\tSHP-00009\tEXC-00007EXC-00006EXC-00005\tRR-00007\tTony\t2\t1 / 2\t0\tIncomplete Receive\tNext: Raise an Exception for damaged / missing items\n— Warehouse\n\t—\nRCV-00009 Fulfillment EXC ↻ Replacement ARRIVED — RR-00008\t\tSO-16586\tSHP-00011\tEXC-FF-00006\tRR-00008\tFenteng Lighting\t1\t1 / 1\t0\tReceived — Closed (Fulfillment EXC)\tNext: Move 1 × LUNAFRO-TABLE-268 from Damage/Missing to "
+    }
+  },
+  {
+    "tab": "Replacement Request",
+    "slug": "07-replacement_request1",
+    "data": {
+      "title": "Replacement Requests",
+      "statusBadge": "Acknowledged",
+      "buttons": [
+        "All",
+        "Open",
+        "Acknowledged",
+        "In Production",
+        "Shipped",
+        "Received",
+        "Closed",
+        "Cancelled",
+        "Save",
+        "Log Replacement Shipment",
+        "Cancel",
+        "Yes, proceed",
+        "Acknowledge"
+      ],
+      "statCards": [
+        {
+          "label": "OPEN",
+          "value": "4",
+          "subtext": "ACKNOWLEDGED 3 IN PRODUCTION 0 SHIPPED 0 RECEIVED 0 CLOSED 0 CANCELLED 0"
+        },
+        {
+          "label": "OPEN",
+          "value": "4",
+          "subtext": ""
+        },
+        {
+          "label": "ACKNOWLEDGED",
+          "value": "3",
+          "subtext": ""
+        },
+        {
+          "label": "IN PRODUCTION",
+          "value": "0",
+          "subtext": ""
+        },
+        {
+          "label": "SHIPPED",
+          "value": "0",
+          "subtext": ""
+        },
+        {
+          "label": "RECEIVED",
+          "value": "0",
+          "subtext": ""
+        },
+        {
+          "label": "CLOSED",
+          "value": "0",
+          "subtext": ""
+        },
+        {
+          "label": "CANCELLED",
+          "value": "0",
+          "subtext": ""
+        },
+        {
+          "label": "Procurement",
+          "value": "5",
+          "subtext": "Fulfillment 3 Local (HC System) 1 All Open Acknowledged In Production Shipped Received Closed Cancelled RR #\tEXC #\tSOURCE TYPE\tSTATUS\tNEXT STEP\tSKU\tITEM\tQTY\tPRIORITY\tSUPPLIER\tORIGINAL PO\tRR DATE\tSUPPLIER ACK. RR-00007\tEXC-00005\tReceiving Damage\tAcknowledged\tWaiting on: Supplier to ship the replacement — Tony AGNAR-NNMGNTC-L-BLK\tAgnar | Track Light/Large: D 10*16cm / Black\t1\t—\tTony\tPO-00007\t2026-10-16\tYes RR-00005\tEXC-00003\tReceiving Damage\tOpen\tWaiting on: Supplier to acknowledge — Tony BLTZR-NNMGNTC-L-20W-BLK\tBaltazar | Track Light/Large: D 8*17.5/20W / Black\t1\t—\tTony\tPO-00004\t2026-10-13\tNo RR-00006\tEXC-00004\tReceiving Damage\tAcknowledged\tWaiting on: Supplier to ship the replacement — HC System 10540C-BLACK\tEirdia Une | Ceiling Light - Black\t1\t—\tHC System\tPO-00002\t2026-10-13\tYes RR-00004\tEXC-00002\tReceiving Damage\tOpen\tWaiting on: Supplier to acknowledge — Fenteng Lighting HC-CHAN-CRCAN-BLACK-D62CM\tCruciani | Chandelier - D62cm / Black\t1\t—\tFenteng Lighting\t\t2026-10-12\tNo RR-00001\tEXC-00001\tReceiving Damage\tAcknowledged\tWaiting on: Supplier to ship the replacement — Tony BELLEGLA-B-PENDNT-1979\tBelle | Glass Pendant Light/B\t1\t—\tTony\tPO-00001\t2026-08-29\tYes"
+        },
+        {
+          "label": "Request Summary",
+          "value": "Source Type—",
+          "subtext": "Source Exception #— RR Date— Supplier-Side Status— RR Reason"
+        },
+        {
+          "label": "Supplier Feedback",
+          "value": "Supplier Acknowledged",
+          "subtext": "Supplier Acknowledge Date Expected Ship Date Actual Ship ETA"
+        },
+        {
+          "label": "Closure",
+          "value": "RR Status",
+          "subtext": "Open Acknowledged In Production Shipped Received Closed Cancelled Closed At Last Updated— Closure Notes"
+        },
+        {
+          "label": "About Approve RR",
+          "value": "Approving is the supplier's own action, done on their portal (Fenteng-RR/",
+          "subtext": "Tony-RR) — they confirm they can fulfill it and fill in Expected Ship Date + ETA in the same step. This aggregate view is read-only for that; \"Supplier- Side Status\" above reflects their own record's live status. Any Missing_SKUs flagging or new replacement PO now happens automatically the moment this RR is raised, not when the supplier approves — no action here triggers it."
+        },
+        {
+          "label": "Log Replacement Shipment",
+          "value": "Once the supplier has approved, log a new Shipment for the replacement",
+          "subtext": "goods — cloned from the original PO's own Shipment (same PO, Customer, Sales Owner). It routes into the SAME Receiving record as the original, no new PO or new RCV created. Log Replacement Shipment"
+        }
+      ],
+      "tabs": [
+        "All",
+        "Open",
+        "Acknowledged",
+        "In Production",
+        "Shipped",
+        "Received",
+        "Closed",
+        "Cancelled"
+      ],
+      "tableHeaders": [
+        "RR #",
+        "EXC #",
+        "SOURCE TYPE",
+        "STATUS",
+        "NEXT STEP",
+        "SKU",
+        "ITEM",
+        "QTY",
+        "PRIORITY",
+        "SUPPLIER",
+        "ORIGINAL PO",
+        "RR DATE",
+        "SUPPLIER ACK.",
+        "Item",
+        "Qty",
+        "Status",
+        "Expected Ship",
+        "ETA",
+        "Action"
+      ],
+      "snippet": "Replacement Requests\n\nDamage / Missing / QC / Complaint replacement pipeline — Exception to closed RR\n\nOPEN\n4\nACKNOWLEDGED\n3\nIN PRODUCTION\n0\nSHIPPED\n0\nRECEIVED\n0\nCLOSED\n0\nCANCELLED\n0\nProcurement\n5\nFulfillment\n3\nLocal (HC System)\n1\nAll\nOpen\nAcknowledged\nIn Production\nShipped\nReceived\nClosed\nCancelled\nRR #\tEXC #\tSOURCE TYPE\tSTATUS\tNEXT STEP\tSKU\tITEM\tQTY\tPRIORITY\tSUPPLIER\tORIGINAL PO\tRR DATE\tSUPPLIER ACK.\nRR-00007\tEXC-00005\tReceiving Damage\tAcknowledged\tWaiting on: Supplier to ship the replacement\n— Tony\n\tAGNAR-NNMGNTC-L-BLK\tAgnar | Track Light/Large: D 10*16cm / Black\t1\t—\tTony\tPO-00007\t2026-10-16\tYes\nRR-00005\tEXC-00003\tReceiving Damage\tOpen\tWaiting on: Supplier to acknowledge\n— Tony\n\tBLTZR-NNMGNTC-L-20W-BLK\tBaltazar | Track Light/Large: D 8*17.5/20W / Black\t1\t—\tTony\tPO-00004\t2026-10-13\tNo\nRR-00006\tEXC-00004\tReceiving Damage\tAcknowledged\tWaiting on: Supplier to ship the replacement\n— HC System\n\t10540C-BLACK\tEirdia Une | Ceiling Light - Black\t1\t—\tHC System\tPO-00002\t2026-10-13\tYes\nRR-00004\t"
+    }
+  },
+  {
+    "tab": "Exceptions",
+    "slug": "08-exceptions1",
+    "data": {
+      "title": "Exceptions",
+      "statusBadge": "",
+      "buttons": [
+        "+ Raise Exception",
+        "RR List →",
+        "← Back to Queue",
+        "Mark Under Review",
+        "Mark Waiting",
+        "Resolve",
+        "Create RR",
+        "Edit",
+        "Save",
+        "Cancel",
+        "Mark Resolved",
+        "Close Exception",
+        "Show",
+        "Send",
+        "← Cancel",
+        "Raise Exception →",
+        "+ Add Row",
+        "Yes, proceed",
+        "✕",
+        "Notifications",
+        "Refresh",
+        "Mark all read"
+      ],
+      "statCards": [
+        {
+          "label": "OPEN EXCEPTIONS",
+          "value": "7",
+          "subtext": "Status != Closed HIGH SEVERITY 0 Priority = High WAITING ON SUPPLIER 0 Supplier response due OVERDUE 1 Past due date RECEIVING EXCEPTIONS 7 Source = Receiving FULFILLMENT QC EXCEPTIONS 0 Source = Fulfillment QC"
+        },
+        {
+          "label": "OPEN EXCEPTIONS",
+          "value": "7",
+          "subtext": "Status != Closed"
+        },
+        {
+          "label": "HIGH SEVERITY",
+          "value": "0",
+          "subtext": "Priority = High"
+        },
+        {
+          "label": "WAITING ON SUPPLIER",
+          "value": "0",
+          "subtext": "Supplier response due"
+        },
+        {
+          "label": "OVERDUE",
+          "value": "1",
+          "subtext": "Past due date"
+        },
+        {
+          "label": "RECEIVING EXCEPTIONS",
+          "value": "7",
+          "subtext": "Source = Receiving"
+        },
+        {
+          "label": "FULFILLMENT QC EXCEPTIONS",
+          "value": "0",
+          "subtext": "Source = Fulfillment QC"
+        },
+        {
+          "label": "All",
+          "value": "(7)",
+          "subtext": "Open (2) Under Review (5) Waiting (0) Resolved (0) Closed (0) Overdue (1) EXCEPTION NO.\tSOURCE\tTYPE\tSEVERITY\tSTATUS\tNEXT STEP\tSO NO.\tPO NO.\tSHIPMENT NO.\tRECEIVING NO.\tSKU\tAFFECTED QTY\tDEPT.\tASSIGNED TO\tWAITING ON\tDUE DATE EXC-00007\tReceiving\tMissing\tMED\tOpen\tNext: Assign an owner — Purchasing SO-16946\t4662244000016389002\tSHP-00009\tRCV-00010\tAGNAR-NNMGNTC-L-BLK\t1\t—\t—\t—\t— EXC-00006\tReceiving\tDamage\tMED\tOpen\tNext: Assign an owner — Purchasing SO-16946\t4662244000016389002\tSHP-00009\tRCV-00010\tAGNAR-NNMGNTC-M-BLK\t1\t—\t—\t—\t— EXC-00005\tReceiving\tDamage\tMED\tUnder Review\tNext: Decide the resolution (repair / replace / credit) — Purchasing SO-16946\tPO-00007\tSHP-00009\tRCV-00008\tAGNAR-NNMGNTC-L-BLK\t1\t—\t—\t—\t— EXC-00004\tReceiving\tDamage\tMED\tUnder Review\tNext: Decide the resolution (repair / replace / credit) — Purchasing SO-0000\tPO-00002\tSHP-00003\tRCV-00003\t10540C-BLACK\t1\t—\t—\t—\t— EXC-00003\tReceiving\tDamage\tMED\tUnder Review\tNext: Decide the resolution (repair / replace / credit) — Purchasing SO-16707\tPO-00004\tSHP-00005\tRCV-00005\tBLTZR-NNMGNTC-L-20W-BLK\t1\t—\t—\t—\t— EXC-00002\tReceiving\tDamage\tMED\tUnder Review\tNext: Decide the resolution (repair / replace / credit) — Purchasing SO-0001\t–\t–\tRCV-00001\tHC-CHAN-CRCAN-BLACK-D62CM\t1\t—\t—\t—\t— EXC-00001\tReceiving\tDamage\tMED\tUnder Review\tNext: Decide the resolution (repair / replace / credit) — Aiza SO-16570\tPO-00001\tSHP-00001\tRCV-00002\tBELLEGLA-B-PENDNT-1979\t1\tProcurement\tAiza\t—\tAug 31, 2026 ⚠ Showing 7 of 7 exceptions"
+        },
+        {
+          "label": "Source Linkage",
+          "value": "SO No.",
+          "subtext": "PO No. Shipment No. Receiving No. Receiving Line ID"
+        },
+        {
+          "label": "Product / Context",
+          "value": "From Product Context subform — read only here",
+          "subtext": "SKUItemCategoryQtyTypeSupplier"
+        },
+        {
+          "label": "Damage / Missing Evidence",
+          "value": "Populated from Receiving — read only here",
+          "subtext": ""
+        },
+        {
+          "label": "Problem Details",
+          "value": "Exception Title",
+          "subtext": "Root Cause Category — Exception Description Impact Type Delay Impact Yes Fulfillment Impact Yes"
+        },
+        {
+          "label": "Evidence — Files & Descriptions",
+          "value": "Uploaded Files",
+          "subtext": "— Evidence Descriptions"
+        },
+        {
+          "label": "Ownership",
+          "value": "Source",
+          "subtext": "— Assigned Department Assigned To Opened On Due Date Waiting On"
+        },
+        {
+          "label": "Resolution",
+          "value": "Resolution Action",
+          "subtext": "Mark Resolved Close Exception"
+        }
+      ],
+      "tabs": [],
+      "tableHeaders": [
+        "EXCEPTION NO.",
+        "SOURCE",
+        "TYPE",
+        "SEVERITY",
+        "STATUS",
+        "NEXT STEP",
+        "SO NO.",
+        "PO NO.",
+        "SHIPMENT NO.",
+        "RECEIVING NO.",
+        "SKU",
+        "AFFECTED QTY",
+        "DEPT.",
+        "ASSIGNED TO",
+        "WAITING ON",
+        "DUE DATE",
+        "Item",
+        "Category",
+        "Qty",
+        "Type",
+        "Supplier"
+      ],
+      "snippet": "Exceptions\n● 7 Open · 0 High Severity · 0 Waiting on Supplier\n+ Raise Exception\nAll Open\n7\nHigh Severity\n0\nWaiting on Supplier\n0\nReceiving Source\n7\nFulfillment QC Source\n0\nRR List →\nOPEN EXCEPTIONS\n7\nStatus != Closed\nHIGH SEVERITY\n0\nPriority = High\nWAITING ON SUPPLIER\n0\nSupplier response due\nOVERDUE\n1\nPast due date\nRECEIVING EXCEPTIONS\n7\nSource = Receiving\nFULFILLMENT QC EXCEPTIONS\n0\nSource = Fulfillment QC\nAll\n(7)\nOpen\n(2)\nUnder Review\n(5)\nWaiting\n(0)\nResolved\n(0)\nClosed\n(0)\nOverdue\n(1)\nEXCEPTION NO.\tSOURCE\tTYPE\tSEVERITY\tSTATUS\tNEXT STEP\tSO NO.\tPO NO.\tSHIPMENT NO.\tRECEIVING NO.\tSKU\tAFFECTED QTY\tDEPT.\tASSIGNED TO\tWAITING ON\tDUE DATE\nEXC-00007\tReceiving\tMissing\tMED\tOpen\tNext: Assign an owner\n— Purchasing\n\tSO-16946\t4662244000016389002\tSHP-00009\tRCV-00010\tAGNAR-NNMGNTC-L-BLK\t1\t—\t—\t—\t—\nEXC-00006\tReceiving\tDamage\tMED\tOpen\tNext: Assign an owner\n— Purchasing\n\tSO-16946\t4662244000016389002\tSHP-00009\tRCV-00010\tAGNAR-NNMGNTC-M-BLK\t1\t—\t—\t—\t—\nEXC-00005\tReceiving\tDamage\tMED\tUnder Review\tNext: Decide"
+    }
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "service": "CREATOR",
+  "scope": [
+    "Creator.report.READ"
+  ],
+  "cspDomains": {
+    "connect-src": ["https://creator.zoho.com"],
+    "font-src": ["https://fonts.gstatic.com"],
+    "style-src": ["https://fonts.googleapis.com"]
+  },
+  "config": []
+}

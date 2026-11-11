@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Team Availability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dms-tokens.css">
+<style>
+  /* The teal/slate palette that used to live here is now defined in
+     dms-legacy-palette.css, in terms of the shared design tokens, so this
+     widget matches the rest of DMS and follows dark mode. 2026-10-26. */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font-family:inherit}
+
+  .page{padding:24px;display:flex;flex-direction:column;gap:20px;min-height:100vh;box-sizing:border-box}
+  .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .page-header-left h1{font-size:24px;font-weight:700;color:#1A1A2E;letter-spacing:-.02em;line-height:1.2}
+  .page-header-left p{font-size:13px;color:var(--gray-500);margin-top:4px}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-teal{background:var(--teal);color:var(--white);font-weight:600;box-shadow:0 1px 3px rgba(13,148,136,.3)}
+  .btn-teal:hover{background:var(--teal-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(13,148,136,.3)}
+  .btn-teal:disabled{background:var(--gray-300);color:var(--gray-500);box-shadow:none;cursor:not-allowed;transform:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-danger{background:var(--white);border:1.5px solid var(--red-mid);color:var(--red)}
+  .btn-danger:hover{background:var(--red-light)}
+  .btn-sm{height:32px;padding:0 13px;font-size:13px}
+
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transform:translateY(6px);transition:opacity 200ms ease,transform 200ms ease;pointer-events:none;max-width:340px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  .main-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .filter-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 14px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .pill:hover{border-color:var(--teal);color:var(--teal)}
+  .pill.active{background:var(--teal);border-color:var(--teal);color:var(--white)}
+  .search-wrap{position:relative;flex:0 1 220px;min-width:160px}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400);pointer-events:none}
+  .search-input{width:100%;height:32px;padding:0 10px 0 32px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--gray-50);color:var(--gray-700);font-size:13px;outline:none;transition:all var(--t);box-sizing:border-box}
+  .search-input:focus{border-color:var(--teal);background:var(--white)}
+
+  .table-wrap{overflow-x:auto}
+  .dta-table{width:100%;border-collapse:collapse;min-width:820px}
+  .dta-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .dta-table th{padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+  .dta-table tbody tr{border-bottom:1px solid var(--gray-100);border-left:3px solid transparent;transition:background var(--t);cursor:pointer}
+  .dta-table tbody tr:hover{background:var(--gray-50)}
+  .dta-table tbody tr:last-child{border-bottom:none}
+  .dta-table tbody tr.row-full{border-left-color:var(--green)}
+  .dta-table tbody tr.row-half{border-left-color:var(--amber)}
+  .dta-table tbody tr.row-off{border-left-color:var(--red);background:rgba(220,38,38,.03)}
+  .dta-table tbody tr.row-past{opacity:.55}
+  .dta-table td{padding:12px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle}
+  .empty-state{padding:60px 20px;text-align:center;color:var(--gray-400)}
+  .empty-state svg{width:40px;height:40px;margin:0 auto 12px;opacity:.5}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .badge-green{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .badge-amber{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+  .badge-red{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:14px 18px;box-shadow:var(--shadow)}
+  .stat-label{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em}
+  .stat-value{font-size:26px;font-weight:700;line-height:1.1;margin:6px 0 2px;color:var(--gray-800);font-variant-numeric:tabular-nums}
+  .stat-value.teal{color:var(--teal)}
+  .stat-value.red{color:var(--red)}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:2000;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:100%;max-width:460px;max-height:90vh;overflow-y:auto}
+  .modal-header{padding:18px 22px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between}
+  .modal-header h2{font-size:16px;font-weight:700;color:var(--gray-800)}
+  .modal-close{cursor:pointer;color:var(--gray-400);font-size:20px;line-height:1;background:none;border:none}
+  .modal-close:hover{color:var(--gray-700)}
+  .modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+  .modal-footer{padding:16px 22px;border-top:1px solid var(--gray-100);display:flex;justify-content:flex-end;gap:10px}
+
+  .field-item label{display:block;font-size:11.5px;font-weight:600;color:var(--gray-600);margin-bottom:5px}
+  .field-item input,.field-item select,.field-item textarea{width:100%;font-family:inherit;font-size:13.5px;color:var(--gray-800);background:var(--white);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:8px 10px;outline:none;transition:border-color var(--t)}
+  .field-item input:focus,.field-item select:focus,.field-item textarea:focus{border-color:var(--teal)}
+  .field-item.error input,.field-item.error select{border-color:var(--red)}
+  .field-hint{font-size:11px;color:var(--gray-400);margin-top:3px}
+
+  .confirm-modal{max-width:380px}
+  .confirm-modal .modal-body{padding:22px}
+  .confirm-modal p{font-size:13.5px;color:var(--gray-700);line-height:1.5}
+
+  .spinner{width:28px;height:28px;border:3px solid var(--gray-200);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-wrap{padding:60px 20px;text-align:center;color:var(--gray-400);font-size:13px}
+  .loading-wrap .spinner{margin-bottom:12px}
+
+  .hidden{display:none !important}
+
+  @media (max-width:640px){
+    .page{padding:16px;gap:16px}
+    .page-header{flex-direction:column;align-items:stretch;gap:12px}
+    .page-header-left h1{font-size:20px}
+    #btnNew{width:100%;justify-content:center}
+    .filter-row{flex-direction:column;align-items:stretch}
+    .search-wrap{flex:1 1 auto;width:100%}
+    .stat-cards{grid-template-columns:repeat(2,1fr)}
+    .modal-overlay{padding:12px}
+    .modal{max-width:100%}
+    .modal-footer{flex-wrap:wrap}
+    .modal-footer .btn{flex:1 1 auto;justify-content:center}
+  }
+</style>
+  <link rel="stylesheet" href="dms-legacy-palette.css">
+</head>
+<body>
+
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>Daily Team Availability</h1>
+      <p>Officer daily input — which teams (Installer + Driver + Vehicle) are available, and their capacity, before the Scheduling Engine runs</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-ghost" id="btnGenMonth" onclick="openGenModal()">Generate Month</button>
+      <button class="btn btn-teal" id="btnNew" onclick="openNewModal()">+ Add Team Availability</button>
+    </div>
+  </div>
+
+  <div class="stat-cards" id="statCards"></div>
+
+  <div class="main-card">
+    <div class="filter-row">
+      <div class="filter-pills" id="filterPills">
+        <div class="pill active" data-filter="upcoming" onclick="setFilter('upcoming')">Upcoming</div>
+        <div class="pill" data-filter="today" onclick="setFilter('today')">Today</div>
+        <div class="pill" data-filter="all" onclick="setFilter('all')">All</div>
+      </div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="searchInput" placeholder="Search installer, driver, vehicle…" oninput="renderList()" />
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="dta-table">
+        <thead>
+          <tr>
+            <th>Date</th><th>Installer</th><th>Driver</th><th>Vehicle</th><th>Status</th><th>Start Time</th><th>Max Capacity (hrs)</th><th>Max SO/Day</th><th>Notes</th><th>Added By</th>
+          </tr>
+        </thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add Team Availability</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-item" id="fDateWrap">
+        <label>Availability Date *</label>
+        <input type="date" id="fDate" />
+      </div>
+      <div class="field-item" id="fInstallerWrap">
+        <label>Installer *</label>
+        <select id="fInstaller">
+          <option value="">-Select-</option>
+          <option>CJ</option><option>Edmon</option><option>John Dave</option><option>Nherwin</option><option>Norman</option>
+        </select>
+      </div>
+      <div class="field-item">
+        <label>Driver</label>
+        <select id="fDriver">
+          <option value="">-Select-</option>
+          <option>Judy</option><option>Norman</option><option>Patrick</option><option>Petz</option><option>Zaldy</option><option>Other</option>
+        </select>
+      </div>
+      <div class="field-item">
+        <label>Vehicle</label>
+        <!-- CHANGED 2026-10-29, per user ("itong tatlong sasakyan lang na to ang
+             pang field") — only these three go out on deliveries. Innova, Nissan
+             and Rav4 were removed; they are not field vehicles. A row that still
+             holds one of them keeps it: ensureVehicleOption() puts the old value
+             back into this list when such a record is opened, because a <select>
+             asked for a value it does not have silently falls back, and saving
+             would then wipe the vehicle without anyone noticing. -->
+        <select id="fVehicle">
+          <option value="">-Select-</option>
+          <option>Traviz (NIB-3823)</option><option>Hino (NBX-1446)</option><option>Traviz (NKI-4969)</option>
+        </select>
+      </div>
+      <div class="field-item" id="fStatusWrap">
+        <label>Availability Status *</label>
+        <select id="fStatus" onchange="onStatusChange()">
+          <option>Full Day</option><option>Half Day</option><option>Not Available</option>
+        </select>
+      </div>
+      <div class="field-item">
+        <label>Max Capacity (hrs)</label>
+        <input type="number" id="fCapacity" min="0" step="0.5" />
+        <div class="field-hint">Defaults to 8 (Full Day) / 4 (Half Day) — override if this team's real workday differs.</div>
+      </div>
+      <!-- ADDED 2026-09-11, per user ("ayusin natin lahat ng dapat ifix") — the
+           scheduling engine (dms_scheduling_engine.txt, 2026-09-11) reads THIS
+           field per team/day and uses it as the day's start time instead of the
+           old single global Policy Setting, but this widget — the one officers
+           actually use day-to-day to fill in Daily_Team_Availability — never got
+           an input for it, so the field was unreachable in normal use even once
+           created live. Deliberately left optional/blank-able: the engine's own
+           fallback (plain "8:00 AM" when a team's Start_Time1 is blank for that
+           day) still applies, this is not being forced. -->
+      <div class="field-item">
+        <label>Start Time</label>
+        <input type="time" id="fStartTime" />
+        <div class="field-hint">Leave blank to use the default 8:00 AM. Fill in only if this team genuinely starts earlier/later that day (e.g. 6:00 AM).</div>
+      </div>
+      <!-- ADDED 2026-09-15, per user ("by SO ang capacity, hindi package") — the
+           scheduling engine (dms_scheduling_engine.txt) now also caps a team by
+           NUMBER OF SO/deliveries per day, separate from Max Capacity (hrs), but
+           the same "field exists, widget never got an input for it" gap already
+           hit once before with Start_Time1 applies here too. Deliberately
+           optional/blank-able: 0 or blank means no SO-count limit for that
+           team/day, same convention as Max Capacity (hrs) above. -->
+      <div class="field-item">
+        <label>Max SO / Day</label>
+        <input type="number" id="fMaxSO" min="0" step="1" />
+        <div class="field-hint">Max number of Sales Orders/deliveries this team can take in one day. Leave blank or 0 for no limit.</div>
+      </div>
+      <div class="field-item">
+        <label>Added By</label>
+        <select id="fAddedBy" onchange="onAddedByChange()">
+          <option value="">-Select-</option>
+          <option>Flor</option><option>Jhi</option><option>Others</option>
+        </select>
+        <input id="fAddedByOther" placeholder="Type name…" style="margin-top:8px" class="hidden" />
+      </div>
+      <div class="field-item">
+        <label>Notes</label>
+        <textarea id="fNotes" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger hidden" id="btnDelete" onclick="deleteCurrent()">Delete</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-teal" id="btnSave" onclick="saveRecord()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GENERATE MONTH ============================================
+     Builds a whole month of team rows in one go, with the crew rotating so the
+     pairings change day to day. Everything it writes is an ordinary record:
+     editable, deletable, exactly like one typed by hand.
+     ====================================================================== -->
+<div class="modal-overlay" id="genOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Generate a month of teams</h2>
+      <button class="modal-close" onclick="closeGenModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-item">
+        <label>Month *</label>
+        <input type="month" id="gMonth" onchange="renderGenPreview()" />
+      </div>
+      <div class="field-item">
+        <label>Teams per day</label>
+        <input type="number" id="gTeams" min="1" max="3" step="1" value="3" oninput="renderGenPreview()" />
+        <div class="field-hint">Three is the field team — one per field vehicle. The cap is the smallest of installers, drivers and field vehicles, because two teams cannot share a driver or a truck.</div>
+      </div>
+      <!-- CHANGED 2026-10-29 — these used to be "Rest days", meaning a ticked day
+           got NO teams. The first real run came back with teams on Sundays only:
+           read as "pick the days you want", Mon-Sat were ticked, and the
+           generator dutifully skipped every one of them. Ticking a day now means
+           what it looks like — generate on it. -->
+      <div class="field-item">
+        <label>Working days *</label>
+        <div id="gWorkDays" style="display:flex;flex-wrap:wrap;gap:12px;padding:4px 0"></div>
+        <div class="field-hint">Teams are generated <b>only</b> on the days you tick. Untick a day to give everyone a rest day.</div>
+      </div>
+      <div class="field-item">
+        <label>Start time</label>
+        <input type="time" id="gStart" value="08:00" />
+      </div>
+      <div class="field-item">
+        <label>Max Capacity (hrs)</label>
+        <input type="number" id="gHours" min="1" step="0.5" value="8" />
+        <div class="field-hint">Never leave this at 0. The engine computes "remaining = capacity minus booked", so a 0 means no slot ever fits and every order comes back Calendar Full.</div>
+      </div>
+      <div class="field-item">
+        <label>Max SO / day</label>
+        <input type="number" id="gMaxSO" min="0" step="1" value="4" />
+      </div>
+      <div class="field-item">
+        <label>If the month already has rows</label>
+        <select id="gMode">
+          <option value="fill">Keep them — only add what is missing</option>
+          <option value="replace">Replace the generated ones, keep everything edited</option>
+        </select>
+        <div class="field-hint">Replace only removes rows still tagged <b>Auto rotation</b>, dated today or later, and not marked Not Available. Anything you edited, added by hand, or set to Not Available is kept either way.</div>
+      </div>
+      <div id="genPreview"></div>
+    </div>
+    <div class="modal-footer">
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost" onclick="closeGenModal()">Cancel</button>
+      <button class="btn btn-teal" id="btnGenRun" onclick="runGenerate()">Generate</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="modal confirm-modal">
+    <div class="modal-header">
+      <h2>Delete Team Availability?</h2>
+      <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>This removes the record permanently. This can't be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeConfirmModal()">Cancel</button>
+      <button class="btn btn-danger" id="btnConfirmDelete" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* ==================== CONFIG ====================
+   Form: Daily_Team_Availability, Report: All_Daily_Team_Availability. Built 2026-07-17
+   as part of DMS Section B (see DelugeScripts/dms_scheduling_engine.txt) — officer's
+   own daily input of which teams are available before the engine runs (plan's B.4
+   "Daily Team Setup"). No Custom Function/API wrapper needed — plain form, no Report
+   Action Items, same "simple CRUD, no wrapper" class as the Shipments widget. */
+const REPORT_NAME = 'All_Daily_Team_Availability';
+const FORM_NAME = 'Daily_Team_Availability';
+
+/* ==================== STATE ==================== */
+var ALL_ROWS = [];
+var CURRENT_FILTER = 'upcoming';
+var EDITING_ID = null;
+
+window.addEventListener('load', loadList);
+
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3200);
+}
+
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function errCode(e){
+  try {
+    if(e && e.responseText) return JSON.parse(e.responseText).code;
+    var s = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+    return JSON.parse(JSON.parse(s).responseText || s).code;
+  } catch(_){ return null; }
+}
+
+function todayISO(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// ADDED 2026-09-11, for the new Start_Time1 field — same conversion pair already
+// proven working in DeliveryQueue's own Confirmed_Time_Slot input, reused as-is
+// for consistency (a native <input type="time"> is always 24h "HH:MM"; the
+// record's own Time-type field reads/writes as a 12h "HH:MM:SS AM/PM" string).
+function to24Hour(t){
+  if(!t) return '';
+  var m = String(t).match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
+  if(!m) return '';
+  var h = parseInt(m[1],10);
+  var min = m[2];
+  var ap = (m[3]||'').toUpperCase();
+  if(ap==='PM' && h!==12) h+=12;
+  if(ap==='AM' && h===12) h=0;
+  return String(h).padStart(2,'0') + ':' + min;
+}
+function to12Hour(t){
+  if(!t) return '';
+  var parts = t.split(':');
+  var h = parseInt(parts[0],10);
+  var min = parts[1];
+  var ap = h>=12 ? 'PM' : 'AM';
+  var h12 = h%12; if(h12===0) h12=12;
+  return String(h12).padStart(2,'0') + ':' + min + ':00 ' + ap;
+}
+
+/* ==================== LIST ==================== */
+function loadList(){
+  document.getElementById('listBody').innerHTML = '<tr><td colspan="10"><div class="loading-wrap"><div class="spinner"></div>Loading team availability…</div></td></tr>';
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    console.error('[DailyTeamAvailability] SDK not available');
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: REPORT_NAME,
+    page: 1,
+    pageSize: 200,
+    field_config: 'all'
+  }).then(function(resp){
+    if(resp && resp.code===3000 && resp.data){
+      ALL_ROWS = resp.data;
+    } else {
+      ALL_ROWS = [];
+    }
+    renderList();
+  }).catch(function(e){
+    var c = errCode(e);
+    if(c===9220){
+      ALL_ROWS = [];
+      renderList();
+      return;
+    }
+    console.error('[DailyTeamAvailability] getRecords error', e);
+    document.getElementById('listBody').innerHTML = '<tr><td colspan="10"><div class="empty-state">Could not load — see console</div></td></tr>';
+  });
+}
+
+function setFilter(f){
+  CURRENT_FILTER = f;
+  document.querySelectorAll('#filterPills .pill').forEach(function(p){ p.classList.toggle('active', p.dataset.filter===f); });
+  renderList();
+}
+
+function statusRowClass(status){
+  if(status==='Full Day') return 'row-full';
+  if(status==='Half Day') return 'row-half';
+  if(status==='Not Available') return 'row-off';
+  return '';
+}
+function statusBadge(status){
+  if(status==='Full Day') return '<span class="badge badge-green">Full Day</span>';
+  if(status==='Half Day') return '<span class="badge badge-amber">Half Day</span>';
+  if(status==='Not Available') return '<span class="badge badge-red">Not Available</span>';
+  return esc(status||'');
+}
+
+function renderList(){
+  var today = todayISO();
+  var q = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+  var rows = ALL_ROWS.filter(function(r){
+    var d = r.Availability_Date || '';
+    if(CURRENT_FILTER==='today' && d!==today) return false;
+    if(CURRENT_FILTER==='upcoming' && d && d<today) return false;
+    if(q){
+      var hay = [r.Installer, r.Driver, r.Vehicle, r.Notes, r.Added_By].join(' ').toLowerCase();
+      if(hay.indexOf(q)===-1) return false;
+    }
+    return true;
+  });
+  rows.sort(function(a,b){ return (a.Availability_Date||'').localeCompare(b.Availability_Date||''); });
+
+  updateStats();
+
+  var body = document.getElementById('listBody');
+  if(rows.length===0){
+    body.innerHTML = '<tr><td colspan="10"><div class="empty-state">No team availability records' + (q? ' match this search' : (CURRENT_FILTER!=='all' ? ' for this filter' : '')) + '.</div></td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    var isPast = r.Availability_Date && r.Availability_Date < today;
+    return '<tr class="' + statusRowClass(r.Availability_Status) + (isPast?' row-past':'') + '" onclick="openEditModal(\'' + r.ID + '\')">' +
+      '<td>' + esc(r.Availability_Date) + '</td>' +
+      '<td>' + esc(r.Installer) + '</td>' +
+      '<td>' + esc(r.Driver) + '</td>' +
+      '<td>' + esc(r.Vehicle) + '</td>' +
+      '<td>' + statusBadge(r.Availability_Status) + '</td>' +
+      '<td>' + (r.Start_Time1 ? esc(r.Start_Time1) : '<span style="color:var(--gray-400)">8:00 AM (default)</span>') + '</td>' +
+      '<td>' + esc(r.Max_Capacity_Hours) + '</td>' +
+      '<td>' + (r.Max_SO_Capacity ? esc(r.Max_SO_Capacity) : '<span style="color:var(--gray-400)">No limit</span>') + '</td>' +
+      '<td>' + esc(r.Notes) + '</td>' +
+      '<td>' + esc(r.Added_By) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function updateStats(){
+  var today = todayISO();
+  var todayRows = ALL_ROWS.filter(function(r){ return r.Availability_Date===today; });
+  var fullToday = todayRows.filter(function(r){ return r.Availability_Status==='Full Day'; }).length;
+  var offToday = todayRows.filter(function(r){ return r.Availability_Status==='Not Available'; }).length;
+  var upcoming = ALL_ROWS.filter(function(r){ return r.Availability_Date && r.Availability_Date>=today; }).length;
+  document.getElementById('statCards').innerHTML =
+    '<div class="stat-card"><div class="stat-label">Teams Today</div><div class="stat-value teal">' + todayRows.length + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Full Day Today</div><div class="stat-value">' + fullToday + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Not Available Today</div><div class="stat-value red">' + offToday + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Upcoming Records</div><div class="stat-value">' + upcoming + '</div></div>';
+}
+
+/* ==================== MODAL ==================== */
+function clearFieldErrors(){
+  document.querySelectorAll('.field-item.error').forEach(function(f){ f.classList.remove('error'); });
+}
+
+function onStatusChange(){
+  var status = document.getElementById('fStatus').value;
+  var capField = document.getElementById('fCapacity');
+  if(capField.value==='' || capField.dataset.auto==='1'){
+    if(status==='Full Day'){ capField.value = 8; capField.dataset.auto='1'; }
+    else if(status==='Half Day'){ capField.value = 4; capField.dataset.auto='1'; }
+    else if(status==='Not Available'){ capField.value = 0; capField.dataset.auto='1'; }
+  }
+}
+
+/* Added_By is a plain Single Line text field (not a real Creator dropdown —
+   user created it that way), so "Others" + free text just writes whatever was
+   typed straight into that same text field. No native choice-list constraint
+   to fight (see reference-deluge-quirks.md's "allow new choices only helps
+   the native form UI, not raw API writes" gotcha — moot here since this isn't
+   even a dropdown field). */
+function onAddedByChange(){
+  var isOther = document.getElementById('fAddedBy').value === 'Others';
+  document.getElementById('fAddedByOther').classList.toggle('hidden', !isOther);
+  if(!isOther) document.getElementById('fAddedByOther').value = '';
+}
+function addedByValue(){
+  var v = document.getElementById('fAddedBy').value;
+  if(v==='Others') return document.getElementById('fAddedByOther').value.trim();
+  return v;
+}
+
+function openNewModal(){
+  EDITING_ID = null;
+  document.getElementById('modalTitle').textContent = 'Add Team Availability';
+  document.getElementById('btnDelete').classList.add('hidden');
+  document.getElementById('fDate').value = todayISO();
+  document.getElementById('fInstaller').value = '';
+  document.getElementById('fDriver').value = '';
+  document.getElementById('fVehicle').value = '';
+  document.getElementById('fStatus').value = 'Full Day';
+  document.getElementById('fCapacity').value = 8;
+  document.getElementById('fCapacity').dataset.auto = '1';
+  document.getElementById('fStartTime').value = '';
+  document.getElementById('fMaxSO').value = '';
+  document.getElementById('fAddedBy').value = '';
+  document.getElementById('fAddedByOther').value = '';
+  document.getElementById('fAddedByOther').classList.add('hidden');
+  document.getElementById('fNotes').value = '';
+  clearFieldErrors();
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+/* A record written before the vehicle list was cut down to the three field
+   vehicles still carries Innova / Nissan / Rav4. Assigning that to the <select>
+   would leave it on nothing and the next Save would blank the field, quietly.
+   So the old value is added back as an option, marked, for that record only. */
+function ensureVehicleOption(val){
+  var sel = document.getElementById('fVehicle');
+  Array.prototype.slice.call(sel.querySelectorAll('option[data-legacy]')).forEach(function(o){ o.remove(); });
+  if(!val) return;
+  var has = Array.prototype.slice.call(sel.options).some(function(o){ return o.value === val || o.text === val; });
+  if(has) return;
+  var opt = document.createElement('option');
+  opt.value = val;
+  opt.text = val + ' — not a field vehicle';
+  opt.setAttribute('data-legacy', '1');
+  sel.appendChild(opt);
+}
+
+function openEditModal(id){
+  var r = ALL_ROWS.find(function(x){ return x.ID===id; });
+  if(!r) return;
+  ensureVehicleOption(r.Vehicle || '');
+  EDITING_ID = id;
+  document.getElementById('modalTitle').textContent = 'Edit Team Availability';
+  document.getElementById('btnDelete').classList.remove('hidden');
+  document.getElementById('fDate').value = r.Availability_Date || '';
+  document.getElementById('fInstaller').value = r.Installer || '';
+  document.getElementById('fDriver').value = r.Driver || '';
+  document.getElementById('fVehicle').value = r.Vehicle || '';
+  document.getElementById('fStatus').value = r.Availability_Status || 'Full Day';
+  document.getElementById('fCapacity').value = r.Max_Capacity_Hours || 0;
+  document.getElementById('fCapacity').dataset.auto = '0';
+  document.getElementById('fStartTime').value = to24Hour(r.Start_Time1);
+  document.getElementById('fMaxSO').value = r.Max_SO_Capacity || '';
+  var addedBy = r.Added_By || '';
+  if(addedBy && addedBy!=='Flor' && addedBy!=='Jhi'){
+    document.getElementById('fAddedBy').value = 'Others';
+    document.getElementById('fAddedByOther').value = addedBy;
+    document.getElementById('fAddedByOther').classList.remove('hidden');
+  } else {
+    document.getElementById('fAddedBy').value = addedBy;
+    document.getElementById('fAddedByOther').value = '';
+    document.getElementById('fAddedByOther').classList.add('hidden');
+  }
+  document.getElementById('fNotes').value = r.Notes || '';
+  clearFieldErrors();
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+function highlightFieldError(wrapId){
+  var el = document.getElementById(wrapId);
+  if(el) el.classList.add('error');
+}
+
+function saveRecord(){
+  clearFieldErrors();
+  var date = document.getElementById('fDate').value;
+  var installer = document.getElementById('fInstaller').value;
+  var status = document.getElementById('fStatus').value;
+  var missing = false;
+  if(!date){ highlightFieldError('fDateWrap'); missing = true; }
+  if(!installer){ highlightFieldError('fInstallerWrap'); missing = true; }
+  if(!status){ highlightFieldError('fStatusWrap'); missing = true; }
+  if(missing){ showToast('Fill in the required fields'); return; }
+
+  var data = {
+    Availability_Date: date,
+    Installer: installer,
+    Driver: document.getElementById('fDriver').value,
+    Vehicle: document.getElementById('fVehicle').value,
+    Availability_Status: status,
+    Max_Capacity_Hours: document.getElementById('fCapacity').value || 0,
+    Max_SO_Capacity: document.getElementById('fMaxSO').value || 0,
+    Added_By: addedByValue(),
+    Notes: document.getElementById('fNotes').value
+  };
+  /* An edited row stops being this generator's to replace. Saving over one
+     still tagged "Auto rotation" retags it, so Generate Month in Replace mode
+     leaves it alone from then on — your change is not undone next month. */
+  if(EDITING_ID && String(data.Notes || '').indexOf(GEN_AUTO_TAG) === 0){
+    data.Notes = 'Edited · ' + data.Notes;
+  }
+  // Omitted (not sent as "") when left blank — a genuinely blank Start_Time1 is
+  // meaningful here (falls back to the engine's own default 8:00 AM), same
+  // blank-vs-empty-string caution already used elsewhere in this app for
+  // Date/Time fields (an empty string is not the same as "field left alone").
+  var startTimeVal = document.getElementById('fStartTime').value;
+  if(startTimeVal){ data.Start_Time1 = to12Hour(startTimeVal); }
+
+  document.getElementById('btnSave').disabled = true;
+  if(EDITING_ID){
+    ZOHO.CREATOR.DATA.updateRecordById({
+      report_name: REPORT_NAME,
+      id: String(EDITING_ID),
+      payload: { data: data }
+    }).then(function(resp){
+      document.getElementById('btnSave').disabled = false;
+      if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+        showToast('Updated');
+        closeModal();
+        loadList();
+      } else {
+        showToast('Update failed — ' + (resp && resp.message ? resp.message : 'see console'));
+        console.error('[DailyTeamAvailability] update error', resp);
+      }
+    }).catch(function(e){
+      document.getElementById('btnSave').disabled = false;
+      showToast('Update failed — see console');
+      console.error('[DailyTeamAvailability] update error', e);
+    });
+  } else {
+    ZOHO.CREATOR.DATA.addRecords({
+      form_name: FORM_NAME,
+      payload: { data: data }
+    }).then(function(resp){
+      document.getElementById('btnSave').disabled = false;
+      if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+        showToast('Added');
+        closeModal();
+        loadList();
+      } else {
+        showToast('Add failed — ' + (resp && resp.message ? resp.message : 'see console'));
+        console.error('[DailyTeamAvailability] add error', resp);
+      }
+    }).catch(function(e){
+      document.getElementById('btnSave').disabled = false;
+      showToast('Add failed — see console');
+      console.error('[DailyTeamAvailability] add error', e);
+    });
+  }
+}
+
+/* ==================== GENERATE A MONTH OF TEAMS ====================
+   Why this exists: the scheduling engine skips any date that has no row here
+   (dms_scheduling_engine.txt:387) — silently, with no error. Every such day is
+   simply invisible to it, which is what produces "Calendar Full". Filling this
+   table by hand, every day, was the officer's job. This does the month at once.
+
+   The roster below is the one BOTH Service_Appointment_Form.Installer and this
+   widget's own dropdown agree on. (Delivery_Scheduling.Installer carries five
+   other names — Jonrey, Janchyl, Clark, Cinco, Jayvon — that exist on neither,
+   so it is the stale list. Do not generate from it: the engine could not write
+   those names onto an appointment.) */
+var GEN_INSTALLERS = ['CJ', 'Edmon', 'John Dave', 'Nherwin', 'Norman'];
+var GEN_DRIVERS    = ['Judy', 'Norman', 'Patrick', 'Petz', 'Zaldy'];
+/* The field vehicles, and only these — user, 2026-10-29: "itong tatlong
+   sasakyan lang na to ang pang field". Innova (WOQ386), Nissan and Rav4 exist on
+   the form but never go out on a delivery, so the rotation must not hand them to
+   a team. With three vehicles, three is also the ceiling on teams per day. */
+var GEN_VEHICLES   = ['Traviz (NIB-3823)', 'Hino (NBX-1446)', 'Traviz (NKI-4969)'];
+var GEN_AUTO_TAG   = 'Auto rotation';
+var DAY_NAMES      = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var GEN_MONTH_ROWS = [];
+
+function isAutoRow(r){
+  return String(r && r.Notes ? r.Notes : '').indexOf(GEN_AUTO_TAG) === 0;
+}
+
+/* The day index. Deliberately NOT "days since some epoch": that needs date
+   arithmetic that has to agree between this widget and the Deluge version of
+   the same rotation. year*366 + day-of-year rises by exactly 1 per day, is
+   trivially reproducible in both languages, and gives the same answer whenever
+   it runs. The one jump at new year reshuffles the pairings once; harmless. */
+function genDayIndex(d){
+  var startOfYear = new Date(d.getFullYear(), 0, 0);
+  var dayOfYear = Math.floor((d - startOfYear) / 86400000);
+  return (d.getFullYear() * 366) + dayOfYear;
+}
+
+/* The rotation.
+
+   THE (dIdx % 7) AND (dIdx % 11) TERMS ARE LOad-BEARING — do not "simplify"
+   them away. Without them the installer index and the driver index both cycle
+   on the same period (the roster lengths are equal), so they advance in
+   lockstep and the PAIRINGS FREEZE: Nherwin draws Petz forever, while the list
+   still looks like it is rotating. Measured over 120 days: 5 of 25 possible
+   pairings. The two extra terms cycle on 7 and 11 instead, which breaks the
+   lockstep — 24 of 25 pairings (the missing one is Norman with himself) and
+   30 of 30 vehicles, with the workload still spread evenly across everyone. */
+function genTeamsForDate(d, teamsPerDay){
+  var I = GEN_INSTALLERS.length, D = GEN_DRIVERS.length, V = GEN_VEHICLES.length;
+  var T = Math.max(1, Math.min(teamsPerDay, I, D, V));
+  var dIdx = genDayIndex(d);
+  var dayInstallers = [];
+  for(var i = 0; i < T; i++){
+    dayInstallers.push(GEN_INSTALLERS[((dIdx * T) + i) % I]);
+  }
+  var usedDrivers = [], usedVehicles = [], out = [];
+  for(var s = 0; s < T; s++){
+    var driver = '';
+    for(var kd = 0; kd < D; kd++){
+      var cd = GEN_DRIVERS[(((dIdx * (T + 1)) + s + (dIdx % 7)) + kd) % D];
+      /* Not already out today, and not someone who is installing today —
+         Norman is on both rosters and cannot be in two places. */
+      if(usedDrivers.indexOf(cd) < 0 && dayInstallers.indexOf(cd) < 0){ driver = cd; break; }
+    }
+    if(driver) usedDrivers.push(driver);
+    var vehicle = '';
+    for(var kv = 0; kv < V; kv++){
+      var cv = GEN_VEHICLES[(((dIdx * (T + 2)) + s + (dIdx % 11)) + kv) % V];
+      if(usedVehicles.indexOf(cv) < 0){ vehicle = cv; break; }
+    }
+    if(vehicle) usedVehicles.push(vehicle);
+    out.push({ installer: dayInstallers[s], driver: driver, vehicle: vehicle, slot: s + 1 });
+  }
+  return out;
+}
+
+function genWorkDays(){
+  var picked = [];
+  document.querySelectorAll('#gWorkDays input[type=checkbox]').forEach(function(c){
+    if(c.checked) picked.push(Number(c.value));
+  });
+  return picked;
+}
+
+function genPlannedRows(){
+  var month = document.getElementById('gMonth').value;
+  if(!month) return [];
+  var parts = month.split('-');
+  var year = Number(parts[0]), mon = Number(parts[1]) - 1;
+  var teams = Number(document.getElementById('gTeams').value) || 1;
+  var work = genWorkDays();
+  var rows = [];
+  var cur = new Date(year, mon, 1);
+  while(cur.getMonth() === mon){
+    if(work.indexOf(cur.getDay()) >= 0){
+      var iso = cur.getFullYear() + '-' + String(cur.getMonth() + 1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0');
+      genTeamsForDate(cur, teams).forEach(function(t){
+        rows.push({ date: iso, dow: DAY_NAMES[new Date(iso + 'T00:00:00').getDay()], installer: t.installer, driver: t.driver, vehicle: t.vehicle, slot: t.slot });
+      });
+    }
+    cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1);
+  }
+  return rows;
+}
+
+function openGenModal(){
+  var now = new Date();
+  var next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  document.getElementById('gMonth').value = next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0');
+  /* Mon-Sat ticked, Sunday left off: the working week as it stands. */
+  document.getElementById('gWorkDays').innerHTML = DAY_NAMES.map(function(n, i){
+    return '<label style="display:flex;align-items:center;gap:5px;font-weight:400;margin:0">' +
+      '<input type="checkbox" value="' + i + '"' + (i === 0 ? '' : ' checked') + ' onchange="renderGenPreview()" />' + n + '</label>';
+  }).join('');
+  document.getElementById('genOverlay').classList.add('show');
+  renderGenPreview();
+}
+
+function closeGenModal(){
+  document.getElementById('genOverlay').classList.remove('show');
+}
+
+function renderGenPreview(){
+  var rows = genPlannedRows();
+  var box = document.getElementById('genPreview');
+  if(!rows.length){ box.innerHTML = ''; return; }
+  var days = [];
+  rows.forEach(function(r){ if(days.indexOf(r.date) < 0) days.push(r.date); });
+  var shown = days.slice(0, 6);
+  var html = '<div class="field-item"><label>Preview — first ' + shown.length + ' days</label>' +
+    '<div style="border:1px solid var(--gray-200);border-radius:8px;overflow:hidden">';
+  shown.forEach(function(d, idx){
+    var mine = rows.filter(function(r){ return r.date === d; });
+    html += '<div style="padding:7px 10px;' + (idx ? 'border-top:1px solid var(--gray-200);' : '') + '">' +
+      '<div style="font-weight:600;font-size:12px">' + esc(mine[0].dow) + ' ' + esc(d) + '</div>' +
+      '<div style="font-size:12px;color:var(--gray-600)">' +
+      mine.map(function(r){ return esc(r.installer) + ' + ' + esc(r.driver || 'no driver'); }).join('  ·  ') +
+      '</div></div>';
+  });
+  html += '</div><div class="field-hint">' + rows.length + ' rows across ' + days.length +
+    ' working days. Notice the partners change from one day to the next — that is the point of the rotation.</div></div>';
+  box.innerHTML = html;
+}
+
+/* Reads every page, because a month of rows plus history goes well past the
+   200-row page the list view settles for. Filtered client-side on the ISO date
+   prefix rather than with a criteria string: Creator's criteria date format
+   depends on the app's locale, and getting it wrong fails silently by matching
+   nothing — which here would read as "the month is empty" and duplicate it. */
+function fetchMonthRows(month, page, acc, done){
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: REPORT_NAME, page: page, pageSize: 200, field_config: 'all'
+  }).then(function(resp){
+    var got = (resp && resp.code === 3000 && resp.data) ? resp.data : [];
+    acc = acc.concat(got.filter(function(r){ return String(r.Availability_Date || '').slice(0, 7) === month; }));
+    if(got.length === 200 && page < 15){ fetchMonthRows(month, page + 1, acc, done); }
+    else { done(acc); }
+  }).catch(function(e){
+    if(errCode(e) === 9220){ done(acc); return; }
+    console.error('[DailyTeamAvailability] month fetch error', e);
+    done(null);
+  });
+}
+
+function runGenerate(){
+  var month = document.getElementById('gMonth').value;
+  if(!month){ showToast('Pick a month first'); return; }
+  var planned = genPlannedRows();
+  if(!planned.length){ showToast('Tick at least one working day first'); return; }
+  var mode = document.getElementById('gMode').value;
+  var btn = document.getElementById('btnGenRun');
+  btn.disabled = true; btn.textContent = 'Reading the month…';
+
+  fetchMonthRows(month, 1, [], function(existing){
+    if(existing === null){ btn.disabled = false; btn.textContent = 'Generate'; showToast('Could not read the month — see console'); return; }
+    var todayIso = todayISO();
+    /* Replace clears only this generator's own untouched rows. A row you
+       edited, typed yourself, or set to Not Available is never deleted, and
+       neither is anything already in the past — those may already have
+       appointments booked against them. */
+    var toDelete = mode === 'replace'
+      ? existing.filter(function(r){
+          return isAutoRow(r) && String(r.Availability_Date) >= todayIso && r.Availability_Status !== 'Not Available';
+        })
+      : [];
+    var deleteIds = toDelete.map(function(r){ return String(r.ID); });
+    var survivors = existing.filter(function(r){ return deleteIds.indexOf(String(r.ID)) < 0; });
+    /* Whatever survives wins its (date + installer) slot, so an edited row is
+       never shadowed by a fresh duplicate. */
+    var taken = {};
+    survivors.forEach(function(r){ taken[String(r.Availability_Date) + '|' + String(r.Installer)] = true; });
+    var toInsert = planned.filter(function(p){ return !taken[p.date + '|' + p.installer]; });
+
+    if(!deleteIds.length && !toInsert.length){
+      btn.disabled = false; btn.textContent = 'Generate';
+      showToast('Nothing to do — the month is already complete');
+      return;
+    }
+
+    var startTime = document.getElementById('gStart').value;
+    var hours = document.getElementById('gHours').value || 8;
+    var maxSO = document.getElementById('gMaxSO').value || 0;
+
+    var payloads = toInsert.map(function(p){
+      var d = {
+        Availability_Date: p.date,
+        Installer: p.installer,
+        Driver: p.driver,
+        Vehicle: p.vehicle,
+        Availability_Status: 'Full Day',
+        Max_Capacity_Hours: hours,
+        Max_SO_Capacity: maxSO,
+        Notes: GEN_AUTO_TAG + ' · ' + p.date + ' · slot ' + p.slot
+      };
+      if(startTime) d.Start_Time1 = to12Hour(startTime);
+      return d;
+    });
+
+    var deleted = 0, added = 0;
+    function doDeletes(i){
+      if(i >= deleteIds.length){ doInserts(0); return; }
+      btn.textContent = 'Clearing ' + (i + 1) + '/' + deleteIds.length + '…';
+      ZOHO.CREATOR.DATA.deleteRecordById({ report_name: REPORT_NAME, id: deleteIds[i] })
+        .then(function(){ deleted++; doDeletes(i + 1); })
+        .catch(function(e){ console.error('[DailyTeamAvailability] delete failed', deleteIds[i], e); doDeletes(i + 1); });
+    }
+    /* Sent in chunks: one addRecords call carrying a whole month is both near
+       the API's record cap and all-or-nothing, so a single bad row would lose
+       the lot. In chunks, a failure costs one chunk and the log names it. */
+    function doInserts(from){
+      if(from >= payloads.length){ finish(); return; }
+      var chunk = payloads.slice(from, from + 25);
+      btn.textContent = 'Adding ' + Math.min(from + chunk.length, payloads.length) + '/' + payloads.length + '…';
+      ZOHO.CREATOR.DATA.addRecords({ form_name: FORM_NAME, payload: { data: chunk } })
+        .then(function(resp){
+          if(resp && (resp.code === 3000 || String(resp.code) === '3000')){ added += chunk.length; }
+          else { console.error('[DailyTeamAvailability] chunk rejected', resp); }
+          doInserts(from + 25);
+        })
+        .catch(function(e){ console.error('[DailyTeamAvailability] chunk failed', e); doInserts(from + 25); });
+    }
+    function finish(){
+      btn.disabled = false; btn.textContent = 'Generate';
+      closeGenModal();
+      loadList();
+      showToast('Month ready — ' + added + ' added' + (deleted ? ', ' + deleted + ' replaced' : '') +
+        (added < payloads.length ? ' (' + (payloads.length - added) + ' failed, see console)' : ''));
+    }
+    doDeletes(0);
+  });
+}
+
+function deleteCurrent(){
+  if(!EDITING_ID) return;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+
+function closeConfirmModal(){
+  document.getElementById('confirmOverlay').classList.remove('show');
+}
+
+function confirmDelete(){
+  if(!EDITING_ID) return;
+  document.getElementById('btnConfirmDelete').disabled = true;
+  ZOHO.CREATOR.DATA.deleteRecordById({
+    report_name: REPORT_NAME,
+    id: String(EDITING_ID)
+  }).then(function(resp){
+    document.getElementById('btnConfirmDelete').disabled = false;
+    if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+      showToast('Deleted');
+      closeConfirmModal();
+      closeModal();
+      loadList();
+    } else {
+      showToast('Delete failed — ' + (resp && resp.message ? resp.message : 'see console'));
+      console.error('[DailyTeamAvailability] delete error', resp);
+    }
+  }).catch(function(e){
+    document.getElementById('btnConfirmDelete').disabled = false;
+    showToast('Delete failed — see console');
+    console.error('[DailyTeamAvailability] delete error', e);
+  });
+}
+</script>
+</body>
+</html>

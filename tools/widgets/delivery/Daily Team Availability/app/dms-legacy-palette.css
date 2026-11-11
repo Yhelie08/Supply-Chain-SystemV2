@@ -1,0 +1,155 @@
+/* dms-legacy-palette.css — pulls the three pre-design widgets onto the shared
+   look without touching their markup.
+
+   Ongoing Service, Truck Maintenance (DailyChecklistVehicle) and Daily Team
+   Availability were written before dms-tokens.css existed. Each carried its own
+   teal/slate palette, its own radii and its own shadows, so next to Initial
+   Scheduling or Service Request they read as a different application.
+
+   Their CSS is clean and almost entirely token-driven, so the fix is the same
+   one gen_compat.py already uses for SalesReturns and FieldServiceSiteVisits:
+   KEEP the legacy token and class names, REDEFINE them against the shared
+   design tokens. No class is renamed, no markup moves, no JS template changes —
+   so none of the live-tested behaviour in those widgets is put at risk for a
+   cosmetic gain.
+
+   Load order inside each widget:
+       <link dms-tokens.css>        <- the shared tokens, first
+       <style> ... the widget's own CSS, unchanged ... </style>
+       <link dms-legacy-palette.css> <- this file, last, so it wins
+
+   Change a colour in dms-tokens.css, never here.
+   2026-10-26. */
+
+/* ---- 1. the legacy palette, re-pointed at the shared tokens ------------- */
+:root{
+  --teal:var(--accent);
+  --teal-dark:color-mix(in srgb,var(--accent) 82%,#000);
+  --teal-light:var(--accent-soft);
+  --teal-mid:color-mix(in srgb,var(--accent) 45%,var(--surface));
+  --blue:var(--accent);
+  --blue-light:var(--accent-soft);
+  --blue-mid:color-mix(in srgb,var(--accent) 45%,var(--surface));
+  --green:var(--ok);
+  --green-light:var(--ok-soft);
+  --green-mid:color-mix(in srgb,var(--ok) 45%,var(--surface));
+  --amber:var(--warn);
+  --amber-light:var(--warn-soft);
+  --amber-mid:color-mix(in srgb,var(--warn) 45%,var(--surface));
+  --red:var(--bad);
+  --red-light:var(--bad-soft);
+  --red-mid:color-mix(in srgb,var(--bad) 45%,var(--surface));
+
+  /* The old grey ramp was used for surfaces AND for text, so it has to split. */
+  --gray-50:var(--surface-2);
+  --gray-100:var(--surface-2);
+  --gray-200:var(--border);
+  --gray-300:var(--border-strong);
+  --gray-400:var(--faint);
+  --gray-500:var(--muted);
+  --gray-600:var(--muted);
+  --gray-700:var(--text);
+  --gray-800:var(--text);
+  --white:var(--surface);
+
+  /* Shared geometry. --radius stays the shared 14px for cards; buttons and
+     inputs get their own, matching dms-shell.css. */
+  --radius-sm:8px;
+  --radius-lg:var(--radius);
+  --t:150ms ease;
+}
+
+/* ---- 2. page chrome, matched to dms-shell.css --------------------------- */
+html,body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:var(--fs-base);
+}
+
+.page-header-left h1,.page-header h1,.topbar h1{
+  font-size:var(--fs-2xl);font-weight:700;color:var(--text);letter-spacing:-.01em;
+}
+.page-header-left p,.page-header p{font-size:var(--fs-md);color:var(--muted)}
+
+/* ---- 3. buttons --------------------------------------------------------- */
+.btn{
+  height:34px;border-radius:9px;font-size:var(--fs-md);font-weight:600;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);
+}
+.btn:active{transform:translateY(1px)}
+.btn-sm,.btn.sm{height:32px;padding:0 12px;font-size:var(--fs-sm)}
+
+.btn-teal,.btn-primary{
+  background:var(--accent);border-color:var(--accent);color:var(--accent-text);
+  box-shadow:none;
+}
+.btn-teal:hover,.btn-primary:hover{
+  background:var(--accent);filter:brightness(1.07);transform:none;box-shadow:none;
+}
+.btn-teal:disabled,.btn-primary:disabled{
+  background:var(--surface-3);border-color:var(--border);color:var(--faint);
+  box-shadow:none;filter:none;
+}
+.btn-ghost,.btn-secondary{
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+}
+.btn-ghost:hover,.btn-secondary:hover{
+  background:var(--surface-2);border-color:var(--border-strong);color:var(--text);
+}
+.btn-danger{
+  background:var(--surface);
+  border:1px solid color-mix(in srgb,var(--bad) 35%,var(--border));
+  color:var(--bad);
+}
+.btn-danger:hover{background:var(--bad-soft)}
+.btn-success{background:var(--ok);border-color:var(--ok);color:#fff}
+
+.back-link{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.back-link:hover{background:var(--surface-3)}
+
+/* ---- 4. filters, badges, cards ------------------------------------------ */
+.pill{
+  height:32px;border:1px solid var(--border);background:var(--surface);
+  color:var(--muted);font-size:var(--fs-sm);
+}
+.pill:hover{border-color:var(--accent);color:var(--accent)}
+.pill.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+
+.badge{font-size:var(--fs-xs);font-weight:600;border-width:1px;border-style:solid}
+
+.main-card,.stat-card,.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow);
+}
+
+/* ---- 5. tables ---------------------------------------------------------- */
+thead tr{background:var(--surface-2)}
+th{color:var(--muted)}
+tbody tr:hover{background:var(--surface-2)}
+
+/* ---- 6. inputs ---------------------------------------------------------- */
+.search-input,
+.field-item input,.field-item select,.field-item textarea{
+  background:var(--surface-2);border:1px solid var(--border);
+  color:var(--text);border-radius:8px;
+}
+.search-input:focus,
+.field-item input:focus,.field-item select:focus,.field-item textarea:focus{
+  border-color:var(--accent);background:var(--surface);
+}
+input::placeholder,textarea::placeholder{color:var(--faint)}
+
+/* ---- 7. overlays -------------------------------------------------------- */
+.modal,.modal-content{background:var(--surface);border:1px solid var(--border)}
+.modal-overlay{background:rgba(8,11,16,.55)}
+.modal-header,.modal-footer{border-color:var(--border)}
+.toast{background:var(--text);color:var(--bg)}
+
+/* ---- 8. signature pads stay a light document ---------------------------- */
+/* The pad is exported as an image and filed against the job, so it keeps a
+   white sheet and dark ink in both themes rather than following the page. */
+.sig-pad-wrap{background:#fff;border-color:var(--border-strong)}
+.sig-clear{
+  color:#334155;background:#fff;border:1px solid #e2e8f0;border-radius:8px;
+}

@@ -1,0 +1,2254 @@
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Purchase Orders</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+      --green:#16A34A; --green-dark:#15803D; --green-light:#DCFCE7; --green-mid:#86EFAC;
+      --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+      --red:#DC2626; --red-dark:#B91C1C; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+      --purple:#7C3AED; --purple-dark:#6D28D9; --purple-light:#EDE9FE; --purple-mid:#C4B5FD;
+      --orange:#EA580C; --orange-dark:#C2410C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+      --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0;
+      --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B;
+      --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+      --white:#FFFFFF;
+      --radius-sm:4px; --radius:8px; --radius-lg:12px;
+      --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+      --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+      --t:150ms ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      color: var(--gray-800);
+      background: var(--gray-100);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Top Bar ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--white);
+      border-bottom: 1.5px solid var(--gray-200);
+      padding: 0 24px;
+      height: 48px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .topbar-title { font-weight: 600; font-size: 13.5px; color: var(--gray-800); }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .active-badge {
+      display: flex; align-items: center; gap: 5px;
+      background: var(--green-light); color: var(--green-dark);
+      border-radius: 999px; padding: 3px 10px;
+      font-size: 12px; font-weight: 600;
+    }
+    .active-badge::before {
+      content: ''; width: 7px; height: 7px;
+      background: var(--green); border-radius: 50%;
+    }
+
+    /* ── Layout ── */
+    /* CHANGED 2026-08-20, per user report (screenshot, red arrow through the blank
+       area below the PO table) — .main used to be plain block flow sized to its own
+       content only, so once the table itself had just 1-2 rows the page ended in a
+       tall, un-boxed blank area with no border anywhere below it. Sibling widget
+       (Purchase Request)'s own .list-page/.main-card do the same flex-column +
+       flex:1 pattern to keep their card framed all the way to the bottom of the
+       viewport regardless of row count — matched here. 48px = .topbar's own height. */
+    .main { padding: 24px; display: flex; flex-direction: column; min-height: calc(100vh - 48px); box-sizing: border-box; }
+
+    /* ── Page Header ── */
+    .page-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 16px; flex-wrap: wrap; flex-shrink: 0;
+    }
+    .page-header-left h1 { font-size: 24px; font-weight: 700; color: #1A1A2E; letter-spacing: -.02em; margin-bottom: 4px; }
+    .page-header-left p { font-size: 13px; color: var(--gray-500); }
+    .page-header-right { display: flex; gap: 8px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 36px; padding: 0 16px; border-radius: var(--radius);
+      font-family: inherit; font-size: 13.5px; font-weight: 500;
+      cursor: pointer; border: 1.5px solid var(--gray-200); background: var(--white); color: var(--gray-700);
+      transition: all var(--t);
+      white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--gray-400); color: var(--gray-800); }
+    .btn-success { background: var(--green); color: var(--white); border-color: var(--green); font-weight: 600; box-shadow: 0 1px 3px rgba(22,163,74,.3); }
+    .btn-success:hover { background: var(--green-dark); border-color: var(--green-dark); }
+    .btn-danger { background: var(--white); color: var(--red); border-color: var(--red-mid); }
+    .btn-danger:hover { background: var(--red-light); }
+    .btn-sm { height: 32px; padding: 0 13px; font-size: 13px; }
+
+    /* ── Summary Cards ── */
+    .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; flex-shrink: 0; }
+    @media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:640px){.cards{grid-template-columns:repeat(2,1fr)}}
+    .card {
+      background: var(--white); border-radius: var(--radius-lg); padding: 14px 18px;
+      border: 1px solid var(--gray-200); box-shadow: var(--shadow);
+    }
+    .card-label { font-size: 10.5px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }
+    .card-value { font-size: 26px; font-weight: 700; margin-bottom: 2px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .card-sub { font-size: 12px; color: var(--gray-400); }
+    .card-sub.pos { color: var(--green); }
+    .c-green  { color: var(--green); }
+    .c-orange { color: var(--orange); }
+    .c-blue   { color: var(--blue); }
+    .c-purple { color: var(--purple); }
+
+    /* ── Filter Bar ── */
+    /* CHANGED 2026-08-20 — now sits INSIDE .list-card (see below), so margin-bottom
+       became padding + a border-bottom separator instead, matching the same
+       tab-bar/table-inside-one-card convention as the sibling Purchase Request
+       widget's own .filter-row. flex-shrink:0 keeps it from being squeezed once
+       .list-card is a flex column. */
+    .filter-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; gap: 12px; flex-wrap: wrap; flex-shrink: 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tab {
+      height: 32px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: 1.5px solid var(--gray-200); color: var(--gray-600);
+      background: var(--white); transition: all var(--t);
+      display: inline-flex; align-items: center;
+    }
+    .tab:hover { border-color: var(--blue); color: var(--blue); }
+    .tab.active { background: var(--blue); border-color: var(--blue); color: var(--white); }
+    .search-box {
+      height: 32px; padding: 0 12px; border: 1.5px solid var(--gray-200); border-radius: 999px;
+      font-size: 13px; width: 200px; outline: none; color: var(--gray-700); background: var(--gray-50);
+      transition: all var(--t);
+    }
+    .search-box:focus { border-color: var(--blue); background: var(--white); }
+    .search-box::placeholder { color: var(--gray-400); }
+
+    /* ── Table ── */
+    .table-wrap { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow); overflow: hidden; }
+    /* ADDED 2026-08-20, per user report ("dapat may border", screenshot showing a
+       tall un-boxed blank area below the PO table) — new classes for the main PO
+       List view specifically, kept separate from the plain .table-wrap above (that
+       one stays untouched, still used as-is by the Grouping Workspace's own
+       .po-group-card rows below). .list-card is the actual bordered/shadowed card
+       (same visual recipe .table-wrap used to carry alone) — now wraps .filter-bar
+       + .po-list-table-wrap together and flex-grows to fill .main's remaining
+       height, so the border/box now extends all the way to the bottom of the page
+       exactly like the sibling Purchase Request widget's own .main-card. */
+    .list-card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .po-list-table-wrap { overflow: auto; flex: 1; min-height: 0; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--gray-400); padding: 10px 14px;
+      background: var(--gray-50); border-bottom: 1.5px solid var(--gray-200); text-align: left;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--gray-100); transition: background var(--t); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--gray-50); }
+    tbody td { padding: 12px 14px; font-size: 13px; color: var(--gray-700); vertical-align: middle; }
+
+    .po-link {
+      color: var(--blue); font-weight: 600; cursor: pointer;
+      text-decoration: none;
+    }
+    .po-link:hover { text-decoration: underline; }
+
+    /* ── Status Badges ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+      white-space: nowrap; border: 1px solid transparent;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .badge-confirmed { background: var(--blue-light); color: var(--blue-dark); border-color: var(--blue-mid); }
+    .badge-confirmed .badge-dot { background: var(--blue-dark); }
+    .badge-sent      { background: var(--blue-light); color: var(--blue); border-color: var(--blue-mid); }
+    .badge-sent .badge-dot { background: var(--blue); }
+    .badge-awaiting  { background: var(--amber-light); color: var(--amber); border-color: var(--amber-mid); }
+    .badge-awaiting .badge-dot { background: var(--amber); }
+    .badge-completed { background: var(--green-light); color: var(--green-dark); border-color: var(--green-mid); }
+    .badge-completed .badge-dot { background: var(--green); }
+    .badge-cancelled { background: var(--red-light); color: var(--red); border-color: var(--red-mid); }
+    .badge-cancelled .badge-dot { background: var(--red); }
+
+    .missing-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+      background: var(--amber-light); color: var(--amber);
+    }
+
+    .ship-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 500;
+    }
+    .ship-pill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .ship-yes { background: var(--amber-light); color: var(--amber); }
+    .ship-yes .ship-pill-dot { background: var(--amber); }
+    .ship-no  { background: var(--gray-100); color: var(--gray-500); }
+    .ship-no  .ship-pill-dot { background: var(--gray-300); }
+
+
+    /* ═══════════════════════════════════════
+       DETAIL VIEW
+    ═══════════════════════════════════════ */
+    #detail-view { display: none; }
+
+    .po-status-topbadge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--blue-light); color: var(--blue-dark);
+      border-radius: 999px; padding: 3px 10px;
+      font-size: 11.5px; font-weight: 600;
+    }
+    .po-status-topbadge.draft     { background: var(--gray-100); color: var(--gray-500); }
+    .po-status-topbadge.sent     { background: var(--blue-light); color: var(--blue); }
+    .po-status-topbadge.awaiting { background: var(--amber-light); color: var(--amber); }
+    .po-status-topbadge.completed{ background: var(--green-light); color: var(--green-dark); }
+    .po-status-topbadge.cancelled{ background: var(--red-light); color: var(--red); }
+    .po-status-topbadge::before  { content: ''; width: 7px; height: 7px; background: currentColor; border-radius: 50%; opacity: 0.9; }
+
+    /* Detail header bar */
+    .detail-header {
+      background: var(--white); border-bottom: 1.5px solid var(--gray-200);
+      padding: 12px 24px;
+    }
+    .detail-header-top {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 10px;
+    }
+    .detail-header-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      height: 32px; padding: 0 12px; border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+      background: var(--white); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--gray-600);
+      transition: all var(--t);
+    }
+    .back-btn:hover { border-color: var(--gray-400); color: var(--gray-800); }
+    .detail-po-id   { font-weight: 700; font-size: 15px; color: var(--blue-dark); }
+    .detail-meta-pill { font-size: 12.5px; font-weight: 600; color: var(--gray-700); }
+    .locked-tag { font-size: 11.5px; color: var(--gray-400); }
+    .detail-sub { font-size: 11.5px; color: var(--gray-400); margin-top: 7px; }
+    .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* Detail body */
+    .detail-body {
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: 1fr 270px 320px;
+      gap: 16px;
+      align-items: start;
+    }
+    @media(max-width:1300px){.detail-body{grid-template-columns:1fr 270px}}
+    @media(max-width:980px){.detail-body{grid-template-columns:1fr}}
+
+    /* ── Conversation panel — per-PO buyer↔supplier chat, right rail. Mirrors the
+       Inquiry/PR-side chat feature exactly (see UI/EndUser/INQs/app/index.html and
+       UI/EndUser/PRs/app/index.html's own copies of this comment for the full
+       architecture rationale: new plain form not a subform, polling not push since no
+       native websocket/subscribe API exists for Creator widgets, etc). Keyed by PO_No.
+       Buyer sees both supplier threads tabbed; each supplier's own PO widget
+       (Fenteng-PO/Tony-PO) shows only its own single thread. ── */
+    .chat-panel{display:flex;flex-direction:column;height:600px;position:sticky;top:16px}
+    .chat-tabs{display:flex;border-bottom:1px solid var(--gray-100)}
+    .chat-tab{flex:1;padding:10px 0;text-align:center;font-size:12.5px;font-weight:600;color:var(--gray-500);cursor:pointer;border-bottom:2px solid transparent;background:none;border-left:none;border-right:none;border-top:none}
+    .chat-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+    .chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--gray-50)}
+    .chat-empty{color:var(--gray-400);font-size:12.5px;text-align:center;margin-top:20px}
+    .chat-bubble{max-width:82%;padding:7px 10px;border-radius:10px;font-size:12.5px;line-height:1.4;word-break:break-word}
+    .chat-bubble .chat-meta{font-size:10.5px;font-weight:600;opacity:.7;margin-bottom:2px}
+    .chat-bubble .chat-time{font-size:9.5px;opacity:.55;margin-top:3px}
+    .chat-bubble.mine{align-self:flex-end;background:var(--blue);color:var(--white);border-bottom-right-radius:2px}
+    .chat-bubble.theirs{align-self:flex-start;background:var(--white);color:var(--gray-800);border:1px solid var(--gray-200);border-bottom-left-radius:2px}
+    .chat-inputbar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--gray-100)}
+    .chat-inputbar textarea{flex:1;resize:none;border:1px solid var(--gray-200);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;max-height:80px}
+    .chat-send-btn{align-self:flex-end;background:var(--blue);color:var(--white)}
+    .chat-send-btn:disabled{background:var(--gray-300);color:var(--gray-500);cursor:not-allowed}
+
+    .section-card {
+      background: var(--white); border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-200); box-shadow: var(--shadow); overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .section-card:last-child { margin-bottom: 0; }
+    .section-title {
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--gray-400); padding: 10px 16px; border-bottom: 1px solid var(--gray-100); background: var(--gray-50);
+    }
+    .section-body { padding: 18px; }
+
+    /* Summary grid */
+    .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+    @media(max-width:760px){.summary-grid{grid-template-columns:repeat(2,1fr)}}
+    .summary-item label {
+      font-size: 10.5px; color: var(--gray-400); text-transform: uppercase;
+      letter-spacing: .06em; display: block; margin-bottom: 5px;
+    }
+    .summary-val       { font-size: 20px; font-weight: 700; color: var(--gray-800); }
+    .summary-val.green { color: var(--green); }
+
+    /* Line items table */
+    .line-table { width: 100%; border-collapse: collapse; }
+    .line-table th {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--gray-400); padding: 9px 12px;
+      text-align: left; border-bottom: 1px solid var(--gray-100); background: var(--gray-50);
+      white-space: nowrap;
+    }
+    .line-table td { padding: 10px 12px; font-size: 12.5px; border-bottom: 1px solid var(--gray-50); vertical-align: middle; color: var(--gray-700); }
+    .line-table tbody tr:last-child td { border-bottom: none; }
+    .pr-link { color: var(--orange); font-weight: 600; cursor: pointer; }
+    .pr-link:hover { text-decoration: underline; }
+    .ship-sea { background: var(--blue-light); color: var(--blue-dark); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+    .ship-air { background: var(--amber-light); color: var(--amber); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+    .lt-green  { color: var(--green); font-weight: 600; }
+    .lt-orange { color: var(--orange); font-weight: 600; }
+
+    .total-row td {
+      border-top: 1.5px solid var(--gray-200) !important;
+      font-weight: 700; color: var(--gray-500); font-size: 11.5px;
+      text-align: right; padding: 10px 12px;
+    }
+    .total-row .total-amount { color: var(--green); font-size: 14px; font-weight: 700; }
+
+    /* Audit panel */
+    .audit-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0; border-bottom: 1px solid var(--gray-50); font-size: 12.5px;
+    }
+    .audit-row:last-child { border-bottom: none; }
+    .audit-label { color: var(--gray-400); font-size: 11.5px; }
+    .audit-value { color: var(--gray-700); font-weight: 500; }
+
+    /* Supplier snapshot */
+    .snap-name { font-weight: 600; color: var(--gray-800); font-size: 13.5px; margin-bottom: 10px; }
+    .snap-label { font-size: 11.5px; color: var(--gray-400); margin-bottom: 4px; }
+    .progress-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .progress-bg { flex: 1; background: var(--gray-200); border-radius: 4px; height: 6px; }
+    .progress-fill { height: 6px; border-radius: 4px; background: var(--green); }
+    .progress-pct { font-size: 11.5px; font-weight: 600; color: var(--gray-600); min-width: 28px; }
+    .snap-rec { font-size: 11.5px; color: var(--gray-600); }
+    .snap-rec strong { color: var(--green); }
+
+
+
+    /* ═══════════════════════════════════════
+       WORKSPACE VIEW — ported from Purchase Request/app/PR.html's
+       real PO Grouping Workspace (same CSS vars + classes it uses)
+    ═══════════════════════════════════════ */
+    #workspace-view { display: none; }
+
+    .group-topbar{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:0 24px;height:44px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .group-topbar-title{font-size:13.5px;font-weight:600;color:var(--gray-800)}
+    .group-topbar-right{display:flex;align-items:center;gap:14px}
+    .grp-pill{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600}
+    .grp-pill .dot-g{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;background:var(--green)}
+
+    .group-subheader{background:var(--white);border-bottom:1.5px solid var(--gray-200);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .group-title{font-size:20px;font-weight:700;color:var(--orange);letter-spacing:-.02em;line-height:1.2}
+    .group-subtitle{font-size:13px;color:var(--gray-500);margin-top:4px}
+    .group-sh-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+
+    .group-content{padding:16px 24px 28px;display:flex;flex-direction:column;gap:16px}
+
+    /* PO group cards — one per SO + Customer combination */
+    .po-group-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
+    .po-group-card:last-child{margin-bottom:0}
+    .po-group-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:var(--gray-50);border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+    .po-group-card-so{font-size:15px;font-weight:700;color:var(--blue-dark)}
+    .po-group-card-cust{font-size:13px;font-weight:500;color:var(--gray-600)}
+    .po-group-card-meta{font-size:12px;color:var(--gray-400);margin-top:2px}
+    .po-group-card-actions{display:flex;align-items:center;gap:12px}
+    .po-group-card-status{font-size:12.5px;font-weight:600;white-space:nowrap}
+    .po-group-card-footer{display:flex;flex-wrap:wrap;gap:20px;padding:11px 20px;background:var(--gray-50);border-top:1px solid var(--gray-100);font-size:12.5px;color:var(--gray-600)}
+    .po-group-card-footer strong{font-variant-numeric:tabular-nums}
+    .po-group-empty{text-align:center;padding:40px;color:var(--gray-400)}
+    .po-group-card .table-wrap{overflow-x:hidden}
+
+    /* group grid — CSS Grid instead of a table, matches PR.html's approach */
+    .group-grid-cols{display:grid;width:100%;box-sizing:border-box;grid-template-columns:56px 8% 17% 10% 5% 9% 8% 9% 9% 9% 9% 7%;align-items:center}
+    .group-grid-cols > div{min-width:0;overflow-wrap:break-word;overflow:hidden}
+    .group-grid-head{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+    .group-grid-head > div{padding:9px 6px;font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .group-grid-row{border-bottom:1px solid var(--gray-100);transition:background var(--t)}
+    .group-grid-row:last-child{border-bottom:none}
+    .group-grid-row:hover{background:var(--gray-50)}
+    .group-grid-row > div{padding:12px 6px;font-size:13px;color:var(--gray-700);word-break:break-word}
+    .group-grid-row .cell-sku{white-space:normal;word-break:break-all}
+    .group-grid-row .badge-pill{white-space:normal}
+
+    /* cell helpers + badges, ported from PR.html */
+    .cell-link{color:var(--blue);font-weight:600;cursor:pointer;font-size:12.5px;white-space:nowrap}
+    .cell-sku{font-family:monospace;font-size:12px;color:var(--gray-500);background:var(--gray-100);padding:2px 7px;border-radius:var(--radius-sm);white-space:nowrap}
+    .cell-product{font-weight:500;color:var(--gray-800);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cell-supplier{color:var(--blue);font-weight:500}
+    .cell-supplier.override-sup{color:var(--purple);font-weight:500}
+    .cell-price{font-weight:600;color:var(--gray-800);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+    .badge-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+    .ship-badge{background:var(--blue-light);color:var(--blue-dark);border-color:var(--blue-mid);font-size:11.5px}
+    .delay-ontrack{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+    .delay-atrisk{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+    .delay-delayed{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+    .status-pending{background:var(--gray-100);color:var(--gray-500);border-color:var(--gray-300)}
+    .ready-yes{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+
+    .priority-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+    .pri-high{color:var(--red);font-weight:700;font-size:12.5px}
+    .pri-high .priority-dot{background:var(--red)}
+    .pri-med{color:var(--amber);font-weight:700;font-size:12.5px}
+    .pri-med .priority-dot{background:var(--amber)}
+    .pri-low{color:var(--gray-400);font-weight:600;font-size:12.5px}
+    .pri-low .priority-dot{background:var(--gray-300)}
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      padding: 11px 18px; border-radius: var(--radius);
+      background: var(--gray-800); color: var(--white); font-size: 13px; font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      z-index: 3000; opacity: 0; transform: translateY(6px);
+      transition: opacity 200ms ease, transform 200ms ease; pointer-events: none; max-width: 340px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── Confirm modal ── */
+    .confirm-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 4000; opacity: 0; pointer-events: none; transition: opacity 150ms ease;
+    }
+    .confirm-overlay.show { opacity: 1; pointer-events: auto; }
+    .confirm-box {
+      background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+      width: 360px; max-width: 90vw; padding: 22px;
+      transform: translateY(8px); transition: transform 150ms ease;
+    }
+    .confirm-overlay.show .confirm-box { transform: translateY(0); }
+    .confirm-title { font-size: 15px; font-weight: 700; color: var(--gray-800); margin: 0 0 8px; }
+    .confirm-msg { font-size: 13.5px; color: var(--gray-600); line-height: 1.55; margin: 0 0 20px; }
+    .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .confirm-btn {
+      height: 34px; padding: 0 16px; border-radius: var(--radius); font-family: inherit;
+      font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all var(--t);
+    }
+    .confirm-btn-cancel { background: var(--gray-100); color: var(--gray-700); }
+    .confirm-btn-cancel:hover { background: var(--gray-200); }
+    .confirm-btn-ok { background: var(--green); color: var(--white); }
+    .confirm-btn-ok:hover { background: var(--green-dark); }
+
+    /* ── Row / line-item thumbnails + lightbox ── */
+    .row-thumb {
+      width: 32px; height: 32px; border-radius: var(--radius-sm); overflow: hidden; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; background: var(--blue-light); color: var(--blue-dark);
+    }
+    .row-thumb img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+    .lightbox-overlay {
+      display: none; position: fixed; inset: 0; z-index: 6000;
+      align-items: center; justify-content: center; padding: 40px;
+      background: rgba(0,0,0,.82); cursor: zoom-out;
+    }
+    .lightbox-overlay.open { display: flex; }
+    .lightbox-overlay img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,.3); cursor: default; }
+    .lightbox-close {
+      position: absolute; top: 20px; right: 24px; width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 16px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .12s;
+    }
+    .lightbox-close:hover { background: rgba(255,255,255,.3); }
+
+    /* ── Loading spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin {
+      display: inline-block; width: 16px; height: 16px; border: 2.5px solid var(--gray-200);
+      border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite;
+      margin-right: 8px; vertical-align: middle;
+    }
+
+  </style>
+<script>
+/* ════════════════════════════════
+   PR ON HOLD — PR On Hold plan, Phase 3 (ADDED 2026-10-01)
+   A PR can be put On Hold / Cancelled in the Purchase Request widget
+   (Purchase_Request1.Hold_Status). Every line in this widget carries its PR No,
+   so this looks up the held PRs and lets the widget badge and lock just that
+   line. Read-only here: Hold / Resume / Cancel / Restore live only in the
+   Purchase Request widget.
+════════════════════════════════ */
+var PRHold = (function(){
+  var map = {}, busy = false, waiters = [];
+  function v(x){
+    if(x===null||x===undefined) return '';
+    if(typeof x==='object') return x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'';
+    return String(x);
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function zh(){ try{ return typeof LANG!=='undefined' && LANG==='zh'; }catch(e){ return false; } }
+  function key(prNo){ return String(prNo===null||prNo===undefined ? '' : prNo).trim(); }
+  /* Re-fetches every call (cheap: only held PRs match), so a Resume/Restore shows up
+     on the next list load. A failed fetch keeps the last known map. */
+  function load(cb){
+    if(cb) waiters.push(cb);
+    if(busy) return;
+    busy = true;
+    function done(next){
+      if(next) map = next;
+      busy = false;
+      var w = waiters; waiters = [];
+      w.forEach(function(f){ try{ f(); }catch(e){ console.warn('[PRHold] callback error', e); } });
+    }
+    if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function'){ done(null); return; }
+    ZOHO.CREATOR.DATA.getRecords({ report_name:'All_Purchase_Request', criteria:'(Hold_Status == "On Hold" || Hold_Status == "Cancelled")', field_config:'all', max_records:200 })
+      .then(function(resp){
+        var next = {};
+        if(resp && resp.code===3000 && Array.isArray(resp.data)){
+          resp.data.forEach(function(r){
+            var pr = key(v(r.PR_No)), st = v(r.Hold_Status);
+            if(pr && (st==='On Hold' || st==='Cancelled')) next[pr] = { state:st, reason:v(r.Hold_Reason), date:v(r.Hold_Date) };
+          });
+        }
+        done(next);
+      })
+      .catch(function(err){
+        /* 9220 = no PR is held right now, which is a real (empty) answer. */
+        var empty = false;
+        try{
+          var txt = err && (err.responseText || (err.content && err.content.responseText));
+          var p = txt ? JSON.parse(txt) : err;
+          if(p && String(p.code)==='9220') empty = true;
+        }catch(e){}
+        if(!empty) console.warn('[PRHold] could not load held PRs:', err);
+        done(empty ? {} : null);
+      });
+  }
+  function state(prNo){ var m = map[key(prNo)]; return m ? m.state : ''; }
+  function locked(prNo){ return !!state(prNo); }
+  function label(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消' : 'CANCELLED';
+    return zh() ? '暂停' : 'ON HOLD';
+  }
+  function text(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    if(s==='Cancelled') return zh() ? '已取消 — 客户已取消此产品，请勿继续。' : 'CANCELLED — the client cancelled this item. Do not proceed.';
+    return zh() ? '暂停 — 客户已暂停此产品，请勿继续。' : 'ON HOLD — the client paused this item. Do not proceed.';
+  }
+  function badge(prNo){
+    var s = state(prNo);
+    if(!s) return '';
+    var m = map[key(prNo)];
+    var c = s==='Cancelled' ? 'background:#FEE2E2;color:#DC2626;border:1px solid #FCA5A5' : 'background:#FEF3C7;color:#92400E;border:1px solid #FCD34D';
+    var tip = text(prNo) + (m.date ? ' (' + m.date + ')' : '');
+    return ' <span class="pr-hold-badge" title="'+esc(tip)+'" style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;'+c+'">'+label(prNo)+'</span>';
+  }
+  /* Which of these PR numbers are held (for PO / shipment level summaries). */
+  function heldOf(prNos){ return (prNos||[]).filter(function(p){ return locked(p); }); }
+  return { load:load, state:state, locked:locked, label:label, text:text, badge:badge, heldOf:heldOf };
+})();
+</script>
+<style id="nsStyles">.ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}.ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}.ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}.ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}.ns-who{font-weight:400;opacity:.85}.ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}.ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}.ns-arrow{opacity:.5}</style></head>
+<body>
+
+<!-- ═══════════════════ LIST VIEW ═══════════════════ -->
+<div id="list-view">
+  <div class="topbar">
+    <span class="topbar-title">Purchase Orders — PO List</span>
+    <div class="topbar-right">
+      <span class="active-badge" id="activeBadge">7 Active POs</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Purchase Orders</h1>
+        <p>Track all created POs · sourced from PR Grouping Workspace</p>
+      </div>
+      <div class="page-header-right">
+        <button class="btn" onclick="showWorkspace()">Grouping Workspace</button>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Active POs</div>
+        <div class="card-value c-green" id="statActive">7</div>
+        <div class="card-sub">Draft / Sent / Confirmed</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Value</div>
+        <div class="card-value c-green" id="statValue">¥1,000</div>
+        <div class="card-sub">All non-cancelled POs</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Awaiting Confirm</div>
+        <div class="card-value c-orange" id="statAwaiting">1</div>
+        <div class="card-sub">Supplier action</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Followed Rec.</div>
+        <div class="card-value c-blue" id="statFollowed">0</div>
+        <div class="card-sub" id="statFollowedSub">0% adherence</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Overrides</div>
+        <div class="card-value c-purple" id="statOverrides">0</div>
+        <div class="card-sub">Reasons logged</div>
+      </div>
+    </div>
+
+    <div class="list-card">
+      <div class="filter-bar">
+        <div class="tabs">
+          <button class="tab active" data-filter="all" data-label="All" onclick="filterTable('all', this)">All (7)</button>
+          <button class="tab" data-filter="draft" data-label="Draft" onclick="filterTable('draft', this)">Draft (0)</button>
+          <button class="tab" data-filter="sent" data-label="Sent" onclick="filterTable('sent', this)">Sent (1)</button>
+          <button class="tab" data-filter="confirmed" data-label="Confirmed" onclick="filterTable('confirmed', this)">Confirmed (6)</button>
+          <button class="tab" data-filter="completed" data-label="Completed" onclick="filterTable('completed', this)">Completed (0)</button>
+          <button class="tab" data-filter="cancelled" data-label="Cancelled" onclick="filterTable('cancelled', this)">Cancelled (0)</button>
+        </div>
+        <input class="search-box" type="text" placeholder="Search POs..." oninput="searchTable(this.value)">
+      </div>
+
+      <div class="po-list-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>PO No.</th>
+              <th>Supplier</th>
+              <th>SO No.</th>
+              <th>Customer</th>
+              <th>Line Count</th>
+              <th>Total PO Value</th>
+              <th>Mixed Shipping</th>
+              <th>PO Status</th>
+              <th>Next Step</th>
+              <th>Fulfillment</th>
+              <th>Created On</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="po-tbody">
+    <tr onclick="showDetail('4662244000016389002')">
+      <td><a class="po-link" onclick="event.stopPropagation();showDetail('4662244000016389002')">PO-00007</a></td>
+      <td>Tony</td>
+      <td>SO-16946</td>
+      <td>Ellen Joy S. Data</td>
+      <td style="text-align:center">2</td>
+      <td style="font-weight:600">¥200</td>
+      <td><span class="ship-pill ship-no"><span class="ship-pill-dot"></span>No</span></td>
+      <td><span class="badge badge-confirmed"><span class="badge-dot"></span>Confirmed</span></td>
+      <td><span data-ns-id="4662244000016389002"><span class="ns-pill ns-wait">Waiting on: Supplier to ship, then Warehouse receives <span class="ns-who">— Tony</span></span></span></td>
+      <td><span class="badge badge-awaiting"><span class="badge-dot"></span>Not Delivered</span></td>
+      <td style="color:var(--gray-400)">Oct 16</td>
+      <td style="white-space:nowrap"><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelPO('4662244000016389002')">Cancel</button></td>
+    </tr>
+    <tr onclick="showDetail('4662244000016387002')">
+      <td><a class="po-link" onclick="event.stopPropagation();showDetail('4662244000016387002')">PO-00005</a></td>
+      <td>Tony</td>
+      <td>SO-16650</td>
+      <td>House of Goyen</td>
+      <td style="text-align:center">3</td>
+      <td style="font-weight:600">¥400</td>
+      <td><span class="ship-pill ship-no"><span class="ship-pill-dot"></span>No</span></td>
+      <td><span class="badge badge-confirmed"><span class="badge-dot"></span>Confirmed</span></td>
+      <td><span data-ns-id="4662244000016387002"><span class="ns-pill ns-wait">Waiting on: Supplier to ship, then Warehouse receives <span class="ns-who">— Tony</span></span></span></td>
+      <td><span class="badge badge-awaiting"><span class="badge-dot"></span>Not Delivered</span></td>
+      <td style="color:var(--gray-400)">Oct 16</td>
+      <td style="white-space:nowrap"><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelPO('4662244000016387002')">Cancel</button></td>
+    </tr>
+    <tr onclick="showDetail('4662244000016381030')">
+      <td><a class="po-link" onclick="event.stopPropagation();showDetail('4662244000016381030')">PO-00006</a></td>
+      <td>Tony</td>
+      <td>SO-16945</td>
+      <td>(TEST ORDER) BY CPY PAM TAN</td>
+      <td style="text-align:center">2</td>
+      <td style="font-weight:600">¥200</td>
+      <td><span class="ship-pill ship-no"><span class="ship-pill-dot"></span>No</span></td>
+      <td><span class="badge badge-confirmed"><span class="badge-dot"></span>Confirmed</span></td>
+      <td><span data-ns-id="4662244000016381030"><span class="ns-pill ns-wait">Waiting on: Supplier to ship, then Warehouse receives <span class="ns-who">— Tony</span></span></span></td>
+      <td><span class="badge badge-awaiting"><span class="badge-dot"></span>Not Delivered</span></td>
+      <td style="color:var(--gray-400)">Oct 16</td>
+      <td style="white-space:nowrap"><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelPO('4662244000016381030')">Cancel</button></td>
+    </tr>
+    <tr onclick="showDetail('4662244000015546002')">
+      <td><a class="po-link" onclick="event.stopPropagation();showDetail('4662244000015546002')">PO-00002</a></td>
+      <td>HC System</td>
+      <td>SO-0000</td>
+      <td>Test 3 Customer</td>
+      <td style="text-align:center">1</td>
+      <td style="font-weight:600">¥0</td>
+      <td><span class="ship-pill ship-no"><span class="ship-pill-dot"></span>No</span></td>
+      <td><span class="badge badge-sent"><span class="badge-dot"></span>Sent — Awaiting Confirm</span></td>
+      <td><span data-ns-id="4662244000015546002"><span class="ns-pill ns-wait">Waiting on: Supplier to confirm the PO <span class="ns-who">— HC System</span></span></span></td>
+      <td><span class="badge badge-awaiting"><span class="badge-dot"></span>Not Delivered</span></td>
+      <td style="color:var(--gray-400)">Sep 15</td>
+      <td style="white-space:nowrap"><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelPO('4662244000015546002')">Cancel</button></td>
+    </tr>
+    <tr onclick="showDetail('4662244000015524036')">
+      <td><a class="po-link" onclick="event.stopPropagation();showDetail('4662244000015524036')">PO-00003</a></td>
+      <td>Tony</td>
+      <td>SO-16705</td>
+      <td>(TEST ORDER) BY CPY PAM TAN</td>
+      <td style="text-align:center">1</td>
+      <td style="font-weight:600">¥100</td>
+      <td><span class="ship-pill ship-no"><span class="ship-pill-dot"></span>No</span></td>
+      <td><span class="badge badge-confirmed"><span class="badge-dot"></span>Confirmed</span> <span class="pr-hold-badge" title="CANCELLED — the client cancelled this item. Do not proceed. (2026-10-01)" style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;background:#FEE2E2;color:#DC2626;border:1px solid #FCA5A5">CANCELLED</span> <span style="font-size:11px;color:var(--gray-500)">1/1</span></td>
+      <td><span data-ns-id="4662244000015524036"><span class="ns-pill ns-wait">Waiting on: Supplier to ship, then Warehouse receives <span class="ns-who">— Tony</span></span></span></td>
+      <td><span class="badge badge-awaiting"><span class="badge-dot"></span>Not Delivered</span></td>
+      <td style="color:var(--gray-400)">Sep 15</td>
+      <td style="white-space:nowrap"><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelPO('4662244000015524036')">Cancel</button></td>
+    </tr>
+    <tr onclick="showDetail('4662244000015515348')">
+      <td><a class="po-link" onclick="event.stopPropagation();showDetail('4662244000015515348')">PO-00004</a></td>
+      <td>Tony</td>
+      <td>SO-16707</td>
+      <td>(TEST ORDER) BY CPY PAM TAN</td>
+      <td style="text-align:center">1</td>
+      <td style="font-weight:600">¥100</td>
+      <td><span class="ship-pill ship-no"><span class="ship-pill-dot"></span>No</span></td>
+      <td><span class="badge badge-confirmed"><span class="badge-dot"></span>Confirmed</span></td>
+      <td><span data-ns-id="4662244000015515348"><span class="ns-pill ns-wait">Waiting on: Supplier to ship, then Warehouse receives <span class="ns-who">— Tony</span></span></span></td>
+      <td><span class="badge badge-awaiting"><span class="badge-dot"></span>Not Delivered</span></td>
+      <td style="color:var(--gray-400)">Sep 15</td>
+      <td style="white-space:nowrap"><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelPO('4662244000015515348')">Cancel</button></td>
+    </tr>
+    <tr onclick="showDetail('4662244000014977002')">
+      <td><a class="po-link" onclick="event.stopPropagation();showDetail('4662244000014977002')">PO-00001</a></td>
+      <td>Tony</td>
+      <td>SO-16570</td>
+      <td>Charlene Cruz</td>
+      <td style="text-align:center">1</td>
+      <td style="font-weight:600">¥0</td>
+      <td><span class="ship-pill ship-no"><span class="ship-pill-dot"></span>No</span></td>
+      <td><span class="badge badge-confirmed"><span class="badge-dot"></span>Confirmed</span></td>
+      <td><span data-ns-id="4662244000014977002"><span class="ns-pill ns-wait">Waiting on: Supplier to ship, then Warehouse receives <span class="ns-who">— Tony</span></span></span></td>
+      <td><span class="badge badge-awaiting"><span class="badge-dot"></span>Not Delivered</span></td>
+      <td style="color:var(--gray-400)">Aug 29</td>
+      <td style="white-space:nowrap"><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelPO('4662244000014977002')">Cancel</button></td>
+    </tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ DETAIL VIEW ═══════════════════ -->
+<div id="detail-view">
+  <div class="topbar">
+    <span class="topbar-title" id="d-topbar-title">PO Detail</span>
+    <div class="topbar-right">
+      <span id="d-topbar-badge" class="po-status-topbadge"></span>
+    </div>
+  </div>
+  <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+  <div id="nsBanner" style="padding:12px 16px 0"></div>
+
+  <div class="detail-header">
+    <div class="detail-header-top">
+      <div class="detail-header-left">
+        <button class="back-btn" onclick="showList()">← PO List</button>
+        <span class="detail-po-id" id="d-po-id"></span>
+        <span class="detail-meta-pill" id="d-supplier-name"></span>
+        <span class="detail-meta-pill" id="d-so-num"></span>
+        <span class="detail-meta-pill" id="d-customer-name"></span>
+        <span id="d-status-badge"></span>
+        <span id="d-fulfillment-badge"></span>
+        <span class="locked-tag" id="d-locked-tag"></span>
+      </div>
+      <div class="detail-actions" id="d-action-buttons"></div>
+    </div>
+    <div class="detail-sub" id="d-sub-line"></div>
+  </div>
+
+  <div class="detail-body">
+    <!-- Left column -->
+    <div>
+      <div class="section-card">
+        <div class="section-title">B · PO Summary</div>
+        <div class="section-body">
+          <div class="summary-grid" id="d-summary"></div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title" id="d-line-section-title">C · PO Line Items</div>
+        <div style="overflow-x:auto;">
+          <table class="line-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>PR No.</th>
+                <th>SKU</th>
+                <th>Product Name</th>
+                <th>Qty</th>
+                <th>Final Price</th>
+                <th>Line Total</th>
+                <th>Shipping Mode</th>
+                <th>Target Delivery</th>
+                <th>Priority</th>
+                <th>Delay</th>
+                <th>Followed Rec.</th>
+              </tr>
+            </thead>
+            <tbody id="d-line-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div>
+      <div class="section-card">
+        <div class="section-title">D · Status &amp; Audit</div>
+        <div class="section-body" id="d-audit"></div>
+      </div>
+      <div class="section-card" style="margin-top:0;">
+        <div class="section-title">Supplier Snapshot</div>
+        <div class="section-body" id="d-snapshot"></div>
+      </div>
+    </div>
+
+    <!-- Conversation column -->
+    <div>
+      <div class="section-card chat-panel">
+        <div class="section-title">Conversation</div>
+        <div class="chat-tabs">
+          <button class="chat-tab active" id="dChatTabFenteng" onclick="switchChatTab('Fenteng')">Fenteng</button>
+          <button class="chat-tab" id="dChatTabTony" onclick="switchChatTab('Tony')">Tony</button>
+        </div>
+        <div class="chat-msgs" id="dChatMsgs"></div>
+        <div class="chat-inputbar">
+          <textarea id="dChatInput" rows="1" placeholder="Message this supplier…"></textarea>
+          <button class="btn btn-sm chat-send-btn" id="dChatSendBtn" onclick="sendChatMessage()" disabled="">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* ════════════════════════════════
+   CREATOR CONFIG — same account/app as the sibling Purchase Request widget
+════════════════════════════════ */
+const REPORT_NAME     = 'All_Purchase_Orders';   // Purchase_Order header report
+const REPORT_GROUPING = 'PO_Grouping';           // same report PR.html's Grouping Workspace uses
+const REPORT_RECEIVING= 'Receiving_Report';      // same report UI/EndUser/Receiving reads, confirmed live
+const REPORT_PR       = 'All_Purchase_Request';  // same report PR.html reads, used to backfill lines below
+const REAL_APP_NAME   = 'supply-chain-app';
+const ACCOUNT_OWNER   = 'homecartel';
+const CHAT_REPORT     = 'All_PO_Messages'; /* form 'PO_Messages' — see startChatPolling() NOTES */
+
+/* ADDED 2026-07-22, per user request — client-side-computed "Delivered"/"Not
+   Delivered" badge, purely a live UI layer over Receiving data. Deliberately NOT
+   the same thing as the existing native PO_Status="Completed" (server-side, only
+   set at Create Receive click time, gated by zero Open Exceptions — see
+   receiving_create_bin_receiving.txt's "PO Completion Check"). This badge answers
+   a narrower, always-live question — "does Receiving data show every expected
+   unit accounted for right now" — without touching PO_Status or its Exception
+   gate at all. Matches this app's own established "prefer live client-side
+   compute over native precompute" convention (same pattern as the Shipments
+   widget's own live PO-count compute). Sums Receiving's own header rollups
+   (Total_Expected_Qty/Total_Accepted_Qty — already server-computed by the native
+   Receiving_Compute_Totals workflow) across every Receiving record matched by
+   plain-text PO_No, rather than re-deriving per-line/per-SKU math client-side. */
+let ALL_RECEIVING_FOR_FULFILLMENT = [];
+let receivingFulfillmentLoaded = false;
+function loadReceivingForFulfillment(){
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    receivingFulfillmentLoaded = true;
+    return;
+  }
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: REPORT_RECEIVING, page: 1, pageSize: 200 })
+    .then(function(resp){
+      if(resp && resp.code===3000){
+        ALL_RECEIVING_FOR_FULFILLMENT = Array.isArray(resp.data) ? resp.data : [];
+      }
+      receivingFulfillmentLoaded = true;
+      renderTable();
+      if(_currentPOId){
+        var po = ALL_PO.find(function(p){ return String(p.id)===String(_currentPOId); });
+        if(po) renderDetail(po);
+      }
+    })
+    .catch(function(err){
+      if(errCode(err) !== 9220){
+        console.warn('[PO] Receiving fetch (fulfillment) error:', JSON.stringify(err));
+      }
+      receivingFulfillmentLoaded = true;
+      renderTable();
+    });
+}
+function computeFulfillment(poNo){
+  if(!receivingFulfillmentLoaded) return 'loading';
+  var totalExpected = 0, totalAccepted = 0, found = false;
+  ALL_RECEIVING_FOR_FULFILLMENT.forEach(function(r){
+    if((r.PO_No||'') === poNo){
+      found = true;
+      totalExpected += parseFloat(r.Total_Expected_Qty||0) || 0;
+      totalAccepted += parseFloat(r.Total_Accepted_Qty||0) || 0;
+    }
+  });
+  if(!found || totalExpected<=0) return 'not_delivered';
+  return totalAccepted >= totalExpected ? 'delivered' : 'not_delivered';
+}
+function fulfillmentBadgeHTML(poNo){
+  var st = computeFulfillment(poNo);
+  if(st==='loading') return `<span class="badge" style="background:var(--gray-100);color:var(--gray-400)"><span class="badge-dot"></span>…</span>`;
+  if(st==='delivered') return `<span class="badge badge-completed"><span class="badge-dot"></span>Delivered</span>`;
+  return `<span class="badge badge-awaiting"><span class="badge-dot"></span>Not Delivered</span>`;
+}
+
+/* ADDED 2026-07-15, per user ("when that exact PR is clicked it should go to that exact
+   PR's detailed view") — cross-widget navigation, first of its kind in this app. Uses
+   ZOHO.CREATOR.UTIL.navigateParentURL (confirmed via official docs, js-api/v2/navigate-
+   parent-url.html) rather than reading/writing window.top.location directly, since the
+   widget iframe is served from a different domain (zappsusercontent.com) and would hit a
+   cross-origin SecurityError trying to read the parent's location. Hardcoded Dev
+   environment path — matches this app's own established "Dev-only" convention (same
+   reasoning as every other hardcoded environment segment in this codebase) since there's
+   no existing ENVIRONMENT constant here to reuse. The target PRs widget reads `openPR`
+   via ZOHO.CREATOR.UTIL.getQueryParams() on load and auto-opens that PR's detail view —
+   see UI/EndUser/PRs/app/index.html. UNTESTED — first use of navigateParentURL/
+   getQueryParams anywhere in this app. */
+function navigateToPR(prNo){
+  if(!prNo || prNo==='—') return;
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.navigateParentURL!=='function'){
+    console.warn('[POs] navigateParentURL not available — cannot open PR detail');
+    return;
+  }
+  try{
+    /* FIXED 2026-07-15, per user live-test + official docs ("Understand passing
+       parameters to a page", developer-guide/pages/create-and-manage-parameters) — the
+       query string goes AFTER the page hash, not before it: #<pageLinkName>?param=value,
+       NOT ?param=value#pageLinkName. The original ?-before-# version still correctly
+       changed the page (hash worked), but ZOHO.CREATOR.UTIL.getQueryParams() on the
+       receiving end returned {} every time — confirmed via live console log — because it
+       was never even in the position Creator's own param parser looks at.
+       CONFIRMED WORKING END-TO-END 2026-07-15 once combined with the OTHER required
+       step: `openPR` registered as a Page Variable on the Purchase_Request page first —
+       NOT the "Page properties" gear-icon panel (that only has Background
+       color/PDF/Print in this account, confirmed via live screenshot — the old "Add
+       Parameter" flow from Zoho's docs is deprecated) — the CURRENT UI location is the
+       "Variables" tab in the page builder's own top toolbar (separate from the gear
+       icon entirely) → Add Variable → name `openPR`, any text-compatible Data Type. See
+       CLAUDE.md Deluge Gotchas for the full writeup — "Page Parameters" were renamed
+       "Page Variables" and moved, but still read via getQueryParams() same as always. */
+    var url = 'https://creator.zoho.com/'+ACCOUNT_OWNER+'/'+REAL_APP_NAME+'/#Page:Purchase_Request?openPR='+encodeURIComponent(prNo);
+    ZOHO.CREATOR.UTIL.navigateParentURL({ action:'open', url:url, window:'same' });
+  }catch(e){
+    console.warn('[POs] navigateToPR failed', e);
+  }
+}
+
+/* ════════════════════════════════
+   HELPERS
+════════════════════════════════ */
+function $(id){ return document.getElementById(id); }
+function escapeHtml(v){
+  return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+/* FIXED 2026-07-15, per user: Final_Price/Line_Total/Total_PO_Value all trace back to
+   Purchase_Request1.Selcted_Final_Cost, confirmed Currency(CNY)-typed in the native form
+   (what's actually paid to the Chinese suppliers, Fenteng/Tony) — was showing ₱ (PHP),
+   the wrong currency symbol entirely, not just a wrong amount. Since today's earlier
+   revert (see pr_to_po_grouping.txt Action 1), this field NEVER carries a PHP-sourced
+   fallback (SRP/catalog rate) anymore, so it's unambiguously CNY everywhere in this
+   widget — a straight symbol swap is correct here, unlike the PRs widget's own
+   `finalPrice` (still a mixed CNY/PHP value depending on source, needs conditional
+   handling there instead). */
+function fmtCurrency(n){
+  return '¥' + (Number(n)||0).toLocaleString('en-PH', {maximumFractionDigits:2});
+}
+/* Empty-state placeholder row — same pattern as UI/EndUser/PRs/app/PR.html's
+   emptyStateRow(), ported here for design consistency (both were plain-text-only
+   before). Wide colspan is harmless against the real 10-column table. */
+function emptyStateRow(msg){
+  return `<tr><td colspan="12" style="text-align:center;padding:48px 20px;color:var(--gray-400)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 10px;opacity:.5;display:block"><path d="M3 3h18v13H3zM1 16h22v5H1zM8 21h8"/></svg>
+    ${escapeHtml(msg)}
+  </td></tr>`;
+}
+function capitalize(str){
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+}
+function fmtDateShort(v){
+  if(!v) return '—';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
+    var p = v.split('-');
+    var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return m[parseInt(p[1],10)-1]+' '+parseInt(p[2],10);
+  }
+  if(/^\d{2}-[A-Za-z]{3}-\d{4}$/.test(v)) return v.split('-')[1]+' '+parseInt(v.split('-')[0],10);
+  return v;
+}
+/* These four fields are copied onto the PO line from the source PR at conversion time
+   (pr_to_po_grouping.txt) — if the PR's price/date/item weren't filled in yet at that
+   moment, the PO line genuinely never received them (confirmed live 2026-08-29 via
+   [PO DEBUG] console dump: Final_Price/Line_Total come back as real "0.00"/"0", Item/
+   Target_Delivery aren't in the row at all). ¥0 / a bare dash reads as real data ("this
+   costs nothing" / silently blank) instead of "not filled in yet" — show an explicit
+   amber pill instead so it's unmistakable which PO lines still need the source PR
+   updated and re-synced. */
+function missingPill(label){ return `<span class="missing-pill">${escapeHtml(label)}</span>`; }
+function moneyOrMissing(n){ return (Number(n)||0) > 0 ? fmtCurrency(n) : missingPill('Not Priced'); }
+function dateOrMissing(v){ return v && v!=='—' ? v : missingPill('Not Set'); }
+function itemOrMissing(v){ return (v && v!=='—') ? escapeHtml(v) : missingPill('No Item Linked'); }
+
+/* ════════════════════════════════
+   IMAGE HELPERS — Item_Image (PO_Line_Items) + Product_Image_PR (PO_Grouping)
+   Ported from the sibling Purchase Request widget (PR.html), which already has this
+   confirmed working against the same Zoho account/app.
+════════════════════════════════ */
+function applyCreatorImage(imgEl, rawValue){
+  if(!imgEl||rawValue==null||rawValue==='') return;
+  if(typeof ZOHO!=='undefined'&&ZOHO.CREATOR&&ZOHO.CREATOR.UTIL&&ZOHO.CREATOR.UTIL.setImageData){
+    ZOHO.CREATOR.UTIL.setImageData(imgEl, rawValue, function(){});
+  }
+}
+function openLightbox(src){
+  if(!src) return;
+  $('lightboxImg').src = src;
+  $('lightboxOverlay').classList.add('open');
+}
+function closeLightbox(){
+  $('lightboxOverlay').classList.remove('open');
+  $('lightboxImg').src = '';
+}
+
+/* ════════════════════════════════
+   TOAST + CONFIRM MODAL
+════════════════════════════════ */
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(function(){ t.classList.remove('show'); }, 3200);
+}
+/* Code 9220 ("No records exist in this report") comes back as an HTTP 400 — the SDK
+   promise REJECTS with the real code buried in err.responseText as a JSON STRING, not
+   a plain err.code/err.responseJSON.code (that shape never matched, silently showing
+   the ugly "Creator connection error" toast for a perfectly normal empty report).
+   Ported from the proven-correct errCode() in UI/EndUser/INQs/app/Inq.html. */
+function errCode(e){
+  try {
+    if(e && e.responseText) return JSON.parse(e.responseText).code;
+    var s = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+    return JSON.parse(JSON.parse(s).responseText || s).code;
+  } catch(_){ return null; }
+}
+let _confirmYesHandler = null;
+function showConfirm(msg, onYes){
+  $('confirmMsg').textContent = msg;
+  _confirmYesHandler = onYes;
+  const okBtn = $('confirmOkBtn');
+  okBtn.onclick = function(){ closeConfirm(); if(typeof _confirmYesHandler==='function') _confirmYesHandler(); };
+  $('confirmOverlay').classList.add('show');
+}
+function closeConfirm(){ $('confirmOverlay').classList.remove('show'); }
+
+/* ════════════════════════════════
+   MAPPERS — raw Creator record → plain display object
+════════════════════════════════ */
+function _val(r, f){
+  var x = r[f];
+  if(x===null||x===undefined) return '';
+  if(typeof x==='object') return x.display_value||x.zc_display_value||x.Name||x.name||x.ID||'';
+  return String(x);
+}
+function _boolVal(r, f){ return r[f]===true || r[f]==='true'; }
+function _numVal(r, f){
+  var x = r[f];
+  if(x==null) return 0;
+  if(typeof x==='object') return parseFloat(x.value||x.display_value||0)||0;
+  return parseFloat(String(x).replace(/[^0-9.\-]/g,''))||0;
+}
+
+/* Subform (grid) fields can come back from Creator in a few different shapes depending
+   on API version / row count — a plain array is the normal case, but a single-row subform
+   sometimes comes back as one bare object instead of an array of one, and some responses
+   wrap the rows under a nested "data"/"records" key. Normalize all of these to a plain
+   array so multi-row PO_Line_Items always renders every row instead of silently
+   collapsing to just the first one. */
+function extractSubformRows(raw, fieldName){
+  if(Array.isArray(raw)) return raw;
+  if(raw && typeof raw==='object'){
+    if(Array.isArray(raw.data)) return raw.data;
+    if(Array.isArray(raw.records)) return raw.records;
+    /* bare single-row object (has at least one of this subform's own field keys) */
+    var keys = Object.keys(raw);
+    if(keys.length) return [raw];
+  }
+  if(fieldName) console.warn('[PO] '+fieldName+' — unrecognized subform shape:', JSON.stringify(raw));
+  return [];
+}
+
+function mapPOLine(l){
+  return {
+    supplier:           _val(l,'Supplier') || '—',
+    prNo:               _val(l,'PR_No') || '—',
+    image:              l['Item_Image']||null,
+    item:               _val(l,'Item') || '—',
+    sku:                _val(l,'SKU') || '—',
+    qty:                _numVal(l,'QTY'),
+    unit:               _val(l,'Unit') || 'pcs',
+    finalPrice:         _numVal(l,'Final_Price'),
+    lineTotal:          _numVal(l,'Line_Total'),
+    targetDelivery:     fmtDateShort(_val(l,'Target_Delivery')),
+    supplierTargetDate: fmtDateShort(_val(l,'supplier_target_date')),
+    shipMode:           _val(l,'Shipping_Mode') || '—',
+    delayStatus:        _val(l,'Delay_Status') || '—',
+    leadDays:           parseInt(_val(l,'Required_Days_Lead')||'0')||0,
+    remainingDays:      parseInt(_val(l,'Remaining_Days')||'0')||0,
+    priority:           _val(l,'Priority') || 'MEDIUM',
+    followedRec:        _val(l,'Followed_Recommendation') || '—',
+    overrideReason:     _val(l,'Override_Reason') || '',
+  };
+}
+
+function mapPO(r){
+  console.log('[PO DEBUG] '+(r.ID||'?')+' PO_Line_Items raw:', JSON.stringify(r['PO_Line_Items']));
+  var lineRows = extractSubformRows(r['PO_Line_Items'], 'PO_Line_Items');
+  console.log('[PO DEBUG] '+(r.ID||'?')+' PO_Line_Items row count:', lineRows.length);
+  var lines = lineRows.map(mapPOLine);
+  var supplierSet = new Set(lines.map(function(l){ return l.supplier; }).filter(function(s){ return s&&s!=='—'; }));
+  var supplier = supplierSet.size===1 ? Array.from(supplierSet)[0] : (supplierSet.size>1 ? 'Mixed' : '—');
+
+  var poStatusRaw = _val(r,'PO_Status') || 'Draft';
+  var sentOn = _val(r,'Sent_On');
+  var ackOn  = _val(r,'Acknowledge_On');
+  var compOn = _val(r,'Completed_On');
+
+  var derivedStatus = 'draft';
+  if(poStatusRaw==='Cancelled') derivedStatus='cancelled';
+  else if(compOn) derivedStatus='completed';
+  else if(ackOn || poStatusRaw==='Confirmed by Supplier') derivedStatus='confirmed';
+  else if(sentOn) derivedStatus='sent';
+
+  return {
+    id:               r.ID,
+    poNo:             _val(r,'PO_No') || '—',
+    soNo:             _val(r,'SO_No') || '—',
+    customer:         _val(r,'Customer') || '—',
+    customerType:     _val(r,'Customer_Type') || '—',
+    salesOwner:       _val(r,'Sales_Owner') || '—',
+    supplier:         supplier,
+    totalValue:       _numVal(r,'Total_PO_Value'),
+    totalLines:       parseInt(_val(r,'Total_Lines')||String(lines.length))||lines.length,
+    supplierLoadAtPO: _numVal(r,'Supplier_Load_At_PO'),
+    mixedShipping:    _boolVal(r,'Mixed_Shipping'),
+    isLocked:         _boolVal(r,'Is_Locked'),
+    notes:            _val(r,'Notes'),
+    poDate:           fmtDateShort(_val(r,'PO_Date')),
+    poStatus:         poStatusRaw,
+    status:           derivedStatus,
+    sentOn:           sentOn || '—',
+    acknowledgeOn:    ackOn  || '—',
+    completedOn:      compOn || '—',
+    booksPoId:        _val(r,'Books_PO_ID'),
+    booksPoNo:        _val(r,'Books_PO_No'),
+    srpRate:          _val(r,'S'),
+    rrReferenceNo:    _val(r,'RR_Reference_No'),
+    lines:            lines,
+  };
+}
+
+/* ════════════════════════════════
+   STATUS / BADGE HELPERS
+════════════════════════════════ */
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+function nextStepFor(po){
+  var sup = po.supplier || 'Supplier';
+  switch(po.status){
+    case 'cancelled': return {here:'Cancelled', action:'Cancelled', who:'', tone:'done'};
+    case 'completed': return {here:'Completed', action:'Completed', who:'', tone:'done'};
+    case 'draft':     return {here:'Draft', action:'Send the PO to the supplier', who:'Purchasing', tone:'next'};
+    case 'sent':      return {here:'Sent', action:'Supplier to confirm the PO', who:sup, tone:'wait'};
+    case 'confirmed':
+      if(computeFulfillment(po.poNo)==='delivered') return {here:'Confirmed', action:'All items received', who:'', tone:'done'};
+      return {here:'Confirmed', action:'Supplier to ship, then Warehouse receives', who:sup, tone:'wait'};
+  }
+  return null;
+}
+
+function statusBadgeHTML(status){
+  const cfg = {
+    draft:     { cls: 'badge-awaiting',  label: 'Draft' },
+    sent:      { cls: 'badge-sent',      label: 'Sent — Awaiting Confirm' },
+    confirmed: { cls: 'badge-confirmed', label: 'Confirmed' },
+    completed: { cls: 'badge-completed', label: 'Completed' },
+    cancelled: { cls: 'badge-cancelled', label: 'Cancelled' },
+  };
+  const c = cfg[status] || { cls: '', label: status };
+  return `<span class="badge ${c.cls}"><span class="badge-dot"></span>${c.label}</span>`;
+}
+function shipPillHTML(yes){
+  return yes
+    ? `<span class="ship-pill ship-yes"><span class="ship-pill-dot"></span>Yes</span>`
+    : `<span class="ship-pill ship-no"><span class="ship-pill-dot"></span>No</span>`;
+}
+function shipBadgeGeneric(v){
+  if(!v || v==='—') return '<span style="color:var(--gray-300)">—</span>';
+  var cls = /air/i.test(v) ? 'ship-air' : 'ship-sea';
+  return `<span class="${cls}">${escapeHtml(v)}</span>`;
+}
+/* Sent_On/Acknowledge_On/Completed_On are NOT buyer-declared fields — each one is the
+   side effect of a real action that happens elsewhere and does more than just stamp a
+   date:
+     - Sent_On: auto-stamped the instant a PR converts to this PO (approvePOMain /
+       pr_to_po_grouping.txt Action 1) — every PO in this report already has it set by
+       the time it's loadable here, so a manual "Mark Sent" has nothing left to do.
+     - Acknowledge_On + PO_Status="Confirmed": only ever set by the SUPPLIER's own
+       Acknowledge click on their own PO form (Acknowledged_PO_Supplier1/2), which in
+       the same action also creates/updates the real Shipment, creates/updates the real
+       Receiving line items, and creates+auto-approves a real Zoho Books PO. A buyer-side
+       button that only flips these two fields would show "Confirmed" with none of that
+       downstream fulfillment data ever created — a silent gap, not a shortcut.
+     - Completed_On: only ever set after a real Zoho Books Purchase Receive is created
+       (receiving_create_bin_receiving.txt), tied to actual physical receipt.
+   Per explicit user decision 2026-07-09 ("remove them, view-only, keep Cancel PO"):
+   this widget only ever shows these three as read-only status/audit fields (see
+   d-audit) — it never lets the buyer declare them. Cancel is different: no native
+   workflow anywhere ever sets PO_Status="Cancelled", so a manual Cancel button here
+   isn't overriding or bypassing anything that's supposed to come from a real event. */
+function actionsForPO(po){
+  if(po.status==='cancelled' || po.status==='completed') return [];
+  return ['cancel'];
+}
+
+const ACTION_BTN = {
+  'cancel': function(id){ return `<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelPO('${id}')">Cancel</button>`; },
+};
+const DETAIL_BTN = {
+  'cancel': function(id){ return `<button class="btn btn-danger" onclick="cancelPO('${id}')">Cancel PO</button>`; },
+};
+
+/* ════════════════════════════════
+   STATE
+════════════════════════════════ */
+let ALL_PO        = [];
+let creatorLoaded = false;
+let currentFilter = 'all';
+let currentSearch = '';
+let _currentPOId  = null;
+
+/* ════════════════════════════════
+   LIST — LOAD + RENDER
+════════════════════════════════ */
+function loadPOsFromCreator(){
+  /* PR On Hold (Phase 3): display only in this widget. The Cancel button is untouched. */
+  PRHold.load(function(){ renderTable(); });
+  var _timeout = setTimeout(function(){
+    console.warn('[PO] getRecords timed out');
+    showToast('Creator timeout — check widget permissions');
+    creatorLoaded = true;
+    renderTable(); updateStats();
+  }, 10000);
+
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    clearTimeout(_timeout);
+    console.warn('[PO] SDK not available');
+    creatorLoaded = true;
+    renderTable(); updateStats();
+    return;
+  }
+
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  /* field_config defaults to "quick_view" (only the report's list-view columns) if omitted —
+     Item/Final_Price/Line_Total/Target_Delivery/Total_PO_Value aren't in All_Purchase_Orders'
+     quick view, so they came back blank/0 even when the underlying record had real values.
+     "all" pulls every field from both quick view and detail view. */
+  gr({ report_name: REPORT_NAME, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      clearTimeout(_timeout);
+      console.log('[PO] getRecords code:', resp && resp.code, '| records:', resp && resp.data && resp.data.length);
+      if(resp && resp.code === 3000){
+        var raw = Array.isArray(resp.data) ? resp.data : [];
+        ALL_PO = raw.map(mapPO);
+        console.log('[PO] Mapped:', ALL_PO.length, 'purchase orders');
+      } else {
+        console.warn('[PO] getRecords non-3000:', JSON.stringify(resp));
+        showToast('Creator error '+(resp&&resp.code)+': '+(resp&&resp.message||''));
+      }
+      creatorLoaded = true;
+      renderTable(); updateStats();
+    })
+    .catch(function(err){
+      clearTimeout(_timeout);
+      if(errCode(err) === 9220){
+        console.log('[PO] Report is empty (9220)');
+        ALL_PO = [];
+      } else {
+        console.error('[PO] getRecords threw:', JSON.stringify(err));
+        showToast('Creator connection error — see console');
+      }
+      creatorLoaded = true;
+      renderTable(); updateStats();
+    });
+}
+
+/* PR On Hold (Phase 3): a PO is never held as a whole, only its lines. Shows the
+   badge plus how many of its lines are affected. */
+function poHoldBadge(po){
+  var prNos = (po.lines||[]).map(function(l){ return l.prNo; });
+  var held = PRHold.heldOf(prNos);
+  if(!held.length) return '';
+  return PRHold.badge(held[0]) + ' <span style="font-size:11px;color:var(--gray-500)">' + held.length + '/' + prNos.length + '</span>';
+}
+function renderTable(){
+  const tbody = $('po-tbody');
+  if(!creatorLoaded){
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--gray-400)"><span class="spin"></span>Loading from Zoho Creator…</td></tr>`;
+    return;
+  }
+  const q = currentSearch.toLowerCase();
+  const data = ALL_PO.filter(po => {
+    const matchFilter = currentFilter === 'all' || po.status === currentFilter;
+    const matchSearch = !q ||
+      po.poNo.toLowerCase().includes(q) ||
+      po.supplier.toLowerCase().includes(q) ||
+      po.customer.toLowerCase().includes(q) ||
+      po.soNo.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+
+  if(!data.length){
+    tbody.innerHTML = emptyStateRow(ALL_PO.length===0 ? 'No Purchase Orders yet.' : 'No POs match this filter/search.');
+    return;
+  }
+
+  tbody.innerHTML = data.map(po => `
+    <tr onclick="showDetail('${po.id}')">
+      <td><a class="po-link" onclick="event.stopPropagation();showDetail('${po.id}')">${escapeHtml(po.poNo)}</a></td>
+      <td>${escapeHtml(po.supplier)}</td>
+      <td>${escapeHtml(po.soNo)}</td>
+      <td>${escapeHtml(po.customer)}</td>
+      <td style="text-align:center">${po.totalLines}</td>
+      <td style="font-weight:600">${fmtCurrency(po.totalValue)}</td>
+      <td>${shipPillHTML(po.mixedShipping)}</td>
+      <td>${statusBadgeHTML(po.status)}${poHoldBadge(po)}</td>
+      <td>${nextStepCell(po.id, nextStepFor(po))}</td>
+      <td>${fulfillmentBadgeHTML(po.poNo)}</td>
+      <td style="color:var(--gray-400)">${po.poDate}</td>
+      <td style="white-space:nowrap">${actionsForPO(po).map(a => ACTION_BTN[a](po.id)).join(' ')}</td>
+    </tr>`).join('');
+}
+
+function filterTable(filter, el){
+  currentFilter = filter;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+function searchTable(val){
+  currentSearch = val;
+  renderTable();
+}
+
+function updateStats(){
+  const active = ALL_PO.filter(p => p.status!=='completed' && p.status!=='cancelled');
+  const totalValue = ALL_PO.filter(p => p.status!=='cancelled').reduce((s,p)=>s+p.totalValue,0);
+  const awaiting = ALL_PO.filter(p => p.status==='sent').length;
+  const allLines = ALL_PO.reduce((acc,p)=>acc.concat(p.lines||[]), []);
+  const recLines = allLines.filter(l => l.followedRec==='Yes'||l.followedRec==='No');
+  const followedYes = recLines.filter(l => l.followedRec==='Yes').length;
+  const overrides = recLines.filter(l => l.followedRec==='No').length;
+  const pct = recLines.length ? Math.round(followedYes/recLines.length*100) : 0;
+
+  $('activeBadge').textContent = active.length + ' Active POs';
+  $('statActive').textContent = active.length;
+  $('statValue').textContent = fmtCurrency(totalValue);
+  $('statAwaiting').textContent = awaiting;
+  $('statFollowed').textContent = followedYes;
+  $('statFollowedSub').textContent = pct + '% adherence';
+  $('statOverrides').textContent = overrides;
+
+  const counts = {
+    all: ALL_PO.length,
+    draft: ALL_PO.filter(p=>p.status==='draft').length,
+    sent: ALL_PO.filter(p=>p.status==='sent').length,
+    confirmed: ALL_PO.filter(p=>p.status==='confirmed').length,
+    completed: ALL_PO.filter(p=>p.status==='completed').length,
+    cancelled: ALL_PO.filter(p=>p.status==='cancelled').length,
+  };
+  document.querySelectorAll('.tab').forEach(t => {
+    const f = t.dataset.filter;
+    if(counts[f]===undefined) return;
+    t.textContent = t.dataset.label + ' (' + counts[f] + ')';
+  });
+}
+
+/* ════════════════════════════════
+   VIEW SWITCHING
+════════════════════════════════ */
+function showList(){
+  $('detail-view').style.display    = 'none';
+  $('workspace-view').style.display = 'none';
+  $('list-view').style.display      = 'block';
+  window.scrollTo(0, 0);
+  stopChatPolling();
+}
+
+/* ════════════════════════════════
+   CONVERSATION (PO_Messages) — per-PO buyer↔supplier chat, right rail on Detail view.
+   Mirrors the Inquiry/PR-side chat feature exactly (see UI/EndUser/INQs/app/index.html
+   and UI/EndUser/PRs/app/index.html's own copies of this comment for the full
+   architecture rationale). Buyer sees both supplier threads tabbed, keyed by PO_No.
+════════════════════════════════ */
+let chatPollTimer = null;
+let chatActiveSupplier = 'Fenteng';
+let chatCurrentPoNo = '';
+let chatLastSignature = '';
+let chatSelectedSupplier = ''; /* po.supplier of the PO currently open — 'Mixed'/'—' when not single-supplier. Gates which tab can actually SEND, see refreshChatSendGate() */
+function chatVal(v){ return (v==null) ? '' : String(v); }
+function chatFmtDateTime(d){
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+}
+/* ADDED 2026-07-16, per user ("only one supplier is selected right so. maybe disable
+   the message sending -> supplier for that unselected supplier") — mirrors the same fix
+   in UI/EndUser/PRs/app/index.html. A PO's line items CAN technically span multiple
+   suppliers (mapPO's own supplierSet -> 'Mixed'), so the lock only applies when this PO
+   is genuinely single-supplier (po.supplier is a real name, not 'Mixed'/'—') — a truly
+   mixed PO leaves both tabs sendable, since both suppliers are legitimately involved.
+   Read-view (switching tabs, seeing past messages) stays open regardless — only SENDING
+   is gated, per the ask. */
+/* FIXED 2026-08-07, real bug confirmed live: PO_Line_Items.Supplier (traced
+   through pr_to_po_grouping.txt's newLine.Supplier=selectedSupplierName, which
+   in turn comes from Purchase_Request1.Selected_Supplier — confirmed live in
+   Production holding "Tony Fan", the Suppliers form's real display name) can
+   be the FULL supplier name, not the bare "Fenteng"/"Tony" chatActiveSupplier
+   always is. The old plain lowercase-trim `!==` compare then NEVER matched,
+   so `locked` was true for BOTH tabs on every single-supplier PO — the normal
+   case — silently disabling messaging to the one supplier that actually IS on
+   the PO. Same root-cause class as INQsv2's chat-row bug found the same day.
+   Ported PRs/app/index.html's own supplierKeyMatch() (prefix-tolerant) instead
+   of writing a 2nd copy of the plain compare. */
+function supplierKeyMatch(a,b){
+  if(!a||!b) return false;
+  var x=String(a).toLowerCase().trim(), y=String(b).toLowerCase().trim();
+  if(!x||!y) return false;
+  return x===y || x.indexOf(y)===0 || y.indexOf(x)===0;
+}
+function refreshChatSendGate(){
+  var input = $('dChatInput');
+  var btn = $('dChatSendBtn');
+  var single = chatSelectedSupplier && chatSelectedSupplier!=='Mixed' && chatSelectedSupplier!=='—';
+  var locked = single && !supplierKeyMatch(chatSelectedSupplier, chatActiveSupplier);
+  input.disabled = !!locked;
+  input.placeholder = locked ? (chatActiveSupplier+' was not selected for this PO — messaging disabled.') : ('Message this supplier…');
+  btn.disabled = locked || !input.value.trim();
+}
+function startChatPolling(poNo, selectedSupplier){
+  stopChatPolling();
+  chatCurrentPoNo = poNo || '';
+  chatSelectedSupplier = selectedSupplier || '';
+  chatActiveSupplier = 'Fenteng';
+  $('dChatTabFenteng').classList.add('active');
+  $('dChatTabTony').classList.remove('active');
+  chatLastSignature = '';
+  $('dChatInput').value = '';
+  refreshChatSendGate();
+  if(!chatCurrentPoNo) return;
+  loadChatMessages();
+  chatPollTimer = setInterval(loadChatMessages, 5000);
+}
+function stopChatPolling(){
+  if(chatPollTimer){ clearInterval(chatPollTimer); chatPollTimer = null; }
+}
+function switchChatTab(supplier){
+  chatActiveSupplier = supplier;
+  $('dChatTabFenteng').classList.toggle('active', supplier==='Fenteng');
+  $('dChatTabTony').classList.toggle('active', supplier==='Tony');
+  chatLastSignature = '';
+  $('dChatInput').value = '';
+  refreshChatSendGate();
+  loadChatMessages();
+}
+async function loadChatMessages(){
+  if(!chatCurrentPoNo || typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
+  try{
+    var criteria = 'PO_No=="'+chatCurrentPoNo.replace(/"/g,'\\"')+'" && Supplier=="'+chatActiveSupplier+'"';
+    var resp = await ZOHO.CREATOR.DATA.getRecords({ app_name: REAL_APP_NAME, report_name: CHAT_REPORT, criteria: criteria, max_records: 500 });
+    var rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+    rows.sort(function(a,b){ return chatVal(a.Sent_On).localeCompare(chatVal(b.Sent_On)); });
+    var sig = rows.length + '|' + (rows.length ? chatVal(rows[rows.length-1].ID) : '');
+    if(sig === chatLastSignature) return;
+    chatLastSignature = sig;
+    renderChatMessages(rows);
+  } catch(err){
+    /* code 9280 = criteria matched zero rows (Zoho's normal "empty" response, not a real
+       failure) — this fires on every 5s poll for any PO/supplier pair with no messages
+       yet, so don't spam the console with it; still warn on genuine errors. */
+    if(errCode(err) !== 9280) console.warn('[Chat] load failed:', err);
+    renderChatMessages([]);
+  }
+}
+function renderChatMessages(rows){
+  var box = $('dChatMsgs');
+  var wasNearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 60;
+  if(!rows.length){
+    box.innerHTML = '<div class="chat-empty">No messages yet — start the conversation.</div>';
+    return;
+  }
+  box.innerHTML = rows.map(function(m){
+    var mine = chatVal(m.Sender_Role) === 'Buyer';
+    var name = escapeHtml(chatVal(m.Sender_Name) || (mine ? 'Buyer' : chatActiveSupplier));
+    var time = escapeHtml(chatVal(m.Sent_On));
+    return '<div class="chat-bubble '+(mine?'mine':'theirs')+'">'
+      + '<div class="chat-meta">'+name+'</div>'
+      + escapeHtml(chatVal(m.Message))
+      + '<div class="chat-time">'+time+'</div>'
+      + '</div>';
+  }).join('');
+  if(wasNearBottom) box.scrollTop = box.scrollHeight;
+}
+async function sendChatMessage(){
+  if(chatSelectedSupplier && chatSelectedSupplier!=='Mixed' && chatSelectedSupplier!=='—' && chatSelectedSupplier.trim().toLowerCase()!==chatActiveSupplier.toLowerCase()){ showToast(chatActiveSupplier+' was not selected for this PO'); return; }
+  var msg = $('dChatInput').value.trim();
+  if(!msg){ showToast('Type a message first'); return; }
+  if(!chatCurrentPoNo) return;
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.addRecords!=='function'){
+    showToast('Creator API not available — widget must be uploaded to Creator.');
+    return;
+  }
+  var btn = $('dChatSendBtn');
+  btn.disabled = true;
+  try{
+    var payload = {
+      PO_No: chatCurrentPoNo,
+      Supplier: chatActiveSupplier,
+      Sender_Role: 'Buyer',
+      Sender_Name: 'Buyer',
+      Message: msg,
+      Sent_On: chatFmtDateTime(new Date())
+    };
+    var resp = await ZOHO.CREATOR.DATA.addRecords({ app_name: REAL_APP_NAME, form_name: 'PO_Messages', payload: { data: payload } });
+    if(resp && resp.code === 3000){
+      $('dChatInput').value = '';
+      chatLastSignature = '';
+      loadChatMessages();
+    } else {
+      showToast('Could not send message — code ' + (resp && resp.code));
+    }
+  } catch(err){
+    console.error('[Chat] send failed:', err);
+    showToast('Error sending message — see console');
+  } finally {
+    refreshChatSendGate();
+  }
+}
+$('dChatInput').addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChatMessage(); }
+});
+$('dChatInput').addEventListener('input', refreshChatSendGate);
+$('dChatSendBtn').disabled = true;
+
+/* ════════════════════════════════
+   DETAIL VIEW
+════════════════════════════════ */
+function showDetail(id){
+  const po = ALL_PO.find(p => String(p.id)===String(id));
+  if(!po){ showToast('PO not found'); return; }
+  _currentPOId = id;
+  renderDetail(po);
+  $('list-view').style.display      = 'none';
+  $('workspace-view').style.display = 'none';
+  $('detail-view').style.display    = 'block';
+  window.scrollTo(0, 0);
+  startChatPolling(po.poNo, po.supplier);
+  enrichLinesFromPR(po);
+
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.DATA && typeof ZOHO.CREATOR.DATA.getRecordById==='function'){
+    var gbr = ZOHO.CREATOR.DATA.getRecordById.bind(ZOHO.CREATOR.DATA);
+    gbr({ report_name: REPORT_NAME, id: String(id), field_config: 'all' })
+      .then(function(resp){
+        if(resp && resp.code===3000 && resp.data){
+          var full = mapPO(resp.data);
+          var idx = ALL_PO.findIndex(p => String(p.id)===String(id));
+          if(idx>-1) ALL_PO[idx] = full;
+          if(String(_currentPOId)===String(id)) renderDetail(full);
+          enrichLinesFromPR(full);
+        } else {
+          console.warn('[PO] getRecordById non-3000:', resp && resp.code);
+        }
+      })
+      .catch(function(err){ console.warn('[PO] getRecordById error:', JSON.stringify(err)); });
+  }
+}
+
+/* Item/Target_Delivery/Followed_Recommendation are copied onto the PO line from its
+   source PR only at conversion time (pr_to_po_grouping.txt) — confirmed live 2026-08-29
+   that PO-00001's line never received them even though PR-08395 itself has real values
+   for all three. Rather than touch that conversion script (out of scope — Purchase
+   Order widget only), pull the live PR record here by PR_No (present on every line) and
+   backfill just these three fields when the PO's own copy is blank. Never overwrites a
+   real value already on the PO line — only fills genuine gaps. */
+function enrichLinesFromPR(fullPO){
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
+  var needy = (fullPO.lines||[]).filter(function(ln){
+    return ln.prNo && ln.prNo!=='—' && (ln.item==='—' || ln.targetDelivery==='—' || ln.followedRec==='—');
+  });
+  if(!needy.length) return;
+  var prNos = Array.from(new Set(needy.map(function(ln){ return ln.prNo; })));
+  var criteria = '(' + prNos.map(function(p){ return 'PR_No=="'+String(p).replace(/"/g,'\\"')+'"'; }).join('||') + ')';
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({ report_name: REPORT_PR, criteria: criteria, field_config: 'all', max_records: 200 })
+    .then(function(resp){
+      if(!(resp && resp.code===3000 && Array.isArray(resp.data))) return;
+      var byPrNo = {};
+      resp.data.forEach(function(r){ byPrNo[_val(r,'PR_No')] = r; });
+      var changed = false;
+      (fullPO.lines||[]).forEach(function(ln){
+        var pr = byPrNo[ln.prNo];
+        if(!pr) return;
+        if(ln.item==='—'){
+          var prod = _val(pr,'Items') || '—';
+          if(prod!=='—'){ ln.item = prod; changed = true; }
+        }
+        if(ln.targetDelivery==='—'){
+          var td = fmtDateShort(_val(pr,'Target_Delivery'));
+          if(td!=='—'){ ln.targetDelivery = td; changed = true; }
+        }
+        if(ln.followedRec==='—'){
+          var fr = _val(pr,'Followed_Recommendation');
+          if(fr){ ln.followedRec = fr; ln.overrideReason = ln.overrideReason || _val(pr,'Override_Reason'); changed = true; }
+        }
+      });
+      if(changed && String(_currentPOId)===String(fullPO.id)) renderDetail(fullPO);
+    })
+    .catch(function(err){ console.warn('[PO] PR backfill failed:', JSON.stringify(err)); });
+}
+
+function lineThumbHtml(ln, i){
+  return `<div class="row-thumb">
+    <img id="lthumb-${i}" style="display:none" onclick="event.stopPropagation();if(this.src)openLightbox(this.src)" />
+    <span id="lthumb-fb-${i}">${escapeHtml((ln.item||'?').slice(0,2).toUpperCase())}</span>
+  </div>`;
+}
+function loadLineThumbs(lines){
+  lines.forEach(function(ln, i){
+    if(!ln.image) return;
+    const img = $('lthumb-'+i);
+    const fb  = $('lthumb-fb-'+i);
+    if(!img) return;
+    img.style.display=''; if(fb) fb.style.display='none';
+    applyCreatorImage(img, ln.image);
+  });
+}
+
+function renderDetail(po){
+  renderNextStepBanner("nsBanner", po.id, nextStepFor(po));
+  $('d-topbar-title').textContent = `${po.poNo} — PO Detail`;
+  const topBadge = $('d-topbar-badge');
+  topBadge.textContent = `PO ${capitalize(po.status)}${po.isLocked ? ' · Locked' : ''}`;
+  topBadge.className = `po-status-topbadge ${po.status}`;
+
+  $('d-po-id').textContent         = po.poNo;
+  $('d-supplier-name').textContent = po.supplier;
+  $('d-so-num').textContent        = po.soNo;
+  $('d-customer-name').textContent = po.customer;
+  $('d-status-badge').innerHTML    = statusBadgeHTML(po.status);
+  $('d-fulfillment-badge').innerHTML = fulfillmentBadgeHTML(po.poNo);
+  $('d-locked-tag').textContent    = po.isLocked ? 'Locked: YES' : 'Locked: NO';
+  $('d-sub-line').textContent      = `PO Date: ${po.poDate} · Sales Owner: ${po.salesOwner}`;
+  $('d-action-buttons').innerHTML  = actionsForPO(po).map(a => DETAIL_BTN[a](po.id)).join('');
+
+  $('d-summary').innerHTML = `
+    <div class="summary-item">
+      <label>Total Lines</label>
+      <div class="summary-val">${po.totalLines}</div>
+    </div>
+    <div class="summary-item">
+      <label>Customer</label>
+      <div class="summary-val" style="font-size:14px">${escapeHtml(po.customer||'—')}</div>
+    </div>
+    <div class="summary-item">
+      <label>Total PO Value</label>
+      <div class="summary-val green">${moneyOrMissing(po.totalValue)}</div>
+    </div>
+    <div class="summary-item">
+      <label>Mixed Shipping</label>
+      <div style="margin-top:4px">${shipPillHTML(po.mixedShipping)}</div>
+    </div>
+    <div class="summary-item">
+      <label>Customer Type</label>
+      <div class="summary-val" style="font-size:14px">${escapeHtml(po.customerType||'—')}</div>
+    </div>
+    <div class="summary-item">
+      <label>Notes</label>
+      <div class="summary-val" style="font-size:13px;font-weight:400;color:var(--gray-600)">${escapeHtml(po.notes||'—')}</div>
+    </div>
+  `;
+
+  $('d-line-section-title').textContent =
+    po.isLocked ? 'C · PO Line Items — READ-ONLY · LOCKED' : 'C · PO Line Items';
+
+  const lines = po.lines || [];
+  const ltbody = $('d-line-tbody');
+  ltbody.innerHTML = lines.map((ln, i) => `
+    <tr>
+      <td>${lineThumbHtml(ln, i)}</td>
+      <td><span class="pr-link" onclick="navigateToPR('${escapeHtml(ln.prNo)}')">${escapeHtml(ln.prNo)}</span>${PRHold.badge(ln.prNo)}</td>
+      <td>${escapeHtml(ln.sku)}</td>
+      <td>${itemOrMissing(ln.item)}</td>
+      <td>${ln.qty.toLocaleString()} ${escapeHtml(ln.unit)}</td>
+      <td>${moneyOrMissing(ln.finalPrice)}</td>
+      <td class="${ln.lineTotal>=100000?'lt-orange':ln.lineTotal>0?'lt-green':''}">${moneyOrMissing(ln.lineTotal)}</td>
+      <td><span class="${/air/i.test(ln.shipMode)?'ship-air':'ship-sea'}">${escapeHtml(ln.shipMode)}</span></td>
+      <td>${dateOrMissing(ln.targetDelivery)}</td>
+      <td>${priorityHtml(ln.priority)}</td>
+      <td>${delayBadge(ln.delayStatus)}</td>
+      <td>${followedRecHtml(ln)}</td>
+    </tr>`).join('') + `
+    <tr class="total-row">
+      <td colspan="6">TOTAL</td>
+      <td class="total-amount">${moneyOrMissing(po.totalValue)}</td>
+      <td colspan="5"></td>
+    </tr>`;
+  loadLineThumbs(lines);
+
+  $('d-audit').innerHTML = `
+    <div class="audit-row"><span class="audit-label">PO Status</span><span class="audit-value">${statusBadgeHTML(po.status)}</span></div>
+    <div class="audit-row"><span class="audit-label">Books PO No</span><span class="audit-value">${escapeHtml(po.booksPoNo||'—')}</span></div>
+    <div class="audit-row"><span class="audit-label">PO Date</span><span class="audit-value">${po.poDate}</span></div>
+    <div class="audit-row"><span class="audit-label">Sent On</span><span class="audit-value">${escapeHtml(po.sentOn)}</span></div>
+    <div class="audit-row"><span class="audit-label">Acknowledged On</span><span class="audit-value">${escapeHtml(po.acknowledgeOn)}</span></div>
+    <div class="audit-row"><span class="audit-label">Completed On</span><span class="audit-value">${escapeHtml(po.completedOn)}</span></div>
+  `;
+
+  $('d-snapshot').innerHTML = `
+    <div class="snap-name">${escapeHtml(po.supplier)}</div>
+    <div class="snap-label">Load at PO creation: ${po.supplierLoadAtPO}%</div>
+    <div class="progress-row">
+      <div class="progress-bg"><div class="progress-fill" style="width:${Math.max(0,Math.min(po.supplierLoadAtPO,100))}%"></div></div>
+      <span class="progress-pct">${po.supplierLoadAtPO}%</span>
+    </div>
+  `;
+}
+
+/* ════════════════════════════════
+   STATUS ACTIONS — Mark Sent / Acknowledged / Completed / Cancel
+════════════════════════════════ */
+function updatePORecord(id, payload, successMsg){
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA){
+    showToast('Creator SDK not available (preview mode)');
+    return Promise.resolve(false);
+  }
+  const ubr = ZOHO.CREATOR.DATA.updateRecordById.bind(ZOHO.CREATOR.DATA);
+  return ubr({ report_name: REPORT_NAME, id: String(id), payload: { data: payload } })
+    .then(function(resp){
+      console.log('[PO] updateRecordById resp:', JSON.stringify(resp));
+      if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+        showToast(successMsg);
+        return true;
+      }
+      showToast('Update failed — code '+(resp&&resp.code)+' '+(resp&&resp.message||''));
+      return false;
+    })
+    .catch(function(err){
+      console.error('[PO] updateRecordById error:', JSON.stringify(err));
+      showToast('Direct update failed — trying fallback…');
+      return ZOHO.CREATOR.DATA.invokeCustomApi({
+        url: 'https://creator.zoho.com/api/v2/'+ACCOUNT_OWNER+'/'+REAL_APP_NAME+'/report/'+REPORT_NAME+'/'+String(id),
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      }).then(function(r2){
+        console.log('[PO] invokeCustomApi fallback resp:', JSON.stringify(r2));
+        showToast(successMsg+' (via fallback)');
+        return true;
+      }).catch(function(e2){
+        console.error('[PO] fallback also failed:', JSON.stringify(e2));
+        showToast('Update error — see console');
+        return false;
+      });
+    });
+}
+
+function refreshAfterAction(id){
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA){ renderTable(); updateStats(); return; }
+  const gbr = ZOHO.CREATOR.DATA.getRecordById.bind(ZOHO.CREATOR.DATA);
+  gbr({ report_name: REPORT_NAME, id: String(id), field_config: 'all' }).then(function(resp){
+    if(resp && resp.code===3000 && resp.data){
+      const updated = mapPO(resp.data);
+      const idx = ALL_PO.findIndex(p => String(p.id)===String(id));
+      if(idx>-1) ALL_PO[idx]=updated; else ALL_PO.unshift(updated);
+      renderTable(); updateStats();
+      if(String(_currentPOId)===String(id)) renderDetail(updated);
+    }
+  }).catch(function(e){ console.warn('[PO] refresh error:', e); });
+}
+
+function cancelPO(id){
+  showConfirm('Cancel this Purchase Order? This cannot be undone.', async function(){
+    if(await updatePORecord(id, { PO_Status: 'Cancelled' }, 'PO Cancelled')) refreshAfterAction(id);
+  });
+}
+
+/* ════════════════════════════════
+   PO GROUPING WORKSPACE — ported verbatim from Purchase Request/app/PR.html's
+   real, working grouping workspace: same PO_Grouping report, same SO+Customer
+   bucketing, same approve_po_main/fenteng/tony Deluge custom API calls.
+════════════════════════════════ */
+let GROUP_ALL     = [];
+let GROUP_BUCKETS = [];
+
+function mapGroupRow(r){
+  var priceRaw = r['Selcted_Final_Cost'];
+  var price = (priceRaw && typeof priceRaw==='object') ? (parseFloat(priceRaw.value||priceRaw.display_value||0)||0) : (parseFloat(priceRaw||0)||0);
+  var supplier = _val(r,'Selected_Supplier') || _val(r,'Selected_Supplier1') || _val(r,'Supplier_Selected') || '—';
+  var priRaw = _val(r,'Priority') || 'MEDIUM';
+  var linkPoNo = _val(r,'Link_PO_No');
+  return {
+    id:         r.ID,
+    prNo:       _val(r,'PR_No') || '—',
+    soNo:       _val(r,'Sales_Order') || '—',
+    customer:   _val(r,'Customer') || '—',
+    supplier:   supplier,
+    sku:        _val(r,'sku') || '—',
+    product:    _val(r,'Items') || '—',
+    qty:        parseFloat(_val(r,'quantity')||'0') || 0,
+    unit:       _val(r,'unit') || 'pcs',
+    finalPrice: price,
+    shipMode:   _val(r,'Shipment_Mode') || '—',
+    targetDate: _val(r,'Target_Delivery') || _val(r,'supplier_target_date') || '—',
+    priority:   priRaw==='HIGH'?'HIGH':priRaw==='LOW'?'LOW':'MED',
+    delay:      _val(r,'Delay_Status') || 'On Track',
+    ready:      _boolVal(r,'PR_READY_FOR_PO'),
+    linkPoNo:   linkPoNo,
+    approved:   _boolVal(r,'PR_Approved') || !!linkPoNo,
+    photo:      r['Product_Image_PR']||null,
+  };
+}
+
+function loadGroupingData(cb){
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA){
+    GROUP_ALL = [];
+    cb();
+    return;
+  }
+  var gr = ZOHO.CREATOR.DATA.getRecords.bind(ZOHO.CREATOR.DATA);
+  gr({report_name:REPORT_GROUPING, page:1, pageSize:200, field_config:'all'}).then(function(resp){
+    GROUP_ALL = (resp&&resp.code===3000&&Array.isArray(resp.data)) ? resp.data.map(mapGroupRow) : [];
+    cb();
+  }).catch(function(err){
+    console.warn('[PO Grouping] getRecords failed:', err);
+    GROUP_ALL = [];
+    cb();
+  });
+}
+
+/* Bucket every PR by SO + Customer — matches the report's own grouping, same as PR.html */
+function buildGroupBuckets(){
+  const map = new Map();
+  GROUP_ALL.forEach(function(r){
+    const key = r.soNo+'||'+r.customer;
+    if(!map.has(key)) map.set(key, {key:key, soNo:r.soNo, customer:r.customer, rows:[]});
+    map.get(key).rows.push(r);
+  });
+  GROUP_BUCKETS = Array.from(map.values()).sort(function(a,b){
+    return a.soNo.localeCompare(b.soNo) || a.customer.localeCompare(b.customer);
+  });
+}
+
+function showWorkspace(){
+  $('list-view').style.display      = 'none';
+  $('detail-view').style.display    = 'none';
+  $('workspace-view').style.display = 'block';
+  window.scrollTo(0,0);
+  stopChatPolling();
+  $('groupCardsWrap').innerHTML = '<div class="po-group-empty">Loading…</div>';
+  $('gSelText').textContent = 'Loading…';
+
+  loadGroupingData(function(){
+    buildGroupBuckets();
+    renderGroupCards();
+  });
+}
+
+function cardSummary(bucket){
+  const rows = bucket.rows;
+  const totalValue = rows.reduce((s,r)=>s+r.qty*r.finalPrice,0);
+  const mixedShip = new Set(rows.map(r=>r.shipMode)).size>1;
+  const supplierSet = new Set(rows.map(r=>r.supplier));
+  const sameSupplier = rows.length>0 && supplierSet.size===1;
+  const allReady = rows.length>0 && rows.every(r=>r.ready);
+  const noneConverted = rows.length>0 && rows.every(r=>!r.approved);
+  return {rows, totalValue, mixedShip, supplierSet, sameSupplier, allReady, noneConverted,
+    passed: rows.length>0 && sameSupplier && allReady && noneConverted};
+}
+
+function renderGroupCards(){
+  const wrap = $('groupCardsWrap');
+  if(!GROUP_BUCKETS.length){
+    wrap.innerHTML = '<div class="po-group-empty">No PRs found in PO Grouping.</div>';
+    $('gDot').style.background = 'var(--gray-400)';
+    $('gSelPill').style.color = 'var(--gray-500)';
+    $('gSelText').textContent = 'No PRs found';
+    return;
+  }
+
+  wrap.innerHTML = GROUP_BUCKETS.map(renderGroupCard).join('');
+  loadRowThumbs(GROUP_ALL,'g');
+
+  const totalPRs = GROUP_ALL.length;
+  $('gDot').style.background = 'var(--blue)';
+  $('gSelPill').style.color = 'var(--blue-dark)';
+  $('gSelText').textContent = GROUP_BUCKETS.length+' group'+(GROUP_BUCKETS.length>1?'s':'')+' · '+totalPRs+' PRs total';
+}
+
+function renderGroupCard(bucket, i){
+  const rows = bucket.rows;
+  const s = cardSummary(bucket);
+
+  /* Supplier column highlight uses the card's dominant (most frequent) supplier */
+  const supplierCounts = {};
+  rows.forEach(r=>{ supplierCounts[r.supplier] = (supplierCounts[r.supplier]||0)+1; });
+  const majoritySupplier = Object.keys(supplierCounts).sort(function(a,b){ return supplierCounts[b]-supplierCounts[a]; })[0];
+
+  return `
+  <div class="po-group-card" id="groupCard_${i}">
+    <div class="po-group-card-hdr">
+      <div>
+        <div class="po-group-card-so">${escapeHtml(bucket.soNo)}<span class="po-group-card-cust"> &middot; ${escapeHtml(bucket.customer)}</span></div>
+        <div class="po-group-card-meta">${rows.length} PR${rows.length>1?'s':''}</div>
+      </div>
+      <div class="po-group-card-actions">
+        <span class="po-group-card-status" style="color:${s.passed?'var(--green)':'var(--red)'}">
+          ${s.passed?'&#9679; Validation Passed':'&#9679; Validation Failed'}
+        </span>
+        <button class="btn btn-sm btn-success" onclick="createPOFromCard(${i})">Create PO &#8594;</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="group-grid-cols group-grid-head">
+        <div>Image</div><div>PR No.</div><div>Product Name</div><div>SKU</div><div>Qty</div><div>Supplier</div>
+        <div>Final Price</div><div>Ship Mode</div><div>Target Date</div><div>Priority</div><div>Delay</div><div>Ready</div>
+      </div>
+      ${rows.map(function(r){
+        const supMatch = r.supplier===majoritySupplier;
+        return `<div class="group-grid-cols group-grid-row">
+          <div>${rowThumbHtml(r,'g')}</div>
+          <div><span class="cell-link" onclick="navigateToPR('${escapeHtml(r.prNo)}')">${escapeHtml(r.prNo)}</span>${PRHold.badge(r.prNo)}</div>
+          <div class="cell-product">${escapeHtml(r.product)}</div>
+          <div><span class="cell-sku">${escapeHtml(r.sku)}</span></div>
+          <div style="font-variant-numeric:tabular-nums">${r.qty.toLocaleString()} ${escapeHtml(r.unit)}</div>
+          <div><span class="cell-supplier${supMatch?'':' override-sup'}">${escapeHtml(r.supplier)}</span></div>
+          <div class="cell-price">${fmtCurrency(r.finalPrice)}</div>
+          <div>${shipBadge(r.shipMode)}</div>
+          <div style="font-size:12.5px;color:var(--gray-600)">${escapeHtml(r.targetDate)}</div>
+          <div>${priorityHtml(r.priority)}</div>
+          <div>${delayBadge(r.delay)}</div>
+          <div><span class="badge-pill ${r.ready?'ready-yes':'status-pending'}">${r.ready?'&#10003; Yes':'&#10007; No'}</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="po-group-card-footer">
+      <span>PRs: <strong>${rows.length}</strong></span>
+      <span>Total Value: <strong>${fmtCurrency(s.totalValue)}</strong></span>
+      <span>Supplier: <strong style="color:${s.sameSupplier?'var(--green)':'var(--red)'}">${s.sameSupplier?escapeHtml(Array.from(s.supplierSet)[0]):'Mixed'}</strong></span>
+      <span>Mixed Shipping: <strong style="color:${s.mixedShip?'var(--orange)':'var(--green)'}">${s.mixedShip?'Yes':'No'}</strong></span>
+    </div>
+  </div>`;
+}
+
+function createPOFromCard(i){
+  const bucket = GROUP_BUCKETS[i];
+  const s = cardSummary(bucket);
+  if(!s.rows.length){ showToast('No PRs in this group'); return; }
+  if(!s.sameSupplier){ showToast('Mixed suppliers in this group — a PO can only go to one supplier'); return; }
+  if(!s.allReady){ showToast('Not all PRs in this group are Ready for PO'); return; }
+  if(!s.noneConverted){ showToast('One or more PRs in this group are already converted/approved'); return; }
+
+  const btn = document.querySelector('#groupCard_'+i+' .btn-success');
+  showConfirm(
+    'Approve '+s.rows.length+' PR(s) for '+bucket.soNo+' · '+bucket.customer+' and convert to a Purchase Order?',
+    function(){ runApprovePOBatch(bucket.soNo, btn); }
+  );
+}
+
+/* ════════════════════════════════
+   APPROVE PR(s) → PO — calls the same 3 Deluge Custom APIs the PR widget uses,
+   mirroring the native PR_Approved Report Action Item (Purchase_Order, Fenteng, Tony).
+════════════════════════════════ */
+const CUSTOM_API_KEY_PO_MAIN     = 'yBd972M8m7QgO4kM8H2UguyR5';
+const CUSTOM_API_KEY_PO_FENTENG  = 'KpqTrk9M53PY3pyjJzUDR7aEn';
+const CUSTOM_API_KEY_PO_TONY     = 'dpTDMs1mVsVhO8OaBOmftEGOW';
+
+function callApprovePOApi(apiName, publicKey, soNo){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({
+    api_name: apiName,
+    http_method: 'POST',
+    content_type: 'application/json',
+    payload: { soNo: soNo },
+    public_key: publicKey
+  }).then(function(resp){
+    /* Confirmed live 2026-07-09 (via a sibling Custom API's own Summary page, same
+       Standard-response setup as this one): the response wraps the function's
+       returned Map under "result", not "data" ({"code":3000,"result":{...}}) — check
+       both, "data" first for safety. */
+    var result = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+    console.log('['+apiName+'] resp:', JSON.stringify(result));
+    return result;
+  }).catch(function(err){
+    console.error('['+apiName+'] error:', JSON.stringify(err));
+    return { status:'error', message:(err&&err.message)||'Request failed' };
+  });
+}
+
+async function runApprovePOBatch(soNo, btnEl){
+  if(btnEl){ btnEl.disabled = true; btnEl.dataset._label = btnEl.innerHTML; btnEl.innerHTML = 'Approving…'; }
+
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA){
+    showToast('Creator SDK not available (preview mode)');
+    if(btnEl){ btnEl.disabled=false; btnEl.innerHTML=btnEl.dataset._label||'Create PO &#8594;'; }
+    return;
+  }
+
+  try{
+    const r1 = await callApprovePOApi('approve_po_main',    CUSTOM_API_KEY_PO_MAIN,    soNo);
+    if(r1 && r1.status==='error'){
+      showToast('Approve failed: '+(r1.message||'unknown error'));
+      if(btnEl){ btnEl.disabled=false; btnEl.innerHTML=btnEl.dataset._label||'Create PO &#8594;'; }
+      return;
+    }
+    /* Fenteng/Tony are independently idempotent (re-derive their own eligible PRs) —
+       run both regardless of which supplier(s) were actually in this SO. */
+    await callApprovePOApi('approve_po_fenteng', CUSTOM_API_KEY_PO_FENTENG, soNo);
+    await callApprovePOApi('approve_po_tony',    CUSTOM_API_KEY_PO_TONY,    soNo);
+
+    if(btnEl){ btnEl.disabled=false; btnEl.innerHTML=btnEl.dataset._label||'Create PO &#8594;'; }
+    showToast((r1&&r1.message)||'PO approved for '+soNo);
+
+    /* Refresh both the PO list and the grouping cards so everything reflects the new state */
+    setTimeout(function(){
+      loadPOsFromCreator();
+      loadGroupingData(function(){ buildGroupBuckets(); renderGroupCards(); });
+    }, 800);
+  } catch(e){
+    if(btnEl){ btnEl.disabled=false; btnEl.innerHTML=btnEl.dataset._label||'Create PO &#8594;'; }
+    console.error('[Approve PO] threw:', e);
+    showToast('Approve failed — see console');
+  }
+}
+
+/* ════════════════════════════════
+   PHOTO THUMBNAILS — ported from PR.html (reuses applyCreatorImage/openLightbox
+   already defined above for PO_Line_Items images)
+════════════════════════════════ */
+const PHOTO_COLORS_PR=[
+  {bg:'#EFF6FF',fg:'#1D4ED8'},{bg:'#F0FDF4',fg:'#15803D'},{bg:'#FFF7ED',fg:'#C2410C'},
+  {bg:'#FDF4FF',fg:'#7E22CE'},{bg:'#FFF1F2',fg:'#BE123C'},{bg:'#F0FDFA',fg:'#0D9488'},
+];
+function getPhotoColor(sku){
+  let h=0;for(const c of sku)h=(h*31+c.charCodeAt(0))&0xFFFFFF;
+  return PHOTO_COLORS_PR[Math.abs(h)%PHOTO_COLORS_PR.length];
+}
+function getInitialsPR(name){
+  return name.trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+}
+function rowThumbHtml(r, scope){
+  const pc = getPhotoColor(r.sku||'SKU');
+  const pi = getInitialsPR(r.product||'?');
+  return `<div style="width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:${pc.bg};color:${pc.fg}">
+    <img id="rthumb-${scope}-${r.id}" style="display:none;width:100%;height:100%;object-fit:cover;cursor:zoom-in" onclick="event.stopPropagation();if(this.src)openLightbox(this.src)" />
+    <span id="rthumb-fb-${scope}-${r.id}">${pi}</span>
+  </div>`;
+}
+function loadRowThumbs(data, scope){
+  data.forEach(function(r){
+    if(!r.photo) return;
+    const img = document.getElementById('rthumb-'+scope+'-'+r.id);
+    const fb  = document.getElementById('rthumb-fb-'+scope+'-'+r.id);
+    if(!img) return;
+    img.style.display = '';
+    if(fb) fb.style.display = 'none';
+    applyCreatorImage(img, r.photo);
+  });
+}
+function shipBadge(v){
+  if(!v||v==='—') return `<span style="color:var(--gray-300)">—</span>`;
+  return `<span class="badge-pill ship-badge">${escapeHtml(v)}</span>`;
+}
+function priorityHtml(p){
+  if(p==='HIGH') return `<span class="pri-high"><span class="priority-dot"></span>HIGH</span>`;
+  if(p==='MED'||p==='MEDIUM') return `<span class="pri-med"><span class="priority-dot"></span>MED</span>`;
+  if(p==='LOW') return `<span class="pri-low"><span class="priority-dot"></span>LOW</span>`;
+  return `<span style="color:var(--gray-300)">—</span>`;
+}
+function delayBadge(v){
+  if(!v || v==='—') return `<span style="color:var(--gray-300)">—</span>`;
+  const cls = v==='On Track'?'delay-ontrack':v==='At Risk'?'delay-atrisk':'delay-delayed';
+  return `<span class="badge-pill ${cls}">&#9679; ${escapeHtml(v)}</span>`;
+}
+/* Followed_Recommendation/Override_Reason are PER-LINE fields, not header-level, on
+   the real Purchase_Order schema (confirmed: no aggregate-PO version exists, only
+   PO_Line_Items + the supplier-form _Supplier1/2 variants) — shown as a line-table
+   column rather than a single PO-wide summary badge, unlike ProcurementHtml's mock
+   (which showed one header-level Yes/No, a simplification that doesn't hold once a PO
+   has lines with different Followed_Recommendation values). */
+function followedRecHtml(ln){
+  if(ln.followedRec==='Yes') return `<span style="color:var(--green);font-weight:600">&#10003; Yes</span>`;
+  if(ln.followedRec==='No') return `<span style="color:var(--red);font-weight:600" title="${escapeHtml(ln.overrideReason||'')}">&#10007; No</span>`;
+  return `<span style="color:var(--gray-300)">—</span>`;
+}
+
+/* ── Init ── */
+window.addEventListener('load', loadPOsFromCreator);
+window.addEventListener('load', loadReceivingForFulfillment);
+</script>
+
+
+<!-- ═══════════════════ WORKSPACE VIEW — ported from the real, working
+     PO Grouping Workspace in Purchase Request/app/PR.html (PO_Grouping report +
+     approve_po_main/fenteng/tony Deluge custom APIs) ═══════════════════ -->
+<div id="workspace-view">
+  <div class="group-topbar">
+    <span class="group-topbar-title">PO Grouping Workspace</span>
+    <div class="group-topbar-right">
+      <span class="grp-pill" id="gSelPill">
+        <span class="dot-g" id="gDot"></span>
+        <span id="gSelText">Loading…</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="group-subheader">
+    <div>
+      <div class="group-title">PO Grouping Workspace</div>
+      <div class="group-subtitle">Ready PRs grouped by same SO No. + same Customer — same grouping the PR widget uses</div>
+    </div>
+    <div class="group-sh-right">
+      <button class="btn btn-sm" onclick="showList()">← Back to PO List</button>
+    </div>
+  </div>
+
+  <div class="group-content">
+    <div id="groupCardsWrap"></div>
+  </div>
+</div>
+
+<!-- Lightbox (Item Image preview) -->
+<div id="lightboxOverlay" class="lightbox-overlay" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()" title="Close">✕</button>
+  <img id="lightboxImg" src="" onclick="event.stopPropagation()">
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Confirm modal -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">Confirm</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="confirm-btn confirm-btn-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="confirm-btn confirm-btn-ok" id="confirmOkBtn">Yes, proceed</button>
+    </div>
+  </div>
+</div>
+
+
+
+</body></html>

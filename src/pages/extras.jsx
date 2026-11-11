@@ -236,247 +236,34 @@ export function TransferItem() {
 }
 
 // ───────────────────────────── Delivery Management ─────────────────────────────
+import {
+  DeliveryAnalytics as _DeliveryAnalytics,
+  ArchivedScreen as _Archived,
+  SiteVisitsScreen as _SiteVisits,
+  SalesReturnsScreen as _SalesReturns,
+  TruckMaintenanceScreen as _TruckMaintenance,
+  ScheduleRequestsScreen as _ScheduleRequests,
+} from './delivery/index.js';
 
-export function DeliveryAnalytics() {
-  const { db, today } = useStore();
-  const [, again] = useState(0);
-  const sr = db.serviceRequests;
-  const done = sr.filter((s) => s.status === 'Completed');
-  const tiles = [
-    ['Service Requests Added (Today)', sr.filter((s) => s.createdOn === today).length],
-    ['Pending Appointments (Assigned)', sr.filter((s) => s.status === 'Scheduled').length],
-    ['Complete Appointments (Assigned)', done.length],
-    ['Completed Installations (Today)', done.filter((s) => s.type === 'Installation').length],
-    ['Failed Deliveries', sr.filter((s) => s.status === 'Exception').length],
-  ];
-  const byTeam = db.teams.map((t) => [t.name, sr.filter((s) => s.team === t.id).length]);
-  const max = Math.max(1, ...byTeam.map(([, n]) => n));
-  return (
-    <section className="screen">
-      <header className="screen-head">
-        <div><h1>Delivery Analytics</h1><p className="muted">Read-only dashboard: service requests, installations, deliveries and exceptions at a glance.</p></div>
-        <div className="head-actions"><button className="btn" onClick={() => again((n) => n + 1)}>Refresh</button></div>
-      </header>
-      <div className="stats">{tiles.map(([l, v], i) => <Stat key={l} label={l} value={v} tone={i === 4 ? 'bad' : i === 2 ? 'ok' : undefined} />)}</div>
-      <div className="card pad">
-        <h3 className="card-title">Jobs by team</h3>
-        {byTeam.map(([n, v]) => <Bar key={n} label={n} value={v} max={max} />)}
-        <h3 className="card-title">By status</h3>
-        {['Initial Scheduling', 'Service Request', 'Scheduled', 'Ongoing', 'Completed', 'Exception'].map((s) => <Bar key={s} label={s} value={sr.filter((x) => x.status === s).length} max={Math.max(1, sr.length)} />)}
-      </div>
-    </section>
-  );
+export function DeliveryAnalytics(props) {
+  return <_DeliveryAnalytics {...props} />;
+}
+export function Archived(props) {
+  return <_Archived {...props} />;
+}
+export function SiteVisits(props) {
+  return <_SiteVisits {...props} />;
+}
+export function SalesReturns(props) {
+  return <_SalesReturns {...props} />;
+}
+export function TruckMaintenance(props) {
+  return <_TruckMaintenance {...props} />;
+}
+export function ScheduleRequests(props) {
+  return <_ScheduleRequests {...props} />;
 }
 
-export function Archived() {
-  const { db } = useStore();
-  const rows = db.serviceRequests.filter((s) => ['Completed', 'Exception'].includes(s.status)).map((s) => ({ ...s, outcome: s.status === 'Completed' ? 'Completed' : 'Failed', hasReturn: db.salesReturns.some((r) => r.srNo === s.no) }));
-  return (
-    <Screen
-      title="Archived"
-      subtitle="Completed and failed deliveries with their installation outcome."
-      rows={rows}
-      columns={[
-        { key: 'no', label: 'Service Request' }, { key: 'soNo', label: 'Sales Order' }, { key: 'customer', label: 'Customer' }, { key: 'type', label: 'Type' },
-        dateCol('scheduledDate', 'Date'), { key: 'team', label: 'Team', render: (r) => (db.teams.find((t) => t.id === r.team) || {}).name || '—', csv: (r) => r.team }, { key: 'outcome', label: 'Outcome', pill: true },
-        { key: 'hasReturn', label: 'Return', render: (r) => (r.hasReturn ? <Pill>Opened</Pill> : <span className="muted">—</span>), csv: (r) => (r.hasReturn ? 'Opened' : '') },
-      ]}
-      tabs={[
-        { key: 'archived', label: 'Archived', test: () => true },
-        { key: 'ship', label: 'Create Shipment', test: (r) => r.outcome === 'Failed' && !r.hasReturn },
-        ...['All', 'Completed', 'Failed'].map((s) => ({ key: 'p-' + s, label: s, test: (r) => s === 'All' || r.outcome === s })),
-      ]}
-      stats={[
-        { label: 'Total Archived', value: (r) => r.length },
-        { label: 'Completed', value: count((r) => r.outcome === 'Completed'), tone: 'ok' },
-        { label: 'Failed', value: count((r) => r.outcome === 'Failed'), tone: 'bad' },
-        { label: 'Installation Complete', value: count((r) => r.outcome === 'Completed' && r.type === 'Installation') },
-      ]}
-      create={{
-        label: 'Create Sales Return', action: 'salesReturnCreate', title: 'Create Sales Return', submit: 'Create',
-        fields: [
-          { key: 'id', label: 'Delivery', type: 'select', required: true, options: rows.filter((r) => !r.hasReturn).map((r) => ({ value: r.id, label: `${r.no} · ${r.customer} (${r.outcome})` })) },
-          { key: 'warehouse', label: 'Return to warehouse', type: 'select', options: WAREHOUSES, default: WAREHOUSES[0] },
-        ],
-      }}
-      actions={[{
-        name: 'salesReturnCreate', label: 'Create Sales Return', when: (r) => !r.hasReturn,
-        fields: [{ key: 'warehouse', label: 'Return to warehouse', type: 'select', options: WAREHOUSES, default: WAREHOUSES[0] }],
-      }]}
-    />
-  );
-}
 
-export function SiteVisits() {
-  const { db } = useStore();
-  const kinds = ['Installation Assessment', 'Repair Assessment', 'Other'];
-  return (
-    <Screen
-      title="Field Service Site Visits"
-      subtitle="Site assessments before installation or repair."
-      rows={db.siteVisits}
-      columns={[
-        { key: 'no', label: 'Visit' }, { key: 'srNo', label: 'Service Request' }, { key: 'customer', label: 'Customer' }, { key: 'kind', label: 'Type' },
-        dateCol('visitDate', 'Date'), { key: 'siteReady', label: 'Site Ready', render: (r) => <Pill tone={r.siteReady ? 'ok' : 'warn'}>{r.siteReady ? 'Ready' : 'Not ready'}</Pill>, csv: (r) => (r.siteReady ? 'Ready' : 'Not ready') },
-        { key: 'notes', label: 'Notes' },
-      ]}
-      tabs={['All', ...kinds].map((k) => ({ key: k, label: k, test: (r) => k === 'All' || r.kind === k }))}
-      stats={[
-        { label: 'Total Visits', value: (r) => r.length },
-        { label: 'Site Ready', value: count((r) => r.siteReady), tone: 'ok' },
-        { label: 'Installation', value: count((r) => r.kind === 'Installation Assessment') },
-        { label: 'Repair', value: count((r) => r.kind === 'Repair Assessment') },
-      ]}
-      actions={[{
-        name: 'siteVisitUpdate', label: 'Save Changes', title: 'Save site visit',
-        fields: [
-          { key: 'siteReady', label: 'Site is ready', type: 'checkbox', default: (r) => r.siteReady },
-          { key: 'notes', label: 'Notes', type: 'textarea', default: (r) => r.notes },
-        ],
-      }]}
-      create={{
-        label: 'Schedule Visit', action: 'siteVisitCreate', title: 'Schedule a site visit', submit: 'Schedule',
-        fields: [
-          { key: 'id', label: 'Service Request', type: 'select', required: true, options: db.serviceRequests.filter((s) => !['Completed'].includes(s.status)).map((s) => ({ value: s.id, label: `${s.no} · ${s.customer}` })) },
-          { key: 'kind', label: 'Type', type: 'select', options: kinds, required: true },
-          { key: 'visitDate', label: 'Visit date', type: 'date' },
-        ],
-      }}
-    />
-  );
-}
-
-export function SalesReturns() {
-  const { db } = useStore();
-  return (
-    <Screen
-      title="Sales Returns"
-      subtitle="Returns and reverse logistics, sent to Books."
-      rows={db.salesReturns}
-      columns={[
-        { key: 'no', label: 'Return' }, { key: 'srNo', label: 'Service Request' }, { key: 'soNo', label: 'Sales Order' }, { key: 'customer', label: 'Customer' },
-        { key: 'warehouse', label: 'Warehouse' }, { key: 'rma', label: 'RMA' }, { key: 'reason', label: 'Reason' }, { key: 'qty', label: 'Qty' }, { key: 'status', label: 'Status', pill: true },
-      ]}
-      tabs={['All', 'Created', 'Pending'].map((s) => ({ key: s, label: s, test: (r) => s === 'All' || r.status === s }))}
-      stats={[
-        { label: 'Total Returns', value: (r) => r.length },
-        { label: 'Created', value: count((r) => r.status === 'Created'), tone: 'ok' },
-        { label: 'Pending', value: count((r) => r.status === 'Pending'), tone: 'warn' },
-        { label: 'Warehouses Involved', value: (r) => new Set(r.map((x) => x.warehouse)).size },
-      ]}
-      actions={[{
-        name: 'salesReturnSendToBooks', label: 'Send to Books', title: 'Send return to Books', when: (r) => r.status === 'Pending',
-        fields: [
-          { key: 'rma', label: 'RMA number', required: true },
-          { key: 'reason', label: 'Reason', type: 'textarea', required: true },
-          { key: 'qty', label: 'Item quantity', type: 'number', required: true },
-          { key: 'signature', label: 'Signature (type the name)', required: true },
-        ],
-      }]}
-    />
-  );
-}
-
-function Entries({ kind }) {
-  const { db, act, today } = useStore();
-  const rows = db.truckEntries.filter((e) => e.kind === kind);
-  const [f, setF] = useState({ truck: TRUCKS[0], date: today, cost: '', liters: '', note: '' });
-  const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
-  const fields = [
-    { key: 'truck', label: 'Truck', type: 'select', options: TRUCKS, required: true },
-    { key: 'date', label: 'Date', type: 'date', required: true },
-    { key: 'cost', label: 'Cost (₱)', type: 'number', required: true },
-    ...(kind === 'fuel' ? [{ key: 'liters', label: 'Liters', type: 'number' }] : []),
-    { key: 'note', label: 'Note' },
-  ];
-  return (
-    <div className="pad">
-      <form onSubmit={(e) => { e.preventDefault(); if (act('truckEntryAdd', { kind, ...f })) setF((s) => ({ ...s, cost: '', liters: '', note: '' })); }}>
-        <FormFields fields={fields} values={f} setValue={set} />
-        <button type="submit" className="btn btn-primary">Add {kind === 'fuel' ? 'fuel' : 'service'} entry</button>
-      </form>
-      {rows.length === 0 ? <Empty>No entries yet.</Empty> : (
-        <div className="table-wrap"><table className="table">
-          <thead><tr><th>Date</th><th>Truck</th>{kind === 'fuel' && <th>Liters</th>}<th>Cost</th><th>Note</th></tr></thead>
-          <tbody>{rows.map((e) => <tr key={e.id}><td>{fmtDate(e.date)}</td><td>{e.truck}</td>{kind === 'fuel' && <td>{e.liters}</td>}<td>{fmtPHP(e.cost)}</td><td>{e.note || '—'}</td></tr>)}</tbody>
-        </table></div>
-      )}
-    </div>
-  );
-}
-
-export function TruckMaintenance() {
-  const { db } = useStore();
-  return (
-    <Screen
-      title="Truck Maintenance"
-      subtitle="Daily vehicle checklist, fuel entries and service entries."
-      rows={db.truckChecks}
-      columns={[
-        { key: 'no', label: 'Checklist' }, { key: 'truck', label: 'Truck' }, dateCol('date', 'Date'), { key: 'issues', label: 'Issues found' },
-        { key: 'notes', label: 'Notes' }, { key: 'signature', label: 'Signed by' }, { key: 'status', label: 'Status', pill: true },
-      ]}
-      tabs={[
-        { key: 'track', label: 'Track Maintenance', test: () => true },
-        { key: 'fuel', label: 'Fuel Entries', test: () => true, render: () => <Entries kind="fuel" /> },
-        { key: 'service', label: 'Service Entries', test: () => true, render: () => <Entries kind="service" /> },
-      ]}
-      stats={[
-        { label: 'Total Checklists', value: (r) => r.length },
-        { label: 'Open', value: count((r) => r.status === 'Open'), tone: 'warn' },
-        { label: 'In Progress', value: count((r) => r.status === 'In Progress') },
-        { label: 'Completed', value: count((r) => r.status === 'Completed'), tone: 'ok' },
-        { label: 'Issues Found', value: (r) => r.reduce((n, c) => n + c.issues, 0), tone: 'bad' },
-      ]}
-      create={{
-        label: 'Add Checklist', action: 'truckChecklistCreate', title: 'Add Checklist', submit: 'Add',
-        fields: [
-          { key: 'truck', label: 'Truck', type: 'select', options: TRUCKS, required: true },
-          { key: 'date', label: 'Date', type: 'date', required: true },
-          { key: 'issues', label: 'Issues found', type: 'number', default: 0 },
-          { key: 'notes', label: 'Notes', type: 'textarea' },
-        ],
-      }}
-      actions={[
-        { name: 'truckChecklistAdvance', label: 'Start', when: (r) => r.status === 'Open' },
-        {
-          name: 'truckChecklistAdvance', label: 'Complete', title: 'Complete checklist', when: (r) => r.status === 'In Progress',
-          fields: [{ key: 'signature', label: 'Signature (type the name)', required: true }],
-        },
-      ]}
-    />
-  );
-}
-
-export function ScheduleRequests() {
-  const { db } = useStore();
-  return (
-    <Screen
-      title="Schedule Requests"
-      subtitle="Client requests to change a delivery schedule."
-      rows={db.scheduleRequests}
-      columns={[
-        { key: 'no', label: 'Request' }, { key: 'srNo', label: 'Service Request' }, { key: 'customer', label: 'Customer' },
-        dateCol('currentDate', 'Current date'), dateCol('newDate', 'Wants'), { key: 'reason', label: 'Reason' }, { key: 'status', label: 'Status', pill: true },
-      ]}
-      tabs={['All', 'Pending Review', 'Confirmed', 'Declined'].map((s) => ({ key: s, label: s, test: (r) => s === 'All' || r.status === s }))}
-      create={{
-        label: 'New Request', action: 'scheduleRequestCreate', title: 'New schedule request', submit: 'Send request',
-        fields: [
-          { key: 'id', label: 'Service Request', type: 'select', required: true, options: db.serviceRequests.filter((s) => s.status !== 'Completed').map((s) => ({ value: s.id, label: `${s.no} · ${s.customer}` })) },
-          { key: 'newDate', label: 'New date', type: 'date', required: true },
-          { key: 'reason', label: 'Reason', type: 'textarea', required: true },
-        ],
-      }}
-      actions={[
-        { name: 'scheduleRequestDecide', label: 'Confirm', when: (r) => r.status === 'Pending Review', payload: (r) => ({ id: r.id, decision: 'Confirm' }), confirm: (r) => `Move ${r.srNo} to start from ${r.newDate}?` },
-        {
-          name: 'scheduleRequestDecide', label: 'Decline', tone: 'danger', title: 'Decline request', submit: 'Decline', when: (r) => r.status === 'Pending Review',
-          fields: [{ key: 'note', label: 'Why?', type: 'textarea', required: true }], payload: (r, v) => ({ id: r.id, decision: 'Decline', ...v }),
-        },
-      ]}
-    />
-  );
-}
 
 export { pillCol };

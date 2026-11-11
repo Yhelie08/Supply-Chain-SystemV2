@@ -1,0 +1,131 @@
+ -->
+<div id="view-detail" style="">
+  <div class="detail-page">
+
+    <!-- Topbar -->
+    <div class="detail-topbar">
+      <span class="detail-topbar-title" id="dTopTitle">PR-08992 — Decision Workspace</span>
+    </div>
+    <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+    <div id="nsBanner" style="padding:12px 16px 0" data-ns-banner="4662244000017156333"><div class="ns-banner ns-next"><span><span class="ns-lbl">You are here</span><b>For Sourcing</b></span><span class="ns-arrow">→</span><span><span class="ns-lbl">Next step</span><b>Select a supplier</b> <span class="ns-who">(Purchasing)</span></span></div></div>
+    <!-- On Hold / Cancelled banner (ADDED 2026-10-01) -->
+    <div id="holdBanner" style="padding:12px 16px 10px;display:none"></div>
+
+    <!-- Sub-header -->
+    <div class="detail-subheader">
+      <div class="detail-subheader-left">
+        <button class="btn btn-ghost btn-sm" onclick="showView('list')">← Back to Queue</button>
+        <span class="detail-pr-no" id="dPrNo">PR-08992</span>
+        <span class="detail-so" id="dSoNo">SO-17141</span>
+        <span class="detail-customer" id="dCustomer">Vicente Vargas</span>
+        <div id="dBadges" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="badge-pill status-readypo">● Ready for PO</span><span class="badge-pill" style="background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)">● MED</span><span class="badge-pill delay-atrisk">● At Risk</span><span class="badge-pill rec-yes">Ready for PO: YES</span><span class="badge-pill status-pending">Converted: NO</span></div>
+      </div>
+      <div class="detail-subheader-right">
+        <button class="btn btn-ghost btn-sm" id="dBtnHold" onclick="openHoldModal('hold')" title="">Put On Hold</button>
+        <button class="btn btn-ghost btn-sm" id="dBtnCancelPR" onclick="openHoldModal('cancel')">Cancel PR</button>
+        <button class="btn btn-ghost btn-sm" id="dBtnEdit" onclick="enterEditMode()" title="">Edit</button>
+        <button class="btn btn-ghost btn-sm" id="dBtnSave" onclick="saveEdits()" title="">Save</button>
+        <button class="btn btn-ghost btn-sm" id="dBtnViewPO" onclick="showToast('No PO created yet')">View PO</button>
+        <button class="btn btn-sm btn-create-po" id="dBtnCreatePO" onclick="createPOFromDetail()" title="">Create PO →</button>
+      </div>
+    </div>
+
+    <!-- Meta line -->
+    <div class="detail-meta" id="dMeta">Locked:&nbsp;<strong>No</strong><span class="detail-meta-sep">&nbsp;·&nbsp;</span>Created:&nbsp;<strong>Nov 11, 2026</strong><span class="detail-meta-sep">&nbsp;·&nbsp;</span>Last updated:&nbsp;<strong>Nov 11, 2026</strong></div>
+
+    <!-- Body -->
+    <div class="detail-body">
+      <div id="dMain">
+    <div class="sec-card">
+      <div class="sec-header"><span class="sec-title">Product Info</span></div>
+      <div style="padding:16px 20px 0">
+        <div style="display:flex;align-items:center;gap:16px;padding:14px 16px;background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:var(--radius)">
+          <div style="width:72px;height:72px;border-radius:var(--radius);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;letter-spacing:-.02em;background:#EFF6FF;color:#1D4ED8">
+            <img id="dProductImage" style="display:none;width:100%;height:100%;object-fit:cover;cursor:zoom-in" onclick="if(this.src)openLightbox(this.src)">
+            <span id="dProductImageFallback">T|</span>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Item Photo / Name</div>
+            <div style="font-size:14px;font-weight:600;color:var(--gray-800)">Teruma | Outdoor Wall Light/13cm / Black</div>
+            <div style="font-size:12px;color:var(--gray-400);font-family:monospace;margin-top:3px">TERUMOUT-13CMBLACK-2512</div>
+            <div style="font-size:12.5px;color:var(--gray-600);line-height:1.4;margin-top:6px" id="dvDesc">PR-10076</div>
+          </div>
+        </div>
+      </div>
+      <div class="detail-info-grid">
+        <div class="detail-field"><div class="detail-label-sm">Quantity</div><div class="detail-val" id="dvQty">8 pcs</div></div>
+        <div class="detail-field"><div class="detail-label-sm">Supplier Target Date</div><div class="detail-val" id="dvTargetDate">Nov 26, 2026</div></div>
+        <div class="detail-field"><div class="detail-label-sm">INQ Reference</div><div class="detail-val blue"><span class="detail-val muted">— None</span></div></div>
+        <div class="detail-field"><div class="detail-label-sm">Customer</div><div class="detail-val">Vicente Vargas</div></div>
+        <div class="detail-field"><div class="detail-label-sm">Customer Type</div><div class="detail-val">End User</div></div>
+        <div class="detail-field"><div class="detail-label-sm">Sales Owner</div><div class="detail-val">HC Sales Coordinator</div></div>
+        <div class="detail-field"><div class="detail-label-sm">PR Date</div><div class="detail-val">Nov 11, 2026</div></div>
+        <div class="detail-field"><div class="detail-label-sm">Category</div><div class="detail-val"><span class="badge-pill cat-badge">Outdoor Light</span></div></div>
+        <div class="detail-field"><div class="detail-label-sm">Delay Status</div><div class="detail-val" id="dvDelayStatus"><span class="badge-pill delay-atrisk">● At Risk</span></div></div>
+        <div class="detail-field span-2"><div class="detail-label-sm">Similar Item</div><div class="detail-val" id="dvSimilarItem"><span class="detail-val muted">Not flagged</span></div></div>
+        
+        <div class="detail-field span-4"><div class="detail-label-sm">Attachments</div><div style="margin-top:4px"><span style="color:var(--gray-400);font-size:13px;font-style:italic">No attachments</span></div></div>
+      </div>
+    </div>
+
+    
+    <div class="sec-card">
+      <div class="sec-header">
+        <span class="sec-title">Supplier Recommendation — Load Balancing</span>
+        <span class="sec-hint">System decides &nbsp;·&nbsp; Human supervises</span>
+      </div>
+      <div class="sec-body">
+        <div class="table-wrap">
+          <table class="rec-table">
+            <thead><tr><th>Supplier</th><th>Step 1 — Category</th><th>Active POs</th><th>Load Bar</th><th>Step 2 — Status</th><th>Step 3 — Eligible</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="rec-sname">HC  System</div><div class="rec-scat">Not Match</div></td>
+                <td class="rec-match-n">✗ No match</td>
+                <td style="font-weight:600;color:var(--gray-800);font-variant-numeric:tabular-nums">0</td>
+                <td><div class="rec-load-row"><div class="rec-lb-bg"><div class="rec-lb green" style="width:0%;display:block"></div></div><span class="rec-lpct green">0%</span></div></td>
+                <td><span class="badge-pill rec-status-normal">● Normal</span></td>
+                <td><span class="rec-el-removed">✕ Removed — Step 1</span></td>
+              </tr>
+              <tr>
+                <td><div class="rec-sname">Fenteng Lighting</div><div class="rec-scat">Match</div></td>
+                <td class="rec-match-y">✓ Match</td>
+                <td style="font-weight:600;color:var(--gray-800);font-variant-numeric:tabular-nums">0</td>
+                <td><div class="rec-load-row"><div class="rec-lb-bg"><div class="rec-lb green" style="width:0%;display:block"></div></div><span class="rec-lpct green">0%</span></div></td>
+                <td><span class="badge-pill rec-status-normal">● Normal</span></td>
+                <td><span class="rec-el-avail" style="opacity:.7">Awaiting Quote</span></td>
+              </tr>
+              <tr>
+                <td><div class="rec-sname">Tony Fan</div><div class="rec-scat">Match</div></td>
+                <td class="rec-match-y">✓ Match</td>
+                <td style="font-weight:600;color:var(--gray-800);font-variant-numeric:tabular-nums">10</td>
+                <td><div class="rec-load-row"><div class="rec-lb-bg"><div class="rec-lb green" style="width:33%;display:block"></div></div><span class="rec-lpct green">33%</span></div></td>
+                <td><span class="badge-pill rec-status-normal">● Normal</span></td>
+                <td><span class="rec-el-avail" style="opacity:.7">Awaiting Quote</span></td>
+              </tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-header"><span class="sec-title">Supplier Selection</span></div>
+      <div class="sec-body">
+        <div class="fg fg-3">
+          <div><div class="fi-lbl">Selected Supplier</div><div class="fi-val" id="dvSupplier" style="color:var(--blue);font-size:15px;font-weight:600">—</div></div>
+          <div><div class="fi-lbl">Followed Recommendation</div><div class="fi-val" id="dvFollowedRec"><span style="color:var(--gray-300)">—</span></div></div>
+          <div><div class="fi-lbl">Priority</div><div class="fi-val" id="dvPriority"><span class="pri-med"><span class="priority-dot"></span>MED</span></div></div>
+          <div id="dvOverrideReasonWrap" style="grid-column:span 3;display:none">
+            <div class="fi-lbl">Override Reason</div>
+            <div class="fi-val" id="dvOverrideReason" style="font-weight:400;font-size:13.5px;color:var(--gray-700)"><span class="fi-val muted">— No reason provided</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <!-- Prices here are unambiguously CNY (yen sign) — raw Supplier_Selected.Initial_Price/
+           Negotiated/Final_Price, never a PHP-sourced fallback like finalPrice can
+           carry elsewhere on this page. Fixed 2026-07-15, was showing peso sign. -->
+      <div class="sec-header"><span class="sec-title">Supplier Quotes</span></div>
+      <div class="sec-body">

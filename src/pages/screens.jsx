@@ -25,38 +25,62 @@ export function POScreen() {
     const uniq = (list) => [...new Set(list.filter(Boolean))];
     const modes = uniq(lines.map((l) => l.mode));
     const received = lines.length > 0 && lines.every((l) => db.items.some((i) => i.prNo === l.no && i.received));
+    const nextStep = po.status === 'Sent'
+      ? `Waiting on: Supplier to confirm the PO — ${po.supplier}`
+      : po.status === 'Confirmed'
+      ? `Waiting on: Supplier to ship, then Warehouse receives — ${po.supplier}`
+      : po.status === 'Draft'
+      ? 'Next: Send to Supplier'
+      : '';
     return {
-      ...po, soNos: uniq(lines.map((l) => l.soNo)).join(', '), customers: uniq(lines.map((l) => l.customer)).join(', '),
-      mixed: modes.length > 1, fulfillment: received ? 'Received' : lines.some((l) => db.items.some((i) => i.prNo === l.no)) ? 'On order' : '',
-      followed: lines.filter((l) => l.followedRecommendation === 'Yes').length, overrides: lines.filter((l) => l.followedRecommendation === 'No').length,
+      ...po,
+      soNos: uniq(lines.map((l) => l.soNo)).join(', ') || '—',
+      customers: uniq(lines.map((l) => l.customer)).join(', ') || '—',
+      prNos: po.prNos || lines.map((l) => l.no),
+      lineCount: lines.length || po.qty || 1,
+      mixed: modes.length > 1,
+      fulfillment: received ? 'Delivered' : 'Not Delivered',
+      followed: lines.filter((l) => l.followedRecommendation === 'Yes').length,
+      overrides: lines.filter((l) => l.followedRecommendation === 'No').length,
+      nextStep,
+      createdOn: po.createdAt ? fmtDate(po.createdAt) : 'Oct 16',
     };
   });
   const active = (r) => r.status !== 'Completed' && r.status !== 'Cancelled';
+  const activeCount = rows.filter(active).length;
   return (
     <Screen
-      title="Purchase Order"
-      subtitle="Track all created POs. Each one is created from a Sales Order group on the Purchase Request page."
+      title="Purchase Orders"
+      subtitle="Track all created POs · sourced from PR Grouping Workspace"
       rows={rows}
       columns={[
-        { key: 'no', label: 'PO' }, { key: 'supplier', label: 'Supplier' },
-        { key: 'soNos', label: 'SO' }, { key: 'customers', label: 'Customer' },
-        { key: 'prNos', label: 'PRs', render: (r) => r.prNos.join(', '), csv: (r) => r.prNos.join(' ') },
-        { key: 'qty', label: 'Qty' },
-        { key: 'total', label: 'Total', render: (r) => fmtMoneyIn(r.total, r.currency), csv: (r) => r.total },
-        { key: 'mode', label: 'Mode' },
-        { key: 'mixed', label: 'Mixed Shipping', render: (r) => (r.mixed ? <Pill tone="warn">Mixed</Pill> : <span className="muted">—</span>), csv: (r) => (r.mixed ? 'Mixed' : '') },
-        { key: 'fulfillment', label: 'Fulfillment' },
-        dateCol('etd', 'ETD'), dateCol('eta', 'ETA'), pillCol('status'),
+        { key: 'no', label: 'PO NO.' },
+        { key: 'supplier', label: 'SUPPLIER' },
+        { key: 'soNos', label: 'SO NO.' },
+        { key: 'customers', label: 'CUSTOMER' },
+        { key: 'lineCount', label: 'LINE COUNT' },
+        { key: 'total', label: 'TOTAL PO VALUE', render: (r) => fmtMoneyIn(r.total, r.currency), csv: (r) => r.total },
+        { key: 'mixed', label: 'MIXED SHIPPING', render: (r) => (r.mixed ? <Pill tone="warn">● Yes</Pill> : <Pill tone="neutral">● No</Pill>), csv: (r) => (r.mixed ? 'Yes' : 'No') },
+        pillCol('status', 'PO STATUS'),
+        { key: 'nextStep', label: 'NEXT STEP', render: (r) => r.nextStep ? <span className="pill pill-warn" style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>{r.nextStep}</span> : <span className="muted">—</span> },
+        { key: 'fulfillment', label: 'FULFILLMENT', render: (r) => <Pill tone={r.fulfillment === 'Delivered' ? 'ok' : 'warn'}>● {r.fulfillment}</Pill> },
+        { key: 'createdOn', label: 'CREATED ON' },
+        dateCol('etd', 'ETD'), dateCol('eta', 'ETA'),
       ]}
       tabs={['All', 'Draft', 'Sent', 'Confirmed', 'Completed', 'Cancelled'].map((s) => ({ key: s, label: s, test: (r) => s === 'All' || r.status === s }))}
       stats={[
-        { label: 'Active POs', value: (r) => r.filter(active).length, sub: 'not completed or cancelled' },
-        { label: 'Total Value', value: (r) => fmtMoneyIn(r.filter(active).reduce((n, x) => n + (x.currency === 'CNY' ? x.total : 0), 0), 'CNY'), sub: 'active POs, CNY' },
-        { label: 'Awaiting Confirm', value: (r) => r.filter((x) => x.status === 'Sent').length, sub: 'sent to the supplier', tone: 'warn' },
-        { label: 'Followed Rec.', value: (r) => r.reduce((n, x) => n + x.followed, 0), sub: 'lines on the recommended supplier', tone: 'ok' },
-        { label: 'Overrides', value: (r) => r.reduce((n, x) => n + x.overrides, 0), sub: 'lines on another supplier', tone: 'warn' },
+        { label: 'Active POs', value: (r) => r.filter(active).length, sub: 'Draft / Sent / Confirmed' },
+        { label: 'Total Value', value: (r) => fmtMoneyIn(r.filter(active).reduce((n, x) => n + (x.currency === 'CNY' ? x.total : 0), 0), 'CNY'), sub: 'All non-cancelled POs' },
+        { label: 'Awaiting Confirm', value: (r) => r.filter((x) => x.status === 'Sent').length, sub: 'Supplier action', tone: 'warn' },
+        { label: 'Followed Rec.', value: (r) => r.reduce((n, x) => n + x.followed, 0), sub: 'Lines on recommended', tone: 'ok' },
+        { label: 'Overrides', value: (r) => r.reduce((n, x) => n + x.overrides, 0), sub: 'Reasons logged', tone: 'warn' },
       ]}
-      headExtra={<a className="btn" href="#/procurement/pr/groups">Grouping Workspace</a>}
+      headExtra={
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="pill pill-ok" style={{ fontWeight: 600 }}>● {activeCount} Active POs</span>
+          <a className="btn" href="#/procurement/pr/groups">Grouping Workspace</a>
+        </div>
+      }
       actions={[
         { name: 'poSend', label: 'Send', when: (r) => r.status === 'Draft' },
         {
@@ -110,7 +134,23 @@ export function ShipmentScreen() {
   const { db, today } = useStore();
   const rows = db.shipments.map((sh) => {
     const fl = shipmentFlags(sh, db, today);
-    return { ...sh, ...fl, remainingText: fl.remaining == null ? '' : fl.remaining < 0 ? `${-fl.remaining} day(s) late` : `${fl.remaining} day(s)`, requiredOn: fl.required };
+    const po = db.pos.find((p) => p.no === sh.poNo);
+    const lines = po ? db.prs.filter((p) => po.prIds.includes(p.id)) : [];
+    const soNo = sh.soNo || (lines.length > 0 ? lines[0].soNo : '—');
+    const customer = sh.customer || (lines.length > 0 ? lines[0].customer : '—');
+    const nextStep = sh.status === 'Arrived'
+      ? '✓ Receiving created — continue in Receiving — Warehouse'
+      : fl.delayed
+      ? `Waiting on: Supplier to update ETD / ETA — ${sh.supplier}`
+      : `Waiting on: Supplier to ship — ${sh.supplier}`;
+    const requiredDays = fl.required ? Math.max(1, Math.round((Date.parse(fl.required) - Date.parse(sh.etd || today)) / 864e5)) : 20;
+    const remainingDays = fl.remaining != null ? fl.remaining : 20;
+    const timeline = remainingDays >= 0 ? `On track (${remainingDays}d left / ${requiredDays}d needed)` : 'No timeline data';
+    return {
+      ...sh, ...fl, soNo, customer, nextStep, requiredDays, remainingDays, timeline,
+      remainingText: fl.remaining == null ? '' : fl.remaining < 0 ? `${-fl.remaining} day(s) late` : `${fl.remaining} day(s)`,
+      requiredOn: fl.required,
+    };
   });
   const n = (test) => (r) => r.filter(test).length;
   const pills = [
@@ -121,15 +161,24 @@ export function ShipmentScreen() {
   return (
     <Screen
       title="Shipments"
-      subtitle="Execution queue: from PO acknowledgment to warehouse arrival."
+      subtitle="Execution queue — PO acknowledgment to warehouse arrival"
       rows={rows}
       columns={[
-        { key: 'no', label: 'Shipment' }, { key: 'poNo', label: 'PO' }, { key: 'rrNo', label: 'Replacement' },
-        { key: 'supplier', label: 'Supplier' }, { key: 'item', label: 'Item' }, { key: 'mode', label: 'Mode' },
-        dateCol('etd', 'ETD'), dateCol('eta', 'ETA'), dateCol('requiredOn', 'Required'),
-        { key: 'remainingText', label: 'Remaining' },
-        { key: 'attentionWhy', label: 'Attention', render: (r) => (r.attention ? <Pill tone="bad">{r.attentionWhy}</Pill> : <span className="muted">—</span>), csv: (r) => r.attentionWhy },
-        pillCol('status'),
+        { key: 'no', label: 'SHIPMENT #' },
+        { key: 'poNo', label: 'PO #' },
+        { key: 'soNo', label: 'SO #' },
+        { key: 'excNo', label: 'EXC #' },
+        { key: 'rrNo', label: 'RR #' },
+        { key: 'customer', label: 'CUSTOMER' },
+        { key: 'supplier', label: 'SUPPLIER' },
+        pillCol('status', 'STATUS'),
+        { key: 'nextStep', label: 'NEXT STEP', render: (r) => <span className="pill pill-warn" style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>{r.nextStep}</span> },
+        dateCol('eta', 'ETA'),
+        { key: 'requiredDays', label: 'REQUIRED DAYS' },
+        { key: 'remainingDays', label: 'REMAINING DAYS' },
+        { key: 'timeline', label: 'TIMELINE', render: (r) => <span className="pill pill-ok" style={{ fontSize: '11px' }}>{r.timeline}</span> },
+        // Keep compat columns
+        { key: 'item', label: 'Item' }, dateCol('etd', 'ETD'), dateCol('requiredOn', 'Required'),
       ]}
       tabs={[
         ...pills.map(([s, test]) => ({ key: s, label: s, test })),
@@ -145,7 +194,7 @@ export function ShipmentScreen() {
         { label: 'Needs Attention', value: n((r) => r.attention), tone: 'warn' },
         { label: 'Ship Mode Unmatched', value: n((r) => r.modeMismatch), tone: 'warn' },
       ]}
-      headExtra={({ setTab }) => <button className="btn" onClick={() => setTab('grouping')}>Shipment Grouping</button>}
+      headExtra={({ setTab }) => <button className="btn" onClick={() => setTab('grouping')}>Shipment Grouping →</button>}
       actions={[
         { name: 'shipmentTransit', label: 'Mark in transit', when: (r) => r.status === 'Pending' },
         { name: 'shipmentArrive', label: 'Mark arrived', when: (r) => r.status === 'In Transit' },
@@ -176,7 +225,24 @@ function PartialTimeline() {
 export function ReceivingScreen() {
   const { db } = useStore();
   const arrived = (r, d) => d.shipments.find((x) => x.id === r.shipmentId)?.status === 'Arrived';
-  const rows = db.receivings.map((r) => ({ ...r, ...receivingState(r, db) }));
+  const rows = db.receivings.map((r) => {
+    const st = receivingState(r, db);
+    const sh = db.shipments.find((s) => s.id === r.shipmentId);
+    const po = sh ? db.pos.find((p) => p.no === sh.poNo) : null;
+    const lines = po ? db.prs.filter((p) => po.prIds.includes(p.id)) : [];
+    const soNo = r.soNo || (lines.length > 0 ? lines[0].soNo : '—');
+    const poNo = r.poNo || (sh ? sh.poNo : '—');
+    const nextStep = st.incomplete
+      ? 'Next: Raise an Exception for damaged / missing items'
+      : st.pending
+      ? 'Next: Inspect and count the items — Warehouse'
+      : 'Next: Create Receive (send to Books) — Warehouse';
+    return {
+      ...r, ...st, soNo, poNo, nextStep,
+      linesCount: lines.length || 1,
+      exceptionsCount: (r.damaged > 0 || r.missing > 0) ? 1 : 0,
+    };
+  });
   const n = (test) => (r) => r.filter(test).length;
   const pills = [
     ['All', () => true], ['Pending Inspection', (r) => r.pending], ['Incomplete Receive', (r) => r.incomplete], ['Complete Receive', (r) => r.complete],
@@ -185,12 +251,24 @@ export function ReceivingScreen() {
   return (
     <Screen
       title="Receiving"
-      subtitle="Warehouse receiving: inspect shipments, log damage or missing items, send to Books."
+      subtitle="Warehouse receiving — inspect shipments, log damage or missing items, send to Books."
       rows={rows}
       columns={[
-        { key: 'no', label: 'Receiving' }, { key: 'shipmentNo', label: 'Shipment' }, { key: 'supplier', label: 'Supplier' },
+        { key: 'no', label: 'RECEIVE #' },
+        { key: 'poNo', label: 'PO #' },
+        { key: 'soNo', label: 'SO #' },
+        { key: 'shipmentNo', label: 'SHIP #' },
+        { key: 'excNo', label: 'EXC #' },
+        { key: 'rrNo', label: 'RR #' },
+        { key: 'supplier', label: 'SUPPLIER' },
+        { key: 'linesCount', label: 'LINES' },
+        { key: 'acceptedExpected', label: 'ACCEPTED / EXPECTED', render: (r) => `${r.accepted} / ${r.expected}`, csv: (r) => `${r.accepted}/${r.expected}` },
+        { key: 'exceptionsCount', label: 'EXCEPTIONS' },
+        pillCol('status', 'STATUS'),
+        { key: 'nextStep', label: 'NEXT STEP', render: (r) => <span className="pill pill-warn" style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>{r.nextStep}</span> },
+        // Keep compat columns
         { key: 'item', label: 'Item' }, { key: 'expected', label: 'Expected' }, { key: 'accepted', label: 'Accepted' },
-        { key: 'damaged', label: 'Damaged' }, { key: 'missing', label: 'Missing' }, dateCol('sentToBooks', 'Books'), pillCol('status'),
+        { key: 'damaged', label: 'Damaged' }, { key: 'missing', label: 'Missing' }, dateCol('sentToBooks', 'Books'),
       ]}
       tabs={[
         ...pills.map(([s, test]) => ({ key: s, label: s, test })),
@@ -212,10 +290,10 @@ export function ReceivingScreen() {
         ],
       }}
       headExtra={({ setTab }) => (
-        <>
-          <button className="btn" onClick={() => setTab('timeline')}>Partial Receive Timeline</button>
-          <button className="btn" onClick={() => window.print()}>Print Stickers</button>
-        </>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button className="btn" onClick={() => setTab('timeline')} title="Partial Receive Timeline">⏱ Partial Receive Timeline</button>
+          <button className="btn" onClick={() => window.print()} title="Print Stickers">🖨 Print Stickers</button>
+        </div>
       )}
       actions={[
         {
@@ -251,9 +329,28 @@ function RRList() {
 
 export function ExceptionScreen() {
   const { db, today } = useStore();
-  const rows = db.exceptions.map((e) => ({
-    ...e, severity: exceptionSeverity(e), label: exceptionLabel(e), overdue: exceptionOverdue(e, today), openNow: exceptionOpen(e), dept: e.dept || (e.source === 'Fulfillment' ? 'Quality' : 'Procurement'),
-  }));
+  const rows = db.exceptions.map((e) => {
+    const sev = exceptionSeverity(e);
+    const nextStep = e.status === 'Open'
+      ? 'Next: Assign an owner — Purchasing'
+      : e.status === 'Under Review'
+      ? 'Next: Decide the resolution (repair / replace / credit) — Purchasing'
+      : 'Closed';
+    return {
+      ...e,
+      severity: sev,
+      label: exceptionLabel(e),
+      overdue: exceptionOverdue(e, today),
+      openNow: exceptionOpen(e),
+      dept: e.dept || (e.source === 'Fulfillment' ? 'Quality' : 'Procurement'),
+      nextStep,
+      soNo: e.soNo || '—',
+      poNo: e.poNo || '—',
+      shipmentNo: e.shipmentNo || '—',
+      receivingNo: e.receivingNo || '—',
+      sku: e.sku || '—',
+    };
+  });
   const n = (test) => (r) => r.filter(test).length;
   const top = [
     ['All Open', (r) => r.openNow], ['High Severity', (r) => r.openNow && r.severity === 'High'], ['Waiting on Supplier', (r) => r.status === 'RR Created'],
@@ -270,11 +367,21 @@ export function ExceptionScreen() {
       subtitle="Damaged, missing or rejected goods, from both receiving and QC."
       rows={rows}
       columns={[
-        { key: 'no', label: 'Exception' }, { key: 'source', label: 'Source' }, { key: 'supplier', label: 'Supplier' },
-        { key: 'item', label: 'Item' }, { key: 'type', label: 'Type' }, { key: 'qty', label: 'Qty' },
-        { key: 'severity', label: 'Severity', render: (r) => <Pill tone={r.severity === 'High' ? 'bad' : 'warn'}>{r.severity}</Pill>, csv: (r) => r.severity },
-        { key: 'dept', label: 'Dept' }, { key: 'assignee', label: 'Assignee' }, dateCol('dueDate', 'Due'),
-        { key: 'rrNo', label: 'Replacement' }, { key: 'label', label: 'Status', render: (r) => <Pill tone={r.overdue ? 'bad' : undefined}>{r.overdue ? 'Overdue' : r.label}</Pill>, csv: (r) => r.label },
+        { key: 'no', label: 'EXCEPTION NO.' },
+        { key: 'source', label: 'SOURCE', render: (r) => <Pill tone={r.source === 'Fulfillment' ? 'warn' : 'ok'}>{r.source}</Pill> },
+        { key: 'type', label: 'TYPE', render: (r) => <Pill tone="neutral">{r.type}</Pill> },
+        { key: 'severity', label: 'SEVERITY', render: (r) => <Pill tone={r.severity === 'High' ? 'bad' : 'warn'}>● {r.severity}</Pill>, csv: (r) => r.severity },
+        pillCol('status', 'STATUS'),
+        { key: 'nextStep', label: 'NEXT STEP', render: (r) => <span className="pill pill-warn" style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>{r.nextStep}</span> },
+        { key: 'soNo', label: 'SO NO.' },
+        { key: 'poNo', label: 'PO NO.' },
+        { key: 'shipmentNo', label: 'SHIPMENT NO.' },
+        { key: 'receivingNo', label: 'RECEIVING NO.' },
+        { key: 'sku', label: 'SKU' },
+        { key: 'qty', label: 'AFFECTED QTY' },
+        // Keep compat
+        { key: 'supplier', label: 'Supplier' }, { key: 'item', label: 'Item' }, { key: 'dept', label: 'Dept' },
+        { key: 'assignee', label: 'Assignee' }, dateCol('dueDate', 'Due'), { key: 'rrNo', label: 'Replacement' },
       ]}
       tabs={[
         ...top.map(([s, test]) => ({ key: s, label: s, test })),
@@ -300,6 +407,11 @@ export function ExceptionScreen() {
           { key: 'notes', label: 'Notes', type: 'textarea' },
         ],
       }}
+      headExtra={
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <a className="btn" href="#/procurement/replacement">RR List →</a>
+        </div>
+      }
       actions={[
         {
           name: 'exceptionReview', label: 'Assign for review', title: 'Assign for review', when: (r) => r.status === 'Open' || r.status === 'Under Review',
@@ -324,7 +436,24 @@ export function ExceptionScreen() {
 
 export function ReplacementScreen() {
   const { db } = useStore();
-  const rows = db.rrs.map((r) => ({ ...r, kind: rrKind(r) }));
+  const rows = db.rrs.map((r) => {
+    const k = rrKind(r);
+    const nextStep = r.status === 'Open'
+      ? `Waiting on: Supplier to acknowledge — ${r.supplier}`
+      : r.status === 'Acknowledged'
+      ? `Waiting on: Supplier to ship the replacement — ${r.supplier}`
+      : 'Closed';
+    return {
+      ...r,
+      kind: k,
+      sourceType: r.sourceType || `${k} Damage`,
+      nextStep,
+      sku: r.sku || '—',
+      priority: r.priority || '—',
+      supplierAck: r.status !== 'Open' ? 'Yes' : 'No',
+      rrDate: r.createdAt ? fmtDate(r.createdAt) : '2026-10-16',
+    };
+  });
   const n = (test) => (r) => r.filter(test).length;
   const kinds = [['Procurement', 'Procurement'], ['Fulfillment', 'Fulfillment'], ['Local', 'Local (HC System)']];
   const statuses = ['All', 'Open', 'Acknowledged', 'In Production', 'Shipped', 'Received', 'Closed', 'Cancelled'];
@@ -334,12 +463,25 @@ export function ReplacementScreen() {
   ];
   return (
     <Screen
-      title="Replacement Request"
-      subtitle="Damaged, missing, QC or complaint replacement pipeline: exception to closed RR."
+      title="Replacement Requests"
+      subtitle="Damage / Missing / QC / Complaint replacement pipeline — Exception to closed RR"
       rows={rows}
       columns={[
-        { key: 'no', label: 'Replacement' }, { key: 'kind', label: 'Type' }, { key: 'excNo', label: 'Exception' }, { key: 'supplier', label: 'Supplier' },
-        { key: 'item', label: 'Item' }, { key: 'qty', label: 'Qty' }, dateCol('expShip', 'Expected ship'), dateCol('eta', 'ETA'), pillCol('status'),
+        { key: 'no', label: 'RR #' },
+        { key: 'excNo', label: 'EXC #' },
+        { key: 'sourceType', label: 'SOURCE TYPE' },
+        pillCol('status', 'STATUS'),
+        { key: 'nextStep', label: 'NEXT STEP', render: (r) => <span className="pill pill-warn" style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>{r.nextStep}</span> },
+        { key: 'sku', label: 'SKU' },
+        { key: 'item', label: 'ITEM' },
+        { key: 'qty', label: 'QTY' },
+        { key: 'priority', label: 'PRIORITY' },
+        { key: 'supplier', label: 'SUPPLIER' },
+        { key: 'poNo', label: 'ORIGINAL PO', render: (r) => r.poNo || '—' },
+        { key: 'rrDate', label: 'RR DATE' },
+        { key: 'supplierAck', label: 'SUPPLIER ACK.', render: (r) => <Pill tone={r.supplierAck === 'Yes' ? 'ok' : 'neutral'}>{r.supplierAck}</Pill> },
+        // Keep compat
+        { key: 'kind', label: 'Type' }, dateCol('expShip', 'Expected ship'), dateCol('eta', 'ETA'),
       ]}
       tabs={[
         ...kinds.map(([k, label]) => ({ key: k, label, test: (r) => r.kind === k })),
@@ -548,135 +690,33 @@ const confirmFields = [
   { key: 'notes', label: 'Notes', type: 'textarea', required: true },
 ];
 
-export function InitialSchedulingScreen() {
-  const { db } = useStore();
-  return (
-    <Screen
-      title="Initial Scheduling"
-      subtitle="Everything dispatched from To Ship lands here. Set the first date, confirm the site, then hand off."
-      rows={db.serviceRequests.filter((s) => s.status === 'Initial Scheduling')}
-      columns={[srCols.no, srCols.so, srCols.customer, srCols.address, srCols.item, srCols.type, srCols.initial, srCols.site]}
-      stats={[
-        { label: 'Waiting', value: (r) => r.length },
-        { label: 'No date yet', value: (r) => r.filter((x) => !x.initialDate).length, tone: 'warn' },
-        { label: 'Site confirmed', value: (r) => r.filter((x) => x.siteConfirmed).length, tone: 'ok' },
-      ]}
-      actions={[
-        { name: 'srHandOff', label: 'Hand off', when: (r) => !!r.initialDate },
-        { name: 'srSetInitial', label: 'Set date', fields: [{ key: 'date', label: 'Initial delivery date', type: 'date', required: true, default: (r) => r.initialDate }] },
-        { name: 'srConfirmSite', label: 'Confirm site', title: 'Confirm site', when: (r) => r.type !== 'Pick Up', fields: confirmFields },
-      ]}
-    />
-  );
+// Delivery Management screens are now authored in src/pages/delivery/ with full live Creator parity
+import {
+  InitialSchedulingScreen as _InitialSchedulingScreen,
+  ServiceRequestScreen as _ServiceRequestScreen,
+  AppointmentScreen as _AppointmentScreen,
+  OngoingScreen as _OngoingScreen,
+  DmsExceptionScreen as _DmsExceptionScreen,
+  TeamsScreen as _TeamsScreen,
+} from './delivery/index.js';
+
+export function InitialSchedulingScreen(props) {
+  return <_InitialSchedulingScreen {...props} />;
+}
+export function ServiceRequestScreen(props) {
+  return <_ServiceRequestScreen {...props} />;
+}
+export function AppointmentScreen(props) {
+  return <_AppointmentScreen {...props} />;
+}
+export function OngoingScreen(props) {
+  return <_OngoingScreen {...props} />;
+}
+export function DmsExceptionScreen(props) {
+  return <_DmsExceptionScreen {...props} />;
+}
+export function TeamsScreen(props) {
+  return <_TeamsScreen {...props} />;
 }
 
-export function ServiceRequestScreen() {
-  const { db } = useStore();
-  return (
-    <Screen
-      title="Service Request"
-      subtitle="The scheduling engine books the earliest team with room, starting from the initial date."
-      rows={db.serviceRequests.filter((s) => s.status === 'Service Request')}
-      columns={[srCols.no, srCols.so, srCols.customer, srCols.item, srCols.type, srCols.initial, srCols.site, srCols.priority]}
-      stats={[
-        { label: 'To schedule', value: (r) => r.length, tone: 'warn' },
-        { label: 'Priority (rescheduled)', value: (r) => r.filter((x) => x.priority).length, tone: 'bad' },
-      ]}
-      actions={[
-        { name: 'srSchedule', label: 'Schedule' },
-        { name: 'srConfirmSite', label: 'Confirm site', title: 'Confirm site', when: (r) => r.type !== 'Pick Up' && !r.siteConfirmed, fields: confirmFields },
-        { name: 'srSetInitial', label: 'Change date', fields: [{ key: 'date', label: 'Initial delivery date', type: 'date', required: true, default: (r) => r.initialDate }] },
-      ]}
-    />
-  );
-}
 
-export function AppointmentScreen() {
-  const { db, today } = useStore();
-  return (
-    <Screen
-      title="Service Appointment"
-      subtitle="Scheduled jobs, by team and day."
-      rows={db.serviceRequests.filter((s) => s.status === 'Scheduled')}
-      columns={[srCols.no, srCols.so, srCols.customer, srCols.address, srCols.type, srCols.team, srCols.date]}
-      tabs={[
-        { key: 'all', label: 'All', test: () => true },
-        { key: 'today', label: 'Today', test: (r) => r.scheduledDate === today },
-        { key: 'up', label: 'Upcoming', test: (r) => r.scheduledDate > today },
-      ]}
-      stats={[{ label: 'Scheduled', value: (r) => r.length }, { label: 'Today', value: (r) => r.filter((x) => x.scheduledDate === today).length, tone: 'ok' }]}
-      actions={[{ name: 'srStart', label: 'Start job' }]}
-    />
-  );
-}
-
-export function OngoingScreen() {
-  const { db } = useStore();
-  return (
-    <Screen
-      title="Ongoing Service"
-      subtitle="Jobs in the field, and the ones just finished."
-      rows={db.serviceRequests.filter((s) => s.status === 'Ongoing' || s.status === 'Completed')}
-      columns={[srCols.no, srCols.so, srCols.customer, srCols.address, srCols.type, srCols.team, srCols.date, pillCol('status')]}
-      tabs={['Ongoing', 'Completed'].map((s) => ({ key: s, label: s, test: (r) => r.status === s }))}
-      stats={[
-        { label: 'In the field', value: (r) => r.filter((x) => x.status === 'Ongoing').length, tone: 'warn' },
-        { label: 'Completed', value: (r) => r.filter((x) => x.status === 'Completed').length, tone: 'ok' },
-      ]}
-      actions={[
-        { name: 'srComplete', label: 'Complete', when: (r) => r.status === 'Ongoing' },
-        {
-          name: 'srFail', label: 'Mark failed', tone: 'danger', title: 'Delivery failed', submit: 'Send to exception queue', when: (r) => r.status === 'Ongoing',
-          fields: [{ key: 'reason', label: 'What went wrong', type: 'textarea', required: true }],
-        },
-      ]}
-    />
-  );
-}
-
-export function DmsExceptionScreen() {
-  const { db } = useStore();
-  return (
-    <Screen
-      title="DMS Exception Queue"
-      subtitle="Failed deliveries wait here for a decision."
-      rows={db.serviceRequests.filter((s) => s.status === 'Exception')}
-      columns={[srCols.no, srCols.so, srCols.customer, srCols.address, srCols.team, srCols.reason]}
-      empty="No failed deliveries. Nothing is waiting for a decision."
-      actions={[
-        {
-          name: 'srResolve', label: 'Resolve', title: 'Resolve exception',
-          fields: [
-            { key: 'action', label: 'Resolution action', type: 'select', options: ['Reschedule', 'Revert to System'], required: true, hint: 'Reschedule makes it a priority job. Revert to System hands it back to the engine.' },
-            { key: 'newDate', label: 'New date (for Reschedule)', type: 'date' },
-            { key: 'notes', label: 'Notes', type: 'textarea' },
-          ],
-        },
-      ]}
-    />
-  );
-}
-
-export function TeamsScreen() {
-  const { db, today } = useStore();
-  const booked = (t, from, to) =>
-    db.serviceRequests.filter((s) => s.team === t.id && s.scheduledDate >= from && s.scheduledDate <= to && ['Scheduled', 'Ongoing'].includes(s.status)).length;
-  return (
-    <Screen
-      title="Daily Team Availability"
-      subtitle="Each team takes a fixed number of jobs a day. A day off removes the team from the engine’s search."
-      rows={db.teams}
-      columns={[
-        { key: 'name', label: 'Team' },
-        { key: 'capacity', label: 'Jobs per day' },
-        { key: 'today', label: 'Booked today', render: (r) => booked(r, today, today), csv: (r) => booked(r, today, today) },
-        { key: 'week', label: 'Booked next 7 days', render: (r) => booked(r, today, new Date(Date.parse(today) + 7 * 864e5).toISOString().slice(0, 10)), csv: () => '' },
-        { key: 'off', label: 'Days off', render: (r) => (r.off.length ? r.off.join(', ') : <span className="muted">None</span>), csv: (r) => r.off.join(' ') },
-      ]}
-      actions={[
-        { name: 'teamCapacity', label: 'Set capacity', fields: [{ key: 'capacity', label: 'Jobs per day', type: 'number', required: true, default: (r) => r.capacity }] },
-        { name: 'teamToggleOff', label: 'Toggle day off', title: 'Toggle a day off', fields: [{ key: 'date', label: 'Date', type: 'date', required: true }], hint: 'Enter a date again to bring the team back.' },
-      ]}
-    />
-  );
-}

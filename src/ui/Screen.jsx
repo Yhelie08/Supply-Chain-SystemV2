@@ -34,7 +34,7 @@ function toCsv(columns, rows, db) {
 }
 
 export default function Screen({
-  title, subtitle, rows, columns, tabs, stats, actions = [], bulk, create, searchKeys, details, empty, historyOf, drawerExtra, viewButton, headExtra, initialTab,
+  title, subtitle, rows, columns, tabs, stats, actions = [], bulk, create, searchKeys, details, empty, historyOf, drawerExtra, viewButton, headExtra, initialTab, onRowClick,
 }) {
   const { db, act } = useStore();
   const [tab, setTab] = useState(tabs ? (tabs.some((t) => t.key === initialTab) ? initialTab : tabs[0].key) : null);
@@ -63,6 +63,7 @@ export default function Screen({
     act(spec.name, spec.payload ? spec.payload(row, values) : { id: row && row.id, ...values });
 
   const start = (spec, row) => {
+    if (spec.run) { spec.run(row); return; }
     if (spec.fields && spec.fields.length) setForm({ spec, row });
     else if (spec.confirm) setForm({ spec: { ...spec, fields: [] }, row });
     else runAction(spec, row)({});
@@ -145,7 +146,12 @@ export default function Screen({
               </thead>
               <tbody>
                 {shown.map((r) => (
-                  <tr key={r.id} tabIndex={0} onClick={() => setOpen(r.id)} onKeyDown={(e) => e.key === 'Enter' && setOpen(r.id)}>
+                  <tr
+                    key={r.id}
+                    tabIndex={0}
+                    onClick={() => (onRowClick ? onRowClick(r) : setOpen(r.id))}
+                    onKeyDown={(e) => e.key === 'Enter' && (onRowClick ? onRowClick(r) : setOpen(r.id))}
+                  >
                     {bulk && (
                       <td className="col-check" onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" checked={checked.includes(r.id)} onChange={() => toggle(r.id)} aria-label={`Select ${r.no || r.id}`} />

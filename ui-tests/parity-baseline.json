@@ -1,72 +1,4 @@
 {
-  "delivery/appointments": [
-    "tab: Awaiting approval",
-    "tab: Scheduled appointments",
-    "tab: Calendar",
-    "stat card: Awaiting approval",
-    "stat card: Scheduled appointments",
-    "stat card: Ready to dispatch",
-    "stat card: Blocked by the gate",
-    "stat card: Packages still here",
-    "button: Review"
-  ],
-  "delivery/availability": [
-    "tab: Upcoming",
-    "tab: All",
-    "stat card: Teams Today",
-    "stat card: Full Day Today",
-    "stat card: Not Available Today",
-    "stat card: Upcoming Records",
-    "button: Generate Month",
-    "button: + Add Team Availability"
-  ],
-  "delivery/exceptions": [
-    "tab: Open",
-    "tab: In Progress",
-    "tab: Resolved",
-    "tab: All",
-    "stat card: Open Exceptions",
-    "stat card: Open — High Severity",
-    "stat card: Past Resolve-By",
-    "stat card: Resolved",
-    "button: Start",
-    "button: Dismiss"
-  ],
-  "delivery/initial": [
-    "tab: From Dispatch",
-    "tab: Ready to hand off",
-    "tab: Handed off",
-    "tab: Today",
-    "tab: Upcoming",
-    "tab: Not yet completed",
-    "tab: Rescheduled",
-    "button: New schedule",
-    "button: Reschedule"
-  ],
-  "delivery/ongoing": [
-    "tab: Today",
-    "tab: All Ongoing",
-    "tab: Not Started",
-    "tab: Started",
-    "tab: Installation Completed",
-    "stat card: Ongoing Deliveries",
-    "stat card: Not Started",
-    "stat card: Started",
-    "stat card: Installation Completed",
-    "button: Save Field Work"
-  ],
-  "delivery/requests": [
-    "tab: Active",
-    "tab: Walang appointment",
-    "tab: Needs site confirmation",
-    "tab: Waiting for a slot",
-    "tab: Suggestion to approve",
-    "tab: Flagged",
-    "tab: Pull out",
-    "tab: High priority",
-    "button: New request",
-    "button: Mark site confirmed"
-  ],
   "fulfillment/crate": [
     "stat card: Total Crates",
     "button: Save Changes"
@@ -99,15 +31,5 @@
     "stat card: Partial",
     "stat card: Done",
     "button: Archive"
-  ],
-  "procurement/forecast": [
-    "button: Refresh"
-  ],
-  "procurement/inquiry": [
-    "stat card: Open INQs",
-    "stat card: Blocked / Not Ready"
-  ],
-  "procurement/pr": [
-    "button: Group→PO"
   ]
 }

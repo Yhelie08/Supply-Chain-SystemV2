@@ -2,7 +2,6 @@ import { createElement } from 'react';
 import {
   POScreen, ShipmentScreen, ReceivingScreen, ExceptionScreen, ReplacementScreen,
   GateScreen, PickScreen, PackQCPage, CrateScreen, AggregationScreen,
-  InitialSchedulingScreen, ServiceRequestScreen, AppointmentScreen, OngoingScreen, DmsExceptionScreen, TeamsScreen,
 } from './pages/screens.jsx';
 import { Dashboard, RulesScreen, ActivityScreen } from './pages/info.jsx';
 import InquiryPage from './pages/inquiry/InquiryPage.jsx';
@@ -12,9 +11,23 @@ import ProcurementDashboard from './pages/procurement/ProcurementDashboard.jsx';
 import Placeholder from './pages/Placeholder.jsx';
 import {
   FulfillmentDashboard, SalesOrderReport, PreOrder, ExceptionControl, TransferItem,
-  DeliveryAnalytics, Archived, SiteVisits, SalesReturns, TruckMaintenance, ScheduleRequests,
 } from './pages/extras.jsx';
+import {
+  DeliveryAnalytics,
+  TeamsScreen,
+  InitialSchedulingScreen,
+  ServiceRequestScreen,
+  AppointmentScreen,
+  OngoingScreen,
+  ArchivedScreen as Archived,
+  SiteVisitsScreen as SiteVisits,
+  SalesReturnsScreen as SalesReturns,
+  DmsExceptionScreen,
+  TruckMaintenanceScreen as TruckMaintenance,
+  ScheduleRequestsScreen as ScheduleRequests,
+} from './pages/delivery/index.js';
 import SupplierInquiries from './pages/supplier/InquiriesPage.jsx';
+
 import SupplierPR from './pages/supplier/PRPage.jsx';
 import SupplierPO from './pages/supplier/POPage.jsx';
 import SupplierShipments from './pages/supplier/ShipmentsPage.jsx';

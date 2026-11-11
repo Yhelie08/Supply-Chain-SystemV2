@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Schedule Requests</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="internal-notes-open_component/internal-notes-open.css" />
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script src="internal-notes-open_component/internal-notes-open.js"></script>
+<style>
+  :root {
+    --color-blue-bg: #eff6ff;   --color-blue-text: #2563eb;  --color-blue-border: #bfdbfe;
+    --color-yes-bg: #dcfce7;    --color-yes-text: #16a34a;   --color-yes-border: #bbf7d0;
+    --color-blank-bg: #f3f4f6;  --color-blank-text: #6b7280; --color-blank-border: #e5e7eb;
+    --font-sans: 'Inter', system-ui, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background: #f4f6f8;
+    color: #1a1a2e;
+    min-height: 100vh;
+    font-size: 13.5px;
+  }
+
+  #app { max-width: 1040px; margin: 0 auto; padding: 24px 20px 80px; }
+  .hidden { display: none !important; }
+
+  .state-box {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 48px 24px; text-align: center; color: #6b7280;
+  }
+  .spinner {
+    width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: #2563eb;
+    border-radius: 50%; margin: 0 auto 14px; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .state-box.error { color: #991b1b; }
+  .state-box.error .state-title { color: #dc2626; font-weight: 600; margin-bottom: 6px; font-size: 15px; }
+
+  .btn {
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+    padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+  .btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+  .btn-secondary:hover:not(:disabled) { background: #f9fafb; }
+  .btn-success { background: #16a34a; color: #fff; }
+  .btn-success:hover:not(:disabled) { background: #15803d; }
+  .btn-danger { background: #fff; color: #dc2626; border: 1px solid #fecaca; }
+  .btn-danger:hover:not(:disabled) { background: #fef2f2; }
+  .btn-link { background: none; border: none; color: #2563eb; font-size: 12.5px; font-weight: 500; cursor: pointer; text-decoration: underline; padding: 0; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .list-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .list-header h1 { font-size: 20px; font-weight: 700; color: #0f172a; }
+  .search-bar { margin-bottom: 14px; }
+  .search-bar input {
+    width: 100%; max-width: 360px; font-family: var(--font-sans); font-size: 13px;
+    padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff;
+  }
+  .search-bar input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  table.list-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  table.list-table thead th {
+    background: #f8fafc; color: #64748b; font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.03em; text-align: left;
+    padding: 12px 14px; border-bottom: 1px solid #e5e7eb; white-space: nowrap;
+  }
+  table.list-table tbody td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+  table.list-table tbody tr { cursor: pointer; transition: background 0.1s ease; }
+  table.list-table tbody tr:hover { background: #f8fafc; }
+  table.list-table .sr-link { color: #2563eb; font-weight: 600; text-decoration: none; }
+  table.list-table .sr-link:hover { text-decoration: underline; }
+
+  .pill-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .pill {
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 12.5px; font-weight: 500; cursor: pointer;
+    border: 1px solid #d1d5db; background: #fff; color: #475569;
+    transition: all 0.15s;
+  }
+  .pill:hover { border-color: #9ca3af; color: #0f172a; }
+  .pill.active { background: #1e293b; border-color: #1e293b; color: #fff; }
+
+  .top-bar {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 18px 24px; margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .top-bar .titles { display: flex; flex-direction: column; gap: 3px; }
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px; width: fit-content;
+    height: 32px; padding: 0 14px; margin-bottom: 4px;
+    border-radius: 999px; background: #1e293b; color: #fff !important;
+    font-size: 13px; font-weight: 700; text-decoration: none !important;
+    transition: background 0.15s ease;
+  }
+  .back-link:hover { background: #000; }
+  .top-bar .sr-number { font-size: 19px; font-weight: 700; color: #0f172a; }
+  .top-bar .sr-sub { font-size: 12px; color: #6b7280; }
+  .top-bar .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 15px;
+    border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  }
+  .status-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .status-pill.pending { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+  .status-pill.pending::before { background: #f59e0b; }
+  .status-pill.confirmed { background: var(--color-blue-bg); color: var(--color-blue-text); border: 1px solid var(--color-blue-border); }
+  .status-pill.confirmed::before { background: #3b82f6; }
+  .status-pill.cancelled { background: var(--color-blank-bg); color: var(--color-blank-text); border: 1px solid var(--color-blank-border); }
+  .status-pill.cancelled::before { background: #9ca3af; }
+
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 22px 24px; margin-bottom: 16px; }
+  .card-title { font-size: 14.5px; font-weight: 700; color: #0f172a; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+  .form-field { display: flex; flex-direction: column; gap: 5px; }
+  .form-field.full-width { grid-column: 1 / -1; }
+  .form-field label { font-size: 12.5px; font-weight: 600; color: #374151; }
+  .readonly-display {
+    padding: 9px 11px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 7px;
+    font-size: 13px; min-height: 18px; color: #1a1a2e; white-space: pre-wrap;
+  }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease; z-index: 999; max-width: 90vw;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.success { background: #16a34a; }
+  #toast.error { background: #dc2626; }
+
+  .confirm-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.5);
+    align-items: center; justify-content: center; z-index: 1000;
+  }
+  .confirm-overlay.show { display: flex; }
+  .confirm-modal {
+    background: #fff; border-radius: 12px; padding: 24px; max-width: 380px; width: 90%;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  }
+  .confirm-modal p { font-size: 13.5px; color: #374151; margin-bottom: 20px; line-height: 1.5; }
+  .confirm-modal .actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+  @media (max-width: 720px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    #app { padding: 16px 14px 60px; }
+    .list-header { flex-direction: column; align-items: stretch; gap: 10px; }
+    .list-header h1 { font-size: 18px; }
+    .search-bar input { max-width: 100%; }
+    .top-bar { flex-direction: column; align-items: stretch; padding: 16px 18px; }
+    .top-bar .actions { justify-content: flex-start; }
+    .card { padding: 16px 16px; }
+    .confirm-modal .actions { flex-wrap: wrap; }
+    .confirm-modal .actions .btn { flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="listView">
+    <div class="list-header">
+      <h1>Schedule Requests</h1>
+      <button type="button" class="btn btn-secondary" id="refreshListBtn">&#8635; Refresh</button>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="listSearchInput" placeholder="Search by SO number or customer..." />
+    </div>
+    <div class="pill-row" id="statusPillRow">
+      <div class="pill active" data-status="all">All</div>
+      <div class="pill" data-status="Pending Review">Pending Review</div>
+      <div class="pill" data-status="Confirmed">Confirmed</div>
+      <div class="pill" data-status="Declined">Declined</div>
+    </div>
+    <div class="card" style="padding:0;">
+      <div style="overflow-x:auto;">
+        <table class="list-table">
+          <thead>
+            <tr>
+              <th>SO Number</th><th>Customer</th><th>Requested Date</th><th>Requested Time</th>
+              <th>Requested By</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="srListBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="formView" class="hidden">
+
+    <div id="loadingState" class="state-box">
+      <div class="spinner"></div>
+      <div>Loading schedule request...</div>
+    </div>
+
+    <div id="errorState" class="state-box error hidden">
+      <div class="state-title">Could not load schedule request</div>
+      <div id="errorMessage">Please check the Schedule Request ID and try again.</div>
+    </div>
+
+    <div id="formContent" class="hidden">
+      <div class="top-bar">
+        <div class="titles">
+          <a href="#" class="btn-link back-link" id="backToListLink">&larr; Back to Schedule Requests</a>
+          <div class="sr-number" id="srHeaderTitle">Schedule Request</div>
+          <div class="sr-sub" id="srHeaderSub"></div>
+        </div>
+        <div class="actions">
+          <span class="status-pill pending" id="statusPillDisplay">Pending Review</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Schedule Request Details</div>
+        <div class="form-grid">
+          <div class="form-field full-width">
+            <label>Sales Order</label>
+            <div id="f-so" class="readonly-display"></div>
+          </div>
+          <div class="form-field">
+            <label>Customer</label>
+            <div id="f-customerName" class="readonly-display"></div>
+          </div>
+          <div class="form-field">
+            <label>Requested By</label>
+            <div id="f-requestedBy" class="readonly-display"></div>
+          </div>
+          <div class="form-field">
+            <label>Requested Date</label>
+            <div id="f-requestedDate" class="readonly-display"></div>
+          </div>
+          <div class="form-field">
+            <label>Requested Time</label>
+            <div id="f-requestedTime" class="readonly-display"></div>
+          </div>
+          <div class="form-field full-width">
+            <label>Notes</label>
+            <div id="f-notes" class="readonly-display"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="decisionCard">
+        <div class="card-title">Decision</div>
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn btn-success" id="confirmBtn">Confirm</button>
+          <button type="button" class="btn btn-danger" id="declineBtn">Decline</button>
+          <button type="button" class="btn btn-secondary" id="resyncBtn">&#8635; Resync</button>
+        </div>
+      </div>
+
+      <div id="incMount"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-modal">
+    <p id="confirmMessage"></p>
+    <div class="actions">
+      <button type="button" class="btn btn-secondary" id="confirmNoBtn">Cancel</button>
+      <button type="button" class="btn btn-primary" id="confirmYesBtn">Yes</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------------------------------------------------------------
+  // 0. CONFIG
+  // ---------------------------------------------------------------
+  var APP_NAME = 'supply-chain-app';
+  var REPORT_DMS_REQUESTS = 'DMS_Schedule_Request_Report';
+  var FORM_DMS_MESSAGES = 'DMS_Schedule_Request_Messages';
+  var REPORT_DMS_MESSAGES = 'DMS_Schedule_Request_Messages_Report';
+
+  // Wire real public keys in after creating each Custom API — see
+  // DelugeScripts/push_dms_message_to_cms_proxy_custom_api.txt and
+  // DelugeScripts/confirm_decline_dms_schedule_request_custom_api.txt.
+  var DMS_CMS_KEYS = {
+    pushMessage: 'bRFJ3PsGtOZ3ezxhu1qmeVkuf',
+    confirm:     '6ryAOjxepaJTtYFga8UvfWNYA',
+    decline:     'sfBfzv1PxKKktf6742mr6Gd2t'
+  };
+
+  var CURRENT_USER_EMAIL = '';
+  var CURRENT_USER_NAME = '';
+
+  var state = {
+    recordId: null,
+    currentCmsId: '',
+    records: [],
+    filterStatus: 'all',
+    searchQuery: ''
+  };
+  var _lastFailedMessage = null;
+  var _confirmYesHandler = null;
+
+  // ---------------------------------------------------------------
+  // 1. UTIL
+  // ---------------------------------------------------------------
+  function $(sel) { return document.querySelector(sel); }
+  function $all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function f(v) { return (v === null || v === undefined) ? '' : String(v); }
+
+  function showToast(msg, type) {
+    var t = $('#toast');
+    t.textContent = msg;
+    t.className = 'show' + (type ? ' ' + type : '');
+    setTimeout(function () { t.className = ''; }, 3200);
+  }
+
+  function withTimeout(promise, ms) {
+    return new Promise(function (resolve, reject) {
+      var timer = setTimeout(function () { reject(new Error('Request timed out')); }, ms);
+      promise.then(function (v) { clearTimeout(timer); resolve(v); },
+                   function (e) { clearTimeout(timer); reject(e); });
+    });
+  }
+
+  // getRecords REJECTS instead of resolving cleanly with {code:3000,data:[]}
+  // when a report has zero matching records — codes 9220/9280 mean "no
+  // records match," a legitimate empty state, not a real error. Same
+  // already-documented gotcha as CMS's own request-schedule.html.
+  function errCode(e) {
+    try {
+      if (e && e.responseText) return JSON.parse(e.responseText).code;
+      var s = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+      return JSON.parse(JSON.parse(s).responseText || s).code;
+    } catch (_) { return null; }
+  }
+
+  function showConfirm(message, onYes) {
+    $('#confirmMessage').textContent = message;
+    _confirmYesHandler = onYes;
+    $('#confirmOverlay').classList.add('show');
+  }
+  function hideConfirm() {
+    $('#confirmOverlay').classList.remove('show');
+    _confirmYesHandler = null;
+  }
+
+  // Real bug found live 2026-08-28: reusing InternalNotesOpen's own locally-
+  // computed Sent_On (this app's own yyyy-MM-dd hh:mm:ss AM/PM format) for
+  // the CROSS-APP push landed in CMS's Schedule_Request_Messages.Sent_On,
+  // whose Console-configured format is genuinely different (dd-MMM-yyyy
+  // HH:mm:ss, confirmed via that field's own Initial value placeholder) —
+  // each app's Sent_On field can have its own format, don't assume they
+  // match. This converts to CMS's expected format specifically for the
+  // push payload.
+  function fmtDateTimeForCms(d) {
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return pad(d.getDate()) + '-' + months[d.getMonth()] + '-' + d.getFullYear()
+      + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  // ---------------------------------------------------------------
+  // 2. DATA — Zoho Creator calls
+  // ---------------------------------------------------------------
+  function fetchList() {
+    return withTimeout(ZOHO.CREATOR.DATA.getRecords({
+      app_name: APP_NAME, report_name: REPORT_DMS_REQUESTS,
+      max_records: 200
+    }), 12000);
+  }
+
+  function fetchOne(id) {
+    // max_records only accepts 200/500/1000 — Zoho rejects any other value
+    // outright (code 9250), same bug CMS's own request-schedule.html hit
+    // and fixed. Not repeating that mistake here.
+    return withTimeout(ZOHO.CREATOR.DATA.getRecords({
+      app_name: APP_NAME, report_name: REPORT_DMS_REQUESTS,
+      criteria: '(ID == ' + id + ')', max_records: 200
+    }), 12000);
+  }
+
+  // ---------------------------------------------------------------
+  // 3. LIST VIEW
+  // ---------------------------------------------------------------
+  function mapRecordForList(rec) {
+    return {
+      id: rec.ID || rec.id,
+      cmsId: f(rec.CMS_Schedule_Request_ID),
+      so: f(rec.Sales_Order_Number),
+      customerName: f(rec.Customer_Name),
+      requestedDate: f(rec.Requested_Date),
+      requestedTime: f(rec.Requested_Time),
+      requestedBy: f(rec.Requested_By),
+      status: f(rec.Status) || 'Pending Review',
+      notes: f(rec.Notes),
+      _raw: rec
+    };
+  }
+
+  function statusPillClass(status) {
+    var s = (status || 'Pending Review').toLowerCase();
+    if (s === 'confirmed') return 'confirmed';
+    if (s === 'declined') return 'cancelled';
+    return 'pending';
+  }
+
+  function renderList() {
+    var body = $('#srListBody');
+    var rows = state.records;
+
+    if (state.filterStatus !== 'all') {
+      rows = rows.filter(function (r) { return r.status === state.filterStatus; });
+    }
+    if (state.searchQuery) {
+      var q = state.searchQuery.toLowerCase();
+      rows = rows.filter(function (r) {
+        return r.so.toLowerCase().indexOf(q) !== -1 ||
+               r.customerName.toLowerCase().indexOf(q) !== -1;
+      });
+    }
+
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#9ca3af; padding:32px;">No schedule requests found.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(function (r) {
+      return '<tr data-id="' + r.id + '">' +
+        '<td><a href="#" class="sr-link" data-id="' + r.id + '">' + (r.so || '(no SO)') + '</a></td>' +
+        '<td>' + (r.customerName || '—') + '</td>' +
+        '<td>' + (r.requestedDate || '—') + '</td>' +
+        '<td>' + (r.requestedTime || '—') + '</td>' +
+        '<td>' + (r.requestedBy || '—') + '</td>' +
+        '<td><span class="status-pill ' + statusPillClass(r.status) + '">' + r.status + '</span></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function loadList() {
+    fetchList().then(function (resp) {
+      if (resp.code === 3000 && Array.isArray(resp.data)) {
+        state.records = resp.data.map(mapRecordForList);
+      } else {
+        state.records = [];
+      }
+      renderList();
+    }).catch(function (err) {
+      var ec = errCode(err);
+      if (ec === 9220 || ec === 9280) {
+        state.records = [];
+        renderList();
+        return;
+      }
+      console.error('loadList error:', err);
+      showToast('Could not load schedule requests.', 'error');
+      state.records = [];
+      renderList();
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // 4. FORM VIEW
+  // ---------------------------------------------------------------
+  function populateForm(rec) {
+    $('#f-so').textContent = rec.so || '—';
+    $('#f-customerName').textContent = rec.customerName || '—';
+    $('#f-requestedBy').textContent = rec.requestedBy || '—';
+    $('#f-requestedDate').textContent = rec.requestedDate || '—';
+    $('#f-requestedTime').textContent = rec.requestedTime || '—';
+    $('#f-notes').textContent = rec.notes || '—';
+    $('#srHeaderTitle').textContent = rec.so ? ('SO ' + rec.so) : ('Schedule Request #' + rec.id);
+    $('#srHeaderSub').textContent = (rec.customerName ? (rec.customerName + ' · ') : '') +
+      'Requested by ' + (rec.requestedBy || '—') +
+      (rec.requestedDate ? (' · ' + rec.requestedDate) : '') +
+      (rec.requestedTime ? (' ' + rec.requestedTime) : '');
+    updateStatusUI(rec.status || 'Pending Review');
+    state.currentCmsId = rec.cmsId || '';
+    internalNotes.open(String(rec.id));
+  }
+
+  function updateStatusUI(status) {
+    var pill = $('#statusPillDisplay');
+    pill.className = 'status-pill ' + statusPillClass(status);
+    pill.textContent = status;
+    var isPending = (status === 'Pending Review');
+    $('#decisionCard').classList.toggle('hidden', !isPending);
+  }
+
+  // ---------------------------------------------------------------
+  // 5. NAVIGATION
+  // ---------------------------------------------------------------
+  function goToList(refresh) {
+    $('#formView').classList.add('hidden');
+    $('#listView').classList.remove('hidden');
+    history.replaceState(null, '', window.location.pathname);
+    internalNotes.close();
+    if (refresh) loadList();
+  }
+
+  function goToForm(id) {
+    $('#listView').classList.add('hidden');
+    $('#formView').classList.remove('hidden');
+    $('#formContent').classList.add('hidden');
+    $('#errorState').classList.add('hidden');
+    $('#loadingState').classList.remove('hidden');
+
+    fetchOne(id).then(function (resp) {
+      var rec = (resp.code === 3000 && resp.data && resp.data[0]) ? resp.data[0] : null;
+      $('#loadingState').classList.add('hidden');
+      if (!rec) {
+        $('#errorState').classList.remove('hidden');
+        $('#errorMessage').textContent = 'Please check the Schedule Request ID and try again.';
+        return;
+      }
+      state.recordId = id;
+      $('#formContent').classList.remove('hidden');
+      populateForm(mapRecordForList(rec));
+    }).catch(function (err) {
+      console.error('goToForm error:', err);
+      $('#loadingState').classList.add('hidden');
+      $('#errorState').classList.remove('hidden');
+      $('#errorMessage').textContent = err.message || 'Could not load schedule request.';
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // 5b. IDENTITY — same getInitParams()/ZOHO.CREATOR.init() fallback chain
+  // already proven live in DeliveryQueue's own code (added 2026-08-26),
+  // plus a typed-name-remembered-in-localStorage fallback for symmetry
+  // with the CMS side (matches this project's "there's an account, but no
+  // restrictions on who can chat" design decision).
+  // ---------------------------------------------------------------
+  function resolveIdentity() {
+    function afterResolved() {
+      if (!CURRENT_USER_EMAIL) {
+        var stored = localStorage.getItem('dms_schedule_request_identity');
+        if (stored) {
+          try {
+            var parsed = JSON.parse(stored);
+            CURRENT_USER_EMAIL = parsed.email;
+            CURRENT_USER_NAME = parsed.name;
+          } catch (_) { /* ignore malformed storage */ }
+        }
+        if (!CURRENT_USER_EMAIL) {
+          var name = window.prompt('What\'s your name? (shown on your messages)');
+          if (name && name.trim()) {
+            CURRENT_USER_NAME = name.trim();
+            CURRENT_USER_EMAIL = 'local-' + CURRENT_USER_NAME.toLowerCase().replace(/\s+/g, '-');
+            localStorage.setItem('dms_schedule_request_identity', JSON.stringify({ email: CURRENT_USER_EMAIL, name: CURRENT_USER_NAME }));
+          }
+        }
+      }
+      if (internalNotes) internalNotes.refresh();
+    }
+    if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.getInitParams === 'function') {
+      ZOHO.CREATOR.UTIL.getInitParams().then(function (params) {
+        var email = params && (params.loginUser || params.login_user || params.userEmail || params.user_email || '');
+        var emailStr = String(email || '').trim().toLowerCase();
+        if (emailStr) { CURRENT_USER_EMAIL = emailStr; CURRENT_USER_NAME = emailStr.split('@')[0]; }
+        afterResolved();
+      }).catch(afterResolved);
+    } else if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR && typeof ZOHO.CREATOR.init === 'function') {
+      ZOHO.CREATOR.init().then(function (initData) {
+        var email = initData && (initData.loginUser || initData.userEmail || '');
+        var emailStr = String(email || '').trim().toLowerCase();
+        if (emailStr) { CURRENT_USER_EMAIL = emailStr; CURRENT_USER_NAME = emailStr.split('@')[0]; }
+        afterResolved();
+      }).catch(afterResolved);
+    } else {
+      afterResolved();
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // 6. CHAT — cross-app push with retry, Confirm/Decline actions
+  // ---------------------------------------------------------------
+  var internalNotes = InternalNotesOpen.init({
+    mountId: 'incMount',
+    appName: APP_NAME,
+    formName: FORM_DMS_MESSAGES,
+    reportName: REPORT_DMS_MESSAGES,
+    parentField: 'DMS_Schedule_Request_ID',
+    currentUserEmail: function () { return CURRENT_USER_EMAIL; },
+    currentUserName: function () { return CURRENT_USER_NAME; },
+    title: 'Internal Conversation',
+    onSend: function (payload) {
+      console.log('[DMS onSend] currentCmsId:', JSON.stringify(state.currentCmsId), 'recordId:', state.recordId);
+      if (!state.currentCmsId) { console.error('[DMS onSend] currentCmsId is blank — push skipped. Check CMS_Schedule_Request_ID is in DMS_Schedule_Request_Report\'s Configure Fields list.'); return; }
+      function attempt(n) {
+        ZOHO.CREATOR.DATA.invokeCustomApi({
+          api_name: 'push_dms_message_to_cms',
+          public_key: DMS_CMS_KEYS.pushMessage,
+          http_method: 'POST',
+          content_type: 'application/json',
+          payload: { cmsRecordId: state.currentCmsId, senderEmail: CURRENT_USER_EMAIL, senderName: payload.name, message: payload.message, sentOn: fmtDateTimeForCms(new Date()) }
+        }).then(function (resp) {
+          console.log('[DMS onSend] push response:', JSON.stringify(resp));
+          var inner = resp && resp.result ? resp.result : null;
+          if ((!inner || inner.status !== 'success') && n < 3) {
+            setTimeout(function () { attempt(n + 1); }, 2000);
+          } else if (!inner || inner.status !== 'success') {
+            _lastFailedMessage = payload;
+            showToast('Message saved, but CMS hasn\'t seen it yet — use Resync.', 'error');
+          }
+        }).catch(function () {
+          if (n < 3) setTimeout(function () { attempt(n + 1); }, 2000);
+          else { _lastFailedMessage = payload; showToast('Message saved, but CMS hasn\'t seen it yet — use Resync.', 'error'); }
+        });
+      }
+      attempt(1);
+    }
+  });
+
+  $('#confirmBtn').addEventListener('click', function () {
+    showConfirm('Confirm this Schedule Request? This creates a real Service Appointment record.', function () {
+      ZOHO.CREATOR.DATA.invokeCustomApi({
+        api_name: 'confirm_dms_schedule_request', public_key: DMS_CMS_KEYS.confirm,
+        http_method: 'POST', content_type: 'application/json', payload: { dmsRecordId: state.recordId }
+      }).then(function (resp) {
+        var inner = resp && resp.result ? resp.result : null;
+        if (inner && inner.status === 'success') { showToast('Confirmed.', 'success'); goToList(true); }
+        else showToast((inner && inner.message) || 'Could not confirm.', 'error');
+      }).catch(function (err) { showToast(err.message || 'Could not confirm.', 'error'); });
+    });
+  });
+  $('#declineBtn').addEventListener('click', function () {
+    showConfirm('Decline this Schedule Request?', function () {
+      ZOHO.CREATOR.DATA.invokeCustomApi({
+        api_name: 'decline_dms_schedule_request', public_key: DMS_CMS_KEYS.decline,
+        http_method: 'POST', content_type: 'application/json', payload: { dmsRecordId: state.recordId }
+      }).then(function (resp) {
+        var inner = resp && resp.result ? resp.result : null;
+        if (inner && inner.status === 'success') { showToast('Declined.', 'success'); goToList(true); }
+        else showToast((inner && inner.message) || 'Could not decline.', 'error');
+      }).catch(function (err) { showToast(err.message || 'Could not decline.', 'error'); });
+    });
+  });
+  $('#resyncBtn').addEventListener('click', function () {
+    if (!_lastFailedMessage) { showToast('Nothing to resync.', 'success'); return; }
+    internalNotes.cfg.onSend(_lastFailedMessage);
+    _lastFailedMessage = null;
+    showToast('Resyncing…', 'success');
+  });
+  $('#confirmYesBtn').addEventListener('click', function () {
+    var handler = _confirmYesHandler;
+    hideConfirm();
+    if (handler) handler();
+  });
+  $('#confirmNoBtn').addEventListener('click', hideConfirm);
+
+  // ---------------------------------------------------------------
+  // 7. WIRE UP EVENTS
+  // ---------------------------------------------------------------
+  $('#backToListLink').addEventListener('click', function (e) { e.preventDefault(); goToList(false); });
+  $('#refreshListBtn').addEventListener('click', function () { loadList(); });
+
+  $('#srListBody').addEventListener('click', function (e) {
+    var link = e.target.closest('[data-id]');
+    if (link) { e.preventDefault(); goToForm(link.getAttribute('data-id')); }
+  });
+
+  $('#listSearchInput').addEventListener('input', function (e) {
+    state.searchQuery = e.target.value.trim();
+    renderList();
+  });
+
+  $('#statusPillRow').addEventListener('click', function (e) {
+    var pill = e.target.closest('.pill');
+    if (!pill) return;
+    $all('.pill').forEach(function (p) { p.classList.remove('active'); });
+    pill.classList.add('active');
+    state.filterStatus = pill.getAttribute('data-status');
+    renderList();
+  });
+
+  // ---------------------------------------------------------------
+  // 8. STARTUP
+  // ---------------------------------------------------------------
+  function startup() {
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('ID');
+    if (id) {
+      goToForm(id);
+    } else {
+      loadList();
+    }
+  }
+
+  resolveIdentity();
+  startup();
+
+})();
+</script>
+</body>
+</html>

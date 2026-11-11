@@ -1,0 +1,1643 @@
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replacement Requests</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+    --green:#16A34A; --green-light:#DCFCE7; --green-mid:#86EFAC;
+    --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+    --red:#DC2626; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+    --purple:#7C3AED; --purple-dark:#6D28D9; --purple-light:#F5F3FF; --purple-mid:#C4B5FD;
+    --orange:#EA580C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0;
+    --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B;
+    --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+    --white:#FFFFFF;
+    --radius-sm:4px; --radius:8px; --radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+    --t:150ms ease;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font-family:inherit}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-ghost:disabled{opacity:.4;cursor:not-allowed}
+  .btn-sm{height:32px;padding:0 13px;font-size:13px}
+  .btn-purple{background:var(--purple);color:var(--white);font-weight:600;box-shadow:0 1px 3px rgba(124,58,237,.3)}
+  .btn-purple:hover{background:var(--purple-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3)}
+  .btn-purple:disabled{background:var(--gray-300);color:var(--gray-500);box-shadow:none;cursor:not-allowed;transform:none}
+  .btn-green{background:var(--green);color:var(--white);font-weight:600;box-shadow:0 1px 3px rgba(22,163,74,.3)}
+  .btn-green:hover{background:#15803D;transform:translateY(-1px)}
+  .btn-green:disabled{background:var(--gray-300);color:var(--gray-500);box-shadow:none;cursor:not-allowed;transform:none}
+
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transform:translateY(6px);transition:opacity 200ms ease,transform 200ms ease;pointer-events:none;max-width:340px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  .confirm-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:4000;align-items:center;justify-content:center}
+  .confirm-overlay.show{display:flex}
+  .confirm-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:24px;width:380px;max-width:90vw}
+  .confirm-title{font-size:16px;font-weight:700;color:var(--gray-800);margin-bottom:10px}
+  .confirm-msg{font-size:13.5px;color:var(--gray-600);line-height:1.5;margin-bottom:20px}
+  .confirm-actions{display:flex;justify-content:flex-end;gap:10px}
+  .confirm-btn{height:36px;padding:0 16px;border-radius:var(--radius);font-size:13.5px;font-weight:600;cursor:pointer;border:none;font-family:inherit}
+  .confirm-btn-cancel{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .confirm-btn-cancel:hover{border-color:var(--gray-400)}
+  .confirm-btn-ok{background:var(--purple);color:var(--white)}
+  .confirm-btn-ok:hover{background:var(--purple-dark)}
+
+  /* ── Local (HC System) tab — ADDED 2026-10-12. HC System is Local sourcing: no
+     supplier portal, no supplier RR form, nothing for them to acknowledge
+     (DelugeScripts/hc_system_local_sourcing_setup.txt). This tab is where the LOCAL
+     team does what a supplier would do on their own portal. See Proposals/
+     RR_Supplier_Choice_Before_Create_RR_Plan_2026-10-12.md section 10. ── */
+  .rr-tabs{display:flex;gap:4px;padding:10px 20px 0 20px;border-bottom:1px solid var(--gray-100);flex-shrink:0}
+  .rr-tab{appearance:none;border:none;background:transparent;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--gray-500);padding:9px 16px;border-radius:var(--radius) var(--radius) 0 0;cursor:pointer;border-bottom:2.5px solid transparent;transition:all var(--t);display:inline-flex;align-items:center;gap:7px}
+  .rr-tab:hover{color:var(--gray-700);background:var(--gray-50)}
+  .rr-tab.active{color:var(--purple);border-bottom-color:var(--purple)}
+  .rr-tab .cnt{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 6px;border-radius:999px;background:var(--gray-100);color:var(--gray-600);font-size:11px;font-weight:700}
+  .rr-tab.active .cnt{background:var(--purple);color:var(--white)}
+  .local-note{padding:11px 20px;background:#eef5fc;border-bottom:1px solid var(--gray-100);font-size:12.5px;color:var(--gray-600);line-height:1.5;flex-shrink:0}
+  .local-note strong{color:var(--gray-800)}
+  .btn-ack{height:28px;padding:0 12px;border-radius:var(--radius);border:none;background:var(--purple);color:var(--white);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .btn-ack:hover{background:var(--purple-dark)}
+  .hcack-box{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:24px;width:440px;max-width:92vw}
+  .hcack-sub{font-size:12.5px;color:var(--gray-500);margin:-6px 0 14px}
+  .hcack-item{background:var(--gray-50);border:1px solid var(--gray-100);border-radius:var(--radius);padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:var(--gray-700);line-height:1.6}
+  .hcack-why{background:#eef5fc;border-left:3px solid var(--purple-mid,#7c5cd6);border-radius:4px;padding:9px 12px;margin-bottom:16px;font-size:12px;color:var(--gray-600);line-height:1.5}
+  .hcack-fld{margin-bottom:12px}
+  .hcack-fld label{display:block;font-size:12px;font-weight:600;color:var(--gray-700);margin-bottom:5px}
+  .hcack-fld .req{color:#dc2626}
+  .hcack-fld input{width:100%;height:36px;padding:0 10px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;font-size:13.5px;color:var(--gray-800)}
+  .hcack-fld input:focus{outline:none;border-color:var(--purple)}
+  .hcack-hint{font-size:11.5px;color:var(--gray-500);margin-top:4px;line-height:1.45}
+  .confirm-btn-ok:disabled{background:var(--gray-200);color:var(--gray-400);cursor:not-allowed}
+
+  .page{padding:24px;display:flex;flex-direction:column;gap:20px;min-height:100vh;box-sizing:border-box}
+  .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;flex-shrink:0}
+  .page-header-left h1{font-size:24px;font-weight:700;color:#1A1A2E;letter-spacing:-.02em;line-height:1.2}
+  .page-header-left p{font-size:13px;color:var(--gray-500);margin-top:4px}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;flex-shrink:0}
+  @media(max-width:1300px){.stat-cards{grid-template-columns:repeat(4,1fr)}}
+  @media(max-width:640px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:12px 14px;box-shadow:var(--shadow)}
+  .stat-label{font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em}
+  .stat-value{font-size:22px;font-weight:700;line-height:1.1;margin:5px 0 2px;color:var(--gray-800);font-variant-numeric:tabular-nums}
+  .stat-value.purple{color:var(--purple)}
+  .stat-value.blue{color:var(--blue)}
+  .stat-value.red{color:var(--red)}
+  .stat-value.green{color:var(--green)}
+  .stat-value.amber{color:var(--amber)}
+
+  /* CHANGED 2026-08-20, per user report ("ganun din to") — same missing-border/
+     unframed-page fix already applied same day to POs.zip, Shipmentsv2.zip, and
+     Receivingv2.zip. .page here already had the correct display:flex;flex-
+     direction:column;min-height:100vh scaffolding — .main-card just needed
+     flex:1/min-height:0 to actually claim the remaining space. */
+  .main-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;flex:1;min-height:0}
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap;flex-shrink:0}
+  .filter-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 14px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+  .pill:hover{border-color:var(--purple);color:var(--purple)}
+  .pill.active{background:var(--purple);border-color:var(--purple);color:var(--white)}
+  .search-wrap{position:relative;flex:0 1 240px;min-width:160px}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400);pointer-events:none}
+  .search-input{width:100%;height:32px;padding:0 10px 0 32px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--gray-50);color:var(--gray-700);font-size:13px;outline:none;transition:all var(--t);box-sizing:border-box}
+  .search-input:focus{border-color:var(--purple);background:var(--white)}
+
+  /* ADDED 2026-08-20 — only .table-wrap usage in this file is the list view's own
+     table (confirmed via grep, no Detail-view second usage like Shipment/Receiving
+     have), so flex:1/min-height:0 goes straight on the base rule, no scoping needed. */
+  .table-wrap{overflow-x:auto;flex:1;min-height:0}
+  .rr-table{width:100%;border-collapse:collapse;min-width:1080px}
+  .rr-table thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .rr-table th{padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+  .rr-table tbody tr{border-bottom:1px solid var(--gray-100);border-left:3px solid transparent;transition:background var(--t);cursor:pointer}
+  .rr-table tbody tr:hover{background:var(--gray-50)}
+  .rr-table tbody tr:last-child{border-bottom:none}
+  .rr-table tbody tr.row-open{border-left-color:var(--amber)}
+  .rr-table tbody tr.row-acknowledged{border-left-color:var(--blue)}
+  .rr-table tbody tr.row-inproduction{border-left-color:var(--purple)}
+  .rr-table tbody tr.row-shipped{border-left-color:var(--blue)}
+  .rr-table tbody tr.row-received{border-left-color:var(--green)}
+  .rr-table tbody tr.row-closed{border-left-color:var(--gray-300)}
+  .rr-table tbody tr.row-cancelled{border-left-color:var(--red);background:rgba(220,38,38,.03)}
+  .rr-table td{padding:12px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle}
+  .empty-state{padding:60px 20px;text-align:center;color:var(--gray-400)}
+  .empty-state svg{width:40px;height:40px;margin:0 auto 12px;opacity:.5}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .badge-gray{background:var(--gray-100);color:var(--gray-600);border-color:var(--gray-200)}
+  .badge-blue{background:var(--blue-light);color:var(--blue-dark);border-color:var(--blue-mid)}
+  .badge-amber{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+  .badge-green{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .badge-red{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+  .badge-purple{background:var(--purple-light);color:var(--purple-dark);border-color:var(--purple-mid)}
+
+  .back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--gray-500);cursor:pointer;transition:color var(--t)}
+  .back-link:hover{color:var(--purple)}
+
+  .detail-grid{display:grid;grid-template-columns:2fr 1fr;gap:18px}
+  @media(max-width:980px){.detail-grid{grid-template-columns:1fr}}
+  .card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px 20px}
+  .card h3{font-size:13px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px}
+  .info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 20px}
+  .info-item label{display:block;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+  .info-item .val{font-size:14px;font-weight:600;color:var(--gray-800)}
+  .info-item input,.info-item select,.info-item textarea{width:100%;font-family:inherit;font-size:13px;color:var(--gray-800);background:var(--white);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:6px 9px;outline:none}
+  .info-item input:focus,.info-item select:focus,.info-item textarea:focus{border-color:var(--purple)}
+  .info-item textarea{resize:vertical;min-height:60px}
+  .info-item.span-2{grid-column:1/-1}
+  .info-item input[type=checkbox]{width:auto;height:18px}
+
+  .header-strip{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hs-field{font-size:12.5px;font-weight:600;color:var(--gray-700);white-space:nowrap}
+  .hs-field.hs-rr{font-size:15px;color:var(--purple-dark)}
+  .hs-field.hs-muted{color:var(--gray-400);font-weight:500}
+
+  .spinner{width:28px;height:28px;border:3px solid var(--gray-200);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-wrap{padding:60px 20px;text-align:center;color:var(--gray-400);font-size:13px}
+  .loading-wrap .spinner{margin-bottom:12px}
+
+  .hidden{display:none !important}
+</style>
+<style id="nsStyles">.ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}.ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}.ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}.ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}.ns-who{font-weight:400;opacity:.85}.ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}.ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}.ns-arrow{opacity:.5}</style><style id="excChipStyles">.exc-chip{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;line-height:1.3;padding:2px 7px;border-radius:6px;white-space:nowrap;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}.exc-none{color:#94a3b8}</style></head>
+<body>
+
+<div id="listView" class="page">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>Replacement Requests</h1>
+      <p>Damage / Missing / QC / Complaint replacement pipeline — Exception to closed RR</p>
+    </div>
+  </div>
+
+  <div class="stat-cards" id="statCards"><div class="stat-card"><div class="stat-label">Open</div><div class="stat-value amber">4</div></div><div class="stat-card"><div class="stat-label">Acknowledged</div><div class="stat-value blue">3</div></div><div class="stat-card"><div class="stat-label">In Production</div><div class="stat-value purple">0</div></div><div class="stat-card"><div class="stat-label">Shipped</div><div class="stat-value blue">0</div></div><div class="stat-card"><div class="stat-label">Received</div><div class="stat-value green">0</div></div><div class="stat-card"><div class="stat-label">Closed</div><div class="stat-value ">0</div></div><div class="stat-card"><div class="stat-label">Cancelled</div><div class="stat-value red">0</div></div></div>
+
+  <div class="main-card">
+    <!-- Local (HC System) tab — ADDED 2026-10-12. See the CSS block above. -->
+    <div class="rr-tabs" id="rrTabs"><button class="rr-tab active" onclick="setTab('proc')">Procurement<span class="cnt">5</span></button><button class="rr-tab " onclick="setTab('ff')">Fulfillment<span class="cnt">3</span></button><button class="rr-tab " onclick="setTab('local')">Local (HC System)<span class="cnt">1</span></button></div>
+    <div class="local-note hidden" id="localNote">
+      <strong>HC System is local sourcing — there is no supplier portal.</strong>
+      Nobody is notified automatically, so this list is where local replacements are
+      picked up. Acknowledging here is what lets the replacement shipment be logged,
+      and the ETA entered here is what sets the Target Delivery date.
+    </div>
+    <div class="filter-row">
+      <div class="filter-pills" id="filterPills"><button class="pill active" onclick="setFilter('all')">All</button><button class="pill " onclick="setFilter('open')">Open</button><button class="pill " onclick="setFilter('acknowledged')">Acknowledged</button><button class="pill " onclick="setFilter('inproduction')">In Production</button><button class="pill " onclick="setFilter('shipped')">Shipped</button><button class="pill " onclick="setFilter('received')">Received</button><button class="pill " onclick="setFilter('closed')">Closed</button><button class="pill " onclick="setFilter('cancelled')">Cancelled</button></div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input class="search-input" id="searchInput" placeholder="Search RR#, SKU, PO, Exception#..." oninput="renderList()">
+      </div>
+    </div>
+    <div class="table-wrap" id="allWrap">
+      <table class="rr-table">
+        <thead>
+          <tr>
+            <th>RR #</th><th>EXC #</th><th>Source Type</th><th>Status</th><th>Next Step</th><th>SKU</th><th>Item</th>
+            <th>Qty</th><th>Priority</th><th>Supplier</th><th>Original PO</th>
+            <th>RR Date</th><th>Supplier Ack.</th>
+          </tr>
+        </thead>
+        <tbody id="listBody"><tr class="row-acknowledged" onclick="openDetail('4662244000016393002')"><td><strong>RR-00007</strong></td><td><span class="exc-chip">EXC-00005</span></td><td>Receiving Damage</td><td><span class="badge badge-blue">Acknowledged</span></td><td><span data-ns-id="4662244000016393002"><span class="ns-pill ns-wait">Waiting on: Supplier to ship the replacement <span class="ns-who">— Tony</span></span></span></td><td><span class="badge badge-gray" style="font-family:monospace">AGNAR-NNMGNTC-L-BLK</span></td><td>Agnar | Track Light/Large: D&nbsp;10*16cm / Black</td><td>1</td><td>—</td><td>Tony</td><td>PO-00007</td><td>2026-10-16</td><td><span class="badge badge-green">Yes</span></td></tr><tr class="row-open" onclick="openDetail('4662244000016216003')"><td><strong>RR-00005</strong></td><td><span class="exc-chip">EXC-00003</span></td><td>Receiving Damage</td><td><span class="badge badge-amber">Open</span></td><td><span data-ns-id="4662244000016216003"><span class="ns-pill ns-wait">Waiting on: Supplier to acknowledge <span class="ns-who">— Tony</span></span></span></td><td><span class="badge badge-gray" style="font-family:monospace">BLTZR-NNMGNTC-L-20W-BLK</span></td><td>Baltazar | Track Light/Large: D&nbsp;8*17.5/20W / Black</td><td>1</td><td>—</td><td>Tony</td><td>PO-00004</td><td>2026-10-13</td><td><span class="badge badge-gray">No</span></td></tr><tr class="row-acknowledged" onclick="openDetail('4662244000016211006')"><td><strong>RR-00006</strong></td><td><span class="exc-chip">EXC-00004</span></td><td>Receiving Damage</td><td><span class="badge badge-blue">Acknowledged</span></td><td><span data-ns-id="4662244000016211006"><span class="ns-pill ns-wait">Waiting on: Supplier to ship the replacement <span class="ns-who">— HC System</span></span></span></td><td><span class="badge badge-gray" style="font-family:monospace">10540C-BLACK</span></td><td>Eirdia Une | Ceiling Light - Black</td><td>1</td><td>—</td><td>HC System</td><td>PO-00002</td><td>2026-10-13</td><td><span class="badge badge-green">Yes</span></td></tr><tr class="row-open" onclick="openDetail('4662244000016158230')"><td><strong>RR-00004</strong></td><td><span class="exc-chip">EXC-00002</span></td><td>Receiving Damage</td><td><span class="badge badge-amber">Open</span></td><td><span data-ns-id="4662244000016158230"><span class="ns-pill ns-wait">Waiting on: Supplier to acknowledge <span class="ns-who">— Fenteng Lighting</span></span></span></td><td><span class="badge badge-gray" style="font-family:monospace">HC-CHAN-CRCAN-BLACK-D62CM</span></td><td>Cruciani | Chandelier - D62cm / Black</td><td>1</td><td>—</td><td>Fenteng Lighting</td><td></td><td>2026-10-12</td><td><span class="badge badge-gray">No</span></td></tr><tr class="row-acknowledged" onclick="openDetail('4662244000014979002')"><td><strong>RR-00001</strong></td><td><span class="exc-chip">EXC-00001</span></td><td>Receiving Damage</td><td><span class="badge badge-blue">Acknowledged</span></td><td><span data-ns-id="4662244000014979002"><span class="ns-pill ns-wait">Waiting on: Supplier to ship the replacement <span class="ns-who">— Tony</span></span></span></td><td><span class="badge badge-gray" style="font-family:monospace">BELLEGLA-B-PENDNT-1979</span></td><td>Belle | Glass Pendant Light/B</td><td>1</td><td>—</td><td>Tony</td><td>PO-00001</td><td>2026-08-29</td><td><span class="badge badge-green">Yes</span></td></tr></tbody>
+      </table>
+    </div>
+    <div id="listEmpty" class="empty-state hidden">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v18H3zM3 9h18M9 21V9"></path></svg>
+      <div>No replacement requests match this view</div>
+    </div>
+    <div class="table-wrap hidden" id="localWrap">
+      <table class="rr-table">
+        <thead>
+          <tr>
+            <th>RR #</th><th>EXC #</th><th>SKU</th><th>Item</th><th>Qty</th><th>Status</th>
+            <th>Expected Ship</th><th>ETA</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="localBody"></tbody>
+      </table>
+    </div>
+    <div id="localEmpty" class="empty-state hidden">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v18H3zM3 9h18M9 21V9"></path></svg>
+      <div>No local replacement requests yet</div>
+    </div>
+  </div>
+</div>
+
+<div id="detailView" class="page hidden">
+  <div class="header-strip">
+    <div class="back-link" onclick="showList()">← Back</div>
+    <span class="hs-field hs-rr" id="hsRRNo">—</span>
+    <span class="hs-field hs-muted" id="hsSourceType">—</span>
+    <span id="statusBadgeDetail"></span>
+    <span id="ackBadgeDetail" class="hidden"></span>
+    <span id="fulfExcBadgeDetail" class="badge hidden" style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4">Fulfillment EXC — Exception #</span>
+    <div style="flex:1;min-width:20px"></div>
+    <button class="btn btn-ghost btn-sm" onclick="saveRR()" id="btnSave">Save</button>
+  </div>
+  <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+  <div id="nsBanner" style="padding:12px 16px 0"></div>
+
+  <div class="detail-grid">
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <div class="card">
+        <h3>Request Summary</h3>
+        <div class="info-grid">
+          <div class="info-item"><label>Source Type</label><div class="val" id="infoSourceType">—</div></div>
+          <div class="info-item"><label>Source Exception #</label><div class="val" id="infoExcNo">—</div></div>
+          <div class="info-item"><label>RR Date</label><div class="val" id="infoRRDate">—</div></div>
+          <div class="info-item"><label>Supplier-Side Status</label><div class="val" id="infoSupplierStatus">—</div></div>
+          <div class="info-item span-2"><label>RR Reason</label><textarea id="fldRRReason"></textarea></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Replacement Item <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(set at creation from the source Exception)</span></h3>
+        <div class="info-grid">
+          <div class="info-item"><label>Supplier</label><div class="val" id="infoSupplier">—</div></div>
+          <div class="info-item"><label>SKU</label><div class="val" id="infoSKU">—</div></div>
+          <div class="info-item"><label>Item</label><div class="val" id="infoItem">—</div></div>
+          <div class="info-item"><label>RR Qty</label><div class="val" id="infoRRQty">—</div></div>
+          <div class="info-item"><label>SO #</label><div class="val" id="infoSONo">—</div></div>
+          <div class="info-item"><label>PR # (Receiving line)</label><div class="val" id="infoPRNo">—</div></div>
+          <div class="info-item"><label>Original PO #</label><div class="val" id="infoOrigPO">—</div></div>
+          <div class="info-item"><label>Priority</label><div class="val" id="infoPriority">—</div></div>
+          <div class="info-item"><label>Delay Status</label><div class="val" id="infoDelayStatus">—</div></div>
+          <div class="info-item span-2"><label>Item Reason (subform)</label><textarea id="fldItemRRReason"></textarea></div>
+        </div>
+      </div>
+
+      <!-- ADDED 2026-08-12, per user request ("dont remove the RR button in the
+           Exception control, the only problem is that when we choose supplier is
+           wrong. it should be in the RR") — Exception Control's "+ Create RR"
+           still always creates this aggregate record, but now SKIPS creating the
+           Fenteng/Tony supplier-side RR when the source Exception's own Supplier
+           couldn't be auto-resolved (its originating PR was blank), leaving
+           Supplier blank here instead of popping a picker over there. This card
+           finishes that: shown only while Supplier is blank, picking here creates
+           the missing supplier-side RR record, stamps PO damage flags, and fixes
+           the source Exception_Control1 record's Supplier for next time. See
+           chooseRRSupplier()/createSupplierSideRR() below. -->
+      <!-- CHANGED 2026-10-13 — buttons and wording are now built by renderSupplierPicker().
+           Fulfillment EXC RRs can also CHANGE supplier (incl. HC System) until the
+           supplier acknowledges; Procurement RRs only get the blank-supplier pick. -->
+      <div class="card" id="selectSupplierCard" style="display:none">
+        <h3 id="selectSupplierTitle">Select Supplier</h3>
+        <p id="selectSupplierText" style="font-size:12px;color:var(--gray-500);line-height:1.6;margin-bottom:12px"></p>
+        <div id="selectSupplierButtons" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+
+      <div class="card">
+        <h3>Supplier Feedback</h3>
+        <div class="info-grid">
+          <div class="info-item"><label>Supplier Acknowledged</label><input type="checkbox" id="fldSupplierAck"></div>
+          <div class="info-item"><label>Supplier Acknowledge Date</label><input type="date" id="fldAckDate"></div>
+          <div class="info-item"><label>Expected Ship Date</label><input type="date" id="fldExpectedShip"></div>
+          <div class="info-item"><label>Actual Ship</label><input type="date" id="fldActualShip"></div>
+          <div class="info-item"><label>ETA</label><input type="date" id="fldETA"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Closure</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>RR Status</label>
+            <select id="fldRRStatus">
+              <option value="Open">Open</option>
+              <option value="Acknowledged">Acknowledged</option>
+              <option value="In Production">In Production</option>
+              <option value="Shipped">Shipped</option>
+              <option value="Received">Received</option>
+              <option value="Closed">Closed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="info-item"><label>Closed At</label><input type="date" id="fldClosedAt"></div>
+          <div class="info-item"><label>Last Updated</label><div class="val" id="infoLastUpdated">—</div></div>
+          <div class="info-item span-2"><label>Closure Notes</label><textarea id="fldClosureNotes"></textarea></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="card">
+        <h3>About Approve RR</h3>
+        <p style="font-size:12px;color:var(--gray-500);line-height:1.6">
+          Approving is the supplier's own action, done on their portal (Fenteng-RR/
+          Tony-RR) — they confirm they can fulfill it and fill in Expected Ship Date +
+          ETA in the same step. This aggregate view is read-only for that; "Supplier-
+          Side Status" above reflects their own record's live status. Any Missing_SKUs
+          flagging or new replacement PO now happens automatically the moment this RR
+          is raised, not when the supplier approves — no action here triggers it.
+        </p>
+      </div>
+
+      <div class="card" id="cloneShipmentCard" style="display:none">
+        <h3>Log Replacement Shipment</h3>
+        <p style="font-size:12px;color:var(--gray-500);line-height:1.6;margin-bottom:12px" id="cloneShipmentNote">
+          Once the supplier has approved, log a new Shipment for the replacement
+          goods — cloned from the original PO's own Shipment (same PO, Customer,
+          Sales Owner). It routes into the SAME Receiving record as the original,
+          no new PO or new RCV created.
+        </p>
+        <button class="btn btn-green btn-sm" onclick="confirmLogReplacementShipment()" id="btnCloneShipment">Log Replacement Shipment</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- ADDED 2026-07-23, per user ("add confirmation yes/no") — this widget had no
+     confirm modal at all before; matches the .confirm-overlay/.confirm-box naming
+     already used elsewhere in this app (e.g. Fenteng-RR/Tony-RR). -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">Confirm</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="confirm-btn confirm-btn-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="confirm-btn confirm-btn-ok" id="confirmOkBtn">Yes, proceed</button>
+    </div>
+  </div>
+</div>
+
+<!-- Acknowledge a local replacement — ADDED 2026-10-12. HC System has no portal, so
+     this stands in for the supplier's own Acknowledge step. -->
+<div class="confirm-overlay" id="hcAckOverlay">
+  <div class="hcack-box">
+    <div class="confirm-title">Acknowledge local replacement</div>
+    <div class="hcack-sub" id="hcAckRR">—</div>
+    <div class="hcack-item" id="hcAckItem"></div>
+    <div class="hcack-why">
+      HC System has no supplier portal, so this is where the local team commits to
+      producing the replacement. Until this is done the replacement shipment cannot
+      be logged.
+    </div>
+    <div class="hcack-fld">
+      <label for="hcAckShip">Expected Ship Date</label>
+      <input type="date" id="hcAckShip">
+    </div>
+    <div class="hcack-fld">
+      <label for="hcAckEta">ETA <span class="req">*</span></label>
+      <input type="date" id="hcAckEta" onchange="onHcAckChange()" oninput="onHcAckChange()">
+      <div class="hcack-hint">Required. This is the date Target Delivery is based on — leave it out and the order keeps its original, possibly stale, date.</div>
+    </div>
+    <div class="confirm-actions" style="margin-top:18px">
+      <button class="confirm-btn confirm-btn-cancel" onclick="closeHcAck()">Cancel</button>
+      <button class="confirm-btn confirm-btn-ok" id="hcAckOkBtn" onclick="confirmHcAck()">Acknowledge</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* ==================== CONFIG ====================
+   Field list confirmed via ReplacementRequestFields.txt (live field-builder dump,
+   2026-07-07) + create_rr_button.txt / approve_rr_supplier.txt (the scripts that
+   actually create/advance these records). Report names: aggregate
+   `Replacement_Request_Report` as given directly; supplier reports
+   `Fenteng_Lighting_Replacement_Request_Report`/`Tony_Fan_Replacement_Request_Report`
+   confirmed via approve_rr_supplier.txt's own workflow-setup header (that's literally
+   where the native "Approve RR" button lives).
+   Header fields: RR_No, Source_Type (Receiving Damage/Receiving Missing/QC Failure/
+   Complaint), RR_Status (Open/Acknowledged/In Production/Shipped/Received/Closed/
+   Cancelled), RR_Date, Source_Exception_No, RR_Reason (header textarea — NOTE: the
+   Replacement_Summary subform below has its OWN separate field, also link-named
+   RR_Reason — same name, different field, don't confuse the two, see
+   ReplacementRequestFields.txt), Supplier_Acknowledgement1 (checkbox, note the "1"
+   suffix), Supplier_Acknowledge_Date, Expected_Ship_Date, Actual_Ship, ETA,
+   Last_Updated, Closed_At, Closure_Notes.
+   Subform Replacement_Summary: Supplier, RR_Reason (subform's own), SKU, Item, SO_No,
+   PR_No, Original_PO_No, RR_Qty, Priority, Delay_Status (On Track/At Risk/Delayed).
+   Every field this create_rr_button.txt sets at creation time (Supplier/SKU/Item/
+   SO_No/PR_No/Original_PO_No/Priority/RR_Qty) is shown READ-ONLY here — it's derived
+   from the source Exception, not meant for manual correction. The subform's own
+   RR_Reason and Delay_Status are never set by any script — RR_Reason left editable
+   (presumably meant for manual fill-in), Delay_Status left read-only display (unknown
+   choice list, never populated anywhere in this codebase, don't invent one).
+   Fenteng_Lighting_Replacement_Request/Tony_Fan_Replacement_Request use IDENTICAL
+   field link names to the base form, no _Supplier1/2 suffix — confirmed, the OPPOSITE
+   convention from every other duplicated supplier-form pair in this app.
+   "Approve RR" is a Report Action Item on the SUPPLIER reports only, not the
+   aggregate — needs the approve_rr_fenteng/approve_rr_tony Custom APIs (see
+   DelugeScripts/approve_rr_custom_api.txt) to trigger from this widget, same
+   un-callable-Action-Item workaround used throughout this app. The widget resolves
+   which supplier record to hit by matching RR_No between this aggregate record and
+   whichever supplier report matches Replacement_Summary[0].Supplier.
+   Subform full-replace on Save uses the same no-ID full-replace pattern proven
+   elsewhere in this app (Supplier_quotes/PO_Line_Items/Damage_Missing_Details) — safe
+   here since Replacement_Summary is always exactly 1 row per RR by construction. */
+const REPORT_NAME = 'Replacement_Request_Report'; // as given directly
+const SUPPLIER_REPORTS = {
+  'Fenteng': 'Fenteng_Lighting_Replacement_Request_Report',
+  'Tony': 'Tony_Fan_Replacement_Request_Report'
+};
+
+/* ADDED 2026-08-12, per user request — the "Select Supplier" card (see
+   selectSupplierCard in the markup + chooseRRSupplier()/createSupplierSideRR()
+   below). Ported from Widget\Fulfillment\Exception Control\app\index.html's own
+   createReplacementRequest()/stampDamageFlags(), which used to gate Create RR
+   behind a picker POPUP there — moved here per user ("the only problem is that
+   when we choose supplier is wrong. it should be in the RR"). Exception Control
+   still always creates the aggregate Replacement_Request record; it only skips
+   the Fenteng/Tony supplier-side create + PO damage-flag stamp when Supplier
+   can't be auto-resolved, leaving both to be finished here instead. */
+const EXC_REPORT = 'Exception_Control_Report';
+const PO_AGG_REPORT = 'All_Purchase_Orders';
+const SUPPLIER_RR = {
+  Fenteng: { form: 'Fenteng_Lighting_Replacement_Request', report: 'Fenteng_Lighting_Replacement_Request_Report' },
+  Tony: { form: 'Tony_Fan_Replacement_Request', report: 'Tony_Fan_Replacement_Request_Report' }
+};
+const SUPPLIER_PO = {
+  Fenteng: { report: 'Fenteng_Lighting_Purchase_Order_Report', poField: 'PO_No_Supplier1', damageField: 'Damage_SKUs_Supplier1' },
+  Tony: { report: 'Tony_Fan_Purchase_Order_Report', poField: 'PO_No_Supplier2', damageField: 'Damage_SKUs_Supplier2' }
+};
+// Same full-name-vs-bare-literal gotcha documented throughout this app (e.g.
+// Replacement_Summary.Supplier can be "Tony Fan"/"Fenteng Lighting", not just
+// "Fenteng"/"Tony") — normalize before any SUPPLIER_RR/SUPPLIER_PO lookup.
+function supplierKey(name){
+  var n = String(name || '');
+  if(n.indexOf('Fenteng') > -1) return 'Fenteng';
+  if(n.indexOf('Tony') > -1) return 'Tony';
+  return n;
+}
+function todayIsoRR(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+// Creator rejects getRecords with an HTTP 400 (not a resolved {code:!=3000}) when a
+// criteria genuinely matches nothing — code 9220/9280 both mean "empty result", not
+// a real failure. Same family loadList()'s own inline try/catch above already checks
+// for 9220; this named helper additionally covers 9280 for the extra reports below.
+function isNoRecordsError(err){
+  try{
+    var text = (err && err.responseText) || (typeof err === 'string' ? err : '');
+    var parsed = (typeof text === 'string' && text) ? JSON.parse(text) : (err || {});
+    return !!(parsed && (parsed.code === 9220 || parsed.code === 9280));
+  } catch(e){ return false; }
+}
+
+/* Approve RR's own Custom API consts removed 2026-07-20 — see loadMatchedSupplierRecord()
+   and the "About Approve RR" card, approving moved entirely to the supplier portal. */
+
+/* ADDED 2026-07-20, per user — Clone Shipment mechanism, part of the same-RCV/
+   same-PO replacement recycle redesign (see DelugeScripts/clone_shipment_for_
+   replacement.txt for the full writeup). Key is a placeholder — replace after
+   creating the Custom API live in Creator (same "left as REPLACE_WITH_ until
+   created" convention used elsewhere in this app on first build). */
+const CUSTOM_API_NAME_CLONE_SHIPMENT = 'clone_shipment_for_replacement';
+const CUSTOM_API_KEY_CLONE_SHIPMENT = 'xSxWx8tSWt3VGMd2Hksf8u72e';
+
+/* ==================== STATE ==================== */
+var ALL_ROWS = [];
+var CURRENT_FILTER = 'all';
+var CURRENT_RECORD = null;
+var MATCHED_SUPPLIER_RECORD = null; // the matching Fenteng/Tony RR record, fetched on openDetail
+
+window.addEventListener('load', loadList);
+
+/* ADDED 2026-10-13 — a code 3002 is a per-FIELD validation error and the field name
+   is in resp.error, not resp.message (which comes back blank). Show it, since this app
+   is tested from screenshots, not DevTools. */
+function respErrText(resp){
+  if(!resp) return '';
+  var parts = [];
+  if(resp.message) parts.push(resp.message);
+  if(resp.error) parts.push(typeof resp.error === 'string' ? resp.error : JSON.stringify(resp.error));
+  return parts.join(' ');
+}
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, String(msg).length > 60 ? 9000 : 3200);
+}
+
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function invokeApi(apiName, publicKey, payload){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({
+    api_name: apiName,
+    http_method: 'POST',
+    content_type: 'application/json',
+    payload: payload || {},
+    public_key: publicKey
+  }).then(function(resp){
+    /* Standard-response Custom APIs wrap the function's Map under "result", not "data" —
+       see the invokeCustomApi Deluge Gotchas entry in CLAUDE.md. Check both. */
+    return (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+  });
+}
+
+function firstSummaryRow(r){
+  return (r && r.Replacement_Summary && r.Replacement_Summary.length) ? r.Replacement_Summary[0] : {};
+}
+
+/* ==================== LIST ==================== */
+function loadList(){
+  document.getElementById('listBody').innerHTML = '<tr><td colspan="13"><div class="loading-wrap"><div class="spinner"></div>Loading replacement requests…</div></td></tr>';
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    console.error('[RR] SDK not available');
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  var _timeout = setTimeout(function(){ showToast('Still loading — this can take a moment'); }, 8000);
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: REPORT_NAME,
+    page: 1,
+    pageSize: 200,
+    field_config: 'all'
+  }).then(function(resp){
+    clearTimeout(_timeout);
+    console.log('[RR] getRecords code:', resp && resp.code, '| records:', resp && resp.data && resp.data.length);
+    ALL_ROWS = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    patchLiveSupplierStatus(function(){
+      renderStats();
+      renderFilterPills();
+      renderTabs(); renderList();
+    });
+  }).catch(function(err){
+    clearTimeout(_timeout);
+    var isEmptyReport = false;
+    try{
+      var text = err && (err.responseText || (err.content && err.content.responseText));
+      var parsed = text ? JSON.parse(text) : null;
+      if(parsed && (parsed.code === 9220 || String(parsed.code) === '9220')) isEmptyReport = true;
+    } catch(e){ }
+    if(isEmptyReport){
+      ALL_ROWS = [];
+      renderStats(); renderFilterPills(); renderTabs(); renderList();
+      return;
+    }
+    console.error('[RR] getRecords failed', err);
+    showToast('Could not load replacement requests — see console');
+    document.getElementById('listBody').innerHTML = '';
+    document.getElementById('listEmpty').classList.remove('hidden');
+  });
+}
+
+/* ADDED 2026-07-20, per user finding live (list showed "Open"/"No" for an RR already
+   Acknowledged with Supplier_Acknowledgement1=true) — root cause: the aggregate
+   Replacement_Request's own RR_Status/Supplier_Acknowledgement1 are NEVER written by
+   anything after creation (confirmed via code — only the supplier-side Fenteng/Tony
+   records ever advance, same "known duality" already documented for the detail view's
+   own separate "Supplier-Side Status" field). The detail view has a dedicated field for
+   the live value; the LIST view had no such thing — its Status/Supplier Ack columns and
+   stat-card counts were structurally incapable of ever being right for any RR. Fixed
+   by fetching both supplier reports ONCE here (not per-row — same batch-then-merge
+   pattern already used elsewhere in this app, e.g. PRs widget's Load Balancing), keyed
+   by RR_No (a real global join key — supplier records reuse the aggregate's own RR_No
+   verbatim, confirmed via create_rr_button.txt), and overwriting each ALL_ROWS row's
+   RR_Status/Supplier_Acknowledgement1 in place with the live value before anything
+   renders. Deliberately does NOT touch openDetail()/CURRENT_RECORD — the detail page's
+   own "Supplier-Side Status" field already solves this correctly there, patching the
+   header pill too would make that field redundant. Fails open (leaves the stale
+   aggregate value) per-row if no matching supplier record is found, so an RR without a
+   real Fenteng/Tony counterpart yet still displays something instead of erroring. */
+function patchLiveSupplierStatus(done){
+  if(ALL_ROWS.length === 0){ done(); return; }
+  var liveByRRNo = {};
+  var reportNames = ['Fenteng_Lighting_Replacement_Request_Report','Tony_Fan_Replacement_Request_Report'];
+  var pending = reportNames.length;
+  function finishOne(){
+    pending--;
+    if(pending === 0){
+      ALL_ROWS.forEach(function(r){
+        var live = liveByRRNo[r.RR_No];
+        if(live){
+          r.RR_Status = live.RR_Status;
+          r.Supplier_Acknowledgement1 = live.Supplier_Acknowledgement1;
+        }
+      });
+      done();
+    }
+  }
+  reportNames.forEach(function(rn){
+    ZOHO.CREATOR.DATA.getRecords({
+      report_name: rn,
+      page: 1,
+      pageSize: 200,
+      field_config: 'all'
+    }).then(function(resp){
+      if(resp && resp.code===3000 && Array.isArray(resp.data)){
+        resp.data.forEach(function(row){
+          liveByRRNo[row.RR_No] = { RR_Status: row.RR_Status, Supplier_Acknowledgement1: row.Supplier_Acknowledgement1 };
+        });
+      }
+      finishOne();
+    }).catch(function(){ finishOne(); });
+  });
+}
+
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}" +
+      ".ns-wait{background:#fffbeb;color:#b45309;border-color:#fde68a}" +
+      ".ns-done{background:#ecfdf5;color:#047857;border-color:#a7f3d0}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:#cbd5e1">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+function nextStepFor(r, sr){
+  sr = sr || firstSummaryRow(r) || {};
+  var sup = sr.Supplier || 'Supplier';
+  var k = statusKey(r);
+  if(k==='closed') return {here:'Closed', action:'Closed', who:'', tone:'done'};
+  if(k==='cancelled') return {here:'Cancelled', action:'Cancelled', who:'', tone:'done'};
+  if(k==='received') return {here:'Received', action:'Replacement received', who:'', tone:'done'};
+  if(k==='shipped') return {here:'Shipped', action:'Receive the replacement', who:'Warehouse', tone:'next'};
+  if(k==='acknowledged' || k==='inproduction') return {here:(k==='inproduction'?'In Production':'Acknowledged'), action:'Supplier to ship the replacement', who:sup, tone:'wait'};
+  return {here:'Open', action:'Supplier to acknowledge', who:sup, tone:'wait'};
+}
+
+function statusKey(row){
+  return (row.RR_Status || 'open').toLowerCase().replace(/\s+/g,'');
+}
+function statusBadge(row){
+  var map = {
+    open:            ['badge-amber',  'Open'],
+    acknowledged:    ['badge-blue',   'Acknowledged'],
+    inproduction:    ['badge-purple', 'In Production'],
+    shipped:         ['badge-blue',   'Shipped'],
+    received:        ['badge-green',  'Received'],
+    closed:          ['badge-gray',   'Closed'],
+    cancelled:       ['badge-red',    'Cancelled']
+  };
+  var m = map[statusKey(row)] || map.open;
+  return '<span class="badge ' + m[0] + '">' + m[1] + '</span>';
+}
+
+function renderStats(){
+  var counts = { open:0, acknowledged:0, inproduction:0, shipped:0, received:0, closed:0, cancelled:0 };
+  ALL_ROWS.forEach(function(r){ var k = statusKey(r); if(counts[k]!==undefined) counts[k]++; });
+  document.getElementById('statCards').innerHTML =
+    statCard('Open', counts.open, 'amber') +
+    statCard('Acknowledged', counts.acknowledged, 'blue') +
+    statCard('In Production', counts.inproduction, 'purple') +
+    statCard('Shipped', counts.shipped, 'blue') +
+    statCard('Received', counts.received, 'green') +
+    statCard('Closed', counts.closed, '') +
+    statCard('Cancelled', counts.cancelled, 'red');
+}
+function statCard(label, val, cls){
+  return '<div class="stat-card"><div class="stat-label">' + label + '</div><div class="stat-value ' + cls + '">' + val + '</div></div>';
+}
+
+function renderFilterPills(){
+  var filters = [
+    ['all','All'], ['open','Open'], ['acknowledged','Acknowledged'], ['inproduction','In Production'],
+    ['shipped','Shipped'], ['received','Received'], ['closed','Closed'], ['cancelled','Cancelled']
+  ];
+  document.getElementById('filterPills').innerHTML = filters.map(function(f){
+    return '<button class="pill ' + (CURRENT_FILTER===f[0]?'active':'') + '" onclick="setFilter(\'' + f[0] + '\')">' + f[1] + '</button>';
+  }).join('');
+}
+function setFilter(f){ CURRENT_FILTER = f; renderFilterPills(); renderList(); }
+
+/* ════════════════════════════════
+   EXC # COLUMN — ADDED 2026-10-21, per user request ("sa RR naman dapat meron ding
+   EXC number dito"), so an RR can be traced back to the Exception that raised it
+   straight from the list, without opening the record.
+   Source_Exception_No is already on Replacement_Request — create_rr_button.txt /
+   create_rr_custom_api.txt stamp it with the source Exceptions record's Exception_No
+   at RR creation — and the detail view already shows it (infoExcNo). This only
+   surfaces the same field in the two list tables. No new field, no new fetch.
+   Self-styled so it does not depend on any precompiled CSS build.
+════════════════════════════════ */
+(function injectExcChipCss(){
+  if(document.getElementById('excChipStyles')) return;
+  var st = document.createElement('style');
+  st.id = 'excChipStyles';
+  st.textContent =
+    '.exc-chip{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;' +
+    'font-weight:600;line-height:1.3;padding:2px 7px;border-radius:6px;white-space:nowrap;' +
+    'background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}' +
+    '.exc-none{color:#94a3b8}';
+  document.head.appendChild(st);
+})();
+function excNoCell(r){
+  var no = String((r && r.Source_Exception_No) || '').trim();
+  return no ? '<span class="exc-chip">' + esc(no) + '</span>' : '<span class="exc-none">&mdash;</span>';
+}
+
+function renderList(){
+  var q = (document.getElementById('searchInput').value || '').toLowerCase();
+  var rows = ALL_ROWS.filter(function(r){
+    if(!rowInTab(r)) return false;
+    if(CURRENT_FILTER !== 'all' && statusKey(r) !== CURRENT_FILTER) return false;
+    if(!q) return true;
+    var sr = firstSummaryRow(r);
+    var hay = ((r.RR_No||'') + ' ' + (r.Source_Exception_No||'') + ' ' + (sr.SKU||'') + ' ' + (sr.Original_PO_No||'')).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  });
+  var body = document.getElementById('listBody');
+  var empty = document.getElementById('listEmpty');
+  if(rows.length === 0){
+    body.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  body.innerHTML = rows.map(function(r){
+    var sr = firstSummaryRow(r);
+    var ack = r.Supplier_Acknowledgement1===true || r.Supplier_Acknowledgement1==='true';
+    var fulfExcBadge = (r.Source_Module === 'Fulfillment EXC') ? ' <span class="badge" style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4">Fulfillment EXC</span>' : '';
+    return '<tr class="row-' + statusKey(r) + '" onclick="openDetail(\'' + r.ID + '\')">' +
+      '<td><strong>' + esc(r.RR_No) + '</strong>' + fulfExcBadge + '</td>' +
+      '<td>' + excNoCell(r) + '</td>' +
+      '<td>' + esc(r.Source_Type) + '</td>' +
+      '<td>' + statusBadge(r) + '</td>' +
+      '<td>' + nextStepCell(r.ID, nextStepFor(r, sr)) + '</td>' +
+      '<td><span class="badge badge-gray" style="font-family:monospace">' + esc(sr.SKU) + '</span></td>' +
+      '<td>' + esc(sr.Item) + '</td>' +
+      '<td>' + (sr.RR_Qty||'—') + '</td>' +
+      '<td>' + esc(sr.Priority || '—') + '</td>' +
+      '<td>' + esc(sr.Supplier) + '</td>' +
+      '<td>' + esc(sr.Original_PO_No) + '</td>' +
+      '<td>' + esc(r.RR_Date || '—') + '</td>' +
+      '<td>' + (ack ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-gray">No</span>') + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+
+/* ════════════════════════════════
+   LOCAL (HC SYSTEM) TAB — ADDED 2026-10-12, per user request.
+   HC System is Local sourcing: deliberately no supplier portal, no
+   HC_System_Replacement_Request form, nothing for them to acknowledge
+   (DelugeScripts/hc_system_local_sourcing_setup.txt). That left local replacements
+   with no acknowledgment step at all — and clone_shipment_for_replacement.txt refuses
+   to log a replacement shipment until the supplier has acknowledged.
+   This tab supplies the missing ACTOR rather than removing the rule: the local team
+   acknowledges here, on the main Replacement_Request record, and the backend reads
+   that instead of a supplier-side form.
+   No new fields were needed — RR_Status, Supplier_Acknowledgement1,
+   Supplier_Acknowledge_Date, Expected_Ship_Date and ETA all already exist and are
+   already written by saveRR() below.
+   Deliberately NO "Mark Completed" button here: completion must come from the physical
+   receive, which is also what creates the Pre_Order_FF record, updates Target Delivery
+   and puts stock in a bin. See Proposals/RR_Supplier_Choice_Before_Create_RR_Plan_
+   2026-10-12.md section 10.
+════════════════════════════════ */
+/* CHANGED 2026-10-13, per user — "All RRs" split into Procurement and Fulfillment, by
+   the RR's own Source_Module. Fulfillment = Source_Module "Fulfillment EXC" (created from
+   Exception Control); everything else is Procurement (Exceptions widget, Receiving
+   Damage/Missing). The two are received differently — see the SUPPLIER PICKER block —
+   which is why only the Fulfillment tab's RRs can change supplier. */
+var CURRENT_TAB = 'proc';
+function rowInTab(r){
+  if(CURRENT_TAB === 'ff') return isFfRR(r);
+  if(CURRENT_TAB === 'proc') return !isFfRR(r);
+  return true;
+}
+
+/* Prefer the header RR_Supplier (stamped by create_rr at RR creation) and fall back to
+   the Replacement_Summary row, which is what the rest of this file reads. Both carry
+   the same value; the header is just safe to read off a criteria-queried record. */
+function rrSupplierOf(r){
+  var v = r.RR_Supplier;
+  if(v == null || String(v).trim() === ''){
+    var sr = firstSummaryRow(r) || {};
+    v = sr.Supplier;
+  }
+  return String(v == null ? '' : v);
+}
+function isLocalRow(r){ return rrSupplierOf(r).indexOf('HC') >= 0; }
+function localRows(){ return ALL_ROWS.filter(isLocalRow); }
+
+function renderTabs(){
+  var n = localRows().length;
+  var nFf = ALL_ROWS.filter(isFfRR).length;
+  var nProc = ALL_ROWS.length - nFf;
+  document.getElementById('rrTabs').innerHTML =
+    '<button class="rr-tab ' + (CURRENT_TAB === 'proc' ? 'active' : '') + '" onclick="setTab(&#39;proc&#39;)">Procurement<span class="cnt">' + nProc + '</span></button>' +
+    '<button class="rr-tab ' + (CURRENT_TAB === 'ff' ? 'active' : '') + '" onclick="setTab(&#39;ff&#39;)">Fulfillment<span class="cnt">' + nFf + '</span></button>' +
+    '<button class="rr-tab ' + (CURRENT_TAB === 'local' ? 'active' : '') + '" onclick="setTab(&#39;local&#39;)">Local (HC System)<span class="cnt">' + n + '</span></button>';
+}
+function setTab(t){
+  CURRENT_TAB = t;
+  renderTabs();
+  renderList();
+}
+
+/* One dispatcher, so every existing caller of renderList() keeps working untouched. */
+var _renderAllList = renderList;
+renderList = function(){
+  var local = (CURRENT_TAB === 'local');
+  document.getElementById('localNote').classList.toggle('hidden', !local);
+  document.getElementById('filterPills').classList.toggle('hidden', local);
+  document.getElementById('allWrap').classList.toggle('hidden', local);
+  if(local){
+    document.getElementById('listEmpty').classList.add('hidden');
+    renderLocalList();
+  } else {
+    document.getElementById('localWrap').classList.add('hidden');
+    document.getElementById('localEmpty').classList.add('hidden');
+    _renderAllList();
+  }
+};
+
+function renderLocalList(){
+  var q = (document.getElementById('searchInput').value || '').toLowerCase();
+  var rows = localRows().filter(function(r){
+    if(!q) return true;
+    var sr = firstSummaryRow(r) || {};
+    var hay = ((r.RR_No || '') + ' ' + (r.Source_Exception_No || '') + ' ' + (sr.SKU || '') + ' ' + (sr.Item || '')).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  });
+  var wrap = document.getElementById('localWrap');
+  var body = document.getElementById('localBody');
+  var empty = document.getElementById('localEmpty');
+  if(rows.length === 0){
+    body.innerHTML = '';
+    wrap.classList.add('hidden');
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  wrap.classList.remove('hidden');
+  body.innerHTML = rows.map(function(r){
+    var sr = firstSummaryRow(r) || {};
+    /* Only an Open RR can be acknowledged. Anything further along has already been
+       committed to, and completion is the receive's job, not this tab's. */
+    var canAck = (statusKey(r) === 'open');
+    var action = canAck
+      ? '<button class="btn-ack" onclick="event.stopPropagation();openHcAck(&#39;' + r.ID + '&#39;)">Acknowledge</button>'
+      : '<span style="color:var(--gray-400)">&mdash;</span>';
+    return '<tr class="row-' + statusKey(r) + '" onclick="openDetail(&#39;' + r.ID + '&#39;)">' +
+      '<td><strong>' + esc(r.RR_No) + '</strong></td>' +
+      '<td>' + excNoCell(r) + '</td>' +
+      '<td><span class="badge badge-gray" style="font-family:monospace">' + esc(sr.SKU) + '</span></td>' +
+      '<td>' + esc(sr.Item) + '</td>' +
+      '<td>' + (sr.RR_Qty || '&mdash;') + '</td>' +
+      '<td>' + statusBadge(r) + '</td>' +
+      '<td>' + (r.Expected_Ship_Date ? esc(r.Expected_Ship_Date) : '&mdash;') + '</td>' +
+      '<td>' + (r.ETA ? esc(r.ETA) : '&mdash;') + '</td>' +
+      '<td>' + action + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+var _hcAckId = null;
+function openHcAck(id){
+  var rec = null;
+  for(var i = 0; i < ALL_ROWS.length; i++){ if(String(ALL_ROWS[i].ID) === String(id)) rec = ALL_ROWS[i]; }
+  if(!rec){ showToast('Record not loaded yet'); return; }
+  _hcAckId = id;
+  var sr = firstSummaryRow(rec) || {};
+  document.getElementById('hcAckRR').textContent = rec.RR_No || '';
+  document.getElementById('hcAckItem').innerHTML =
+    '<strong>' + esc(sr.SKU) + '</strong>' + (sr.Item ? ' &middot; ' + esc(sr.Item) : '') +
+    ' &middot; qty ' + (sr.RR_Qty || '&mdash;');
+  document.getElementById('hcAckShip').value = '';
+  document.getElementById('hcAckEta').value = '';
+  onHcAckChange();
+  document.getElementById('hcAckOverlay').classList.add('show');
+}
+function onHcAckChange(){
+  document.getElementById('hcAckOkBtn').disabled = !document.getElementById('hcAckEta').value;
+}
+function closeHcAck(){
+  document.getElementById('hcAckOverlay').classList.remove('show');
+  _hcAckId = null;
+}
+
+function confirmHcAck(){
+  if(!_hcAckId) return;
+  var eta = document.getElementById('hcAckEta').value;
+  if(!eta){ showToast('Give an ETA — Target Delivery is based on it.'); return; }
+  var ship = document.getElementById('hcAckShip').value;
+  var id = _hcAckId;
+  var btn = document.getElementById('hcAckOkBtn');
+  /* HEADER FIELDS ONLY — deliberately no Replacement_Summary in this payload. A subform
+     full-replace is what produced the RR-00004 code 2930 failure documented in this
+     file's own 2026-08-12 history, and nothing here needs to touch the subform. */
+  var payload = {
+    RR_Status: 'Acknowledged',
+    Supplier_Acknowledgement1: true,
+    Supplier_Acknowledge_Date: fmtDateForPayload(todayIsoRR()),
+    ETA: fmtDateForPayload(eta),
+    Last_Updated: fmtDateForPayload(todayIsoRR())
+  };
+  if(ship) payload.Expected_Ship_Date = fmtDateForPayload(ship);
+  btn.disabled = true;
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: String(id),
+    payload: { data: payload }
+  }).then(function(resp){
+    btn.disabled = false;
+    if(!(resp && (resp.code === 3000 || String(resp.code) === '3000'))){
+      showToast('Acknowledge failed — code ' + (resp && resp.code) + ' ' + respErrText(resp));
+      return;
+    }
+    closeHcAck();
+    showToast('Acknowledged. The replacement shipment can now be logged.');
+    loadList();
+  }).catch(function(err){
+    btn.disabled = false;
+    console.error('[RR] HC acknowledge failed', err);
+    showToast('Acknowledge failed — see console');
+  });
+}
+
+function showList(){
+  document.getElementById('detailView').classList.add('hidden');
+  document.getElementById('listView').classList.remove('hidden');
+  loadList();
+}
+
+/* ==================== DETAIL ==================== */
+function openDetail(id){
+  document.getElementById('listView').classList.add('hidden');
+  document.getElementById('detailView').classList.remove('hidden');
+  MATCHED_SUPPLIER_RECORD = null;
+  ZOHO.CREATOR.DATA.getRecordById({
+    report_name: REPORT_NAME,
+    id: String(id),
+    field_config: 'all'
+  }).then(function(resp){
+    CURRENT_RECORD = (resp && resp.code===3000 && resp.data) ? resp.data : null;
+    if(!CURRENT_RECORD){
+      showToast('Could not load this Replacement Request — code ' + (resp && resp.code));
+      showList();
+      return;
+    }
+    renderDetail();
+    loadMatchedSupplierRecord();
+  }).catch(function(err){
+    console.error('[RR] getRecordById failed', err);
+    showToast('Could not load this Replacement Request');
+  });
+}
+
+/* Finds the matching Fenteng/Tony RR record by RR_No, purely for the "Supplier-Side
+   Status" info display now — approving itself is the supplier's own action on their
+   own portal (Fenteng-RR/Tony-RR), removed from here 2026-07-20 per user request. */
+function loadMatchedSupplierRecord(){
+  var sr = firstSummaryRow(CURRENT_RECORD);
+  var supplier = sr.Supplier;
+  /* FIXED 2026-08-07, real bug confirmed live (same class as the whole day's
+     Fenteng/Tony full-vs-short-name audit): Replacement_Summary.Supplier (written
+     by create_rr from Product_Context1.Supplier) can be the full Suppliers-form
+     name ("Tony Fan"/"Fenteng Lighting"), not just the bare "Fenteng"/"Tony"
+     SUPPLIER_REPORTS is keyed by — an exact-key lookup silently returned
+     undefined for the full-name shape, hiding the "Log Replacement Shipment"
+     card entirely regardless of the supplier's real RR status. Normalize to the
+     short key for the lookup only; `supplier` itself stays the raw value for
+     display/storage. */
+  var supplierKey = supplier ? (supplier.indexOf('Fenteng') >= 0 ? 'Fenteng' : (supplier.indexOf('Tony') >= 0 ? 'Tony' : supplier)) : supplier;
+  var reportName = SUPPLIER_REPORTS[supplierKey];
+  document.getElementById('cloneShipmentCard').style.display = 'none';
+  /* ADDED 2026-10-12 — HC System is Local sourcing: there is deliberately no portal,
+     no HC_System_Replacement_Request form and nothing for them to acknowledge
+     (DelugeScripts/hc_system_local_sourcing_setup.txt). Before this, an HC System RR
+     fell into the !reportName branch below, printed 'Unknown supplier "HC System"'
+     and hid Log Replacement Shipment forever — the RR could never advance. The
+     backend gate in clone_shipment_for_replacement.txt has the matching branch; the
+     two must stay in step. Reachable now that Exception Control's Create RR can route
+     a replacement to HC System — see Proposals/RR_Supplier_Choice_Before_Create_RR_
+     Plan_2026-10-12.md. */
+  /* CHANGED 2026-10-13 — the gate is no longer skipped for HC System. The local team
+     acknowledges on THIS record from the Local (HC System) tab, and
+     cloneShipmentForReplacement now reads RR_Status off this record for HC System.
+     Same allowed-status list as the Fenteng/Tony branch below. */
+  if(supplier && supplier.indexOf('HC') >= 0){
+    MATCHED_SUPPLIER_RECORD = null;
+    var hcStatus = CURRENT_RECORD.RR_Status || '';
+    var hcCanClone = ['Acknowledged','In Production','Shipped','Completed'].indexOf(hcStatus) !== -1;
+    document.getElementById('infoSupplierStatus').textContent = hcCanClone
+      ? ('Local supplier — ' + hcStatus)
+      : 'Local supplier — not yet acknowledged (use the Local (HC System) tab)';
+    document.getElementById('cloneShipmentCard').style.display = hcCanClone ? 'block' : 'none';
+    if(hcCanClone) applyCloneShipmentState();
+    return;
+  }
+  if(!reportName){
+    document.getElementById('infoSupplierStatus').textContent = supplier ? ('Unknown supplier "' + supplier + '"') : '—';
+    return;
+  }
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: reportName,
+    criteria: 'RR_No == "' + CURRENT_RECORD.RR_No + '"',
+    field_config: 'all'
+  }).then(function(resp){
+    if(!(resp && resp.code===3000 && resp.data && resp.data.length)){
+      document.getElementById('infoSupplierStatus').textContent = 'No matching supplier record found';
+      return;
+    }
+    MATCHED_SUPPLIER_RECORD = resp.data[0];
+    MATCHED_SUPPLIER_RECORD._supplier = supplier;
+    document.getElementById('infoSupplierStatus').textContent = MATCHED_SUPPLIER_RECORD.RR_Status || '—';
+    /* ADDED 2026-07-20 — Log Replacement Shipment only makes sense once the
+       supplier has actually approved (Expected Ship Date/ETA filled). */
+    var supStatus = MATCHED_SUPPLIER_RECORD.RR_Status || '';
+    /* FIXED 2026-08-07, real bug found live (RR-00001, supplier status "Completed",
+       card stayed hidden even after the SUPPLIER_REPORTS name-shape fix above) —
+       this list had drifted out of sync with the backend's own allowed-status gate
+       (clone_shipment_for_replacement.txt: "Acknowledged"/"In Production"/"Shipped"/
+       "Completed") — the backend already accepted "Completed", the widget just never
+       showed the button for it. Added "Completed" here to match. */
+    var canClone = ['Acknowledged','In Production','Shipped','Completed'].indexOf(supStatus) !== -1;
+    document.getElementById('cloneShipmentCard').style.display = canClone ? 'block' : 'none';
+    if(canClone) applyCloneShipmentState();
+  }).catch(function(err){
+    console.error('[RR] loadMatchedSupplierRecord failed', err);
+    document.getElementById('infoSupplierStatus').textContent = '—';
+  });
+}
+
+/* ADDED 2026-07-23, per user ("add confirmation yes/no") — this is an irreversible
+   real-data create (a new live Shipments record), same standard as every other
+   confirm modal in this app. */
+var _confirmYesHandler = null;
+function showConfirm(msg, onYes){
+  document.getElementById('confirmMsg').textContent = msg;
+  _confirmYesHandler = onYes;
+  document.getElementById('confirmOkBtn').onclick = function(){ closeConfirm(); if(typeof _confirmYesHandler==='function') _confirmYesHandler(); };
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm(){ document.getElementById('confirmOverlay').classList.remove('show'); }
+function confirmLogReplacementShipment(){
+  if(!CURRENT_RECORD){ showToast('Record not loaded yet'); return; }
+  showConfirm('Log a new replacement Shipment for ' + (CURRENT_RECORD.RR_No||'this RR') + '? This creates a real Shipments record.', logReplacementShipment);
+}
+
+/* ADDED 2026-07-23 — reflects CURRENT_RECORD.Cloned_Shipment_No (the backend's own
+   duplication guard, see clone_shipment_for_replacement.txt) in the UI: once a
+   shipment's already been logged for this RR, disable the button and show which
+   one instead of leaving it clickable and re-earning the same server-side error
+   toast every time. Called both on initial load and right after a successful
+   create, so the button locks immediately without needing a full page reopen. */
+function applyCloneShipmentState(){
+  var already = CURRENT_RECORD && CURRENT_RECORD.Cloned_Shipment_No;
+  var btn = document.getElementById('btnCloneShipment');
+  var note = document.getElementById('cloneShipmentNote');
+  if(already){
+    btn.disabled = true;
+    btn.textContent = 'Already Logged';
+    note.textContent = 'Replacement Shipment ' + already + ' was already logged for this RR — one shipment per RR only.';
+  } else {
+    btn.disabled = false;
+    btn.textContent = 'Log Replacement Shipment';
+    note.textContent = 'Once the supplier has approved, log a new Shipment for the replacement goods — cloned from the original PO\'s own Shipment (same PO, Customer, Sales Owner). It routes into the SAME Receiving record as the original, no new PO or new RCV created.';
+  }
+}
+
+/* ADDED 2026-07-20 — Clone Shipment button handler. Calls the aggregate
+   Replacement_Request's own ID (CURRENT_RECORD.ID) — NOT the supplier RR's ID —
+   see clone_shipment_for_replacement.txt's own NOTES for why. */
+function logReplacementShipment(){
+  if(!CURRENT_RECORD){ showToast('Record not loaded yet'); return; }
+  if(CURRENT_RECORD.Cloned_Shipment_No){ showToast('Already logged — ' + CURRENT_RECORD.Cloned_Shipment_No); return; }
+  var btn = document.getElementById('btnCloneShipment');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  invokeApi(CUSTOM_API_NAME_CLONE_SHIPMENT, CUSTOM_API_KEY_CLONE_SHIPMENT, { rrRecordId: String(CURRENT_RECORD.ID) }).then(function(result){
+    console.log('[RR] cloneShipment resp:', JSON.stringify(result));
+    if(result && result.status === 'success'){
+      showToast(result.message || 'Shipment created.');
+      /* Best-effort local mark so the button locks immediately — the real source of
+         truth is still the server field, re-synced next time this record loads. */
+      var m = /Replacement Shipment (\S+) created/.exec(result.message||'');
+      CURRENT_RECORD.Cloned_Shipment_No = m ? m[1] : 'yes';
+      applyCloneShipmentState();
+    } else {
+      btn.disabled = false; btn.textContent = 'Log Replacement Shipment';
+      showToast((result && result.message) || 'Could not create shipment — see console');
+    }
+  }).catch(function(err){
+    console.error('[RR] cloneShipment failed', err);
+    btn.disabled = false; btn.textContent = 'Log Replacement Shipment';
+    showToast('Could not create shipment — see console');
+  });
+}
+
+function renderDetail(){
+  var r = CURRENT_RECORD;
+  var sr = firstSummaryRow(r);
+  renderNextStepBanner("nsBanner", r.ID, nextStepFor(r, sr));
+  var ack = r.Supplier_Acknowledgement1===true || r.Supplier_Acknowledgement1==='true';
+
+  document.getElementById('hsRRNo').textContent = r.RR_No || '—';
+  document.getElementById('hsSourceType').textContent = r.Source_Type || '—';
+  document.getElementById('statusBadgeDetail').innerHTML = statusBadge(r);
+  var ackBadge = document.getElementById('ackBadgeDetail');
+  if(ack){ ackBadge.classList.remove('hidden'); ackBadge.innerHTML = '<span class="badge badge-green">Supplier Acknowledged</span>'; }
+  else { ackBadge.classList.add('hidden'); }
+
+  var fulfBadge = document.getElementById('fulfExcBadgeDetail');
+  if(r.Source_Module === 'Fulfillment EXC'){
+    fulfBadge.classList.remove('hidden');
+    fulfBadge.textContent = 'Fulfillment EXC — ' + (r.Source_Exception_No || '');
+  } else {
+    fulfBadge.classList.add('hidden');
+  }
+
+  document.getElementById('infoSourceType').textContent = r.Source_Type || '—';
+  document.getElementById('infoExcNo').textContent = r.Source_Exception_No || '—';
+  document.getElementById('infoRRDate').textContent = r.RR_Date || '—';
+  document.getElementById('infoSupplierStatus').textContent = '—';
+  document.getElementById('fldRRReason').value = r.RR_Reason || '';
+
+  document.getElementById('infoSupplier').textContent = sr.Supplier || '—';
+  renderSupplierPicker(r, sr);
+  document.getElementById('infoSKU').textContent = sr.SKU || '—';
+  document.getElementById('infoItem').textContent = sr.Item || '—';
+  document.getElementById('infoRRQty').textContent = (sr.RR_Qty !== undefined && sr.RR_Qty !== null) ? sr.RR_Qty : '—';
+  document.getElementById('infoSONo').textContent = sr.SO_No || '—';
+  document.getElementById('infoPRNo').textContent = sr.PR_No || '—';
+  document.getElementById('infoOrigPO').textContent = sr.Original_PO_No || '—';
+  document.getElementById('infoPriority').textContent = sr.Priority || '—';
+  document.getElementById('infoDelayStatus').textContent = sr.Delay_Status || '—';
+  document.getElementById('fldItemRRReason').value = sr.RR_Reason || '';
+
+  document.getElementById('fldSupplierAck').checked = ack;
+  document.getElementById('fldAckDate').value = fmtDateForInput(r.Supplier_Acknowledge_Date);
+  document.getElementById('fldExpectedShip').value = fmtDateForInput(r.Expected_Ship_Date);
+  document.getElementById('fldActualShip').value = fmtDateForInput(r.Actual_Ship);
+  document.getElementById('fldETA').value = fmtDateForInput(r.ETA);
+
+  document.getElementById('fldRRStatus').value = r.RR_Status || 'Open';
+  document.getElementById('fldClosedAt').value = fmtDateForInput(r.Closed_At);
+  document.getElementById('infoLastUpdated').textContent = r.Last_Updated || '—';
+  document.getElementById('fldClosureNotes').value = r.Closure_Notes || '';
+}
+
+/* Creator date fields commonly come back as "DD-MMM-YYYY" — <input type="date"> needs
+   "YYYY-MM-DD". Converts defensively; leaves blank on an unrecognized shape. */
+function fmtDateForInput(val){
+  if(!val) return '';
+  var m = String(val).match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+  if(m){
+    var months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+    var mm = months[m[2]];
+    if(mm) return m[3] + '-' + mm + '-' + (m[1].length===1?'0'+m[1]:m[1]);
+  }
+  if(/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  var u = String(val).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(u) return u[3] + '-' + u[1] + '-' + u[2];
+  return '';
+}
+/* FIXED 2026-10-13, real bug (RR-00006 Save: code 3002 "Enter a valid date format" on
+   Actual_Ship / Supplier_Acknowledge_Date / ETA / Expected_Ship_Date). This always sent
+   "13-Oct-2026", but this app returns and accepts its dates as "2026-10-13" (RR_Date reads
+   back that way, and createSupplierSideRR's yyyy-MM-dd Last_Updated already saved fine).
+   Now it writes back in whatever shape the app itself returns, read off a loaded record,
+   so a future change to the app's date setting can't break saving again. */
+function appDateStyle(){
+  var rows = [CURRENT_RECORD].concat(ALL_ROWS || []);
+  for(var i = 0; i < rows.length; i++){
+    var v = rows[i] && rows[i].RR_Date;
+    if(!v) continue;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'iso';
+    if(/^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(v)) return 'dmy';
+    if(/^\d{2}\/\d{2}\/\d{4}$/.test(v)) return 'mdy';
+  }
+  return 'iso';
+}
+function fmtDateForPayload(val){
+  if(!val) return '';
+  var m = String(val).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return val;
+  var style = appDateStyle();
+  if(style === 'iso') return m[1] + '-' + m[2] + '-' + m[3];
+  if(style === 'mdy') return m[2] + '/' + m[3] + '/' + m[1];
+  var months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return m[3] + '-' + months[parseInt(m[2],10)] + '-' + m[1];
+}
+
+/* ==================== SAVE ====================
+   Plain updateRecordById. Replacement_Summary full-replace (no ID, same proven
+   pattern used throughout this app) — safe here since it's always exactly 1 row. */
+function saveRR(){
+  var btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  var sr = firstSummaryRow(CURRENT_RECORD);
+
+  var payload = {
+    RR_Reason: document.getElementById('fldRRReason').value,
+    Supplier_Acknowledgement1: document.getElementById('fldSupplierAck').checked,
+    Supplier_Acknowledge_Date: fmtDateForPayload(document.getElementById('fldAckDate').value),
+    Expected_Ship_Date: fmtDateForPayload(document.getElementById('fldExpectedShip').value),
+    Actual_Ship: fmtDateForPayload(document.getElementById('fldActualShip').value),
+    ETA: fmtDateForPayload(document.getElementById('fldETA').value),
+    RR_Status: document.getElementById('fldRRStatus').value,
+    Closed_At: fmtDateForPayload(document.getElementById('fldClosedAt').value),
+    Closure_Notes: document.getElementById('fldClosureNotes').value,
+    Replacement_Summary: [{
+      Supplier: sr.Supplier, SKU: sr.SKU, Item: sr.Item, SO_No: sr.SO_No, PR_No: sr.PR_No,
+      Original_PO_No: sr.Original_PO_No, RR_Qty: sr.RR_Qty, Priority: sr.Priority,
+      Delay_Status: sr.Delay_Status, RR_Reason: document.getElementById('fldItemRRReason').value
+    }]
+  };
+  console.log('[RR] saveRR payload:', JSON.stringify(payload));
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: String(CURRENT_RECORD.ID),
+    payload: { data: payload }
+  }).then(function(resp){
+    console.log('[RR] updateRecordById resp:', JSON.stringify(resp));
+    if(!(resp && (resp.code===3000 || String(resp.code)==='3000'))){
+      showToast('Save failed — code ' + (resp && resp.code) + ' ' + respErrText(resp));
+      btn.disabled = false; btn.textContent = 'Save';
+      return;
+    }
+    showToast('Saved');
+    btn.disabled = false; btn.textContent = 'Save';
+    openDetail(String(CURRENT_RECORD.ID));
+  }).catch(function(err){
+    console.error('[RR] updateRecordById failed', err);
+    showToast('Save failed — ' + ((err && err.responseText) || 'see console') + ' (if code 2945: reload the page and try again)');
+    btn.disabled = false; btn.textContent = 'Save';
+  });
+}
+
+/* ==================== SELECT SUPPLIER (moved from Exception Control, 2026-08-12) ====================
+   PO damage-flag stamping — ported verbatim from Exception Control's own
+   stampDamageFlags(). Only runs once a supplier is actually known, so it always
+   fires from here now (never from Exception Control when Supplier was blank). */
+function stampDamageFlags(origPONo, supplier, sku){
+  if(!origPONo) return Promise.resolve();
+  var aggUpdate = ZOHO.CREATOR.DATA.getRecords({
+    report_name: PO_AGG_REPORT,
+    criteria: '(PO_No == ' + JSON.stringify(String(origPONo)) + ')',
+    field_config: 'all',
+    max_records: 200
+  }).then(function(resp){
+    var rows = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    if(!rows[0]) return;
+    return ZOHO.CREATOR.DATA.updateRecordById({
+      report_name: PO_AGG_REPORT,
+      id: String(rows[0].ID),
+      payload: { data: { Damage_SKUs: sku } }
+    });
+  }).catch(function(err){ if(!isNoRecordsError(err)) console.error('[RR] agg PO stamp error:', err); });
+
+  var supCfg = SUPPLIER_PO[supplierKey(supplier)];
+  var supUpdate = supCfg ? ZOHO.CREATOR.DATA.getRecords({
+    report_name: supCfg.report,
+    criteria: '(' + supCfg.poField + ' == ' + JSON.stringify(String(origPONo)) + ')',
+    field_config: 'all',
+    max_records: 200
+  }).then(function(resp){
+    var rows = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    if(!rows[0]) return;
+    var payload = { data: {} };
+    payload.data[supCfg.damageField] = sku;
+    return ZOHO.CREATOR.DATA.updateRecordById({ report_name: supCfg.report, id: String(rows[0].ID), payload: payload });
+  }).catch(function(err){ if(!isNoRecordsError(err)) console.error('[RR] supplier PO stamp error:', err); }) : Promise.resolve();
+
+  return Promise.all([aggUpdate, supUpdate]);
+}
+
+/* Writes the picked supplier back onto the SOURCE Exception_Control1 record (matched
+   by Exception_Number, the only link this RR carries back to it) so it's fixed for
+   good — same stated purpose as Exception Control's old 2026-08-11 picker, just run
+   from here now. Best-effort: failure here doesn't undo the RR creation above. */
+function fixSourceExceptionSupplier(excNo, chosenName){
+  if(!excNo) return Promise.resolve();
+  return ZOHO.CREATOR.DATA.getRecords({
+    report_name: EXC_REPORT,
+    criteria: '(Exception_Number == ' + JSON.stringify(String(excNo)) + ')',
+    field_config: 'all',
+    max_records: 200
+  }).then(function(resp){
+    var rows = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    if(!rows[0]) return;
+    return ZOHO.CREATOR.DATA.updateRecordById({
+      report_name: EXC_REPORT,
+      id: String(rows[0].ID),
+      payload: { data: { Supplier: chosenName } }
+    });
+  }).catch(function(err){ if(!isNoRecordsError(err)) console.error('[RR] fixSourceExceptionSupplier failed', err); });
+}
+
+/* ==================== SUPPLIER PICKER — CHANGED 2026-10-13, per user ====================
+   Procurement RRs (Receiving Damage/Missing) are received on the ORIGINAL Receiving and
+   booked into the original PO in Books, so they must stay with the original supplier —
+   they only ever get the old blank-supplier pick (Fenteng / Tony).
+   Fulfillment EXC RRs get their OWN new Receiving (cloneShipmentForReplacement) and that
+   receive never touches Books, so their supplier CAN be changed — to Fenteng, Tony or
+   HC System — but only while nothing has been committed yet: RR still Open, not
+   acknowledged, no replacement shipment logged. The supplier-side record's own status
+   is re-checked at click time (changeRRSupplier), because the supplier acknowledges on
+   their portal, not here. */
+var FF_SUPPLIERS = ['Fenteng Lighting', 'Tony Fan', 'HC System'];
+var PROC_SUPPLIERS = ['Fenteng Lighting', 'Tony Fan'];
+
+function canonicalRRSupplier(raw){
+  var s = String(raw == null ? '' : raw);
+  if(s.indexOf('Fenteng') >= 0) return 'Fenteng Lighting';
+  if(s.indexOf('Tony') >= 0) return 'Tony Fan';
+  if(s.indexOf('HC') >= 0) return 'HC System';
+  return '';
+}
+function isFfRR(r){ return !!r && r.Source_Module === 'Fulfillment EXC'; }
+function canChangeFfSupplier(r){
+  var ack = r.Supplier_Acknowledgement1 === true || r.Supplier_Acknowledgement1 === 'true';
+  return isFfRR(r) && statusKey(r) === 'open' && !ack && !r.Cloned_Shipment_No;
+}
+
+function renderSupplierPicker(r, sr){
+  var card = document.getElementById('selectSupplierCard');
+  var current = canonicalRRSupplier(rrSupplierOf(r));
+  var list = null, text = '', title = 'Select Supplier';
+  if(!current){
+    list = isFfRR(r) ? FF_SUPPLIERS : PROC_SUPPLIERS;
+    text = 'This RR has no supplier yet. Pick who the replacement comes from — this creates ' +
+           'the matching supplier-side RR record.';
+  } else if(canChangeFfSupplier(r)){
+    list = FF_SUPPLIERS.filter(function(n){ return n !== current; });
+    title = 'Change Supplier';
+    text = 'Fulfillment replacement — currently routed to ' + current + '. You can switch it ' +
+           'until the supplier acknowledges. The current supplier’s RR record will be ' +
+           'marked Cancelled.';
+  }
+  if(!list){ card.style.display = 'none'; return; }
+  document.getElementById('selectSupplierTitle').textContent = title;
+  document.getElementById('selectSupplierText').textContent = text;
+  document.getElementById('selectSupplierButtons').innerHTML = list.map(function(n){
+    return '<button class="btn btn-purple btn-sm" onclick="chooseRRSupplier(&#39;' + esc(n) + '&#39;)">' + esc(n) + '</button>';
+  }).join('');
+  card.style.display = 'block';
+}
+
+function setSupplierButtonsDisabled(on){
+  document.querySelectorAll('#selectSupplierButtons button').forEach(function(b){ b.disabled = on; });
+}
+
+function chooseRRSupplier(chosenName){
+  if(!CURRENT_RECORD){ showToast('Record not loaded yet'); return; }
+  var current = canonicalRRSupplier(rrSupplierOf(CURRENT_RECORD));
+  var rrNo = CURRENT_RECORD.RR_No || 'this RR';
+  if(!current){
+    var what = chosenName === 'HC System'
+      ? 'HC System is local — no supplier portal; acknowledge it from the Local (HC System) tab.'
+      : 'This creates a new supplier-side RR record.';
+    showConfirm('Route ' + rrNo + ' to ' + chosenName + '? ' + what, function(){
+      if(chosenName === 'HC System') setHcSupplier(true);
+      else createSupplierSideRR(chosenName);
+    });
+    return;
+  }
+  if(!canChangeFfSupplier(CURRENT_RECORD)){ showToast('This RR can no longer change supplier.'); return; }
+  showConfirm('Change ' + rrNo + ' from ' + current + ' to ' + chosenName + '? ' + current +
+              '’s RR record will be marked Cancelled.', function(){
+    changeRRSupplier(current, chosenName);
+  });
+}
+
+/* Cancels the old supplier-side record(s) FIRST and refuses if any of them has already
+   moved past Open — that is the supplier having committed on their portal. Only then is
+   the new route created, so a failure never leaves two live supplier records. */
+function changeRRSupplier(current, chosenName){
+  setSupplierButtonsDisabled(true);
+  var oldCfg = SUPPLIER_RR[supplierKey(current)];
+  var cancelOld = oldCfg ? ZOHO.CREATOR.DATA.getRecords({
+    report_name: oldCfg.report,
+    criteria: '(RR_No == ' + JSON.stringify(String(CURRENT_RECORD.RR_No)) + ')',
+    field_config: 'all',
+    max_records: 200
+  }).catch(function(err){
+    if(isNoRecordsError(err)) return { code: 3000, data: [] };
+    throw err;
+  }).then(function(resp){
+    var rows = (resp && resp.code === 3000 && Array.isArray(resp.data)) ? resp.data : [];
+    var live = rows.filter(function(x){ return (x.RR_Status || 'Open') !== 'Cancelled'; });
+    var committed = live.filter(function(x){ return (x.RR_Status || 'Open') !== 'Open'; });
+    if(committed.length){
+      throw new Error(current + ' already set this RR to "' + committed[0].RR_Status + '" — it can no longer be moved.');
+    }
+    return live.reduce(function(p, x){
+      return p.then(function(){
+        return ZOHO.CREATOR.DATA.updateRecordById({
+          report_name: oldCfg.report,
+          id: String(x.ID),
+          payload: { data: { RR_Status: 'Cancelled' } }
+        }).then(function(u){
+          if(!(u && (u.code === 3000 || String(u.code) === '3000'))) throw new Error('[cancel ' + current + ' RR] ' + JSON.stringify(u));
+        });
+      });
+    }, Promise.resolve());
+  }) : Promise.resolve();
+
+  cancelOld.then(function(){
+    if(chosenName === 'HC System') return setHcSupplier(false);
+    return createSupplierSideRR(chosenName, { isChange: true });
+  }).catch(function(err){
+    console.error('[RR] changeRRSupplier failed', err);
+    showToast('Could not change supplier — ' + ((err && err.message) ? err.message : JSON.stringify(err)));
+    setSupplierButtonsDisabled(false);
+    openDetail(String(CURRENT_RECORD.ID));
+  });
+}
+
+/* HC System has no supplier-side form — the route lives only on this main record.
+   Header RR_Supplier plus the one-row Replacement_Summary, the same explicit ID-less
+   row createSupplierSideRR() builds, so the list, the detail view and
+   cloneShipmentForReplacement all read HC System. */
+function setHcSupplier(fromBlank){
+  setSupplierButtonsDisabled(true);
+  var sr = firstSummaryRow(CURRENT_RECORD);
+  var row = {
+    PR_No: sr.PR_No || '', Supplier: 'HC System', SKU: sr.SKU || '', Item: sr.Item || '',
+    SO_No: sr.SO_No || '', Original_PO_No: sr.Original_PO_No || '',
+    Priority: sr.Priority || 'Medium', RR_Qty: sr.RR_Qty || 1,
+    Delay_Status: sr.Delay_Status || '', RR_Reason: sr.RR_Reason || ''
+  };
+  return ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: String(CURRENT_RECORD.ID),
+    payload: { data: { RR_Supplier: 'HC System', Replacement_Summary: [row] } }
+  }).then(function(u){
+    if(!(u && (u.code === 3000 || String(u.code) === '3000'))) throw new Error('[update aggregate RR] ' + JSON.stringify(u));
+    showToast('Routed to HC System. Acknowledge it from the Local (HC System) tab.');
+    openDetail(String(CURRENT_RECORD.ID));
+  }).catch(function(err){
+    if(!fromBlank) throw err;
+    console.error('[RR] setHcSupplier failed', err);
+    showToast('Could not route to HC System — ' + ((err && err.message) ? err.message : JSON.stringify(err)));
+    setSupplierButtonsDisabled(false);
+  });
+}
+
+/* Builds the same supplier-side RR shape Exception Control's own createReplacementRequest()
+   would have sent at creation time — reads everything off CURRENT_RECORD (the aggregate),
+   not back off Exception_Control1, since the aggregate already carries all of it (RR_No/
+   RR_Date/Source_Type/Source_Module/Source_Exception_No/RR_SO/RR_PAC/RR_Item_to_Replace/
+   RR_Damage_Qty/RR_Spare_Parts/RR_Remarks + Replacement_Summary's own SKU/Item/SO_No/PR_No/
+   Original_PO_No/RR_Qty, Original_PO_No included — resolveOriginalPO() already ran at
+   creation regardless of whether Supplier was resolved). */
+function createSupplierSideRR(chosenName, opts){
+  var isChange = !!(opts && opts.isChange);
+  var supCfg = SUPPLIER_RR[supplierKey(chosenName)];
+  if(!supCfg){ showToast('Unknown supplier "' + chosenName + '"'); return; }
+  var sr = firstSummaryRow(CURRENT_RECORD);
+  var card = document.getElementById('selectSupplierCard');
+  var buttons = card.querySelectorAll('button');
+  buttons.forEach(function(b){ b.disabled = true; });
+
+  /* FIXED 2026-08-12, real bug found live (RR-00004, "Tony Fan" → code 2930
+     "Error Occurred"/404) — `sr` is a subform row read back off THIS record's
+     own Replacement_Summary, so it carries that row's internal `ID`. Object.assign
+     was copying that stale ID straight into a brand-new record's subform payload
+     below (supData, for a DIFFERENT form/record entirely) — Creator's own
+     "no matching records" class of error, same one saveRR() above already avoids
+     by only ever sending an explicit, ID-less field list on subform full-replace.
+     Build the row the same explicit way here instead of Object.assign(sr, ...). */
+  var newSummaryRow = {
+    PR_No: sr.PR_No || '', Supplier: chosenName, SKU: sr.SKU || '', Item: sr.Item || '',
+    SO_No: sr.SO_No || '', Original_PO_No: sr.Original_PO_No || '',
+    Priority: sr.Priority || 'Medium', RR_Qty: sr.RR_Qty || 1,
+    Delay_Status: sr.Delay_Status || '', RR_Reason: sr.RR_Reason || ''
+  };
+  var supData = {
+    RR_No: CURRENT_RECORD.RR_No,
+    RR_Date: CURRENT_RECORD.RR_Date,
+    RR_Status: 'Open',
+    Source_Type: CURRENT_RECORD.Source_Type,
+    Source_Module: CURRENT_RECORD.Source_Module,
+    Source_Exception_No: CURRENT_RECORD.Source_Exception_No,
+    Last_Updated: todayIsoRR(),
+    RR_SO: CURRENT_RECORD.RR_SO,
+    RR_PAC: CURRENT_RECORD.RR_PAC,
+    RR_Item_to_Replace: CURRENT_RECORD.RR_Item_to_Replace,
+    RR_Damage_Qty: CURRENT_RECORD.RR_Damage_Qty,
+    RR_Spare_Parts: CURRENT_RECORD.RR_Spare_Parts,
+    RR_Remarks: CURRENT_RECORD.RR_Remarks,
+    Replacement_Summary: [newSummaryRow]
+  };
+
+  /* Each step below checks resp.code===3000 explicitly and throws a STEP-TAGGED
+     error if not (ZOHO.CREATOR.DATA calls often resolve the promise even on a
+     non-3000 business-logic failure — they don't always reject — so an unchecked
+     .then() chain can silently "succeed" past a real failure). The catch below
+     surfaces err.message straight in the toast (not just "see console") since
+     this app's own testing convention is live-UI + screenshots, not DevTools —
+     see feedback_zoho_mcp... / user_workflow_style memory. */
+  return ZOHO.CREATOR.DATA.addRecords({ form_name: supCfg.form, payload: { data: supData } }).then(function(r2){
+    if(!(r2 && r2.code===3000)) throw new Error('[create supplier RR] ' + JSON.stringify(r2));
+    // Same native-workflow RR_No-override bug Exception Control's own copy of this
+    // step already guards against — force it back right after create.
+    return ZOHO.CREATOR.DATA.updateRecordById({
+      report_name: supCfg.report,
+      id: String(r2.data.ID),
+      payload: { data: { RR_No: CURRENT_RECORD.RR_No } }
+    });
+  }).then(function(r3){
+    if(!(r3 && (r3.code===3000 || String(r3.code)==='3000'))) throw new Error('[fix supplier RR_No] ' + JSON.stringify(r3));
+    return ZOHO.CREATOR.DATA.updateRecordById({
+      report_name: REPORT_NAME,
+      id: String(CURRENT_RECORD.ID),
+      payload: { data: { RR_Supplier: chosenName, Replacement_Summary: [newSummaryRow] } }
+    });
+  }).then(function(r4){
+    if(!(r4 && (r4.code===3000 || String(r4.code)==='3000'))) throw new Error('[update aggregate RR] ' + JSON.stringify(r4));
+    /* On a CHANGE (2026-10-13) the PO damage flags were already stamped when the RR was
+       first routed, and the source exception keeps its ORIGINAL supplier — only the RR
+       carries the new one. Both steps run only on the first, blank-supplier pick. */
+    if(isChange) return;
+    return stampDamageFlags(sr.Original_PO_No, chosenName, sr.SKU);
+  }).then(function(){
+    if(isChange) return;
+    return fixSourceExceptionSupplier(CURRENT_RECORD.Source_Exception_No, chosenName);
+  }).then(function(){
+    showToast('Routed to ' + chosenName + '.');
+    openDetail(String(CURRENT_RECORD.ID));
+  }).catch(function(err){
+    console.error('[RR] createSupplierSideRR failed', err);
+    var detail = (err && err.message) ? err.message : JSON.stringify(err);
+    showToast('Could not route to ' + chosenName + ' — ' + detail);
+    buttons.forEach(function(b){ b.disabled = false; });
+  });
+}
+
+</script>
+
+
+</body></html>

@@ -50,6 +50,11 @@ export default function ForecastPage() {
           <h1>Procurement to Delivery Forecast</h1>
           <p className="muted">Procurement to delivery · {rows.length} open order{rows.length === 1 ? '' : 's'} · today {fmtDate(today)}</p>
         </div>
+        <div className="head-actions">
+          <button className="btn" onClick={() => window.location.reload()} title="Refresh forecast data">
+            Refresh
+          </button>
+        </div>
       </header>
 
       <div className="stats">

@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sales Returns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700\&family=JetBrains+Mono:wght@500;600\&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="dms-tokens.css">
+<link rel="stylesheet" href="dms-shell.css">
+<link rel="stylesheet" href="dms-compat.css">
+<style>
+  /* Written here rather than in the shared sheet: these map THIS widget's own
+     long-standing class names onto the design, so no JS had to change. */
+  .dms-page{display:flex;flex-direction:column;gap:18px}
+  .dms-h1{margin:0;font-size:var(--fs-2xl);letter-spacing:-.02em}
+  .dms-sub{margin:3px 0 0;font-size:var(--fs-md);color:var(--muted)}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:0}
+  .kpi{cursor:default}
+  .kpi:hover{transform:none;border-color:var(--border)}
+  /* setFilter() toggles .active on .pill, so .pill mirrors the design's .fchip
+     instead of renaming anything. */
+  .pill{border:1px solid var(--border);background:var(--surface);border-radius:20px;
+        padding:5px 12px;font-size:var(--fs-sm);cursor:pointer;color:var(--muted);
+        display:inline-flex;gap:6px;align-items:center;min-height:32px;font-weight:500;
+        white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
+  .pill:hover{border-color:var(--border-strong)}
+  .pill.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+  .pill:active{transform:scale(.98)}
+  .dms-search{position:relative;width:100%;max-width:260px}
+  .dms-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);
+        width:14px;height:14px;color:var(--faint);pointer-events:none}
+  .dms-search-input{width:100%;height:34px;padding:0 12px 0 32px;border:1px solid var(--border);
+        border-radius:20px;background:var(--surface);color:var(--text);font-size:var(--fs-sm);outline:none}
+  .dms-search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .panel-head{justify-content:space-between}
+  /* These two lived in tailwind-input.css, not in the widget's own <style>, so
+     dropping Tailwind dropped them and every modal rendered open on load.
+     Restored here as plain CSS. */
+  .modal-overlay{display:none}
+  .modal-overlay.show{display:flex}
+  /* The original header was sm:justify-between; .top is a plain flex row, so
+     push a lone action button to the far right the way .top-actions does. */
+  .top > button{margin-left:auto}
+  .hidden{display:none!important}
+</style>
+
+<style>
+  html,body{font-family:'Inter',system-ui,sans-serif}
+</style>
+</head>
+<body>
+
+<div class="main-in dms-page">
+  <div class="top">
+    <div>
+      <h1 class="dms-h1">Sales Returns</h1>
+      <p class="dms-sub">Return orders with RMA tracking — native logic untouched, this widget only adds a create flow</p>
+    </div>
+    <button class="self-end sm:self-auto shrink-0 inline-flex items-center justify-center gap-1 h-8 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold whitespace-nowrap transition-colors" onclick="openNew()">+ New Sales Return</button>
+  </div>
+
+  <div class="kpis" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="chips" id="filterPills">
+        <div class="pill active" data-filter="all" onclick="setFilter('all')">All</div>
+        <div class="pill" data-filter="CREATED" onclick="setFilter('CREATED')">Created</div>
+        <div class="pill" data-filter="PENDING" onclick="setFilter('PENDING')">Pending</div>
+      </div>
+      <div class="dms-search">
+        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="dms-search-input" id="searchInput" placeholder="Search SO#, RMA#, customer…" oninput="renderList()" />
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="q" style="min-width:1020px">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>SO#</th>
+            <th>RMA#</th>
+            <th>Customer</th>
+            <th>Warehouse</th>
+            <th>Reason</th>
+            <th>Returned By</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Detail modal — EDITABLE, changed 2026-07-28 per user ("its not editable. we should make this editable. and have a save button with confirmation") — was pure read-only display, now a full edit form matching New Sales Return's own field set -->
+<div class="modal-overlay fixed inset-0 bg-black/40 items-center justify-center z-50 p-4" id="detailModal">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <h3 class="text-base font-bold text-slate-900" id="dTitle">—</h3>
+      <button class="text-slate-400 hover:text-slate-600 text-xl leading-none" onclick="closeDetail()">&times;</button>
+    </div>
+    <div class="p-5 flex flex-col gap-4 text-[13px]">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Sales Order</label>
+          <input id="eSalesOrder" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">RMA #</label>
+          <input id="eRMA" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Date</label>
+          <input id="eDate" type="date" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Customer Name</label>
+          <input id="eCustomerName" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Contact</label>
+          <input id="eContact" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1 col-span-2">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Customer Address</label>
+          <input id="eAddress" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">City</label>
+          <input id="eCity" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Email</label>
+          <input id="eEmail" type="email" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Warehouse Name</label>
+          <select id="eWarehouse" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600 bg-white"></select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Returned By</label>
+          <input id="eReturnedBy" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600" placeholder="Customer / Installer / Sales Team">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Sub Reason</label>
+          <select id="eSubReason" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600 bg-white"></select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">PAC #</label>
+          <input id="ePackageNumber" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Status</label>
+          <input id="eStatusDisplay" class="h-9 px-2.5 border border-slate-100 rounded-lg text-[13px] bg-slate-50 text-slate-500" disabled>
+        </div>
+        <div class="flex flex-col gap-1 col-span-2">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Reason</label>
+          <textarea id="eReason" rows="2" class="px-2.5 py-2 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600 resize-none"></textarea>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Returned Items</div>
+          <button class="text-[12px] font-semibold text-teal-700 hover:text-teal-800" onclick="addEditItemRow()">+ Add Item</button>
+        </div>
+        <table class="w-full border-collapse text-[12.5px]">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200">
+              <th class="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase">Item Name</th>
+              <th class="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase">SKU</th>
+              <th class="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase w-24">Qty Shipped</th>
+              <th class="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase w-24">Qty Return</th>
+              <th class="w-8"></th>
+            </tr>
+          </thead>
+          <tbody id="eItemsBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Documentation — ADDED 2026-07-29, per user ("add a button that shows this
+           documentation. if this is empty we cant create sales return in books")
+           Mirrors the native "Documentation" section (Image/Video/Signature) on
+           Sales_Returns_Form itself. Image + Signature are required to gate Create
+           Sales Return To Books (per user: "no image and signature. video optional"),
+           Video is display/upload-only, never gated. -->
+      <div>
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Documentation</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Image <span class="text-red-500">*</span></label>
+            <div class="flex items-center gap-2">
+              <img id="eImagePreview" class="w-12 h-12 rounded-lg border border-slate-200 object-cover hidden cursor-zoom-in" onclick="openEDocLightbox('eImagePreview')">
+              <input type="file" id="eImageFile" accept="image/*" class="text-[12px] flex-1 text-slate-500 file:mr-2 file:h-8 file:px-3 file:rounded-lg file:border-0 file:bg-teal-600 file:text-white file:text-[12px] file:font-semibold hover:file:bg-teal-700 file:cursor-pointer cursor-pointer">
+            </div>
+            <p class="text-[11px] text-slate-400" id="eImageHint">No image on file yet.</p>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Video</label>
+            <input type="file" id="eVideoFile" accept="video/*" class="text-[12px] text-slate-500 file:mr-2 file:h-8 file:px-3 file:rounded-lg file:border-0 file:bg-teal-600 file:text-white file:text-[12px] file:font-semibold hover:file:bg-teal-700 file:cursor-pointer cursor-pointer">
+            <p class="text-[11px] text-slate-400" id="eVideoHint">No video on file yet.</p>
+            <video id="eVideoPreview" controls preload="metadata" class="hidden mt-1 w-full max-h-40 rounded-lg border border-slate-200 bg-black">Preview unavailable.</video>
+            <span class="hidden items-center gap-1.5 text-[11px] text-slate-400" id="eVideoLoadingIndicator"><span class="inline-block w-3 h-3 border-2 border-slate-300 border-t-teal-500 rounded-full animate-spin"></span>Loading preview…</span>
+            <button type="button" id="eVideoFullscreenBtn" class="hidden items-center gap-1 mt-1 text-[11px] font-medium text-teal-700 hover:text-teal-800 hover:underline"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>Fullscreen</button>
+          </div>
+          <div class="flex flex-col gap-1 col-span-2">
+            <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Signature <span class="text-red-500">*</span></label>
+            <div class="border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+              <canvas id="eSignatureCanvas" class="w-full touch-none cursor-crosshair block" height="120"></canvas>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <img id="eSignaturePreview" class="h-8 border border-slate-200 rounded bg-white object-contain hidden cursor-zoom-in" alt="Signature on file" onclick="openEDocLightbox('eSignaturePreview')">
+                <p class="text-[11px] text-slate-400" id="eSignatureHint">No signature on file yet.</p>
+              </div>
+              <button type="button" class="text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1" onclick="clearEDocSignature()">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+        <button class="h-9 px-4 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[13px] font-semibold" onclick="openEditConfirm()">Save Changes</button>
+      </div>
+
+      <div class="border-t border-slate-100 pt-4 flex flex-col gap-2" id="dBooksArea"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Save Changes confirm modal — ADDED 2026-07-28 -->
+<div class="modal-overlay fixed inset-0 bg-black/40 items-center justify-center z-[60] p-4" id="editConfirmModal">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-sm">
+    <div class="px-5 py-4 border-b border-slate-100">
+      <h3 class="text-base font-bold text-slate-900">Save changes?</h3>
+    </div>
+    <div class="px-5 py-4 text-[13px] text-slate-600">This updates the Sales Return record. Continue?</div>
+    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-100">
+      <button class="h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-[13px] font-medium hover:bg-slate-50" onclick="closeEditConfirm()">Cancel</button>
+      <button class="h-9 px-4 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[13px] font-semibold" id="editConfirmBtn" onclick="doSaveDetailEdit()">Yes, Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Sales Return To Books — confirm modal, ADDED 2026-07-28 -->
+<div class="modal-overlay fixed inset-0 bg-black/40 items-center justify-center z-[60] p-4" id="booksConfirmModal">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-sm">
+    <div class="px-5 py-4 border-b border-slate-100">
+      <h3 class="text-base font-bold text-slate-900">Create Sales Return in Books?</h3>
+    </div>
+    <div class="px-5 py-4 text-[13px] text-slate-600" id="booksConfirmMsg"></div>
+    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-100">
+      <button class="h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-[13px] font-medium hover:bg-slate-50" onclick="closeBooksConfirm()">Cancel</button>
+      <button class="h-9 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[13px] font-semibold" id="booksConfirmBtn" onclick="doCreateSalesReturnBooks()">Yes, Create in Books</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Sales Return modal — ADDED 2026-07-23, per user ("i dont have any way to create manually sales returns in widget") -->
+<div class="modal-overlay fixed inset-0 bg-black/40 items-center justify-center z-50 p-4" id="newModal">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <h3 class="text-base font-bold text-slate-900">New Sales Return</h3>
+      <button class="text-slate-400 hover:text-slate-600 text-xl leading-none" onclick="closeNew()">&times;</button>
+    </div>
+    <div class="p-5 flex flex-col gap-4 text-[13px]">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Sales Order <span class="text-red-500">*</span></label>
+          <input id="nSalesOrder" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600" placeholder="SO-00001">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">RMA #</label>
+          <input id="nRMA" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600" placeholder="RMA-00001">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Date</label>
+          <input id="nDate" type="date" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Customer Name <span class="text-red-500">*</span></label>
+          <input id="nCustomerName" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Contact</label>
+          <input id="nContact" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1 col-span-2">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Customer Address</label>
+          <input id="nAddress" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">City</label>
+          <input id="nCity" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Email</label>
+          <input id="nEmail" type="email" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Warehouse Name <span class="text-red-500">*</span></label>
+          <select id="nWarehouse" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600 bg-white"></select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Returned By</label>
+          <input id="nReturnedBy" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600" placeholder="Customer / Installer / Sales Team">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Sub Reason</label>
+          <select id="nSubReason" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600 bg-white"></select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">PAC #</label>
+          <input id="nPackageNumber" class="h-9 px-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600">
+        </div>
+        <div class="flex flex-col gap-1 col-span-2">
+          <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Reason</label>
+          <textarea id="nReason" rows="2" class="px-2.5 py-2 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-teal-600 resize-none"></textarea>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Returned Items</div>
+          <button class="text-[12px] font-semibold text-teal-700 hover:text-teal-800" onclick="addItemRow()">+ Add Item</button>
+        </div>
+        <table class="w-full border-collapse text-[12.5px]">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200">
+              <th class="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase">Item Name</th>
+              <th class="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase">SKU</th>
+              <th class="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase w-24">Qty Shipped</th>
+              <th class="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase w-24">Qty Return</th>
+              <th class="w-8"></th>
+            </tr>
+          </thead>
+          <tbody id="nItemsBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+      <button class="h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-[13px] font-medium hover:bg-slate-50" onclick="closeNew()">Cancel</button>
+      <button class="h-9 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[13px] font-semibold" id="nSaveBtn" onclick="saveNew()">Create Sales Return</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[13px] px-4 py-2.5 rounded-lg shadow-lg opacity-0 translate-y-2 pointer-events-none transition-all z-[100]"></div>
+
+<!-- Documentation lightbox — ADDED 2026-07-29, per user ("both not clickable. i cant preview.") -->
+<div class="hidden fixed inset-0 z-[70] items-center justify-center p-8 bg-slate-900/85" id="eDocLightboxOverlay" onclick="closeEDocLightbox()">
+  <button class="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-lg" onclick="event.stopPropagation();closeEDocLightbox()">&times;</button>
+  <img id="eDocLightboxImg" class="max-w-full max-h-full rounded-lg shadow-lg bg-white p-2" onclick="event.stopPropagation()">
+</div>
+
+<!-- Video lightbox — ADDED 2026-07-29, per user ("good its playing but no fullscreen -
+     lightbox too?"). Real browser Fullscreen API (video.requestFullscreen()) is blocked
+     by this widget's iframe Permissions Policy — Zoho's own embedding, not fixable from
+     widget code (confirmed via MDN, same finding already documented in UI/FF Widget/
+     QCChecklist and ExceptionControl). Reuses the SAME position:fixed full-viewport
+     overlay mechanism the image lightbox above already uses — reparents the REAL
+     <video> element into the overlay on open (no reload, whatever's already playing
+     keeps playing) and back into its original spot on close. -->
+<div class="hidden fixed inset-0 z-[70] items-center justify-center p-8 bg-slate-900/85" id="eVideoLightboxOverlay">
+  <button class="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-lg" onclick="closeEVideoLightbox()">&times;</button>
+  <div id="eVideoLightboxSlot" class="max-w-full max-h-full"></div>
+</div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* Sales Returns — new 2026-07-18. Real, ALREADY-EXISTING native form
+   (Sales_Returns_Form, report Sales_Returns_Form_Report — confirmed live via
+   API probe, currently 0 records) — this is NOT a new form built for this
+   pass, unlike an earlier draft attempt; user confirmed a real Sales_Returns
+   form already existed in supply-chain-app before scoping got that far.
+   Matches the plan's "Return orders with RMA tracking" (1.1) — pure read-only
+   UI layer, zero native logic change, same "Keep as-is" convention as the
+   other Phase 2 widgets. Deliberately does NOT include the old standalone
+   logistics-management app's "Sales Return On Books" action (a real Zoho
+   Books integration whose actual Deluge logic this project has never seen —
+   per explicit user choice, tracking only for this pass). */
+const REPORT_NAME = 'Sales_Returns_Form_Report';
+const FORM_NAME = 'Sales_Returns_Form'; // confirmed real form link name, same one seed-sales-returns-test-data.js already writes to successfully
+
+var ALL_ROWS = [];
+var CURRENT_FILTER = 'all';
+var NEW_ITEMS = [];
+
+window.addEventListener('load', loadList);
+window.addEventListener('load', initEDocSignaturePad);
+
+function errCode(e){
+  try {
+    if(e && e.responseText) return JSON.parse(e.responseText).code;
+    var s = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+    return JSON.parse(JSON.parse(s).responseText || s).code;
+  } catch(_){ return null; }
+}
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function statusBadge(s){
+  if(!s) return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500">—</span>';
+  var cls = s==='CREATED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
+  return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ' + cls + '">' + esc(s) + '</span>';
+}
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1'; t.style.transform = 'translate(-50%,0)';
+  setTimeout(function(){ t.style.opacity = '0'; t.style.transform = 'translate(-50%,8px)'; }, 3200);
+}
+
+function loadList(){
+  document.getElementById('listBody').innerHTML = '<tr><td colspan="8" class="p-16 text-center text-slate-400 text-[13px]">Loading…</td></tr>';
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    console.error('[SalesReturns] SDK not available');
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  ZOHO.CREATOR.DATA.getRecords({ report_name: REPORT_NAME, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){
+      ALL_ROWS = (resp && resp.code===3000 && resp.data) ? resp.data : [];
+      renderStats();
+      renderList();
+      checkDeepLinkFromArchive();
+      checkShipmentsForAllRows();
+    })
+    .catch(function(e){
+      var c = errCode(e);
+      if(c===9220){ ALL_ROWS = []; renderStats(); renderList(); checkDeepLinkFromArchive(); return; }
+      console.error('[SalesReturns] getRecords error', e);
+      document.getElementById('listBody').innerHTML = '<tr><td colspan="8" class="p-16 text-center text-slate-400">Could not load — see console</td></tr>';
+    });
+// ADDED 2026-08-06, real bug found live ("on load still grayed out. i need
+// to open detail view for Send to Books button to enable") — the list's own
+// "Send to Books" button relied entirely on r._hasShipment, which was only
+// ever set as a side effect of opening that specific row's detail view once
+// (see openDetail()'s own checkShipmentExistsForSO call). On a fresh
+// loadList(), every row's r._hasShipment is simply undefined, so the button
+// sits permanently disabled until manually "warmed up" per row. Kicks off
+// the same check for every DISTINCT Sales_Order across all loaded rows right
+// after the initial render — checkShipmentExistsForSO's own
+// SHIPMENT_EXISTS_CACHE means N rows sharing one SO still only cost one real
+// query. Re-renders the list once per resolved SO (not batched into one
+// final render) so rows light up incrementally rather than waiting for the
+// slowest check.
+function checkShipmentsForAllRows(){
+  var seenSOs = {};
+  ALL_ROWS.forEach(function(r){
+    var so = r.Sales_Order;
+    if(!so || seenSOs[so]) return;
+    seenSOs[so] = true;
+    checkShipmentExistsForSO(so, function(has){
+      ALL_ROWS.forEach(function(row){
+        if(row.Sales_Order === so) row._hasShipment = has;
+      });
+      renderList();
+    });
+  });
+}
+}
+
+/* ADDED 2026-07-23 — reads the ?fromArchiveId=<Service_Appointment ID> query param
+   set by UI/DMS WIDGET/Archived/app/index.html's createSalesReturn(), same
+   navigateParentURL+getQueryParams deep-link pattern already proven for POs→PRs.
+   Guarded to fire once. Fetches that Service_Appointment record directly (not from
+   any local cache — this widget never loads Service_Appointment otherwise) and
+   pre-fills+opens the New Sales Return modal from whatever real data it has.
+   FIXED 2026-07-28, per user ("why is data incomplete, where's item details") —
+   this comment previously said "Service_Appointment carries no per-item/SKU data
+   at all" — that was true when this deep-link was first built (2026-07-23), but
+   a real Item_Details subform (Item_Name/SKU/Quantity) was found on
+   Service_Appointment_Form later that same day and this deep-link was never
+   updated to carry it across. openNewFromArchive() now seeds NEW_ITEMS from it
+   instead of always opening with one blank row. Requires Item_Details to be
+   exposed on the Service_Appointment report's own Configure Fields panel (same
+   recurring gotcha this app hits everywhere else) — if it's still missing here,
+   items will come back empty even though this code is now correct. */
+var _archiveDeepLinkChecked = false;
+function checkDeepLinkFromArchive(){
+  if(_archiveDeepLinkChecked) return;
+  _archiveDeepLinkChecked = true;
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || !ZOHO.CREATOR.UTIL.getQueryParams) return;
+  ZOHO.CREATOR.UTIL.getQueryParams().then(function(params){
+    var archiveId = params && params.fromArchiveId;
+    if(!archiveId) return;
+    return ZOHO.CREATOR.DATA.getRecordById({ report_name: 'Service_Appointment', id: String(archiveId), field_config: 'all' });
+  }).then(function(resp){
+    if(!resp || resp.code!==3000 || !resp.data) return;
+    openNewFromArchive(resp.data);
+  }).catch(function(e){
+    console.error('[SalesReturns] deep-link fetch error', e);
+  });
+}
+function saCustName(r){
+  if(!r) return '';
+  if(r.Customer_Name && typeof r.Customer_Name === 'object'){
+    var f = r.Customer_Name.first_name || '';
+    var l = r.Customer_Name.last_name || '';
+    return (f + ' ' + l).trim();
+  }
+  return r.Customer_Name || '';
+}
+function openNewFromArchive(r){
+  openNew();
+  document.getElementById('nSalesOrder').value = r.Sales_Order || '';
+  document.getElementById('nCustomerName').value = saCustName(r);
+  document.getElementById('nContact').value = r.Contact || '';
+  document.getElementById('nAddress').value = r.Customer_Address || '';
+  document.getElementById('nCity').value = r.City || '';
+  document.getElementById('nEmail').value = r.Email || '';
+  document.getElementById('nPackageNumber').value = r.Package_Number || '';
+
+  var srcItems = r.Item_Details || [];
+  if(srcItems.length > 0){
+    NEW_ITEMS = srcItems.map(function(it){
+      return {
+        Item_Name: it.Item_Name || '',
+        SKU: it.SKU || '',
+        Qty_Shipped_Fulfilled: it.Quantity || '',
+        Return_Quantity: it.Quantity || ''
+      };
+    });
+    renderNewItems();
+    showToast('Pre-filled from Archived delivery ' + (r.Sales_Order || '') + ' — confirm Warehouse + Return Qty per item.');
+  } else {
+    showToast('Pre-filled from Archived delivery ' + (r.Sales_Order || '') + ' — fill in Warehouse + Items (no item details found on that delivery).');
+  }
+}
+
+function renderStats(){
+  var created = ALL_ROWS.filter(function(r){ return r.SR_CREATION_STATUS==='CREATED'; }).length;
+  var pending = ALL_ROWS.filter(function(r){ return r.SR_CREATION_STATUS==='PENDING'; }).length;
+  var warehouses = {};
+  ALL_ROWS.forEach(function(r){ if(r.Warehouse_Name) warehouses[r.Warehouse_Name] = true; });
+  var cards = [
+    { label:'Total Returns', value: ALL_ROWS.length },
+    { label:'Created', value: created },
+    { label:'Pending', value: pending },
+    { label:'Warehouses Involved', value: Object.keys(warehouses).length }
+  ];
+  document.getElementById('statCards').innerHTML = cards.map(function(c){
+    return '<div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3.5">' +
+      '<div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">' + esc(c.label) + '</div>' +
+      '<div class="text-2xl font-bold text-slate-900 mt-1">' + esc(c.value) + '</div></div>';
+  }).join('');
+}
+
+function setFilter(f){
+  CURRENT_FILTER = f;
+  document.querySelectorAll('#filterPills .pill').forEach(function(p){
+    p.classList.toggle('active', p.getAttribute('data-filter')===f);
+  });
+  renderList();
+}
+
+function renderList(){
+  var q = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+  var rows = ALL_ROWS.filter(function(r){
+    if(CURRENT_FILTER!=='all' && r.SR_CREATION_STATUS!==CURRENT_FILTER) return false;
+    if(!q) return true;
+    var hay = ((r.Sales_Order||'') + ' ' + (r.RMA||'') + ' ' + (r.Customer_Name||'')).toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+  rows.sort(function(a,b){ return (b.Date_field||'').localeCompare(a.Date_field||''); });
+
+  var body = document.getElementById('listBody');
+  if(rows.length===0){
+    body.innerHTML = '<tr><td colspan="9" class="p-16 text-center text-slate-400 text-[13px]">' +
+      (ALL_ROWS.length===0 ? 'No sales returns recorded yet.' : 'No returns match this filter/search.') + '</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    return '<tr class="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors" onclick="openDetail(\'' + r.ID + '\')">' +
+      '<td class="px-3.5 py-2.5 text-[12.5px] text-slate-500">' + esc(r.Date_field || '—') + '</td>' +
+      '<td class="px-3.5 py-2.5 text-[13px] font-semibold text-teal-700">' + esc(r.Sales_Order || '—') + '</td>' +
+      '<td class="px-3.5 py-2.5 text-[13px] text-slate-700">' + esc(r.RMA || '—') + '</td>' +
+      '<td class="px-3.5 py-2.5 text-[13px] text-slate-700">' + esc(r.Customer_Name || '—') + '</td>' +
+      '<td class="px-3.5 py-2.5 text-[12.5px] text-slate-600">' + esc(r.Warehouse_Name || '—') + '</td>' +
+      '<td class="px-3.5 py-2.5 text-[12.5px] text-slate-600 max-w-[220px] truncate" title="' + esc(r.Reason||'') + '">' + esc(r.Sub_Reason || r.Reason || '—') + '</td>' +
+      '<td class="px-3.5 py-2.5 text-[13px] text-slate-600">' + esc(r.Returned_by || '—') + '</td>' +
+      '<td class="px-3.5 py-2.5">' + statusBadge(r.SR_CREATION_STATUS) + '</td>' +
+      '<td class="px-3.5 py-2.5">' + rowBooksActionHtml(r) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+/* ADDED 2026-07-28 — per-row "Send to Books" action, list view's own last
+   column (previously the Books push was only reachable from inside the
+   detail modal). Reuses the same gate/confirm/create functions the detail
+   view already has — just needs its own click handler that stops the row's
+   own onclick (which opens the detail modal) from also firing. */
+function rowBooksActionHtml(r){
+  if(r.SR_CREATION_STATUS === 'CREATED'){
+    return '<button class="h-7 px-3 rounded-lg text-[12px] font-semibold bg-green-100 text-green-700 cursor-default" disabled>Sent ✓</button>';
+  }
+  var missing = booksGateReasons(r);
+  var disabled = missing.length > 0;
+  return '<button class="h-7 px-3 rounded-lg text-[12px] font-semibold ' +
+    (disabled ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700 text-white') + '"' +
+    (disabled ? ' disabled title="Missing: ' + esc(missing.join(', ')) + '"' : ' onclick="event.stopPropagation(); openBooksConfirmForRow(\'' + r.ID + '\');"') +
+    '>Send to Books</button>';
+}
+function openBooksConfirmForRow(id){
+  var r = ALL_ROWS.find(function(x){ return String(x.ID)===String(id); });
+  if(!r) return;
+  CURRENT_DETAIL = r;
+  openBooksConfirm();
+}
+
+/* Ported from UI/EndUser/Shipments/app/index.html's own proven fmtDateForInput —
+   Creator GET can return a Date field as "DD-MMM-YYYY" (display format) OR plain
+   ISO; the <input type=date> needs ISO. Write side needs NO conversion — the
+   input's native value is already the ISO format Creator's write API wants
+   (already-documented Deluge Gotcha, confirmed multiple times in this app). */
+function fmtDateForInput(val){
+  if(!val) return '';
+  var m = String(val).match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+  if(m){
+    var months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+    var mm = months[m[2]];
+    if(mm) return m[3] + '-' + mm + '-' + (m[1].length===1?'0'+m[1]:m[1]);
+  }
+  if(/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  return '';
+}
+
+var EDIT_ITEMS = [];
+var CURRENT_DETAIL_ID = null;
+
+/* ════════════════════════════════
+   DOCUMENTATION (Image/Video/Signature) — ADDED 2026-07-29, see the markup's own
+   comment for the full ask/gate reasoning. Signature pad ported verbatim from
+   UI/FF Widget/QCChecklist's own proven canvas-draw-to-PNG pattern (same events/
+   dirty-tracking, `e`-prefixed here to avoid colliding if this widget ever grows
+   a second signature field). Image preview uses the same ZOHO.CREATOR.UTIL.
+   setImageData bridge already proven elsewhere in this app for a Creator file
+   field's relative download path — Video has no preview, just an upload input
+   and a plain "on file" text hint (never gated, so no preview payoff needed).
+════════════════════════════════ */
+var eDocImageFileSet = false;
+var eSigDrawing = false;
+var eSigLastPoint = null;
+var eSigDirty = false;
+var eSigCanvas, eSigCtx;
+
+function eSizeSignatureCanvas(){
+  if(!eSigCanvas) return;
+  var rect = eSigCanvas.getBoundingClientRect();
+  var ratio = window.devicePixelRatio || 1;
+  eSigCanvas.width = rect.width * ratio;
+  eSigCanvas.height = 120 * ratio;
+  eSigCtx.scale(ratio, ratio);
+  eSigCtx.lineWidth = 2;
+  eSigCtx.lineCap = 'round';
+  eSigCtx.strokeStyle = '#1e293b';
+}
+function eSigPoint(ev){
+  var rect = eSigCanvas.getBoundingClientRect();
+  var touch = ev.touches && ev.touches[0];
+  var clientX = touch ? touch.clientX : ev.clientX;
+  var clientY = touch ? touch.clientY : ev.clientY;
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+function eSigStart(ev){
+  ev.preventDefault();
+  eSigDrawing = true;
+  eSigLastPoint = eSigPoint(ev);
+}
+function eSigMove(ev){
+  if(!eSigDrawing) return;
+  ev.preventDefault();
+  var p = eSigPoint(ev);
+  eSigCtx.beginPath();
+  eSigCtx.moveTo(eSigLastPoint.x, eSigLastPoint.y);
+  eSigCtx.lineTo(p.x, p.y);
+  eSigCtx.stroke();
+  eSigLastPoint = p;
+  eSigDirty = true;
+}
+function eSigEnd(){
+  eSigDrawing = false;
+  eSigLastPoint = null;
+}
+function clearEDocSignature(){
+  eSizeSignatureCanvas();
+  eSigCtx.clearRect(0, 0, eSigCanvas.width, eSigCanvas.height);
+  eSigDirty = false;
+}
+function eSigIsBlank(){
+  var blank = document.createElement('canvas');
+  blank.width = eSigCanvas.width;
+  blank.height = eSigCanvas.height;
+  return eSigCanvas.toDataURL() === blank.toDataURL();
+}
+function eSigToFile(){
+  return new Promise(function(resolve){
+    eSigCanvas.toBlob(function(blob){
+      resolve(blob ? new File([blob], 'signature.png', { type: 'image/png' }) : null);
+    }, 'image/png');
+  });
+}
+function initEDocSignaturePad(){
+  eSigCanvas = document.getElementById('eSignatureCanvas');
+  eSigCtx = eSigCanvas.getContext('2d');
+  eSigCanvas.addEventListener('mousedown', eSigStart);
+  eSigCanvas.addEventListener('mousemove', eSigMove);
+  window.addEventListener('mouseup', eSigEnd);
+  eSigCanvas.addEventListener('touchstart', eSigStart, { passive: false });
+  eSigCanvas.addEventListener('touchmove', eSigMove, { passive: false });
+  eSigCanvas.addEventListener('touchend', eSigEnd);
+}
+
+function applyEDocFilePreview(imgElId, rawVal){
+  var img = document.getElementById(imgElId);
+  if(!rawVal){ img.classList.add('hidden'); img.removeAttribute('src'); return; }
+  img.classList.remove('hidden');
+  if(typeof ZOHO !== 'undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.setImageData === 'function'){
+    ZOHO.CREATOR.UTIL.setImageData(img, rawVal, function(){});
+  } else {
+    img.src = rawVal;
+  }
+}
+
+// Video preview — ADDED 2026-07-29, per user ("i uploaded a video. no preview
+// no light box i cant play"). Ported from UI/FF Widget/QCChecklist's own
+// proven mechanism: setImageData is built for <img> elements, but the
+// blob:/data: URL it resolves a relative Creator file path into doesn't care
+// what it was originally requested for — an off-DOM Image() just triggers the
+// bridge, then its resolved src is handed straight to a real <video src>.
+function applyEDocVideoPreview(rawVal){
+  var videoEl = document.getElementById('eVideoPreview');
+  var loadingEl = document.getElementById('eVideoLoadingIndicator');
+  var fsBtn = document.getElementById('eVideoFullscreenBtn');
+  videoEl.classList.add('hidden');
+  videoEl.removeAttribute('src');
+  loadingEl.classList.add('hidden');
+  loadingEl.classList.remove('flex');
+  fsBtn.classList.add('hidden');
+  fsBtn.classList.remove('flex');
+  if(!rawVal) return;
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.setImageData !== 'function') return;
+  loadingEl.classList.remove('hidden');
+  loadingEl.classList.add('flex');
+  var hiddenImg = new Image();
+  ZOHO.CREATOR.UTIL.setImageData(hiddenImg, rawVal, function(){
+    loadingEl.classList.add('hidden');
+    loadingEl.classList.remove('flex');
+    var resolvedSrc = hiddenImg.src || '';
+    if(resolvedSrc && (resolvedSrc.indexOf('blob:')===0 || resolvedSrc.indexOf('data:')===0)){
+      videoEl.src = resolvedSrc;
+      videoEl.classList.remove('hidden');
+      fsBtn.classList.remove('hidden');
+      fsBtn.classList.add('flex');
+    } else {
+      document.getElementById('eVideoHint').textContent = 'Video on file — preview unavailable.';
+    }
+  });
+}
+
+var eVideoLightboxHome = null;
+function openEVideoLightbox(){
+  var videoEl = document.getElementById('eVideoPreview');
+  var slot = document.getElementById('eVideoLightboxSlot');
+  eVideoLightboxHome = videoEl.parentNode;
+  slot.appendChild(videoEl);
+  videoEl.style.maxWidth = '90vw';
+  videoEl.style.maxHeight = '85vh';
+  videoEl.style.width = 'auto';
+  videoEl.style.height = 'auto';
+  var ov = document.getElementById('eVideoLightboxOverlay');
+  ov.classList.remove('hidden');
+  ov.classList.add('flex');
+}
+function closeEVideoLightbox(){
+  var videoEl = document.getElementById('eVideoPreview');
+  if(eVideoLightboxHome){
+    eVideoLightboxHome.insertBefore(videoEl, document.getElementById('eVideoLoadingIndicator'));
+    eVideoLightboxHome = null;
+  }
+  videoEl.style.maxWidth = '';
+  videoEl.style.maxHeight = '';
+  videoEl.style.width = '';
+  videoEl.style.height = '';
+  var ov = document.getElementById('eVideoLightboxOverlay');
+  ov.classList.add('hidden');
+  ov.classList.remove('flex');
+}
+document.getElementById('eVideoFullscreenBtn').addEventListener('click', openEVideoLightbox);
+
+function openEDocLightbox(imgElId){
+  var srcImg = document.getElementById(imgElId);
+  if(!srcImg || !srcImg.src) return;
+  document.getElementById('eDocLightboxImg').src = srcImg.src;
+  var ov = document.getElementById('eDocLightboxOverlay');
+  ov.classList.remove('hidden');
+  ov.classList.add('flex');
+}
+function closeEDocLightbox(){
+  var ov = document.getElementById('eDocLightboxOverlay');
+  ov.classList.add('hidden');
+  ov.classList.remove('flex');
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closeEDocLightbox(); closeEVideoLightbox(); } });
+
+function eUploadDocFile(recordId, fieldName, file){
+  return ZOHO.CREATOR.FILE.uploadFile({
+    app_name: 'supply-chain-app',
+    report_name: REPORT_NAME,
+    id: String(recordId),
+    field_name: fieldName,
+    file: file
+  });
+}
+
+function openDetail(id){
+  var r = ALL_ROWS.find(function(x){ return String(x.ID)===String(id); });
+  if(!r) return;
+  CURRENT_DETAIL = r;
+  CURRENT_DETAIL_ID = r.ID;
+  document.getElementById('dTitle').textContent = (r.Sales_Order||'—') + ' — ' + (r.RMA||'—');
+
+  document.getElementById('eSalesOrder').value = r.Sales_Order || '';
+  document.getElementById('eRMA').value = r.RMA || '';
+  document.getElementById('eDate').value = fmtDateForInput(r.Date_field);
+  document.getElementById('eCustomerName').value = r.Customer_Name || '';
+  document.getElementById('eContact').value = r.Contact || '';
+  document.getElementById('eAddress').value = r.Customer_Address || '';
+  document.getElementById('eCity').value = r.City || '';
+  document.getElementById('eEmail').value = r.Email || '';
+  document.getElementById('eWarehouse').innerHTML = choiceOptionsHtml(WAREHOUSE_CHOICES, r.Warehouse_Name || '');
+  document.getElementById('eReturnedBy').value = r.Returned_by || '';
+  document.getElementById('eSubReason').innerHTML = choiceOptionsHtml(SUB_REASON_CHOICES, r.Sub_Reason || '');
+  document.getElementById('ePackageNumber').value = r.Package_Number || '';
+  document.getElementById('eReason').value = r.Reason || '';
+  document.getElementById('eStatusDisplay').value = r.SR_CREATION_STATUS || '—';
+
+  var srcItems = r.Items || [];
+  EDIT_ITEMS = srcItems.length ? srcItems.map(function(it){
+    return {
+      Item_Name: it.Item_Name || '',
+      SKU: it.SKU || '',
+      Qty_Shipped_Fulfilled: it.Qty_Shipped_Fulfilled || '',
+      Return_Quantity: it.Return_Quantity || ''
+    };
+  }) : [{ Item_Name:'', SKU:'', Qty_Shipped_Fulfilled:'', Return_Quantity:'' }];
+  renderEditItems();
+
+  renderBooksArea(r);
+  // Shipment check is async — re-render the Books area once it resolves so the
+  // button doesn't sit wrongly-enabled (or wrongly-disabled past the point it
+  // should unlock) based on a stale/unknown r._hasShipment.
+  // FIXED 2026-08-06, real gap found live — this only ever re-rendered the
+  // DETAIL modal's own Books area, never the list view's per-row "Send to
+  // Books" button (rowBooksActionHtml, a separate render path in renderList).
+  // Since `r` is the same object reference living inside ALL_ROWS, r._hasShipment
+  // was already being set correctly on the shared array element — the list row
+  // just never got told to re-render and reflect it, so it stayed stuck on its
+  // stale/unknown initial state (permanently disabled) even after the detail
+  // modal had already confirmed a shipment exists for that exact SO.
+  checkShipmentExistsForSO(r.Sales_Order, function(has){
+    r._hasShipment = has;
+    if(CURRENT_DETAIL_ID === r.ID) renderBooksArea(r);
+    renderList();
+  });
+
+  document.getElementById('eImageFile').value = '';
+  document.getElementById('eVideoFile').value = '';
+  document.getElementById('eImageHint').textContent = r.Image ? 'Image on file — pick a new file to replace it.' : 'No image on file yet.';
+  document.getElementById('eVideoHint').textContent = r.Video ? 'Video on file — pick a new file to replace it.' : 'No video on file yet.';
+  document.getElementById('eSignatureHint').textContent = r.Signature ? 'Signature on file — draw below to replace it.' : 'No signature on file yet.';
+
+  document.getElementById('detailModal').classList.add('show');
+  // FIXED 2026-07-29, real bug found live ("image not viewable and signature
+  // doesnt reflect") — both the image preview AND the signature canvas need
+  // their host element actually rendered (non-zero size) before either the
+  // setImageData bridge or getBoundingClientRect-based canvas sizing works;
+  // calling them BEFORE the modal got its `show` class meant the modal was
+  // still display:none at that instant, same root cause already documented
+  // for the canvas sizing fix below — moved both preview calls to AFTER
+  // `show` is applied. Also added a genuine existing-signature preview image
+  // (`eSignaturePreview`, same setImageData bridge as Image) — a plain draw
+  // canvas has no way to "load" a previously-saved signature into itself, so
+  // the only way to actually SEE what's on file is a separate preview image,
+  // same pattern UI/FF Widget/ExceptionControl already proved for this exact
+  // field type.
+  applyEDocFilePreview('eImagePreview', r.Image || '');
+  applyEDocFilePreview('eSignaturePreview', r.Signature || '');
+  applyEDocVideoPreview(r.Video || '');
+  // Canvas measures its own rendered width via getBoundingClientRect(), which is
+  // 0 while the modal is still display:none — must size AFTER the show class
+  // is applied, same reasoning already proven in UI/FF Widget/QCChecklist.
+  clearEDocSignature();
+}
+function closeDetail(){
+  closeEVideoLightbox();
+  document.getElementById('detailModal').classList.remove('show');
+}
+
+function renderEditItems(){
+  document.getElementById('eItemsBody').innerHTML = EDIT_ITEMS.map(function(it, i){
+    return '<tr class="border-b border-slate-50">' +
+      '<td class="px-1 py-1"><input class="w-full h-8 px-2 border border-slate-200 rounded text-[12.5px] outline-none focus:border-teal-600" value="' + esc(it.Item_Name) + '" oninput="updateEditItemField(' + i + ',\'Item_Name\',this.value)"></td>' +
+      '<td class="px-1 py-1"><input class="w-full h-8 px-2 border border-slate-200 rounded text-[12.5px] outline-none focus:border-teal-600" value="' + esc(it.SKU) + '" oninput="updateEditItemField(' + i + ',\'SKU\',this.value)"></td>' +
+      // CHANGED 2026-08-06, per user request ("qty shipped cant be changed.
+      // make that readonly. only qty return can be changed") — Qty Shipped
+      // is fact-of-record (what actually left the warehouse), not something
+      // an officer should be able to edit when filing a return; only Qty
+      // Return (how much is coming back) is the real editable decision here.
+      '<td class="px-1 py-1"><input type="number" readonly class="w-full h-8 px-2 border border-slate-200 rounded text-[12.5px] outline-none bg-slate-50 text-slate-500 cursor-not-allowed" value="' + esc(it.Qty_Shipped_Fulfilled) + '"></td>' +
+      '<td class="px-1 py-1"><input type="number" min="0" class="w-full h-8 px-2 border border-slate-200 rounded text-[12.5px] outline-none focus:border-teal-600" value="' + esc(it.Return_Quantity) + '" oninput="updateEditItemField(' + i + ',\'Return_Quantity\',this.value)"></td>' +
+      '<td class="px-1 py-1 text-center">' + (EDIT_ITEMS.length>1 ? '<button class="text-slate-400 hover:text-red-500 text-[16px] leading-none" onclick="removeEditItemRow(' + i + ')">&times;</button>' : '') + '</td>' +
+    '</tr>';
+  }).join('');
+}
+// CHANGED 2026-08-06, per user request ("check this. this is what it looks
+// like creating sales return in books... we should also implement this in
+// our salesreturn") — Books' own New Sales Return screen shows Return
+// Quantity capped against Shipped/Fulfilled per line. This widget's own
+// Return Quantity input had no such cap at all (could type any number).
+// Live-clamped as-you-type, same pattern already used in this app's
+// Receiving/QCChecklist widgets — clamp on the JUST-EDITED field, toast on
+// clamp, rather than only validating on submit.
+function updateEditItemField(i, field, val){
+  EDIT_ITEMS[i][field] = val;
+  if(field === 'Return_Quantity'){
+    var shipped = Number(EDIT_ITEMS[i].Qty_Shipped_Fulfilled || 0);
+    var entered = Number(val || 0);
+    // ADDED 2026-08-06, per user follow-up ("also handle validation cant
+    // input wrong qty amount") — negative numbers and decimals both pass
+    // Number() fine (e.g. -3, 1.5) even though the <input min="0"> attribute
+    // suggests they shouldn't — HTML5 min/max only affects the browser's OWN
+    // validity-UI styling, it does NOT block the raw .value read in oninput,
+    // so this needs its own explicit checks, same as the shipped-qty cap
+    // right below it.
+    if(val !== '' && (isNaN(entered) || entered < 0 || Math.floor(entered) !== entered)){
+      EDIT_ITEMS[i].Return_Quantity = String(Math.max(0, Math.floor(entered) || 0));
+      renderEditItems();
+      showToast('Return Quantity must be a whole number, 0 or higher.');
+      return;
+    }
+    if(shipped > 0 && entered > shipped){
+      EDIT_ITEMS[i].Return_Quantity = String(shipped);
+      renderEditItems();
+      showToast('Return Quantity can\'t exceed Qty Shipped (' + shipped + ').');
+    }
+  }
+}
+function addEditItemRow(){
+  EDIT_ITEMS.push({ Item_Name:'', SKU:'', Qty_Shipped_Fulfilled:'', Return_Quantity:'' });
+  renderEditItems();
+}
+function removeEditItemRow(i){
+  EDIT_ITEMS.splice(i,1);
+  renderEditItems();
+}
+
+function openEditConfirm(){
+  document.getElementById('editConfirmModal').classList.add('show');
+}
+function closeEditConfirm(){
+  document.getElementById('editConfirmModal').classList.remove('show');
+}
+function doSaveDetailEdit(){
+  if(!CURRENT_DETAIL_ID) return;
+  var items = EDIT_ITEMS.filter(function(it){ return it.SKU || it.Item_Name; }).map(function(it){
+    return {
+      Item_Name: it.Item_Name || '',
+      SKU: it.SKU || '',
+      Qty_Shipped_Fulfilled: it.Qty_Shipped_Fulfilled ? Number(it.Qty_Shipped_Fulfilled) : 0,
+      Return_Quantity: it.Return_Quantity ? Number(it.Return_Quantity) : 0
+    };
+  });
+  var data = {
+    Sales_Order: document.getElementById('eSalesOrder').value.trim(),
+    RMA: document.getElementById('eRMA').value.trim(),
+    Date_field: document.getElementById('eDate').value,
+    Customer_Name: document.getElementById('eCustomerName').value.trim(),
+    Contact: document.getElementById('eContact').value.trim(),
+    Customer_Address: document.getElementById('eAddress').value.trim(),
+    City: document.getElementById('eCity').value.trim(),
+    Email: document.getElementById('eEmail').value.trim(),
+    Warehouse_Name: document.getElementById('eWarehouse').value.trim(),
+    Returned_by: document.getElementById('eReturnedBy').value.trim(),
+    Sub_Reason: document.getElementById('eSubReason').value.trim(),
+    Package_Number: document.getElementById('ePackageNumber').value.trim(),
+    Reason: document.getElementById('eReason').value.trim(),
+    Items: items
+  };
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  var btn = document.getElementById('editConfirmBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  var recordId = CURRENT_DETAIL_ID;
+  var imageFile = (document.getElementById('eImageFile').files || [])[0] || null;
+  var videoFile = (document.getElementById('eVideoFile').files || [])[0] || null;
+  var shouldUploadSignature = eSigDirty && !eSigIsBlank();
+
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_NAME, id: String(recordId), payload: { data: data } })
+    .then(function(resp){
+      console.log('[SalesReturns] updateRecordById resp:', JSON.stringify(resp));
+      if(!resp || resp.code!==3000) throw new Error('update-failed:' + (resp && resp.code));
+
+      var uploads = [];
+      if(imageFile) uploads.push(eUploadDocFile(recordId, 'Image', imageFile).then(function(r){ if(!r || r.code!==3000) console.error('[SalesReturns] Image upload failed:', JSON.stringify(r)); }));
+      if(videoFile) uploads.push(eUploadDocFile(recordId, 'Video', videoFile).then(function(r){ if(!r || r.code!==3000) console.error('[SalesReturns] Video upload failed:', JSON.stringify(r)); }));
+      if(shouldUploadSignature){
+        uploads.push(eSigToFile().then(function(file){
+          if(!file) return;
+          return eUploadDocFile(recordId, 'Signature', file).then(function(r){ if(!r || r.code!==3000) console.error('[SalesReturns] Signature upload failed:', JSON.stringify(r)); });
+        }));
+      }
+      return Promise.all(uploads);
+    })
+    .then(function(){
+      btn.disabled = false; btn.textContent = 'Yes, Save';
+      showToast('Saved.');
+      closeEditConfirm();
+      ZOHO.CREATOR.DATA.getRecords({ report_name: REPORT_NAME, page: 1, pageSize: 200, field_config: 'all' }).then(function(resp2){
+        ALL_ROWS = (resp2 && resp2.code===3000 && resp2.data) ? resp2.data : ALL_ROWS;
+        renderStats();
+        renderList();
+        openDetail(recordId);
+      });
+    })
+    .catch(function(err){
+      btn.disabled = false; btn.textContent = 'Yes, Save';
+      console.error('[SalesReturns] save error:', JSON.stringify(err && err.message ? err.message : err));
+      showToast('Save failed — see console');
+    });
+}
+
+/* ════════════════════════════════
+   CREATE SALES RETURN TO BOOKS — ADDED 2026-07-28, per user ("sales return
+   main function is to save sales return into books. upon Create Sales
+   Return button click. with confirmation. and also enable that button only
+   when the needed fields/things are not empty"). Real Books/Inventory push
+   (see DelugeScripts/sales_return_to_books.txt for the full writeup + the
+   Books-vs-Inventory API finding). Gate mirrors what the user confirmed
+   required: RMA#, Date, Reason, Sub-Reason, at least one real item with a
+   returned qty > 0. SR_CREATION_STATUS doubles as the "already sent" flag —
+   once CREATED (set server-side on success), the button is replaced with a
+   read-only "Sent to Books" chip, same convention as Receiving's own
+   Books_Receive_ID gate.
+════════════════════════════════ */
+const CUSTOM_API_NAME_CREATE_SR = 'create_sales_return_books';
+const CUSTOM_API_KEY_CREATE_SR = 'mX9DBYtAnZqnP5K8hTU6trnKY';
+var CURRENT_DETAIL = null;
+
+function invokeCustomApi(apiName, publicKey, params){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({
+    app_name: 'supply-chain-app',
+    api_name: apiName,
+    public_key: publicKey,
+    http_method: 'POST',
+    payload: params || {}
+  }).then(function(resp){
+    return (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+  });
+}
+
+function booksReturnItemRows(r){
+  var items = r.Items || [];
+  return items.filter(function(it){
+    return it.SKU && Number(it.Return_Quantity || 0) > 0;
+  });
+}
+function canCreateBooksReturn(r){
+  if(!r) return false;
+  if(r.SR_CREATION_STATUS === 'CREATED') return false;
+  if(!r.RMA || !String(r.RMA).trim()) return false;
+  if(!r.Date_field || !String(r.Date_field).trim()) return false;
+  if(!r.Reason || !String(r.Reason).trim()) return false;
+  if(!r.Sub_Reason || !String(r.Sub_Reason).trim()) return false;
+  if(booksReturnItemRows(r).length === 0) return false;
+  if(!r.Image || !String(r.Image).trim()) return false;
+  if(!r.Signature || !String(r.Signature).trim()) return false;
+  // ADDED 2026-07-29, per user ("we cant create sales return in books if same
+  // so doesnt have shipments yet right? ... disable send to books button in
+  // sales return if we dont have shipments yet") — a Sales Return isn't
+  // actually blocked by Books/Inventory itself (sales_return_to_books.txt only
+  // ever needs the Sales Order + its line items, confirmed no Shipment/Package
+  // reference anywhere in that script), this is a NEW app-side business rule
+  // the user wants enforced regardless. r._hasShipment is resolved live/async
+  // (see checkShipmentExistsForSO) — undefined (not yet checked) blocks too,
+  // same as false, so the button never flashes enabled before the real answer
+  // is known.
+  if(r._hasShipment !== true) return false;
+  return true;
+}
+function booksGateReasons(r){
+  var missing = [];
+  if(!r.RMA || !String(r.RMA).trim()) missing.push('RMA #');
+  if(!r.Date_field || !String(r.Date_field).trim()) missing.push('Date');
+  if(!r.Reason || !String(r.Reason).trim()) missing.push('Reason');
+  if(!r.Sub_Reason || !String(r.Sub_Reason).trim()) missing.push('Sub Reason');
+  if(booksReturnItemRows(r).length === 0) missing.push('at least one item with a Return Qty > 0');
+  // ADDED 2026-07-29, per user ("no image and signature. video optional") —
+  // Video deliberately left out of this gate.
+  if(!r.Image || !String(r.Image).trim()) missing.push('Image (Documentation)');
+  if(!r.Signature || !String(r.Signature).trim()) missing.push('Signature (Documentation)');
+  if(r._hasShipment !== true) missing.push('a Shipment Order for this SO (create one in Archived first)');
+  return missing;
+}
+
+// ADDED 2026-07-29 — checks the real DMS side for a matching Sales Order with a
+// Shipment Order already created (see UI/DMS WIDGET/Archived's own "Create
+// Shipment" feature). Cached per SO for the rest of the page session — a
+// return record's own SO rarely changes mid-session, and this avoids
+// re-querying on every detail open of the same SO.
+// CHANGED 2026-08-06 — the DMS multi-package redesign (see docs/2026-08-06-
+// dms-multi-package-service-appointment-design.md) moved shipment-created
+// state OFF Service_Appointment.Shipment_Order_No and onto separate
+// Package_Shipments records (one per package, since one appointment can now
+// cover several). This check went stale as a result — it would never see a
+// NEW shipment as created again, permanently blocking this gate for every
+// SO dispatched after that redesign. Now checks Package_Shipments first
+// (the current source of truth), falling back to the old
+// Service_Appointment.Shipment_Order_No field for any pre-redesign record
+// that still only has data there.
+var SHIPMENT_EXISTS_CACHE = {};
+function checkShipmentExistsForSO(soNo, cb){
+  if(!soNo){ cb(false); return; }
+  if(Object.prototype.hasOwnProperty.call(SHIPMENT_EXISTS_CACHE, soNo)){ cb(SHIPMENT_EXISTS_CACHE[soNo]); return; }
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){ cb(false); return; }
+  function fallbackToOldField(){
+    return ZOHO.CREATOR.DATA.getRecords({
+      report_name: 'Service_Appointment',
+      criteria: '(Sales_Order == ' + JSON.stringify(String(soNo)) + ')',
+      field_config: 'all',
+      max_records: 200
+    }).then(function(resp2){
+      var rows2 = (resp2 && resp2.code===3000 && Array.isArray(resp2.data)) ? resp2.data : [];
+      var has = rows2.some(function(sa){ return sa.Shipment_Order_No && String(sa.Shipment_Order_No).trim(); });
+      SHIPMENT_EXISTS_CACHE[soNo] = has;
+      cb(has);
+    }).catch(function(){
+      SHIPMENT_EXISTS_CACHE[soNo] = false;
+      cb(false);
+    });
+  }
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: 'Package_Shipments_Report',
+    criteria: '(Sales_Order == ' + JSON.stringify(String(soNo)) + ' && Shipment_Created == true)',
+    field_config: 'all',
+    max_records: 200
+  }).then(function(resp){
+    var rows = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    if(rows.length > 0){
+      SHIPMENT_EXISTS_CACHE[soNo] = true;
+      cb(true);
+      return;
+    }
+    // Fallback: pre-redesign records that only ever wrote the old field.
+    // Deliberately a real fallback call, not folded into this .then()'s own
+    // empty-array case, since a genuine 9220 ("no Package_Shipments rows at
+    // all") must ALSO still check the old field, not short-circuit to false.
+    return fallbackToOldField();
+  }).catch(function(e){
+    // A 9220 here just means zero Package_Shipments rows for this SO — a
+    // normal state for pre-redesign records — NOT a reason to skip the
+    // fallback check. Only a genuinely different failure gives up entirely.
+    var c = errCode(e);
+    if(c === 9220){ return fallbackToOldField(); }
+    cb(false);
+  });
+}
+function renderBooksArea(r){
+  var el = document.getElementById('dBooksArea');
+  if(r.SR_CREATION_STATUS === 'CREATED'){
+    el.innerHTML = '<div class="flex items-center gap-2 text-[13px] text-green-700 font-semibold">' +
+      '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[11px] font-semibold">Sent to Books</span>' +
+      'Sales Return ' + esc(r.Books_SalesReturn_No || '') + '</div>';
+    return;
+  }
+  var missing = booksGateReasons(r);
+  var btnDisabled = missing.length > 0;
+  var html = '<button class="h-9 px-4 rounded-lg text-white text-[13px] font-semibold ' +
+    (btnDisabled ? 'bg-slate-300 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700') + '"' +
+    (btnDisabled ? ' disabled' : ' onclick="openBooksConfirm()"') +
+    '>Create Sales Return To Books</button>';
+  if(missing.length > 0){
+    html += '<div class="text-[12px] text-amber-600">Missing before this can be sent: ' + esc(missing.join(', ')) + '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function openBooksConfirm(){
+  if(!CURRENT_DETAIL || !canCreateBooksReturn(CURRENT_DETAIL)) return;
+  document.getElementById('booksConfirmMsg').textContent =
+    'This creates a real Sales Return (RMA ' + (CURRENT_DETAIL.RMA || '') + ') in Books/Inventory for Sales Order ' +
+    (CURRENT_DETAIL.Sales_Order || '') + ' and cannot be undone from here. Continue?';
+  document.getElementById('booksConfirmModal').classList.add('show');
+}
+function closeBooksConfirm(){
+  document.getElementById('booksConfirmModal').classList.remove('show');
+}
+function doCreateSalesReturnBooks(){
+  var r = CURRENT_DETAIL;
+  if(!r || !canCreateBooksReturn(r)) return;
+  var items = booksReturnItemRows(r).map(function(it){
+    return { SKU: it.SKU, Return_Quantity: Number(it.Return_Quantity || 0) };
+  });
+  console.log('[SalesReturns] r.Items raw:', JSON.stringify(r.Items));
+  console.log('[SalesReturns] items payload built:', JSON.stringify(items));
+  var btn = document.getElementById('booksConfirmBtn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  invokeCustomApi(CUSTOM_API_NAME_CREATE_SR, CUSTOM_API_KEY_CREATE_SR, {
+    recordId: String(r.ID),
+    salesOrderNo: r.Sales_Order || '',
+    rmaVal: r.RMA || '',
+    dateVal: r.Date_field || '',
+    reasonVal: r.Reason || '',
+    subReasonVal: r.Sub_Reason || '',
+    returnedByVal: r.Returned_by || '',
+    itemsJson: JSON.stringify({ items: items })
+  }).then(function(result){
+    btn.disabled = false; btn.textContent = 'Yes, Create in Books';
+    console.log('[SalesReturns] create_sales_return_books result:', JSON.stringify(result));
+    if(result && result.status === 'success'){
+      showToast(result.message || 'Sales Return created in Books.');
+      closeBooksConfirm();
+      loadList();
+      closeDetail();
+    } else {
+      showToast((result && result.message) ? result.message : 'Create failed — see console');
+    }
+  }).catch(function(err){
+    btn.disabled = false; btn.textContent = 'Yes, Create in Books';
+    console.error('[SalesReturns] create_sales_return_books error:', JSON.stringify(err));
+    showToast('Create failed — see console');
+  });
+}
+
+/* ════════════════════════════════
+   NEW SALES RETURN — ADDED 2026-07-23, per user ("i dont have any way to create
+   manually sales returns in widget"). This widget was deliberately tracking-only
+   (2026-07-18) since Sales Returns' native logic/Books sync was out of scope —
+   this create flow does NOT touch that logic at all, it's a plain addRecords
+   against the same real Sales_Returns_Form the widget already reads, same shape
+   already proven working by seed-sales-returns-test-data.js. SR_CREATION_STATUS
+   deliberately NOT user-editable here — defaults to "PENDING" (this widget/user
+   isn't the thing that marks a return "CREATED" in Books, same "system computes
+   this, human doesn't" principle used throughout this app). Warehouse_Name/
+   Sub_Reason/Returned_by are plain text inputs, not hardcoded dropdowns — this
+   app has never independently confirmed the exact live choice list for any of
+   the 3 (only sample values seen via the seed script/detail view) — if the real
+   native field turns out to be a strict picklist without "Allow Other Choice",
+   Creator will reject an out-of-list value with a clear error at save time,
+   same fixable-on-sight pattern as every other picklist gotcha in this app.
+════════════════════════════════ */
+/* ADDED 2026-07-28, per user ("RMA# should auto populate as RMA-000** first
+   then overwritten by books when we have books rma number created") — same
+   max+1-scan-and-persist convention as INQ_No/RR_No/Service_Request elsewhere
+   in this app. Provisional only — client-computed, can collide if 2 officers
+   create a return in the same window (same accepted risk as every other
+   client-numbered entity in this app). Real Books-assigned number overwrites
+   this once Create Sales Return To Books succeeds (see
+   sales_return_to_books.txt — RMA is now written back on success). */
+/* ADDED 2026-07-28, per user ("its a dropdown on native. why dont we just
+   dynamically populate them in widget?") — Warehouse_Name and Sub_Reason are
+   both real strict picklist fields on Sales_Returns_Form (confirmed via a
+   live AppIDE source dump, Temp.txt, not guessed). Choices hardcoded here
+   straight from that dump — if the native picklist ever changes, this list
+   goes stale silently (same accepted risk as this app's other hardcoded
+   choice lists, e.g. Receiving's BIN_LOCATIONS_STATIC). */
+var WAREHOUSE_CHOICES = ["WH1 BANAWE","WH2 SPEAKER","WH3 BAESA","WH4 HC-Damage Repairable","WH5 Commune Home","WH6 FR-Tagaytay","WH7 HC-Flagship Showroom","WH8 FR-Q Ave.","WH9 FR-Bay Area","WH10 FR-Shang","WH11 FR-Glorietta","WH12 FR-Festival Mall","WH13 FR-Taytay","WH14 FR-Anabu","WH15 FR-Davao","WH16 FR-Vermosa","WH17 FR-Lipa","WH19 FR-Balintawak","WH20 FR-Makati","WH21 FR-Kawit","WH22 FR-Bacoor","INVENTORY"];
+var SUB_REASON_CHOICES = ["Change of Mind","Damaged Item","Demo","Replacement"];
+function choiceOptionsHtml(choices, selected){
+  var html = '<option value="">-- Select --</option>';
+  choices.forEach(function(c){
+    html += '<option value="' + esc(c) + '"' + (c===selected?' selected':'') + '>' + esc(c) + '</option>';
+  });
+  return html;
+}
+function populatePicklists(){
+  document.getElementById('nWarehouse').innerHTML = choiceOptionsHtml(WAREHOUSE_CHOICES, '');
+  document.getElementById('nSubReason').innerHTML = choiceOptionsHtml(SUB_REASON_CHOICES, '');
+}
+populatePicklists();
+
+function todayForInput(){
+  var d = new Date();
+  var pad = function(n){ return (n<10?'0':'')+n; };
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function computeNextRMANo(){
+  // FIXED 2026-07-29, per user ("RMA-02256? it should be RMA-00002") — once a
+  // return is sent to Books, its own RMA field gets OVERWRITTEN with Books'
+  // real return number (RMA-0225X style, a totally different sequence, same
+  // "RMA-#####" shape so it can't be told apart by format alone). Scanning
+  // ALL rows for the max let a Books number leak into the NEXT provisional
+  // Creator number. Fixed: only scan rows still PENDING (SR_CREATION_STATUS
+  // !== 'CREATED') — those are the only ones still carrying a genuine
+  // Creator-assigned provisional RMA.
+  var max = 0;
+  ALL_ROWS.forEach(function(r){
+    if(r.SR_CREATION_STATUS === 'CREATED') return;
+    var m = String(r.RMA||'').match(/^RMA-(\d+)$/);
+    if(m){ var n = parseInt(m[1],10); if(n > max) max = n; }
+  });
+  var next = max + 1;
+  var padded = String(next);
+  while(padded.length < 5){ padded = '0' + padded; }
+  return 'RMA-' + padded;
+}
+
+function openNew(){
+  ['nSalesOrder','nRMA','nDate','nCustomerName','nContact','nAddress','nCity','nEmail','nWarehouse','nReturnedBy','nSubReason','nPackageNumber','nReason'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('nRMA').value = computeNextRMANo();
+  document.getElementById('nDate').value = todayForInput();
+  NEW_ITEMS = [{ Item_Name:'', SKU:'', Qty_Shipped_Fulfilled:'', Return_Quantity:'' }];
+  renderNewItems();
+  document.getElementById('newModal').classList.add('show');
+}
+function closeNew(){
+  document.getElementById('newModal').classList.remove('show');
+}
+function renderNewItems(){
+  document.getElementById('nItemsBody').innerHTML = NEW_ITEMS.map(function(it, i){
+    return '<tr class="border-b border-slate-50">' +
+      '<td class="px-1 py-1"><input class="w-full h-8 px-2 border border-slate-200 rounded text-[12.5px] outline-none focus:border-teal-600" value="' + esc(it.Item_Name) + '" oninput="updateItemField(' + i + ',\'Item_Name\',this.value)"></td>' +
+      '<td class="px-1 py-1"><input class="w-full h-8 px-2 border border-slate-200 rounded text-[12.5px] outline-none focus:border-teal-600" value="' + esc(it.SKU) + '" oninput="updateItemField(' + i + ',\'SKU\',this.value)"></td>' +
+      // CHANGED 2026-08-06 — see the matching edit-modal comment for the full
+      // writeup, same fix mirrored here for the New Sales Return creation
+      // flow. Note this one stays editable in the sense that it's whatever
+      // the officer just typed for Qty Shipped when adding a NEW blank row
+      // (no source record to pull a real fact-of-record value from yet) —
+      // but readonly here is still correct: the intended flow is picking
+      // Item Name/SKU first (which would normally auto-fill this from the
+      // real shipped quantity), not hand-typing a shipped quantity.
+      '<td class="px-1 py-1"><input type="number" readonly class="w-full h-8 px-2 border border-slate-200 rounded text-[12.5px] outline-none bg-slate-50 text-slate-500 cursor-not-allowed" value="' + esc(it.Qty_Shipped_Fulfilled) + '"></td>' +
+      '<td class="px-1 py-1"><input type="number" min="0" class="w-full h-8 px-2 border border-slate-200 rounded text-[12.5px] outline-none focus:border-teal-600" value="' + esc(it.Return_Quantity) + '" oninput="updateItemField(' + i + ',\'Return_Quantity\',this.value)"></td>' +
+      '<td class="px-1 py-1 text-center">' + (NEW_ITEMS.length>1 ? '<button class="text-slate-400 hover:text-red-500 text-[16px] leading-none" onclick="removeItemRow(' + i + ')">&times;</button>' : '') + '</td>' +
+    '</tr>';
+  }).join('');
+}
+// CHANGED 2026-08-06 — see updateEditItemField's own comment for the full
+// writeup, same fix mirrored here for the New Sales Return creation flow.
+function updateItemField(i, field, val){
+  NEW_ITEMS[i][field] = val;
+  if(field === 'Return_Quantity'){
+    var shipped = Number(NEW_ITEMS[i].Qty_Shipped_Fulfilled || 0);
+    var entered = Number(val || 0);
+    // ADDED 2026-08-06 — see updateEditItemField's own comment for the full
+    // writeup, same validation mirrored here for the New Sales Return
+    // creation flow.
+    if(val !== '' && (isNaN(entered) || entered < 0 || Math.floor(entered) !== entered)){
+      NEW_ITEMS[i].Return_Quantity = String(Math.max(0, Math.floor(entered) || 0));
+      renderNewItems();
+      showToast('Return Quantity must be a whole number, 0 or higher.');
+      return;
+    }
+    if(shipped > 0 && entered > shipped){
+      NEW_ITEMS[i].Return_Quantity = String(shipped);
+      renderNewItems();
+      showToast('Return Quantity can\'t exceed Qty Shipped (' + shipped + ').');
+    }
+  }
+}
+function addItemRow(){
+  NEW_ITEMS.push({ Item_Name:'', SKU:'', Qty_Shipped_Fulfilled:'', Return_Quantity:'' });
+  renderNewItems();
+}
+function removeItemRow(i){
+  NEW_ITEMS.splice(i,1);
+  renderNewItems();
+}
+function saveNew(){
+  var salesOrder = document.getElementById('nSalesOrder').value.trim();
+  var customerName = document.getElementById('nCustomerName').value.trim();
+  var warehouse = document.getElementById('nWarehouse').value.trim();
+  if(!salesOrder || !customerName || !warehouse){
+    showToast('Sales Order, Customer Name, and Warehouse are required.');
+    return;
+  }
+  var items = NEW_ITEMS.filter(function(it){ return it.SKU || it.Item_Name; }).map(function(it){
+    return {
+      Item_Name: it.Item_Name || '',
+      SKU: it.SKU || '',
+      Qty_Shipped_Fulfilled: it.Qty_Shipped_Fulfilled ? Number(it.Qty_Shipped_Fulfilled) : 0,
+      Return_Quantity: it.Return_Quantity ? Number(it.Return_Quantity) : 0
+    };
+  });
+  var data = {
+    Sales_Order: salesOrder,
+    RMA: document.getElementById('nRMA').value.trim(),
+    Date_field: document.getElementById('nDate').value,
+    Customer_Name: customerName,
+    Customer_Address: document.getElementById('nAddress').value.trim(),
+    City: document.getElementById('nCity').value.trim(),
+    Email: document.getElementById('nEmail').value.trim(),
+    Contact: document.getElementById('nContact').value.trim(),
+    Warehouse_Name: warehouse,
+    Returned_by: document.getElementById('nReturnedBy').value.trim(),
+    Sub_Reason: document.getElementById('nSubReason').value.trim(),
+    Reason: document.getElementById('nReason').value.trim(),
+    Package_Number: document.getElementById('nPackageNumber').value.trim(),
+    SR_CREATION_STATUS: 'PENDING',
+    Items: items
+  };
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  var btn = document.getElementById('nSaveBtn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  ZOHO.CREATOR.DATA.addRecords({ form_name: FORM_NAME, payload: { data: data } })
+    .then(function(resp){
+      btn.disabled = false; btn.textContent = 'Create Sales Return';
+      console.log('[SalesReturns] addRecords resp:', JSON.stringify(resp));
+      if(resp && resp.code===3000){
+        showToast('Sales Return created.');
+        closeNew();
+        loadList();
+      } else {
+        showToast('Create failed — code ' + (resp && resp.code) + ', see console');
+      }
+    })
+    .catch(function(err){
+      btn.disabled = false; btn.textContent = 'Create Sales Return';
+      console.error('[SalesReturns] addRecords error:', JSON.stringify(err));
+      showToast('Create failed — see console');
+    });
+}
+</script>
+</body>
+</html>

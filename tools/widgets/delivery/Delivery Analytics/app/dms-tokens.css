@@ -1,0 +1,62 @@
+/* Extracted verbatim from hc-dms-widget (5).html, 2026-10-22.
+   Source kept at Delivery Management System/reference/hc-dms-widget-v5_2026-10-22.html
+   Do not hand-edit a copy inside a widget zip -- change it here and re-copy,
+   or the ten widgets drift apart again. */
+
+/* Design tokens, dark mode and the base reset. Every DMS widget loads this first. */
+
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --surface-2:#f0f2f5; --surface-3:#e8ebf0;
+  --border:#e2e5ea; --border-strong:#cfd4dc;
+  --text:#14171c; --muted:#556172; --faint:#677285;
+  --accent:#2b59e8; --accent-soft:#e9efff; --accent-text:#ffffff;
+  --ok:#0b7a4b; --ok-soft:#e2f5eb;
+  --warn:#a34e06; --warn-soft:#fff0df;
+  --bad:#c22f2f; --bad-soft:#fde7e7;
+  --yel:#7a6000; --yel-soft:#fff6cf;
+  --vio:#6d43d6; --vio-soft:#efe9ff;
+  /* Calendar color coding (Build Plan D.6) */
+  --c-delivery:#2f6fec; --c-install:#ea8417; --c-fullday:#d93636; --c-multiday:#8d1d1d;
+  --c-3p:#1c9b55; --c-replace:#7a8393; --c-site:#0f9a9a; --c-pullout:#7a4bd9;
+  --shadow-sm:0 1px 2px rgba(16,24,40,.05);
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.06);
+  --shadow-lg:0 20px 50px rgba(16,24,40,.18);
+  --radius:14px;
+  /* Type scale — every text size in the app comes from these 8 steps */
+  --fs-xs:11.5px; --fs-sm:12.5px; --fs-md:13.5px; --fs-base:14px; --fs-lg:15.5px; --fs-xl:17px; --fs-2xl:22px; --fs-3xl:28px;
+  --star:#b07d00;
+  --hatch:repeating-linear-gradient(135deg,rgba(210,58,58,.07) 0 6px,transparent 6px 12px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1116; --surface:#161a21; --surface-2:#1c212a; --surface-3:#242a35;
+    --border:#272d38; --border-strong:#353d4b;
+    --text:#e8ebf0; --muted:#a3adbb; --faint:#8b95a5;
+    --accent:#7396ff; --accent-soft:#1d2746; --accent-text:#0b1020;
+    --ok:#3cc483; --ok-soft:#12291f; --warn:#f0954a; --warn-soft:#2e2014;
+    --bad:#f06464; --bad-soft:#331818; --yel:#e2c044; --yel-soft:#2c2711;
+    --vio:#a58bff; --vio-soft:#241d3d; --star:#f2c94c;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+    --shadow-lg:0 20px 50px rgba(0,0,0,.5);
+    --hatch:repeating-linear-gradient(135deg,rgba(240,100,100,.10) 0 6px,transparent 6px 12px);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1116; --surface:#161a21; --surface-2:#1c212a; --surface-3:#242a35;
+  --border:#272d38; --border-strong:#353d4b;
+  --text:#e8ebf0; --muted:#a3adbb; --faint:#8b95a5;
+  --accent:#7396ff; --accent-soft:#1d2746; --accent-text:#0b1020;
+  --ok:#3cc483; --ok-soft:#12291f; --warn:#f0954a; --warn-soft:#2e2014;
+  --bad:#f06464; --bad-soft:#331818; --yel:#e2c044; --yel-soft:#2c2711;
+  --vio:#a58bff; --vio-soft:#241d3d; --star:#f2c94c;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  --shadow-lg:0 20px 50px rgba(0,0,0,.5);
+  --hatch:repeating-linear-gradient(135deg,rgba(240,100,100,.10) 0 6px,transparent 6px 12px);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:var(--fs-base)/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:var(--fs-sm)}
+.muted{color:var(--muted)}

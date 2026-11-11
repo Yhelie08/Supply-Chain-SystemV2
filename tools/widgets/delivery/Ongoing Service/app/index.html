@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ongoing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dms-tokens.css">
+<style>
+  /* The teal/slate palette that used to live here is now defined in
+     dms-legacy-palette.css, in terms of the shared design tokens, so this
+     widget matches the rest of DMS and follows dark mode. 2026-10-26. */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font-family:inherit}
+  .page{padding:24px;display:flex;flex-direction:column;gap:20px;min-height:100vh;box-sizing:border-box}
+  .hidden{display:none !important}
+  h1{font-size:22px;font-weight:800;color:var(--gray-800)}
+  .subtitle{font-size:13px;color:var(--gray-500);margin-top:4px}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-700);transition:all var(--t)}
+  .btn:hover{background:var(--gray-50)}
+  .btn-teal{background:var(--teal);border-color:var(--teal);color:var(--white)}
+  .btn-teal:hover{background:var(--teal-dark)}
+  .btn-teal:disabled{background:var(--gray-300);border-color:var(--gray-300);cursor:not-allowed}
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:14px 18px;box-shadow:var(--shadow)}
+  .stat-card label{font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em}
+  .stat-card .val{font-size:22px;font-weight:800;color:var(--gray-800);margin-top:4px}
+  .main-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .filter-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;height:30px;padding:0 13px;border-radius:999px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap}
+  .pill.active{background:var(--teal);border-color:var(--teal);color:var(--white)}
+  .search-input{height:32px;padding:0 12px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--gray-50);font-size:13px;outline:none;width:220px}
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  th{padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+  td{padding:12px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle;border-bottom:1px solid var(--gray-100)}
+  tbody tr:hover{background:var(--gray-50)}
+  .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600}
+  .badge-gray{background:var(--gray-100);color:var(--gray-500)}
+  .badge-amber{background:var(--amber-light);color:var(--amber)}
+  .badge-teal{background:var(--teal-light);color:var(--teal-dark)}
+  .badge-green{background:var(--green-light);color:var(--green)}
+  .badge-red{background:var(--red-light);color:var(--red)}
+  .empty-state{padding:60px 20px;text-align:center;color:var(--gray-400)}
+  .back-link{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;background:var(--gray-800);color:var(--white);font-size:13px;font-weight:700;cursor:pointer;transition:all var(--t);width:fit-content}
+  .back-link:hover{background:#000}
+  .card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px 20px}
+  .card h3{font-size:13px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px}
+  .detail-grid{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+  .info-item.full{grid-column:1/-1}
+  .info-item label{display:block;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+  .info-item .val{font-size:13.5px;font-weight:600;color:var(--gray-800)}
+  .info-item input,.info-item select,.info-item textarea{width:100%;font-size:13px;color:var(--gray-800);background:var(--white);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:6px 9px;outline:none}
+  .info-item input:focus,.info-item select:focus,.info-item textarea:focus{border-color:var(--teal)}
+  /* Auto-stamped timestamps: still fully legible, visibly not a field you type in. */
+  .info-item input.stamped{background:var(--gray-50,#f7f8fa);border-style:dashed;cursor:default;color:var(--gray-800)}
+  .info-item input.stamped:focus{border-color:var(--gray-200)}
+  .info-item input.stamped::-webkit-calendar-picker-indicator{display:none}
+  .info-item .stamp-hint{display:block;font-size:10px;color:var(--gray-400);margin-top:3px;font-weight:500}
+  .mini-table-wrap{border:1px solid var(--gray-200);border-radius:var(--radius);overflow:hidden;margin-top:6px}
+  .mini-table-wrap table{width:100%}
+  .mini-table-wrap thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--teal-mid)}
+  .mini-table-wrap th{color:var(--teal-dark)}
+  .checklist{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .checklist label{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--gray-700);font-weight:500;cursor:pointer}
+  .checklist input{width:auto;margin-top:2px}
+  .star-row{display:flex;gap:6px;margin-top:4px}
+  .star-btn{font-size:22px;line-height:1;cursor:pointer;color:var(--gray-300);background:none;border:none;padding:0}
+  .star-btn.on{color:var(--amber)}
+  .save-bar{position:sticky;bottom:0;background:var(--white);border-top:1px solid var(--gray-200);padding:12px 20px;display:flex;justify-content:flex-end;gap:10px;border-radius:0 0 var(--radius-lg) var(--radius-lg)}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,8px);background:var(--gray-800);color:var(--white);font-size:13px;padding:10px 16px;border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,.15);opacity:0;pointer-events:none;transition:all var(--t);z-index:200}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  .sig-preview{max-width:220px;max-height:110px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);margin-top:6px;display:block}
+  .sig-canvas{width:100%;max-width:600px;height:140px;border:1.5px dashed var(--gray-300);border-radius:var(--radius-sm);background:var(--white);touch-action:none;cursor:crosshair;display:block}
+  .note-box{background:var(--teal-light);border:1px solid var(--teal-mid);border-radius:var(--radius-sm);padding:10px 12px;font-size:12.5px;color:var(--teal-dark)}
+
+  /* ADDED 2026-07-23, per user ("apply mobile view that is functional also and
+     adaptive in every sizes") — plain CSS media queries, no Tailwind, matching
+     this widget's own deliberate vanilla-CSS choice (avoids the "forgot to
+     recompile after adding classes" bug already hit twice this session on the
+     Tailwind-based DMS widgets). Researched first (WebSearch, official Zoho
+     docs) — no Creator-specific API/manifest setting for this, it's ordinary
+     responsive CSS; the one real Zoho-specific thing found is a separate
+     "Mobile Compatibility" toggle in Creator's own widget-embed UI for the
+     native Creator mobile app specifically, unrelated to this CSS and not
+     something this file can set — flagged for the user to check/enable
+     separately if needed. Single breakpoint at 640px (phone portrait/small
+     tablet) — everything above that width is unaffected, matches the existing
+     desktop layout exactly. */
+  @media (max-width: 640px) {
+    .page{padding:14px;gap:14px}
+    h1{font-size:19px}
+    .stat-row{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+    .stat-card{padding:11px 14px}
+    .stat-card .val{font-size:19px}
+    .card{padding:14px 15px}
+    .filter-row{flex-direction:column;align-items:stretch}
+    .search-input{width:100%}
+    #filterPills{width:100%}
+    .info-grid{grid-template-columns:1fr;gap:12px}
+    .save-bar{flex-direction:column-reverse}
+    .save-bar .btn{width:100%;justify-content:center}
+    .sig-canvas{height:120px}
+    th,td{padding:8px 10px;font-size:12px}
+    #evGrid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr))}
+  }
+</style>
+  <link rel="stylesheet" href="dms-legacy-palette.css">
+</head>
+<body>
+
+<div class="page" id="listView">
+  <div>
+    <h1>Ongoing</h1>
+    <p class="subtitle">Installer/on-site completion form — writes directly to the real native Field_Work_Form (Installation_Status, checklist, signature, rating)</p>
+  </div>
+
+  <div class="stat-row" id="statCards"></div>
+
+  <div class="main-card">
+    <div class="filter-row">
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="filterPills">
+        <div class="pill active" data-filter="today" onclick="setFilter('today')">Today</div>
+        <div class="pill" data-filter="all" onclick="setFilter('all')">All Ongoing</div>
+        <div class="pill" data-filter="not-started" onclick="setFilter('not-started')">Not Started</div>
+        <div class="pill" data-filter="Started" onclick="setFilter('Started')">Started</div>
+        <div class="pill" data-filter="Completed" onclick="setFilter('Completed')">Installation Completed</div>
+      </div>
+      <input class="search-input" id="searchInput" placeholder="Search SO#, customer…" oninput="renderList()" />
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th></th><th>SO#</th><th>Customer</th><th>Schedule</th><th>Type</th><th>Installer</th><th>Status</th><th>Forecast</th><th>Next Step</th>
+          </tr>
+        </thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="page hidden" id="detailView">
+  <div class="back-link" onclick="showList()">&larr; Back to list</div>
+  <div>
+    <h1>Field Work</h1>
+    <p class="subtitle" id="dHeaderSub">—</p>
+  </div>
+  <!-- Next Step banner (ADDED 2026-09-30, display only) -->
+  <div id="nsBanner" style="padding:12px 16px 0"></div>
+  <div class="detail-grid">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="card">
+        <h3>Order Identity (read-only, from the Service Appointment)</h3>
+        <div class="info-grid">
+          <div class="info-item"><label>Service Request#</label><div class="val" id="dSR">—</div></div>
+          <div class="info-item"><label>Sales Order</label><div class="val" id="dSO">—</div></div>
+          <div class="info-item"><label>Customer</label><div class="val" id="dCustomer">—</div></div>
+          <div class="info-item"><label>Type of Delivery</label><div class="val" id="dType">—</div></div>
+          <div class="info-item"><label>Contact</label><div class="val" id="dContact">—</div></div>
+          <div class="info-item"><label>Email</label><div class="val" id="dEmail">—</div></div>
+          <div class="info-item full"><label>Address</label><div class="val" id="dAddress">—</div></div>
+          <div class="info-item"><label>Confirmed Schedule</label><div class="val" id="dSchedule">—</div></div>
+          <div class="info-item"><label>Assigned Team</label><div class="val" id="dTeam">—</div></div>
+        </div>
+        <div class="mini-table-wrap">
+          <table>
+            <thead><tr><th>Item Name</th><th>SKU</th><th>Quantity</th><th>Package</th></tr></thead>
+            <tbody id="dItemDetails"><tr><td colspan="4">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="notStartedNote">
+        <div class="note-box">No Field Work record exists yet for this delivery. Fill in the form and click <strong>Start Field Work</strong> — this creates the real native <code>Field_Work_Form</code> record (pre-filled with the item details above).</div>
+      </div>
+      <!-- ADDED 2026-08-01, per user ("field work completed already? when its not
+           yet scheduled?") — a delivery with no Confirmed Schedule Date shouldn't
+           be startable in Field Work at all yet. Only shows/blocks for the CREATE
+           path (no CURRENT_FW) — an already-started record is never retroactively
+           locked, work in progress is work in progress regardless of schedule
+           state. See canStartFieldWork()/saveFieldWork()'s own gate. -->
+      <div class="card hidden" id="notScheduledLock">
+        <div class="note-box" style="border-color:var(--red);background:var(--bad-soft);color:var(--bad)">🔒 This delivery hasn't been Confirmed/Scheduled yet (no Confirmed Schedule Date on the appointment) — approve or override its schedule in Service Request first, then Field Work can start.</div>
+      </div>
+
+      <div class="card">
+        <h3>Field Work — Status &amp; Schedule</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Status</label>
+            <select id="fStatus">
+              <option>Pending</option><option>Started</option><option>Reschedule Requested</option><option>Rescheduled</option><option>Archived</option>
+            </select>
+          </div>
+          <div class="info-item">
+            <label>Installation Status</label>
+            <select id="fInstallStatus">
+              <option>Incomplete</option><option>Complete</option>
+            </select>
+          </div>
+          <div class="info-item">
+            <label>Schedule Start</label>
+            <input type="datetime-local" id="fScheduleStart" class="stamped" readonly />
+            <span class="stamp-hint">Recorded automatically when Status becomes Started</span>
+          </div>
+          <div class="info-item">
+            <label>Schedule End</label>
+            <input type="datetime-local" id="fScheduleEnd" class="stamped" readonly />
+            <span class="stamp-hint">Recorded automatically when Installation Status becomes Complete</span>
+          </div>
+          <div class="info-item">
+            <label>Sales Return Status</label>
+            <select id="fSalesReturnStatus">
+              <option value="">-Select-</option>
+              <option value="SR PENDING">SR PENDING</option>
+              <option value="SR CREATED">SR CREATED</option>
+            </select>
+          </div>
+        </div>
+        <!-- ADDED 2026-08-01, per user ("if it is reschedule put it in exception but
+             needs override reason mandatory field for reason of rescheduling") — only
+             shown/required when Status="Reschedule Requested". Native
+             FW_Validate_Reschedule_Reason (Validations) enforces this server-side too,
+             this is just the client-side mirror + visibility toggle. -->
+        <div class="info-item full hidden" id="fRescheduleReasonWrap" style="grid-column:1/-1;margin-top:8px">
+          <label>Reschedule Reason <span style="color:var(--red)">*</span></label>
+          <textarea id="fRescheduleReason" rows="2" style="width:100%;font-size:13px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:8px 10px;outline:none" placeholder="Why does this delivery need to be rescheduled?"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Final Checking Bago Umalis sa Site</h3>
+        <div class="checklist" id="fChecklist"></div>
+      </div>
+
+      <div class="card">
+        <h3>Customer Feedback</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Customer Rating</label>
+            <div class="star-row" id="fStarRow"></div>
+          </div>
+          <div class="info-item"><label>Receiver's Name</label><input type="text" id="fReceiverName" /></div>
+          <div class="info-item full"><label>Customer Review</label><textarea id="fCustomerReview" rows="2"></textarea></div>
+          <div class="info-item full">
+            <label>Receiver's Signature — draw directly</label>
+            <canvas id="sigCanvasReceiver" class="sig-canvas" width="600" height="140"></canvas>
+            <button type="button" class="btn" style="margin-top:6px" onclick="clearSignaturePad('sigCanvasReceiver')">Clear</button>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Saved signature (if any):</div>
+            <img id="dReceiverSigDrawPreview" class="sig-preview hidden" />
+          </div>
+          <div class="info-item full">
+            <label>Or upload a photo instead (if signed on paper)</label>
+            <input type="file" id="fSigFile" accept="image/*" onchange="onSigFileChange(this)" />
+            <img id="dSigPreview" class="sig-preview hidden" style="margin-top:6px" />
+          </div>
+          <div class="info-item full">
+            <label>Assignee (Installer) Signature — draw directly</label>
+            <canvas id="sigCanvasAssignee" class="sig-canvas" width="600" height="140"></canvas>
+            <button type="button" class="btn" style="margin-top:6px" onclick="clearSignaturePad('sigCanvasAssignee')">Clear</button>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Saved signature (if any):</div>
+            <img id="dAssigneeSigDrawPreview" class="sig-preview hidden" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Photo Evidence</h3>
+        <div class="note-box" style="margin-bottom:10px">Same proven method as Receiving/Exception — separate plain <code>Evidence_Photos</code> record per photo (real file upload, real preview), not the native <code>Video_and_Status_of_Installed_Item</code> subform (confirmed dead end for file fields inside a subform). New photos + removals stage locally and only commit when you click <strong>Save Field Work</strong>. Video isn't supported yet — photos only.</div>
+        <input type="file" id="evFileInput" accept="image/*" multiple onchange="onEvidenceFilesChange(this)" style="margin-bottom:10px" />
+        <div id="evGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Video Evidence</h3>
+        <div class="note-box" style="margin-bottom:10px">ADDED 2026-08-08 — native multi-file <code>Video</code> field on <code>Field_Work</code> itself (up to 10 videos per record, published live same day), deliberately kept SEPARATE from Photo Evidence above per user request. New videos stage locally and only upload when you click <strong>Save Field Work</strong>.</div>
+        <input type="file" id="videoFileInput" accept="video/*" multiple onchange="onVideoFilesChange(this)" style="margin-bottom:10px" />
+        <div id="videoList" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Notes</h3>
+        <textarea id="fLogisticNotes" rows="3" style="width:100%;font-size:13px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:8px 10px;outline:none"></textarea>
+      </div>
+
+      <div class="save-bar">
+        <button class="btn" onclick="showList()">Cancel</button>
+        <button class="btn btn-teal" id="btnSave" onclick="saveFieldWork()">Save Field Work</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* Field Work — new 2026-07-23, per user ("i think we need native form in this
+   because user needs to fill up this") after comparing against the old
+   logistics-management app's real "Ongoing" report (In_Bound_Delivery form) —
+   confirmed via a live schema dump that supply-chain-app ALREADY has a near-
+   identical native form, Field_Work_Form/Field_Work_Report, previously only
+   ever READ from (DeliveryAnalytics/Archived/FieldServiceSiteVisits) — nothing
+   in this codebase ever created or edited a Field_Work_Form record before this
+   widget. Real user decision via AskUserQuestion: "New widget UI for
+   Field_Work_Form" (not embedding the native form, not extending
+   OngoingService's read-only modal).
+
+   List source: Service_Appointment, same "ongoing" filter as OngoingService
+   (Appointment_Status NOT IN Completed/Failed) — Field Work naturally happens
+   while a delivery is still in progress. Joined to Field_Work_Report by
+   Sales_Order (the only confirmed shared key between the 2 forms, same join
+   Archived/DeliveryAnalytics already use). A record with no matching
+   Field_Work row shows "Not Started" — clicking it opens the same detail view
+   with a note explaining Save will CREATE the Field_Work record (pre-filled
+   with Item_Details copied from the Service_Appointment); a record that
+   already has one opens in normal edit mode (updateRecordById).
+
+   Deliberately excluded from this pass (flagged, not silently skipped):
+   Video_and_Status_of_Installed_Item (photo/video subform — same confirmed
+   File-inside-subform dead end this app has hit repeatedly, would need its
+   own Evidence_Photos-style separate form to do properly); Assignee_Signature
+   (installer's own signature — only Receiver's Signature Upload built, the
+   same paper-signature fallback path the native form's own tooltip already
+   describes); no auto-push back onto Service_Appointment.Appointment_Status —
+   this pass is scoped to letting the officer fill up Field Work data, not a
+   new cross-form status sync (a real future integration point, not built). */
+const REPORT_SA = 'Service_Appointment';
+const REPORT_FW = 'Field_Work_Report';
+/* FIXED 2026-07-23, real bug found live: "code 2893, No form named Field_Work_Form
+   found" — the report (Field_Work_Report, confirmed real/reads fine) doesn't share
+   the form's own link name. Best-guess correction based on this app's own already-
+   confirmed fact that the report is NOT "Field_Work_Form_Report" — the form itself
+   is most likely just "Field_Work" (no _Form suffix). Flag if this guess is also
+   wrong — same silent-404-until-tested class of issue as every other form/report
+   link-name mismatch in this app. */
+const FORM_FW = 'Field_Work';
+const FORM_EVIDENCE = 'Evidence_Photos';
+const REPORT_EVIDENCE = 'All_Evidence_Photos';
+const TERMINAL_SA_STATUSES = ['Completed', 'Failed'];
+/* CHANGED 2026-10-23 — the pipeline hand-off.
+   (Proposals/DMS_Pipeline_Handoff_Plan_2026-10-22.md §6.3)
+
+     Service Request (Delivery Queue)  ->  Service Appointment  ->  ONGOING SERVICE
+            Queued                            Scheduled            Dispatched ...
+
+   This widget used to show "everything not Completed or Failed", which meant a
+   brand-new Queued order appeared in the Delivery Queue AND here at the same
+   time, before anyone had even scheduled it. That overlap was the symptom the
+   user reported. Now it shows only orders that have actually left the warehouse.
+
+   Appointment_Status already carries all of these — confirmed on the live form
+   export, DMS IDE/Service_appointment:99. Nothing had ever written them. */
+const ONGOING_SA_STATUSES = ['Dispatched', 'In Transit', 'Delivered', 'Failed'];
+
+/* Migration rule, and it expires by itself. Deliveries that were already in
+   flight when the Dispatch Checklist went live are still sitting at Scheduled
+   and will never be dispatched through the new widget. Keeping the ones that
+   already have a Field_Work record means nobody loses work in progress; once
+   those close, this stops matching anything. */
+/* CHANGED 2026-10-30, per user ("walang pumapasok galing Service appointment
+   papunta Ongoing") — and they were right, nothing could.
+
+   `ServiceAppointment.zip` is the ONLY thing in this entire repo that ever writes
+   Appointment_Status = 'Dispatched' (verified: every widget payload plus all of
+   DMS IDE/ scanned; no Deluge writes it). That widget has never been uploaded, so
+   the live app has no Dispatch button at all, and every order stops dead at
+   'Scheduled' — the gate into Ongoing opens from a door that does not exist yet.
+
+   So a 'Scheduled' appointment that already has a Confirmed_Schedule_Date is let
+   in. It is a real, dated, approved job; keeping it out was costing real work.
+   Brand-new Queued orders still cannot get in (no confirmed date), which is the
+   overlap the user reported back on 2026-10-23 and the reason this gate exists.
+
+   These rows are marked "Not dispatched" in the list (notDispatchedChip) so nobody
+   reads them as having left the warehouse. Once ServiceAppointment is uploaded and
+   dispatch starts writing 'Dispatched', the chip stops appearing by itself and the
+   gate goes back to meaning what it was designed to mean — nothing to undo. */
+function inOngoingStage(r, hasFieldWork){
+  if(ONGOING_SA_STATUSES.indexOf(r.Appointment_Status) >= 0) return true;
+  if(r.Appointment_Status !== 'Scheduled') return false;
+  return hasFieldWork || !!r.Confirmed_Schedule_Date;
+}
+const CHECKLIST_ITEMS = [
+  "Lahat ng ilaw o fixtures ay pantay ang ayos at hitsura.",
+  "Walang tabingi",
+  "Lahat ng ilaw ay naka-align sa layout.",
+  "Na-check gamit ang level bar",
+  "Lahat ng LED/bulb ay gumagana, walang busted.",
+  "Walang flicker o hindi pantay ang liwanag.",
+  "Tinanggal lahat ng kalat (plastic, wire cuttings, screws, etc.).",
+  "Naayos ang mga gamit bago umalis sa site.",
+  "Na-turn over ng maayos sa client o site engineer."
+];
+
+var ALL_SA = [];
+var FW_BY_SO = {};
+// ADDED 2026-09-08, real live bug found: 2 separate Service_Appointment records
+// sharing one Sales_Order (SR-00003/SR-00004 under the same SO, different
+// packages/schedules) both resolved to the SAME Field_Work row via the FW_BY_SO
+// fallback below — opening/completing either one's Field Work silently affected
+// the wrong delivery. SO_COUNT tracks how many Service_Appointment records share
+// each Sales_Order; fieldWorkFor() below refuses the FW_BY_SO fallback whenever
+// that count is 2+ (genuinely ambiguous) instead of guessing "whichever" row —
+// same root cause the 2026-08-07 comment already flagged as an accepted gap for
+// legacy (no Service_Appointment_ID) records, now closed instead of guessed.
+var SO_COUNT = {};
+/* ADDED 2026-08-07, real bug found live (SO-16415, 2 dispatches on the same SO
+   post-Multi-Package-redesign) — Field_Work_Report was joined to Service_Appointment
+   by Sales_Order ALONE ("the only confirmed shared key between the 2 forms" at the
+   time this widget was built, 2026-07-23, before multiple dispatches per SO was a
+   supported case). With 2+ Service_Appointment records now legitimately sharing one
+   SO, that join silently resolved to WHICHEVER Field_Work row existed for that SO —
+   confirmed live: opening the NEW (Queued) dispatch's Field Work loaded the OLD
+   (already-Completed) dispatch's Field_Work record into EDIT mode (CURRENT_FW),
+   meaning a save would have silently overwritten the completed delivery's real data
+   instead of creating a fresh record for the new one. Same root architecture gap
+   also affects DeliveryQueue/Archived (their own read-only display), fixed there
+   too. Real fix: new field `Service_Appointment_ID` on Field_Work_Form, stamped by
+   this widget on create (see saveFieldWork()), joined by FW_BY_ID here going
+   forward. FW_BY_SO kept as a fallback ONLY for pre-fix Field_Work records that
+   never got the new field stamped — NOT retroactive, same convention already
+   established elsewhere in this codebase; a legacy record involved in a genuine
+   SO collision may still resolve ambiguously until it's re-saved once. */
+var FW_BY_ID = {};
+function fieldWorkFor(saRecord){
+  if(!saRecord) return null;
+  if(saRecord.ID && FW_BY_ID[String(saRecord.ID)]) return FW_BY_ID[String(saRecord.ID)];
+  // FIXED 2026-09-08 — see SO_COUNT comment above. Only trust the Sales_Order
+  // fallback when exactly ONE Service_Appointment shares that SO (genuinely
+  // unambiguous) — otherwise return null (shows "Not Started"/create-mode)
+  // rather than silently attaching to a sibling delivery's Field_Work record.
+  if(!saRecord.Sales_Order) return null;
+  if(SO_COUNT[saRecord.Sales_Order] > 1) return null;
+  return FW_BY_SO[saRecord.Sales_Order] || null;
+}
+var CURRENT_FILTER = 'today';
+var CURRENT_SA = null;
+var CURRENT_FW = null; // null = no Field_Work record exists yet (create mode)
+var PENDING_SIG_FILE = null;
+var SIG_PADS = {}; // canvasId -> { ctx, drawing:false, dirty:false }
+var EXISTING_EVIDENCE = []; // Evidence_Photos records already saved for CURRENT_FW
+var PENDING_EVIDENCE_UPLOADS = []; // staged new files, not yet uploaded
+var PENDING_EVIDENCE_REMOVALS = []; // staged Evidence_Photos IDs to delete on save
+// ADDED 2026-08-08 — native multi-file Video field on Field_Work (type 46,
+// max_allowed_uploads:10), separate mechanism from Photo Evidence/Evidence_Photos
+// above (per user: "dapat dalawa yan magkahiwalay yung photo at video").
+var PENDING_VIDEO_UPLOADS = []; // staged new video files, not yet uploaded
+var EXISTING_VIDEOS = []; // fw.Video as returned by the field_config:'all' fetch
+
+window.addEventListener('load', function(){
+  loadList();
+  initSignaturePad('sigCanvasReceiver');
+  initSignaturePad('sigCanvasAssignee');
+});
+
+/* ADDED 2026-07-23, per user ("can we use native zoho signature. it doesnt
+   require upload. it just writes signature directly") — researched first via
+   official Zoho docs (WebSearch, update-records.html/add-records.html): a real
+   type=signature field CANNOT be set through addRecords/updateRecordById's data
+   body at all (same exclusion list as file/audio/video fields) — it MUST go
+   through the Upload File API instead, stored as a PNG. So "writes directly"
+   really means: draw on a plain HTML5 canvas, export it as a PNG File, and
+   upload it straight to the REAL native Receiver_s_Signature/Assignee_Signature
+   fields via ZOHO.CREATOR.FILE.uploadFile — same proven upload mechanism as
+   every other header-level file field in this app (these 2 are confirmed plain
+   top-level fields on Field_Work_Form, not inside a subform, so none of the
+   subform-file dead-ends apply here). No separate "upload workaround" field
+   needed for this path — replaces the earlier assumption that only a paper-
+   photo upload was possible; that fallback (Receiver_s_Signature_Upload) is
+   kept alongside since the native form itself already documents it as a
+   legitimate 2nd path for a paper-signed copy, not removed. */
+function initSignaturePad(canvasId){
+  var canvas = document.getElementById(canvasId);
+  var ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#1E293B';
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  var pad = { ctx: ctx, drawing: false, dirty: false };
+  SIG_PADS[canvasId] = pad;
+
+  function pos(e){
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
+    var cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    var cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x: cx * scaleX, y: cy * scaleY };
+  }
+  function start(e){
+    pad.drawing = true; pad.dirty = true;
+    var p = pos(e);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    e.preventDefault();
+  }
+  function move(e){
+    if(!pad.drawing) return;
+    var p = pos(e);
+    ctx.lineTo(p.x, p.y); ctx.stroke();
+    e.preventDefault();
+  }
+  function end(){ pad.drawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive:false });
+  canvas.addEventListener('touchmove', move, { passive:false });
+  canvas.addEventListener('touchend', end);
+}
+function clearSignaturePad(canvasId){
+  var canvas = document.getElementById(canvasId);
+  var pad = SIG_PADS[canvasId];
+  if(!pad) return;
+  pad.ctx.clearRect(0, 0, canvas.width, canvas.height);
+  pad.dirty = false;
+}
+function signaturePadToFile(canvasId, filename){
+  var pad = SIG_PADS[canvasId];
+  if(!pad || !pad.dirty) return Promise.resolve(null);
+  var canvas = document.getElementById(canvasId);
+  return new Promise(function(resolve){
+    canvas.toBlob(function(blob){
+      if(!blob){ resolve(null); return; }
+      resolve(new File([blob], filename, { type: 'image/png' }));
+    }, 'image/png');
+  });
+}
+
+function errCode(e){
+  try {
+    if(e && e.responseText) return JSON.parse(e.responseText).code;
+    var s = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+    return JSON.parse(JSON.parse(s).responseText || s).code;
+  } catch(_){ return null; }
+}
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function custName(r){
+  if(!r) return '';
+  if(r.Customer_Name && typeof r.Customer_Name === 'object'){
+    var f = r.Customer_Name.first_name || '';
+    var l = r.Customer_Name.last_name || '';
+    return (f + ' ' + l).trim();
+  }
+  return r.Customer_Name || '';
+}
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3200);
+}
+/* ───────── FORECAST (added 2026-11-05) ─────────
+   Read-only. Written by the instant fcStampDelivery workflow (and, for the
+   appointment and the service request, also by Forecast_Stamp_Daily) onto
+   this form's
+   Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+   displays them.
+
+   The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+   title attribute rather than the cell, so the column stays one line wide. The
+   date shown is the midpoint of that window, never a promise.
+
+   Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+   #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+   separation. Status also carries its own word, so it is never colour-alone.
+
+   fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+   esc there), so this picks whichever exists and carries its own as a last
+   resort - it must never be the reason a row fails to render. */
+var fcEsc = (function () {
+  if (typeof escapeHtml === "function") return escapeHtml;
+  if (typeof esc === "function") return esc;
+  return function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+})();
+
+var FORECAST_TONE = {
+  "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+  "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+  "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+};
+
+/* Creator hands dates back in whichever format the app is set to; this accepts the
+   four shapes seen across this app and returns "" rather than "Invalid Date". */
+function forecastDateText(v) {
+  if (!v) return "";
+  var s = String(v).trim();
+  var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  if (m) return m[2] + " " + m[1] + ", " + m[3];
+  var d = new Date(s.replace(/-/g, "/"));
+  if (isNaN(d.getTime())) return s.split(" ")[0];
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+function forecastCell(r) {
+  r = r || {};
+  var raw = r.Forecast_Delivery;
+  var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+  var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+  var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+  var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+  var tip = fcEsc(win || status || "");
+
+  return (
+    '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+    "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+    "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+    ';flex:none"></span>' + date +
+    (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+    "</span>"
+  );
+}
+
+function fetchReport(reportName){
+  return ZOHO.CREATOR.DATA.getRecords({ report_name: reportName, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){ return (resp && resp.code===3000 && resp.data) ? resp.data : []; })
+    .catch(function(e){
+      var c = errCode(e);
+      if(c===9220) return [];
+      console.error('[FieldWork] fetch error', reportName, e);
+      return [];
+    });
+}
+
+function loadList(){
+  document.getElementById('listBody').innerHTML = '<tr><td colspan="9" class="empty-state">Loading…</td></tr>';
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    console.error('[FieldWork] SDK not available');
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  Promise.all([fetchReport(REPORT_SA), fetchReport(REPORT_FW)]).then(function(results){
+    var sa = results[0], fw = results[1];
+    /* The Field_Work maps are now built BEFORE the stage filter, because the
+       migration rule in inOngoingStage() needs to know whether a record already
+       has field work. Same maps as before, just moved up. */
+    FW_BY_SO = {};
+    FW_BY_ID = {};
+    fw.forEach(function(r){
+      if(r.Sales_Order) FW_BY_SO[r.Sales_Order] = r;
+      if(r.Service_Appointment_ID) FW_BY_ID[String(r.Service_Appointment_ID)] = r;
+    });
+    ALL_SA = sa.filter(function(r){ return inOngoingStage(r, !!fieldWorkFor(r)); });
+    // Counted over the FULL sa list (not just ALL_SA/non-terminal) — a sibling
+    // delivery that's already Completed/Failed still makes the SAME-SO fallback
+    // below ambiguous for any of its still-ongoing siblings, so it must still
+    // count here even though it won't itself appear in ALL_SA.
+    SO_COUNT = {};
+    sa.forEach(function(r){
+      if(r.Sales_Order) SO_COUNT[r.Sales_Order] = (SO_COUNT[r.Sales_Order] || 0) + 1;
+    });
+    renderStats();
+    renderList();
+  });
+}
+
+function renderStats(){
+  var notStarted = ALL_SA.filter(function(r){ return !fieldWorkFor(r); }).length;
+  var started = ALL_SA.filter(function(r){ var f = fieldWorkFor(r); return f && f.Status==='Started'; }).length;
+  var completed = ALL_SA.filter(function(r){ var f = fieldWorkFor(r); return f && f.Installation_Status==='Complete'; }).length;
+  var cards = [
+    { label:'Ongoing Deliveries', value: ALL_SA.length },
+    { label:'Not Started', value: notStarted },
+    { label:'Started', value: started },
+    { label:'Installation Completed', value: completed }
+  ];
+  document.getElementById('statCards').innerHTML = cards.map(function(c){
+    return '<div class="stat-card"><label>' + esc(c.label) + '</label><div class="val">' + esc(c.value) + '</div></div>';
+  }).join('');
+}
+
+function setFilter(f){
+  CURRENT_FILTER = f;
+  document.querySelectorAll('#filterPills .pill').forEach(function(p){
+    p.classList.toggle('active', p.getAttribute('data-filter')===f);
+  });
+  renderList();
+}
+
+/* ADDED 2026-08-01 — a delivery only counts as "actually scheduled" once the
+   officer has confirmed it in Delivery Queue (Confirmed_Schedule_Date set,
+   same field DeliveryQueue's own scheduling flow writes) — Site Confirmation
+   alone isn't enough, since Confirmed_Schedule_Date only ever gets set AFTER
+   Site Confirmation is done and the Scheduling Engine's suggestion is approved. */
+function canStartFieldWork(r){
+  return !!(r && r.Confirmed_Schedule_Date);
+}
+
+  // ---------------------------------------------------------------------
+  // Next Step — ADDED 2026-09-30 (see Proposals/Next_Step_Plan_2026-09-30.md).
+  // DISPLAY ONLY: shows staff where a record is and what the next step is,
+  // and who does it. Never saves anything. The wording/roles for this widget
+  // live in its own nextStepFor() below — edit them there only.
+  // Self-styled (injects its own <style>), so it doesn't depend on Tailwind
+  // classes existing in a precompiled CSS build.
+  // ns = { here, action, who, tone: "next" | "wait" | "done" }
+  // ---------------------------------------------------------------------
+  (function injectNextStepCss() {
+    if (document.getElementById("nsStyles")) return;
+    const s = document.createElement("style");
+    s.id = "nsStyles";
+    s.textContent =
+      ".ns-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:1.25;padding:3px 9px;border-radius:9999px;border:1px solid;white-space:nowrap}" +
+      ".ns-next{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}" +
+      ".ns-wait{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}" +
+      ".ns-done{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)}" +
+      ".ns-who{font-weight:400;opacity:.85}" +
+      ".ns-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.35;padding:10px 14px;border-radius:12px;border:1px solid;margin:0 0 16px}" +
+      ".ns-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-right:4px}" +
+      ".ns-arrow{opacity:.5}";
+    document.head.appendChild(s);
+  })();
+
+  function nsEsc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nsToneClass(ns) {
+    return ns.tone === "done" ? "ns-done" : ns.tone === "wait" ? "ns-wait" : "ns-next";
+  }
+
+  function nextStepPill(ns) {
+    if (!ns) return `<span style="color:var(--faint)">—</span>`;
+    const lead = ns.tone === "done" ? "✓" : ns.tone === "wait" ? "Waiting on:" : "Next:";
+    const who = ns.who ? ` <span class="ns-who">— ${nsEsc(ns.who)}</span>` : "";
+    return `<span class="ns-pill ${nsToneClass(ns)}">${lead} ${nsEsc(ns.action)}${who}</span>`;
+  }
+
+  // Table cell / card content. data-ns-id lets refreshNextStep() repaint it
+  // in place after an inline save, without re-rendering the whole table.
+  function nextStepCell(id, ns) {
+    return `<span data-ns-id="${nsEsc(id)}">${nextStepPill(ns)}</span>`;
+  }
+
+  function nextStepBannerHtml(ns) {
+    if (!ns) return "";
+    const lbl = ns.tone === "done" ? "Status" : ns.tone === "wait" ? "Waiting on" : "Next step";
+    const who = ns.who ? ` <span class="ns-who">(${nsEsc(ns.who)})</span>` : "";
+    return `<div class="ns-banner ${nsToneClass(ns)}">` +
+      `<span><span class="ns-lbl">You are here</span><b>${nsEsc(ns.here)}</b></span>` +
+      `<span class="ns-arrow">→</span>` +
+      `<span><span class="ns-lbl">${lbl}</span><b>${nsEsc(ns.action)}</b>${who}</span>` +
+      `</div>`;
+  }
+
+  function renderNextStepBanner(elId, id, ns) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute("data-ns-banner", String(id));
+    el.innerHTML = nextStepBannerHtml(ns);
+  }
+
+  // Repaint every Next Step cell + the open banner for one record.
+  function refreshNextStep(id, ns) {
+    const key = String(id);
+    document.querySelectorAll("[data-ns-id]").forEach((el) => {
+      if (el.getAttribute("data-ns-id") === key) el.innerHTML = nextStepPill(ns);
+    });
+    document.querySelectorAll("[data-ns-banner]").forEach((el) => {
+      if (el.getAttribute("data-ns-banner") === key) el.innerHTML = nextStepBannerHtml(ns);
+    });
+  }
+
+function nextStepFor(r, fw){
+  if(!fw) return {here:'Not started', action:'Start Field Work', who:'Installer', tone:'next'};
+  if(fw.Installation_Status==='Complete') return {here:'Complete', action:'Field work complete', who:'', tone:'done'};
+  if(fw.Status==='Reschedule Requested') return {here:'Reschedule Requested', action:'Approve the new schedule', who:'Scheduler', tone:'wait'};
+  return {here:fw.Status||'Started', action:'Finish the field work (checklist, photos, signatures)', who:'Installer', tone:'next'};
+}
+
+function fwStatusBadge(fw){
+  if(!fw) return '<span class="badge badge-gray">Not Started</span>';
+  var map = { 'Pending':'badge-gray', 'Started':'badge-amber', 'Reschedule Requested':'badge-red', 'Rescheduled':'badge-amber', 'Archived':'badge-teal' };
+  return '<span class="badge ' + (map[fw.Status]||'badge-gray') + '">' + esc(fw.Status||'Pending') + '</span>';
+}
+/* ADDED 2026-10-30 — a row that got in on its confirmed schedule rather than on a
+   real dispatch. Says so out loud: the crates have NOT been checked out of the
+   warehouse. Disappears on its own once the appointment reaches 'Dispatched'. */
+function notDispatchedChip(r){
+  if(r.Appointment_Status !== 'Scheduled') return '';
+  return '<div style="margin-top:4px"><span class="badge badge-amber" title="Hindi pa dumaan sa Dispatch Checklist \u2014 nasa Scheduled pa ang appointment">Not dispatched</span></div>';
+}
+function installBadge(fw){
+  if(!fw || !fw.Installation_Status) return '<span class="badge badge-gray">—</span>';
+  return '<span class="badge ' + (fw.Installation_Status==='Complete' ? 'badge-green':'badge-amber') + '">' + esc(fw.Installation_Status) + '</span>';
+}
+
+// Accepts both "dd-MMM-yyyy HH:mm:ss" and ISO-style "yyyy-MM-dd HH:mm:ss". Returns 0 when unparseable.
+function addedTimeMs(r){
+  var s = r && r.Added_Time;
+  if(!s || typeof s !== 'string') return 0;
+  var months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+  var m = s.match(/^(\d{2})-(\w{3})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m && months[m[2]] !== undefined){
+    return new Date(+m[3], months[m[2]], +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0)).getTime();
+  }
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[\sT](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0)).getTime();
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+// Zoho IDs are too long for Number precision, so compare as digit strings.
+function compareIdDesc(a, b){
+  a = String(a||''); b = String(b||'');
+  if(a.length !== b.length) return b.length - a.length;
+  return a < b ? 1 : (a > b ? -1 : 0);
+}
+
+// ADDED 2026-10-30, per user ("mag-oopen lang to kung depende sa schedule niya,
+// pero dapat alam natin kung kelan siya mag-oopen para hindi siya matambakan sa
+// ilalim") — a row only becomes workable on its confirmed schedule date, but the
+// list sorted newest-added first, so a job due TODAY could sit buried under newer
+// records that aren't due for weeks. The list now shows the confirmed schedule on
+// every row and sorts soonest-first (overdue at the very top). Rows with no
+// confirmed schedule yet (the locked ones) drop to the bottom.
+// Same date-format tolerance as addedTimeMs(): "dd-MMM-yyyy" and "yyyy-MM-dd".
+function schedMs(r){
+  var s = r && r.Confirmed_Schedule_Date;
+  if(!s || typeof s !== 'string') return 0;
+  var months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+  var m = s.match(/^(\d{1,2})-(\w{3})-(\d{4})/);
+  if(m && months[m[2]] !== undefined) return new Date(+m[3], months[m[2]], +m[1]).getTime();
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3]).getTime();
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+var MONTH_ABBR_OS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtSchedDate(ms){
+  var d = new Date(ms);
+  return d.getDate() + ' ' + MONTH_ABBR_OS[d.getMonth()] + ' ' + d.getFullYear();
+}
+function daysFromToday(ms){
+  var t = new Date(); t.setHours(0,0,0,0);
+  return Math.round((ms - t.getTime()) / 86400000);
+}
+function scheduleBadge(r){
+  var ms = schedMs(r);
+  if(!ms) return '<span class="badge badge-gray">Not scheduled</span>';
+  var d = daysFromToday(ms);
+  if(d < 0) return '<span class="badge badge-red">Overdue ' + (-d) + (d === -1 ? ' day' : ' days') + '</span>';
+  if(d === 0) return '<span class="badge badge-green">Today</span>';
+  if(d === 1) return '<span class="badge badge-amber">Tomorrow</span>';
+  return '<span class="badge badge-gray">in ' + d + ' days</span>';
+}
+function scheduleCell(r){
+  var ms = schedMs(r);
+  if(!ms) return scheduleBadge(r);
+  var slot = r.Confirmed_Time_Slot || '';
+  return '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">' +
+    '<span style="font-weight:600;white-space:nowrap">' + esc(fmtSchedDate(ms)) +
+      (slot ? ' <span style="font-weight:400;color:var(--faint)">' + esc(slot) + '</span>' : '') + '</span>' +
+    scheduleBadge(r) +
+  '</div>';
+}
+
+/* TIGHTENED 2026-11-06, per user ("sa ongoing, yung today lang lalabas na sched.
+   muna pag hindi pa, nasa not started muna sila").
+
+   HISTORY, because this reverses a decision made here on 2026-10-30. Back then
+   "today only" was read loosely and three kinds of row were deliberately kept in
+   this view — overdue, anything with a Field Work record, and anything with no
+   confirmed date — on the reasoning that a vanished delivery is worse than a
+   buried one. The user has now asked for the literal version, twice, so Today
+   means the confirmed schedule date IS today. Nothing else.
+
+   NOTHING IS LOST, and that is what makes this safe. Every row this now drops is
+   still one click away, and in the place the user named:
+     - overdue, future and unscheduled with no Field Work  -> Not Started
+     - anything an installer has opened                     -> Started
+     - absolutely everything                                -> All Ongoing
+   The empty state below says so by name and counts them, so an empty Today reads
+   as "nothing is due today", never as "the list is broken".
+
+   fw is no longer read. It stays in the signature because renderList already
+   has the value and a future rule may well want it again. */
+function inTodayView(r, fw){
+  var ms = schedMs(r);
+  if(!ms) return false;
+  return daysFromToday(ms) === 0;
+}
+
+/* ADDED 2026-11-06 alongside the tightened Today view. Now that Today can be
+   legitimately empty on a quiet day, "No deliveries match this filter/search"
+   would be the wrong story — it reads as a fault. This names where the rows
+   actually went and how many are there, so the officer can act on it. */
+function emptyListMessage(q){
+  if(ALL_SA.length === 0) return 'No ongoing deliveries right now.';
+  if(q) return 'No deliveries match this search.';
+  if(CURRENT_FILTER !== 'today') return 'No deliveries match this filter.';
+  var overdue = 0, later = 0, unsched = 0, open = 0;
+  ALL_SA.forEach(function(r){
+    if(fieldWorkFor(r)){ open++; return; }
+    var ms = schedMs(r);
+    if(!ms){ unsched++; return; }
+    var d = daysFromToday(ms);
+    /* d === 0 falls through on purpose: a row scheduled today would be IN the
+       list, so this function could not have been called. Counting it as
+       "scheduled later" would be wrong if that ever stops being true. */
+    if(d < 0) overdue++;
+    else if(d > 0) later++;
+  });
+  var parts = [];
+  if(overdue) parts.push(overdue + ' overdue');
+  if(later)   parts.push(later + ' scheduled later');
+  if(unsched) parts.push(unsched + ' not scheduled');
+  var msg = 'Nothing is scheduled for today.';
+  if(parts.length) msg += ' ' + parts.join(', ') + ' — see <b>Not Started</b>.';
+  if(open)        msg += ' ' + open + ' already opened — see <b>Started</b>.';
+  return msg;
+}
+
+function renderList(){
+  var q = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+  var rows = ALL_SA.filter(function(r){
+    var fw = fieldWorkFor(r);
+    if(CURRENT_FILTER==='today' && !inTodayView(r, fw)) return false;
+    if(CURRENT_FILTER==='not-started' && fw) return false;
+    if(CURRENT_FILTER==='Started' && (!fw || fw.Status!=='Started')) return false;
+    if(CURRENT_FILTER==='Completed' && (!fw || fw.Installation_Status!=='Complete')) return false;
+    if(!q) return true;
+    var hay = ((r.Sales_Order||'') + ' ' + custName(r)).toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+  // CHANGED 2026-10-30 — soonest confirmed schedule first (overdue at the very
+  // top, then Today, then the rest), so a job that opens today is never buried
+  // under newer records scheduled weeks out. Rows with no confirmed schedule
+  // sort last, and keep the old newest-added-first order among themselves.
+  rows.sort(function(a,b){
+    var sa = schedMs(a) || Infinity, sb = schedMs(b) || Infinity;
+    if(sa !== sb) return sa - sb;
+    var ta = addedTimeMs(a), tb = addedTimeMs(b);
+    if(ta !== tb) return tb - ta;
+    return compareIdDesc(a.ID, b.ID);
+  });
+
+  var body = document.getElementById('listBody');
+  if(rows.length===0){
+    body.innerHTML = '<tr><td colspan="9" class="empty-state">' + emptyListMessage(q) + '</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    var fw = fieldWorkFor(r);
+    var team = [r.Installer, r.Assigned_to_Driver].filter(Boolean).join(' / ') || '—';
+    var locked = !fw && !canStartFieldWork(r);
+    var btnAttrs = locked ? ' disabled title="Needs an approved schedule — approve it in Service Request first"' : '';
+    return '<tr onclick="openDetail(\'' + r.ID + '\')" style="cursor:pointer">' +
+      '<td><button class="btn"' + btnAttrs + ' onclick="event.stopPropagation();openDetail(\'' + r.ID + '\')">' + (fw ? 'Continue' : (locked ? '🔒 Start' : 'Start')) + ' Field Work</button></td>' +
+      '<td style="font-weight:600;color:var(--teal-dark)">' + esc(r.Sales_Order) + '</td>' +
+      '<td>' + esc(custName(r)) + '</td>' +
+      '<td>' + scheduleCell(r) + '</td>' +
+      '<td>' + deliveryTypeBadge(r) + '</td>' +
+      '<td>' + esc(team) + '</td>' +
+      '<td>' + fwStatusBadge(fw) + notDispatchedChip(r) + '</td>' +
+      '<td>' + forecastCell((fw && fw.Forecast_Delivery) ? fw : r) + '</td>' +
+      '<td>' + nextStepCell(r.ID, nextStepFor(r, fw)) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ADDED 2026-09-14, per user ("paano naman malalaman na pick or 3rd party ang
+// Ongoing?") — a Pick Up or 3rd-Party (Lalamove/Transportify/Angkas Padala)
+// delivery has no Installer/Driver at all, so the existing "Installer" column
+// just showed a blank dash — identical to a normal delivery that simply hasn't
+// been assigned a team yet, with no way to tell the two apart at a glance without
+// opening the record. This badge makes that visible directly in the list.
+var THIRD_PARTY_FLEETS_OS = ['Lalamove','Transportify','Angkas Padala'];
+function deliveryTypeBadge(r){
+  var t = r.Type_of_Delivery || '';
+  if(t === 'Pick Up') return '<span class="badge badge-teal">Pick Up</span>';
+  if(THIRD_PARTY_FLEETS_OS.indexOf(r.Fleet_Assignment) !== -1) return '<span class="badge badge-amber">' + esc(r.Fleet_Assignment) + '</span>';
+  return '<span class="badge badge-gray">' + esc(t || '—') + '</span>';
+}
+
+function openDetail(id){
+  var r = ALL_SA.find(function(x){ return String(x.ID)===String(id); });
+  if(!r) return;
+  CURRENT_SA = r;
+  CURRENT_FW = fieldWorkFor(r);
+  renderNextStepBanner("nsBanner", r.ID, nextStepFor(r, CURRENT_FW));
+  PENDING_SIG_FILE = null;
+  PENDING_EVIDENCE_UPLOADS = [];
+  PENDING_EVIDENCE_REMOVALS = [];
+  document.getElementById('evFileInput').value = '';
+  loadEvidencePhotos(CURRENT_FW ? CURRENT_FW.ID : null);
+
+  // ADDED 2026-08-08 — fw.Video comes straight off the same field_config:'all'
+  // fetch that populates CURRENT_FW (see FW_BY_ID/FW_BY_SO, line ~491) — no
+  // separate async load needed, same as fw.Receiver_s_Signature_Upload above.
+  // UNTESTED — assumed array-of-file-objects shape for a type=46 multi-file
+  // field, same as every other multi-value field in this app; if this renders
+  // wrong, log fw.Video to console first to see its real shape.
+  PENDING_VIDEO_UPLOADS = [];
+  document.getElementById('videoFileInput').value = '';
+  EXISTING_VIDEOS = Array.isArray(CURRENT_FW && CURRENT_FW.Video) ? CURRENT_FW.Video : [];
+  renderVideoList();
+
+  document.getElementById('listView').classList.add('hidden');
+  document.getElementById('detailView').classList.remove('hidden');
+
+  document.getElementById('dHeaderSub').textContent = (r.Sales_Order||'—') + ' — ' + (custName(r)||'—');
+  document.getElementById('dSR').textContent = r.Service_Request || '—';
+  document.getElementById('dSO').textContent = r.Sales_Order || '—';
+  document.getElementById('dCustomer').textContent = custName(r) || '—';
+  document.getElementById('dType').textContent = r.Type_of_Delivery || '—';
+  document.getElementById('dContact').textContent = r.Contact || '—';
+  document.getElementById('dEmail').textContent = r.Email || '—';
+  document.getElementById('dAddress').textContent = [r.Customer_Address, r.City].filter(Boolean).join(', ') || '—';
+  document.getElementById('dSchedule').textContent = r.Confirmed_Schedule_Date ? (r.Confirmed_Schedule_Date + ' · ' + (r.Confirmed_Time_Slot||'')) : '—';
+  document.getElementById('dTeam').textContent = r.Installer ? (r.Installer + (r.Assigned_to_Driver ? (' / ' + r.Assigned_to_Driver) : '')) : '—';
+
+  var itemRows = r.Item_Details || [];
+  /* Package column ADDED 2026-10-27 — the field team needs to see which package
+     each item belongs to, same as the Dispatch Checklist shows. */
+  document.getElementById('dItemDetails').innerHTML = itemRows.length ? itemRows.map(function(it){
+    var qty = (it.Quantity!=null && it.Quantity!=='') ? it.Quantity : '—';
+    return '<tr><td>' + esc(it.Item_Name||'—') + '</td><td>' + esc(it.SKU||'—') + '</td><td>' + esc(qty) + '</td><td>' + esc(it.PAC||'—') + '</td></tr>';
+  }).join('') : '<tr><td colspan="4">—</td></tr>';
+
+  var isLockedNotScheduled = !CURRENT_FW && !canStartFieldWork(r);
+  document.getElementById('notStartedNote').classList.toggle('hidden', !!CURRENT_FW || isLockedNotScheduled);
+  document.getElementById('notScheduledLock').classList.toggle('hidden', !isLockedNotScheduled);
+  var saveBtn = document.getElementById('btnSave');
+  saveBtn.disabled = isLockedNotScheduled;
+  saveBtn.title = isLockedNotScheduled ? 'Needs an approved schedule — approve it in Service Request first' : '';
+
+  var fw = CURRENT_FW || {};
+  document.getElementById('fStatus').value = fw.Status || 'Pending';
+  document.getElementById('fRescheduleReason').value = fw.Reschedule_Reason || '';
+  updateRescheduleReasonVisibility();
+  document.getElementById('fInstallStatus').value = fw.Installation_Status || 'Incomplete';
+  document.getElementById('fScheduleStart').value = toDatetimeLocal(fw.Schedule_Start_Date_and_Time);
+  document.getElementById('fScheduleEnd').value = toDatetimeLocal(fw.Schedule_End_Date_and_Time);
+  document.getElementById('fSalesReturnStatus').value = fw.Sales_Return_Status || '';
+  document.getElementById('fReceiverName').value = (fw.Receiver_s_Name && fw.Receiver_s_Name.zc_display_value) || '';
+  document.getElementById('fCustomerReview').value = fw.Customer_Review || '';
+  document.getElementById('fLogisticNotes').value = fw.Logistic_Notes || '';
+
+  renderChecklist(fw.Final_Checking_Bago_Umalis_sa_Site || []);
+  renderStars(fw.Customer_Rating || '');
+
+  var sigPreview = document.getElementById('dSigPreview');
+  document.getElementById('fSigFile').value = '';
+  sigPreview.classList.add('hidden');
+  applyCreatorImagePreview(sigPreview, fw.Receiver_s_Signature_Upload);
+
+  clearSignaturePad('sigCanvasReceiver');
+  clearSignaturePad('sigCanvasAssignee');
+  // Real previews now come from EXISTING_EVIDENCE (Evidence_Photos), populated
+  // asynchronously by loadEvidencePhotos() — see renderSignaturePreviews().
+  // Reset to hidden here so a stale preview from a previously-open record
+  // can't flash before that fetch resolves.
+  document.getElementById('dReceiverSigDrawPreview').classList.add('hidden');
+  document.getElementById('dAssigneeSigDrawPreview').classList.add('hidden');
+}
+/* Real header-Image-field render pattern proven in UI/EndUser/Exception/app/index.html's
+   applyEvidencePhotoImg() — the field's GET value is already a plain usable URL string
+   via getRecords/field_config:'all', no hand-built /api/v2.1/.../download path needed
+   (that pattern is a confirmed dead end elsewhere in this app). */
+function applyCreatorImagePreview(imgEl, rawValue){
+  if(!imgEl) return;
+  if(rawValue == null || rawValue === ''){ imgEl.classList.add('hidden'); return; }
+  var url = (typeof rawValue === 'string') ? rawValue : (rawValue.url || rawValue.download_url || rawValue.filepath || '');
+  if(!url){ imgEl.classList.add('hidden'); return; }
+  if(typeof ZOHO !== 'undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData){
+    ZOHO.CREATOR.UTIL.setImageData(imgEl, url, function(){});
+  } else {
+    imgEl.src = url;
+  }
+  imgEl.classList.remove('hidden');
+}
+/* REPLACED 2026-07-28, per user ("sure let's do that evidence_photos style")
+   — the native type=signature fields (Receiver_s_Signature/Assignee_Signature)
+   are confirmed excluded from getRecords entirely, so the old "✓ Already
+   signed on file" text-chip (this function's own previous version) was the
+   only possible feedback — no real preview was ever achievable through that
+   field type. Both signatures now save as plain Evidence_Photos records
+   instead (same proven form Photo Evidence already uses on this same page —
+   real file upload, real preview, no subform/signature-field limitation
+   involved at all), keyed by a distinguishing Row_Key so they don't mix with
+   regular photo evidence or each other. Only ONE active record per signature
+   type is kept — stageSignatureFiles() deletes the previous one (if any)
+   before creating the new one, so redrawing genuinely REPLACES rather than
+   accumulating duplicates. */
+function receiverSigRowKey(fwId){ return 'FieldWork|' + fwId + '|ReceiverSignature'; }
+function assigneeSigRowKey(fwId){ return 'FieldWork|' + fwId + '|AssigneeSignature'; }
+
+function renderSignaturePreviews(){
+  var fwId = CURRENT_FW ? CURRENT_FW.ID : null;
+  var recvImg = document.getElementById('dReceiverSigDrawPreview');
+  var asgnImg = document.getElementById('dAssigneeSigDrawPreview');
+  var recvRec = fwId ? EXISTING_EVIDENCE.filter(function(r){ return r.Row_Key === receiverSigRowKey(fwId); })[0] : null;
+  var asgnRec = fwId ? EXISTING_EVIDENCE.filter(function(r){ return r.Row_Key === assigneeSigRowKey(fwId); })[0] : null;
+  if(recvRec) applyCreatorImagePreview(recvImg, recvRec.Photo); else if(recvImg) recvImg.classList.add('hidden');
+  if(asgnRec) applyCreatorImagePreview(asgnImg, asgnRec.Photo); else if(asgnImg) asgnImg.classList.add('hidden');
+}
+
+/* Stages the drawn signatures into Evidence_Photos, replacing whatever record
+   (if any) already exists for that Row_Key. Called from the save chain AFTER
+   the Field_Work record itself is saved (needs a real fwId to attach to) and
+   BEFORE processPendingEvidence — order doesn't matter functionally, kept
+   sequential just to avoid firing a burst of simultaneous API calls. */
+function stageSignatureFiles(fwId){
+  function stageOne(canvasId, rowKey, filename){
+    return signaturePadToFile(canvasId, filename).then(function(file){
+      if(!file) return;
+      var existing = EXISTING_EVIDENCE.filter(function(r){ return r.Row_Key === rowKey; });
+      var delChain = Promise.resolve();
+      existing.forEach(function(rec){
+        delChain = delChain.then(function(){
+          return ZOHO.CREATOR.DATA.deleteRecordById({ report_name: REPORT_EVIDENCE, id: String(rec.ID) })
+            .catch(function(e){ console.warn('[FieldWork] old signature evidence delete failed', rowKey, e); });
+        });
+      });
+      return delChain.then(function(){
+        return ZOHO.CREATOR.DATA.addRecords({
+          form_name: FORM_EVIDENCE,
+          payload: { data: { Source_Form: 'Field_Work', Record_ID: String(fwId), Row_Key: rowKey, File_Name: filename } }
+        });
+      }).then(function(resp){
+        if(!resp || resp.code!==3000 || !resp.data) throw new Error('signature evidence create failed: ' + rowKey);
+        return ZOHO.CREATOR.FILE.uploadFile({ report_name: REPORT_EVIDENCE, id: String(resp.data.ID), field_name: 'Photo', file: file });
+      }).catch(function(e){
+        console.error('[FieldWork] signature save failed', rowKey, e);
+        showToast('Saved, but a signature failed to save — see console');
+      });
+    });
+  }
+  return stageOne('sigCanvasReceiver', receiverSigRowKey(fwId), 'receiver_signature.png')
+    .then(function(){ return stageOne('sigCanvasAssignee', assigneeSigRowKey(fwId), 'assignee_signature.png'); });
+}
+function toDatetimeLocal(v){
+  if(!v) return '';
+  // Creator datetime GET shape varies (e.g. "2026-07-24 08:00:00 AM") — best-effort parse, blank on any miss (never blocks the form).
+  var d = new Date(v);
+  if(isNaN(d.getTime())) return '';
+  var pad = function(n){ return (n<10?'0':'')+n; };
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+// FIXED 2026-07-28, real bug found live (code 3002 "Enter a valid date format
+// for Schedule Start Date and Time") — this used to build the human-DISPLAY
+// format (DD-MMM-YYYY hh:mm:ss AM/PM) and send THAT to the write API. Same
+// already-documented backwards-conversion gotcha hit and fixed multiple times
+// elsewhere in this app (Shipments/PRs/RR portal widgets) — Creator's write
+// API wants plain ISO (YYYY-MM-DD HH:mm:ss, 24-hour), the DD-MMM-YYYY shape
+// is only ever a GET-response display format, never valid to send back.
+function fromDatetimeLocal(v){
+  if(!v) return '';
+  var d = new Date(v);
+  if(isNaN(d.getTime())) return '';
+  var pad = function(n){ return (n<10?'0':'')+n; };
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':00';
+}
+function renderChecklist(selected){
+  document.getElementById('fChecklist').innerHTML = CHECKLIST_ITEMS.map(function(item, i){
+    var checked = selected.indexOf(item) >= 0 ? 'checked' : '';
+    return '<label><input type="checkbox" data-checklist-idx="' + i + '" ' + checked + '>' + esc(item) + '</label>';
+  }).join('');
+}
+function renderStars(current){
+  var n = current ? current.length : 0; // "⭐⭐⭐" length-based count (each star is 1 char in this codepoint)
+  var html = '';
+  for(var i=1;i<=5;i++){
+    html += '<button type="button" class="star-btn' + (i<=n?' on':'') + '" data-star="' + i + '" onclick="setStar(' + i + ')">★</button>';
+  }
+  document.getElementById('fStarRow').innerHTML = html;
+  document.getElementById('fStarRow').setAttribute('data-value', n);
+}
+function setStar(n){
+  var current = parseInt(document.getElementById('fStarRow').getAttribute('data-value')||'0', 10);
+  if(current===n) n = 0; // click same star again to clear
+  renderStars('⭐'.repeat(n));
+}
+function onSigFileChange(input){
+  PENDING_SIG_FILE = (input.files && input.files[0]) ? input.files[0] : null;
+  var preview = document.getElementById('dSigPreview');
+  if(PENDING_SIG_FILE){
+    preview.src = URL.createObjectURL(PENDING_SIG_FILE);
+    preview.classList.remove('hidden');
+  }
+}
+
+function showList(){
+  document.getElementById('detailView').classList.add('hidden');
+  document.getElementById('listView').classList.remove('hidden');
+  loadList();
+}
+
+/* ADDED 2026-07-23, per user ("can we do the method that we already did in
+   like evidence photos or site visit photos, the new form method") — replaces
+   the native Video_and_Status_of_Installed_Item subform (confirmed dead end:
+   File/Image fields inside a subform can't be read/written reliably in this
+   app, see CLAUDE.md Deluge Gotchas) with the SAME plain Evidence_Photos form
+   already proven for Receiving/Exception — one record per photo, a plain
+   HEADER Image field, no subform involved at all. Video itself is NOT carried
+   over (Evidence_Photos.Photo is image-only) — photos only, flagged not
+   silently dropped. Staged locally (new uploads + removals) same as Receiving's
+   own final proven pattern — nothing touches the server until Save Field Work
+   succeeds and a real Field_Work record ID exists to attach photos to. */
+function loadEvidencePhotos(fwId){
+  EXISTING_EVIDENCE = [];
+  if(!fwId) { renderEvidenceGrid(); return Promise.resolve(); }
+  return ZOHO.CREATOR.DATA.getRecords({
+    report_name: REPORT_EVIDENCE,
+    criteria: 'Source_Form=="Field_Work"&&Record_ID=="' + String(fwId) + '"',
+    field_config: 'all'
+  }).then(function(resp){
+    EXISTING_EVIDENCE = (resp && resp.code===3000 && Array.isArray(resp.data)) ? resp.data : [];
+    renderEvidenceGrid();
+    renderSignaturePreviews();
+  }).catch(function(e){
+    var c = errCode(e);
+    if(c!==9220) console.warn('[FieldWork] loadEvidencePhotos failed', e);
+    EXISTING_EVIDENCE = [];
+    renderEvidenceGrid();
+    renderSignaturePreviews();
+  });
+}
+function renderEvidenceGrid(){
+  var grid = document.getElementById('evGrid');
+  var html = '';
+  EXISTING_EVIDENCE.forEach(function(rec){
+    if(PENDING_EVIDENCE_REMOVALS.indexOf(rec.ID) >= 0) return;
+    html += '<div style="position:relative">' +
+      '<img data-evidence-img="' + rec.ID + '" style="width:100%;height:90px;object-fit:cover;border:1px solid var(--gray-200);border-radius:6px;background:var(--gray-50)" />' +
+      '<button type="button" onclick="stageRemoveEvidence(\'' + rec.ID + '\')" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px;line-height:1">&times;</button>' +
+    '</div>';
+  });
+  PENDING_EVIDENCE_UPLOADS.forEach(function(item, idx){
+    html += '<div style="position:relative">' +
+      '<img src="' + item.previewUrl + '" style="width:100%;height:90px;object-fit:cover;border:1.5px dashed var(--amber);border-radius:6px" />' +
+      '<button type="button" onclick="removePendingEvidenceUpload(' + idx + ')" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px;line-height:1">&times;</button>' +
+    '</div>';
+  });
+  grid.innerHTML = html || '<div style="color:var(--gray-400);font-size:12.5px;grid-column:1/-1">No photos yet.</div>';
+  EXISTING_EVIDENCE.forEach(function(rec){
+    if(PENDING_EVIDENCE_REMOVALS.indexOf(rec.ID) >= 0) return;
+    var img = grid.querySelector('[data-evidence-img="' + rec.ID + '"]');
+    if(img) applyCreatorImagePreview(img, rec.Photo);
+  });
+}
+function onEvidenceFilesChange(input){
+  Array.prototype.forEach.call(input.files||[], function(file){
+    PENDING_EVIDENCE_UPLOADS.push({ file: file, previewUrl: URL.createObjectURL(file) });
+  });
+  input.value = '';
+  renderEvidenceGrid();
+}
+function removePendingEvidenceUpload(idx){
+  PENDING_EVIDENCE_UPLOADS.splice(idx, 1);
+  renderEvidenceGrid();
+}
+function stageRemoveEvidence(id){
+  if(PENDING_EVIDENCE_REMOVALS.indexOf(id) < 0) PENDING_EVIDENCE_REMOVALS.push(id);
+  renderEvidenceGrid();
+}
+function processPendingEvidence(fwId){
+  var chain = Promise.resolve();
+  PENDING_EVIDENCE_REMOVALS.forEach(function(id){
+    chain = chain.then(function(){
+      return ZOHO.CREATOR.DATA.deleteRecordById({ report_name: REPORT_EVIDENCE, id: String(id) })
+        .catch(function(e){ console.warn('[FieldWork] evidence delete failed', id, e); });
+    });
+  });
+  PENDING_EVIDENCE_UPLOADS.forEach(function(item){
+    chain = chain.then(function(){
+      return ZOHO.CREATOR.DATA.addRecords({
+        form_name: FORM_EVIDENCE,
+        payload: { data: { Source_Form: 'Field_Work', Record_ID: String(fwId), Row_Key: 'FieldWork|' + fwId, File_Name: item.file.name } }
+      }).then(function(resp){
+        if(!resp || resp.code!==3000 || !resp.data) throw new Error('evidence create failed');
+        return ZOHO.CREATOR.FILE.uploadFile({ report_name: REPORT_EVIDENCE, id: String(resp.data.ID), field_name: 'Photo', file: item.file });
+      }).catch(function(e){ console.warn('[FieldWork] evidence upload failed', item.file.name, e); });
+    });
+  });
+  return chain;
+}
+
+/* ADDED 2026-08-08 — Video Evidence, native multi-file `Video` field (type 46,
+   max_allowed_uploads:10) on Field_Work itself — NOT Evidence_Photos, per user
+   ("dapat dalawa yan magkahiwalay yung photo at video"). Same stage-locally-
+   then-commit-on-Save pattern as Photo Evidence above, but no per-file DELETE
+   support yet for already-uploaded videos (scope kept to "make multi-upload
+   work" per user request — removal of an already-saved video is a follow-up,
+   not attempted here). */
+function firstFileUrl(v){
+  if(v == null) return '';
+  if(typeof v === 'string') return v;
+  return v.url || v.download_url || v.filepath || '';
+}
+function videoFileLabel(v, idx){
+  if(v && typeof v === 'object' && (v.file_name || v.filename)) return v.file_name || v.filename;
+  return 'Video ' + (idx + 1);
+}
+function renderVideoList(){
+  var wrap = document.getElementById('videoList');
+  if(!wrap) return;
+  var html = '';
+  EXISTING_VIDEOS.forEach(function(v, i){
+    var url = firstFileUrl(v);
+    html += '<div style="border:1px solid var(--gray-200);border-radius:6px;padding:8px">' +
+      '<div style="font-size:12px;color:var(--gray-500);margin-bottom:4px">' + esc(videoFileLabel(v, i)) + '</div>' +
+      (url ? '<video controls style="max-width:260px;width:100%;display:block;border-radius:6px" src="' + esc(url) + '"></video>'
+           : '<span style="font-size:12px;color:var(--gray-400)">Preview unavailable</span>') +
+    '</div>';
+  });
+  PENDING_VIDEO_UPLOADS.forEach(function(item, idx){
+    html += '<div style="border:1.5px dashed var(--amber);border-radius:6px;padding:8px;position:relative">' +
+      '<div style="font-size:12px;color:var(--gray-600);margin-bottom:4px">' + esc(item.file.name) + ' (new — uploads on Save)</div>' +
+      '<video controls style="max-width:260px;width:100%;display:block;border-radius:6px" src="' + item.previewUrl + '"></video>' +
+      '<button type="button" onclick="removePendingVideoUpload(' + idx + ')" style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px;line-height:1">&times;</button>' +
+    '</div>';
+  });
+  wrap.innerHTML = html || '<div style="color:var(--gray-400);font-size:12.5px">No videos yet.</div>';
+}
+function onVideoFilesChange(input){
+  var room = 10 - EXISTING_VIDEOS.length - PENDING_VIDEO_UPLOADS.length;
+  Array.prototype.forEach.call(input.files||[], function(file){
+    if(room <= 0){ showToast('Max 10 videos per delivery — some files were not added'); return; }
+    PENDING_VIDEO_UPLOADS.push({ file: file, previewUrl: URL.createObjectURL(file) });
+    room--;
+  });
+  input.value = '';
+  renderVideoList();
+}
+function removePendingVideoUpload(idx){
+  PENDING_VIDEO_UPLOADS.splice(idx, 1);
+  renderVideoList();
+}
+function processPendingVideo(fwId){
+  // UNTESTED — assumes each uploadFile call against this multi-file field
+  // APPENDS a new file (up to max_allowed_uploads:10) rather than replacing
+  // whatever the field already holds. Confirm on first live test with 2+
+  // videos in one save that both actually persist, not just the last one.
+  var chain = Promise.resolve();
+  PENDING_VIDEO_UPLOADS.forEach(function(item){
+    chain = chain.then(function(){
+      return ZOHO.CREATOR.FILE.uploadFile({ report_name: REPORT_FW, id: String(fwId), field_name: 'Video', file: item.file })
+        .catch(function(e){ console.error('[FieldWork] video upload failed', item.file.name, e); showToast('Saved, but a video failed to upload — see console'); });
+    });
+  });
+  return chain;
+}
+
+function collectChecklistValues(){
+  var vals = [];
+  document.querySelectorAll('#fChecklist input[type="checkbox"]:checked').forEach(function(cb){
+    var idx = parseInt(cb.getAttribute('data-checklist-idx'), 10);
+    vals.push(CHECKLIST_ITEMS[idx]);
+  });
+  return vals;
+}
+
+/* Toggle for the mandatory Reschedule Reason field, added 2026-08-01 — see
+   saveFieldWork()'s own client-side gate + native FW_Validate_Reschedule_Reason
+   Validations workflow (real enforcement, this is just the visible mirror). */
+function updateRescheduleReasonVisibility(){
+  var isReschedule = document.getElementById('fStatus').value === 'Reschedule Requested';
+  document.getElementById('fRescheduleReasonWrap').classList.toggle('hidden', !isReschedule);
+}
+document.getElementById('fStatus').addEventListener('change', updateRescheduleReasonVisibility);
+
+/* ADDED 2026-10-30, per user ("dito pag nilagay na started is automatic na
+   magrerecord ang schedule start"); Schedule End + the edit lock added 2026-11-04
+   ("pati yung pa-completed. tapos dapat di rin naeedit yung date and time").
+
+   Status -> Started            stamps Schedule Start with the current date/time
+   Installation Status -> Complete  stamps Schedule End with the current date/time
+
+   so an installer standing on site never types a timestamp, and the two fields
+   are the real clock rather than whatever someone remembered later.
+
+   Each only ever fills a BLANK field. A time already on the record is a recorded
+   fact; re-opening the dropdown must not silently overwrite when the job actually
+   began or ended. For the same reason these fire on CHANGE only, never on load:
+   a record opened already at Started (started days ago, blank start time) would
+   otherwise be stamped with today, which is worse than leaving it blank.
+
+   Both inputs are readonly — that is the point of the 2026-11-04 change. The one
+   consequence to know: an OLD record that is already Started/Complete with a blank
+   time can no longer be filled in by hand from this screen. Schedule End has a
+   save-time backfill below to cover that; Schedule Start deliberately does not,
+   because "Started" is a past event and stamping it with today would be a lie. */
+function stampScheduleStartOnStarted(){
+  if(document.getElementById('fStatus').value !== 'Started') return;
+  var el = document.getElementById('fScheduleStart');
+  if(el.value) return;
+  el.value = toDatetimeLocal(new Date());
+}
+document.getElementById('fStatus').addEventListener('change', stampScheduleStartOnStarted);
+
+function stampScheduleEndOnComplete(){
+  if(document.getElementById('fInstallStatus').value !== 'Complete') return;
+  var el = document.getElementById('fScheduleEnd');
+  if(el.value) return;
+  el.value = toDatetimeLocal(new Date());
+}
+document.getElementById('fInstallStatus').addEventListener('change', stampScheduleEndOnComplete);
+
+/* See the comment at the call site in saveFieldWork(). */
+const STAGE_ORDER = ['Dispatched', 'In Transit', 'Delivered'];
+function bumpAppointmentStage(r, fwStatus, installStatus){
+  if(!r || !r.ID) return;
+  var cur = r.Appointment_Status || '';
+  if(cur === 'Completed' || cur === 'Failed') return;   // terminal, leave alone
+
+  var want = '';
+  if(installStatus === 'Complete') want = 'Delivered';
+  else if(fwStatus === 'Started') want = 'In Transit';
+  if(!want) return;
+
+  /* Only ever forwards. A record still sitting at Scheduled (pre-Dispatch-
+     Checklist, see inOngoingStage) is treated as being at the start of the
+     stage, so it can still move up. */
+  var from = STAGE_ORDER.indexOf(cur);
+  var to = STAGE_ORDER.indexOf(want);
+  if(to <= from) return;
+
+  var payload = { Appointment_Status: want };
+  if(want === 'Delivered') payload.Actual_Delivery_Date = new Date().toISOString().slice(0,10);
+
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_SA, id: String(r.ID), payload: { data: payload }
+  }).then(function(res){
+    console.log('[FieldWork] appointment stage ->', want, JSON.stringify(res));
+    if(res && res.code===3000){ r.Appointment_Status = want; }
+    else { showToast('Field Work saved, but the delivery stage did not move to ' + want + ' — code ' + (res && res.code)); }
+  }).catch(function(e){
+    console.error('[FieldWork] stage bump failed', e);
+    showToast('Field Work saved, but the delivery stage did not move to ' + want + ' — see console');
+  });
+}
+
+function saveFieldWork(){
+  if(!CURRENT_SA) return;
+  var r = CURRENT_SA;
+  // ADDED 2026-08-01, per user ("field work completed already? when its not yet
+  // scheduled?") — defense in depth alongside the disabled Save button/list
+  // button, in case either gets bypassed. Never blocks an already-started record
+  // (CURRENT_FW set) — only guards the very first Start Field Work.
+  if(!CURRENT_FW && !canStartFieldWork(r)){
+    showToast('This delivery needs an approved schedule — approve or override it in Service Request before Field Work can start');
+    return;
+  }
+  var statusVal = document.getElementById('fStatus').value;
+  var installStatusVal = document.getElementById('fInstallStatus').value;
+  /* Schedule End is readonly, so a record that was ALREADY Complete when it was
+     opened (no change event fires) could otherwise be saved with a blank end time
+     and no way to fix it. Saving Complete means it is finishing now, so now is the
+     honest value. Never touches an end time that is already there. */
+  if(installStatusVal === 'Complete' && !document.getElementById('fScheduleEnd').value){
+    document.getElementById('fScheduleEnd').value = toDatetimeLocal(new Date());
+  }
+  var rescheduleReasonVal = document.getElementById('fRescheduleReason').value.trim();
+  // ADDED 2026-08-01, per user ("needs override reason mandatory field for reason
+  // of rescheduling") — client-side mirror of the native Validations gate; real
+  // enforcement is server-side (FW_Validate_Reschedule_Reason), this just avoids a
+  // round-trip to Creator only to get rejected.
+  if(statusVal === 'Reschedule Requested' && !rescheduleReasonVal){
+    showToast('Reschedule Reason is required when Status is Reschedule Requested');
+    document.getElementById('fRescheduleReason').focus();
+    return;
+  }
+  var starCount = parseInt(document.getElementById('fStarRow').getAttribute('data-value')||'0', 10);
+  var starValue = starCount>0 ? '⭐'.repeat(starCount) : '';
+
+  var data = {
+    // ADDED 2026-08-07, real bug fix (see FW_BY_ID's own header comment above) —
+    // stamps which specific Service_Appointment this Field_Work record belongs to,
+    // so a 2nd dispatch on the same SO no longer resolves to the wrong Field_Work
+    // row. Sent on both create AND update (harmless re-send) so a legacy
+    // pre-fix record self-heals the first time it's saved again.
+    Service_Appointment_ID: String(r.ID),
+    Status: statusVal,
+    Reschedule_Reason: rescheduleReasonVal,
+    Installation_Status: installStatusVal,
+    Schedule_Start_Date_and_Time: fromDatetimeLocal(document.getElementById('fScheduleStart').value),
+    Schedule_End_Date_and_Time: fromDatetimeLocal(document.getElementById('fScheduleEnd').value),
+    Sales_Return_Status: document.getElementById('fSalesReturnStatus').value,
+    Receiver_s_Name: { first_name: document.getElementById('fReceiverName').value.trim() },
+    Customer_Review: document.getElementById('fCustomerReview').value.trim(),
+    Logistic_Notes: document.getElementById('fLogisticNotes').value.trim(),
+    Final_Checking_Bago_Umalis_sa_Site: collectChecklistValues(),
+    Customer_Rating: starValue
+  };
+  // Blank datetime values would otherwise send an empty string Creator may reject — omit if unset.
+  if(!data.Schedule_Start_Date_and_Time) delete data.Schedule_Start_Date_and_Time;
+  if(!data.Schedule_End_Date_and_Time) delete data.Schedule_End_Date_and_Time;
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  var btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  var savePromise;
+  if(CURRENT_FW){
+    savePromise = ZOHO.CREATOR.DATA.updateRecordById({
+      report_name: REPORT_FW,
+      id: String(CURRENT_FW.ID),
+      payload: { data: data }
+    });
+  } else {
+    // CREATE path — pre-fill identity fields from the Service_Appointment record,
+    // same fields the old logistics-management app's In_Bound_Delivery form carries,
+    // confirmed real on this form via a live schema dump 2026-07-23.
+    data.Service_Request = r.Service_Request || '';
+    data.Sales_Order = r.Sales_Order || '';
+    data.Customer_Name = custName(r) || '';
+    data.Customer_Address = r.Customer_Address || '';
+    data.City = r.City || '';
+    data.Email = r.Email || '';
+    data.Contact = r.Contact || '';
+    data.Type_of_Delivery = r.Type_of_Delivery || '';
+    data.Scheduled_Date_and_Time = r.Confirmed_Schedule_Date ? (r.Confirmed_Schedule_Date + ' ' + (r.Confirmed_Time_Slot||'')) : '';
+    data.Assigned_to_Installer = r.Installer || '';
+    data.Assigned_to_Dispatcher = r.Assigned_to_Dispatcher || '';
+    data.RMA = r.RMA || '';
+    data.Original_SO = r.Original_SO || '';
+    data.Reason = r.Reason || '';
+    data.Subreason = r.Sub_Reason || '';
+    data.Package_Number = r.Package_Number || '';
+    data.If_Pull_Out = r.If_Pull_Out || '';
+    data.Complaint_Record_ID = r.Complaint_Record_ID || '';
+    data.Appointment_Record_ID = r.Appointment_Record_ID || '';
+    /* PAC ADDED 2026-10-27 — real bug fix. This copy used to drop it, so the
+       per-package identity that Order Aggregation, the appointment and the
+       Dispatch Checklist all carry died here, at the last stage. The column
+       exists on Field_Work.Item_Details as of the same day. */
+    data.Item_Details = (r.Item_Details||[]).map(function(it){
+      return { Item_Name: it.Item_Name||'', SKU: it.SKU||'', Quantity: it.Quantity||0, PAC: it.PAC||'' };
+    });
+    savePromise = ZOHO.CREATOR.DATA.addRecords({ form_name: FORM_FW, payload: { data: data } });
+  }
+
+  savePromise.then(function(resp){
+    console.log('[FieldWork] save resp:', JSON.stringify(resp));
+    /* ADDED 2026-10-23 — Ongoing Service owns two of the pipeline's transitions,
+       and only these two:
+
+           Dispatched  -> In Transit   when field work is Started
+           In Transit  -> Delivered    when Installation_Status is Complete
+
+       Completed stays where it has always been: the Mark Delivery Outcome button,
+       which is what routes a record into Archived. This never moves a record
+       backwards and never touches a terminal one, so a re-save of an old record
+       cannot resurrect it. Failure to bump is reported but never fails the save —
+       the Field Work data is the thing that matters here. */
+    if(resp && resp.code===3000) bumpAppointmentStage(r, statusVal, data.Installation_Status);
+    if(!resp || resp.code!==3000){
+      btn.disabled = false; btn.textContent = 'Save Field Work';
+      showToast('Save failed — code ' + (resp && resp.code) + ', see console');
+      return;
+    }
+    var savedId = CURRENT_FW ? CURRENT_FW.ID : (resp.data && resp.data.ID);
+    if(!savedId) return;
+    var chain = Promise.resolve();
+    if(PENDING_SIG_FILE){
+      chain = chain.then(function(){
+        return ZOHO.CREATOR.FILE.uploadFile({
+          report_name: REPORT_FW, id: String(savedId), field_name: 'Receiver_s_Signature_Upload', file: PENDING_SIG_FILE
+        }).catch(function(e){ console.error('[FieldWork] signature photo upload failed', e); showToast('Saved, but signature photo upload failed — see console'); });
+      });
+    }
+    chain = chain.then(function(){ return stageSignatureFiles(savedId); })
+      .then(function(){ return processPendingEvidence(savedId); })
+      .then(function(){ return processPendingVideo(savedId); });
+    return chain;
+  }).then(function(){
+    btn.disabled = false; btn.textContent = 'Save Field Work';
+    showToast('Field Work saved.');
+    showList();
+  }).catch(function(err){
+    btn.disabled = false; btn.textContent = 'Save Field Work';
+    console.error('[FieldWork] save error', err);
+    showToast('Save failed — see console');
+  });
+}
+</script>
+</body>
+</html>

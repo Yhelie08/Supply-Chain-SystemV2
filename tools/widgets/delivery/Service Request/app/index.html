@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Service Request</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="dms-tokens.css" />
+<link rel="stylesheet" href="dms-shell.css" />
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<style>
+  /* Lives inside its own Creator page — no module sidebar to sit beside. */
+  .app{grid-template-columns:minmax(0,1fr)}
+  .kv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 18px}
+  .kv-grid .k{font-size:var(--fs-xs);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .kv-grid .v{font-size:var(--fs-md);font-weight:500;word-break:break-word;white-space:pre-wrap}
+  .kv-grid .full{grid-column:1/-1}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="main">
+    <div class="main-in">
+      <header class="top">
+        <div class="title">
+          <h1>Service Request</h1>
+          <p>Lahat ng service request — RMA, pull out, replacement at demo</p>
+        </div>
+        <div class="top-actions">
+          <label class="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="q" type="search" placeholder="Search SR#, SO#, RMA#, customer…" autocomplete="off" aria-label="Search service requests" />
+          </label>
+          <button class="btn primary" id="btnNew" type="button" style="height:38px">New request</button>
+          <button class="btn" id="btnRefresh" type="button" style="height:38px">Refresh</button>
+          <button class="btn" id="btnDebug" type="button" style="height:38px" title="Show what the widget sent to Zoho and what came back">Debug</button>
+        </div>
+      </header>
+      <main id="view" tabindex="-1"></main>
+      <div id="srLive" class="sr-only" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Request details" inert></aside>
+<div class="modal" id="modal" role="dialog" aria-modal="true" inert></div>
+<div class="toasts" id="toasts"></div>
+
+<!-- Prelude: what dms-ui.js expects to already exist. Kept separate so the
+     shared file stays byte-identical to _shared/design/dms-ui.js. -->
+<script>
+const $ = function(s, r){ return (r || document).querySelector(s); };
+const $$ = function(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+const IC = {
+  view: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
+  fail: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
+  feedback: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  prev: '<path d="m15 6-6 6 6 6"/>',
+  next: '<path d="m9 6 6 6-6 6"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  empty: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 15h8"/>'
+};
+let drawerOpener = null, modalOpener = null, modalSeq = 0;
+</script>
+<script src="dms-ui.js"></script>
+
+<script>
+/* ============================================================================
+   Service Request — DMS_Full_Build_Plan_v1.1 §1.1: "Service Requests — list of
+   all service requests with manual Schedule Appointment button".
+
+   THE FORM, named by the user 2026-10-23: `Service_Request1`
+   ("Service Request Form"), report `Service_Request`. Exported at
+   `DMS IDE/Service_Request`. Three stages, three forms:
+
+       Initial Scheduling  ->  Delivery_Scheduling
+       Service Request     ->  Service_Request1          (this widget)
+       Service Appointment ->  Service_Appointment_Form
+
+   Not to be confused with `DMS_Schedule_Request` and the `ScheduleRequest`
+   widget — a separate DMS flow the user ruled out of scope on 2026-10-23.
+
+   CHANGED 2026-10-27 — this is now stage 2 of the chain, per user ("Service
+   Request — papasok dito yung galing sa Initial Scheduling, then makikita yung
+   initial schedule niya, and base duon magkakaroon ng auto scheduling").
+
+   HOW THE AUTO-SCHEDULING ACTUALLY WORKS, because it is not obvious:
+   the engine lives on Service_Appointment_Form, not here. When a Service
+   Request is created, SR_Created_Make_Appointment (Deluge) inserts the
+   appointment at "Queued", seeded with Requested_Delivery_Date/Time from the
+   initial schedule. This widget READS that appointment through
+   Service_Appointment_ID and shows its scheduling state, and its three actions
+   write back onto the appointment. The engine does the thinking; this is its
+   face. Nothing here writes Appointment_Status or Calendar_Entry_Created —
+   the engine owns both.
+
+   The three actions, and the server-side rules each one has to satisfy:
+     1. Mark site confirmed  -> Site_Confirmation_Status = "Confirmed".
+        SA_Site_Confirmation_Validate CANCELS THE SUBMIT unless
+        Confirmation_Method AND Site_Confirmation_Notes come with it, so both
+        are required in the modal. This is the gate that lets the engine run at
+        all (its Action 1 fires on Site_Confirmation_Status == "Confirmed").
+     2. Approve schedule -> copies Suggested_* into Confirmed_*. No override
+        paperwork, because SA_Scheduling_Override_Validate's mismatchDetected
+        reads false when they are equal.
+     3. Override schedule -> a different date/time. The same validation
+        CANCELS THE SUBMIT without Override_By and Override_Reason, so both are
+        required in the modal.
+
+   Confirmed_Time_Slot is written 12-HOUR ("02:30:00 PM") and read back the
+   same way — the convention the retired DeliveryQueue widget established and
+   the engine's Calendar_Event_Summary depends on. to12Hour/to24Hour below are
+   lifted from it unchanged.
+   ========================================================================= */
+
+const REPORT_NAME = 'Service_Request';
+const FORM_NAME   = 'Service_Request1';
+/* Stage 3's report. Read for the scheduling state, written by the 3 actions. */
+const REPORT_SA   = 'Service_Appointment';
+const TODAY = isoOf(new Date());
+
+const CUSTOM_API_RESCHEDULE     = 'dms_reschedule';
+const CUSTOM_API_RESCHEDULE_KEY = '6vMBZhKvq6Gh9nnJS9XveCO9H';
+
+/* Service_Appointment_Form picklists this widget writes into. */
+const CONF_METHODS = ['Call', 'SMS', 'Email', 'In-Person'];
+
+/* Picklist values, verbatim from the export. */
+const SUBS = ['Change of Mind', 'Damaged Item', 'Demo', 'Replacement'];
+const PRIORITIES = ['High Priority', 'Medium Priority', 'Low Priority'];
+/* `Scheduled_by` carries "others option = true", but the Data API does NOT
+   honour Allow Other Choice — writing anything outside this list fails with
+   code 3001 (the Fleet_Assignment lesson, 2026-09-14). So the dropdown offers
+   exactly these two. */
+const SCHEDULERS = ['Jhi', 'Flor'];
+
+const PRIO_CLS = { 'High Priority': 'p-bad', 'Medium Priority': 'p-warn', 'Low Priority': 'p-gray' };
+const SUB_CLS  = { 'Damaged Item': 'p-bad', 'Replacement': 'p-vio', 'Demo': 'p-acc', 'Change of Mind': 'p-yel' };
+
+var ALL = [];
+var FILTER = 'All';
+var SEARCH = '';
+var BUSY = false;
+/* appointment ID -> the Service_Appointment row, filled by load(). */
+var SA_BY_ID = {};
+
+/* ---------------- shell plumbing the shared file calls ---------------- */
+function syncInert(){
+  $('#modal').toggleAttribute('inert', !$('#modal').classList.contains('on'));
+  $('#drawer').toggleAttribute('inert', !$('#drawer').classList.contains('on'));
+}
+function restoreFocus(el){ if(el && el.isConnected && el.focus) setTimeout(function(){ el.focus({ preventScroll:true }); }, 30); }
+function closeModal(){
+  var m = $('#modal');
+  m.className = 'modal'; m.innerHTML = '';
+  if(!$('#drawer').classList.contains('on')) $('#scrim').classList.remove('on');
+  syncInert(); restoreFocus(modalOpener);
+}
+function closeDrawer(){
+  var d = $('#drawer');
+  d.className = 'drawer'; d.innerHTML = '';
+  if(!$('#modal').classList.contains('on')) $('#scrim').classList.remove('on');
+  syncInert(); restoreFocus(drawerOpener);
+}
+function openDrawer(html){
+  drawerOpener = document.activeElement;
+  var d = $('#drawer');
+  d.innerHTML = html; d.className = 'drawer on'; d.scrollTop = 0;
+  $('#scrim').classList.add('on');
+  syncInert();
+  var c = d.querySelector('[data-close]');
+  if(c) c.onclick = closeDrawer;
+}
+
+/* ---------------- read ---------------- */
+function txt(v){ return (v === null || v === undefined) ? '' : String(v); }
+/* The Address composite comes back as an object; only ever displayed. */
+function addrText(a){
+  if(!a) return '';
+  if(typeof a === 'string') return a;
+  return [a.address_line_1, a.district_city, a.state_province, a.country].filter(function(x){ return !!x; }).join(', ');
+}
+
+function mapRow(r){
+  return {
+    raw: r,
+    id: String(r.ID),
+    /* Creator system field, used only for the list order. It is not always
+       returned by the SDK, which is why newestFirst() can fall back to ID. */
+    added: txt(r.Added_Time),
+    sr: txt(r.Service_Request1),
+    rma: txt(r.RMA1),
+    originalSO: txt(r.Original_SO),
+    reason: txt(r.Reason),
+    sub: txt(r.Sub),
+    so: txt(r.Sales_Order),
+    pac: txt(r.Package_Number),
+    deliveryDate: txt(r.Delivery_Date),
+    pullOut: txt(r.If_Pull_Out),
+    deliveryType: txt(r.Delivery_Type),
+    itemName: txt(r.Item_Name),
+    sku: txt(r.SKU),
+    qty: txt(r.Quantity),
+    items: Array.isArray(r.Item_Details) ? r.Item_Details : [],
+    priority: txt(r.Priority_Level),
+    scheduledBy: txt(r.Scheduled_by),
+    customer: txt(r.Customer_Name),
+    customerAddress: txt(r.Customer_Address),
+    city: txt(r.City),
+    email: txt(r.Email),
+    phone: txt(r.Phone_Number),
+    address: addrText(r.Address),
+    complaintId: txt(r.Complaint_Record_ID),
+    appointmentId: txt(r.Appointment_Record_ID),
+    /* NEW 2026-10-27 — the chain fields. A record entered by hand before these
+       existed reads them as '', which every check below treats as "not in the
+       chain yet". */
+    srNo: txt(r.SR_No),
+    srStatus: txt(r.SR_Status),
+    isId: txt(r.Initial_Schedule_ID),
+    saId: txt(r.Service_Appointment_ID),
+    initTime: txt(r.Initial_Schedule_Time),
+    oaId: txt(r.Order_Aggregation_ID)
+  };
+}
+
+/* ---------------- the linked appointment ----------------
+   Service_Appointment_ID is written by SR_Created_Make_Appointment. Blank means
+   the Deluge has not run (or is not pasted live yet), which is a real and
+   common state during the roll-out, so every caller has to cope with null. */
+function saOf(o){
+  if(!o.saId) return null;
+  return SA_BY_ID[String(o.saId)] || null;
+}
+
+/* Confirmed_Time_Slot reads back like "08:00:00 AM"; <input type=time> needs
+   24hr HH:MM. Both helpers are byte-for-byte from the retired DeliveryQueue
+   widget — the format the engine and the calendar summary already expect. */
+function to24Hour(t){
+  if(!t) return '';
+  var m = String(t).match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
+  if(!m) return '';
+  var h = parseInt(m[1], 10);
+  var min = m[2];
+  var ap = (m[3] || '').toUpperCase();
+  if(ap === 'PM' && h !== 12) h += 12;
+  if(ap === 'AM' && h === 12) h = 0;
+  return String(h).padStart(2, '0') + ':' + min;
+}
+function to12Hour(t){
+  if(!t) return '';
+  var parts = String(t).split(':');
+  var h = parseInt(parts[0], 10);
+  var min = parts[1];
+  var ap = h >= 12 ? 'PM' : 'AM';
+  var h12 = h % 12; if(h12 === 0) h12 = 12;
+  return String(h12).padStart(2, '0') + ':' + min + ':00 ' + ap;
+}
+
+/* Where this request stands, read off the appointment rather than guessed.
+   Returned as {key, label, cls} so the chip, the pill and the action row all
+   agree instead of each re-deriving it. */
+/* Initial_Schedule_Time is a DATE-TIME field, so it reads back carrying the
+   date as well. Only the time half is worth showing beside a date that is
+   already on screen. Falls back to the raw value if it cannot be parsed, so a
+   surprise format shows SOMETHING rather than vanishing. */
+function initTimeOf(o){
+  if(!o.initTime) return '';
+  return to24Hour(o.initTime) || txt(o.initTime);
+}
+
+function stageOf(o){
+  var sa = saOf(o);
+  if(o.srStatus === 'Cancelled') return { key: 'cancelled', label: 'Cancelled', cls: 'p-bad' };
+  if(!sa) return o.saId
+    ? { key: 'waiting', label: 'Appointment not readable', cls: 'p-warn' }
+    : { key: 'waiting', label: 'No appointment yet', cls: 'p-yel' };
+  if(txt(sa.Confirmed_Schedule_Date)) return { key: 'scheduled', label: 'Scheduled', cls: 'p-ok' };
+  if(txt(sa.Suggested_Schedule_Date)) return { key: 'suggested', label: 'Suggestion ready', cls: 'p-acc' };
+  if(txt(sa.Exception_Status) === 'Flagged') return { key: 'flagged', label: 'Flagged', cls: 'p-bad' };
+  if(txt(sa.Site_Confirmation_Status) === 'Confirmed') return { key: 'searching', label: 'Site confirmed, waiting for a slot', cls: 'p-vio' };
+  return { key: 'siteconfirm', label: 'Needs site confirmation', cls: 'p-warn' };
+}
+
+function load(){
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords !== 'function'){
+    console.error('[ServiceRequest] SDK not available');
+    $('#view').innerHTML = emptyState('Widget SDK not available', 'Open this page inside Zoho Creator. Press F12 and check the console for the real error.');
+    return;
+  }
+  $('#view').innerHTML = '<section class="panel"><div class="panel-head"><h2>Loading…</h2></div><div style="padding:22px">' + emptyState('Reading the Service Request report…', '') + '</div></section>';
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: REPORT_NAME,
+    page: 1,
+    pageSize: 200,
+    field_config: 'all'
+  }).then(function(resp){
+    var ok = resp && (resp.code === 3000 || String(resp.code) === '3000');
+    var rows = (ok && resp.data) ? resp.data : [];
+    if(!ok){ var RE = errInfo(resp); console.error('[ServiceRequest] getRecords not 3000', resp); $('#view').innerHTML = emptyState('Could not read the requests', 'Code ' + (RE.code || '?') + '. ' + (RE.msg || 'No details came back from Zoho.')); return; }
+    dbg('LOAD <- ' + REPORT_NAME + ': code ' + (resp && resp.code) + ', ' + rows.length + ' row(s)');
+    ALL = rows.map(mapRow);
+    /* The appointments are a SECOND fetch, deliberately best-effort: if it
+       fails the requests still render, every row just reads "Appointment not
+       readable" instead of the whole page dying on a dependency. */
+    return loadAppointments().then(render);
+  }).catch(function(e){
+    var EI = errInfo(e); var code = EI.code;
+    if(String(code) === '9220'){ ALL = []; render(); return; }   /* empty report, not an error */
+    console.error('[ServiceRequest] getRecords error', e);
+    $('#view').innerHTML = emptyState('Could not read the requests', (code ? 'Code ' + code + '. ' : '') + (EI.msg || 'No details came back from Zoho.') + ' | 2893 = maling report name, 2945 = expired ang session (mag-sign out at sign in ulit).');
+  });
+}
+
+/* Reads the appointments once per load and indexes them by ID. Resolves even on
+   failure — see load()'s own comment for why this must not be fatal. */
+function loadAppointments(){
+  SA_BY_ID = {};
+  var wanted = ALL.filter(function(o){ return !!o.saId; });
+  if(!wanted.length) return Promise.resolve();
+  return ZOHO.CREATOR.DATA.getRecords({
+    report_name: REPORT_SA,
+    page: 1,
+    pageSize: 200,
+    field_config: 'all'
+  }).then(function(resp){
+    var ok = resp && (resp.code === 3000 || String(resp.code) === '3000');
+    var rows = (ok && resp.data) ? resp.data : [];
+    rows.forEach(function(r){ SA_BY_ID[String(r.ID)] = r; });
+    dbg('LOAD <- ' + REPORT_SA + ': ' + rows.length + ' appointment(s); wanted ' + wanted.length);
+  }).catch(function(e){
+    var EI = errInfo(e);
+    if(String(EI.code) !== '9220') console.error('[ServiceRequest] appointment fetch failed', e);
+  });
+}
+
+/* ---------------- filters ---------------- */
+/* Scheduled now means the APPOINTMENT has a confirmed date — the real fact,
+   not "a link exists". The old reading (Appointment_Record_ID non-blank) called
+   a brand-new Queued appointment "Scheduled" the moment it was created. */
+function isScheduled(o){ var sa = saOf(o); return !!(sa && txt(sa.Confirmed_Schedule_Date)); }
+
+/* CHANGED 2026-10-30, per user ("bat naglalakad pa dito ito? dapat di na dumaan
+   to dito diba? kasi status lang ito?") — a request whose appointment already has
+   a Confirmed_Schedule_Date is DONE as far as this stage is concerned. Service
+   Request owns site confirmation -> slot search -> approve/override; once the date
+   is confirmed the order belongs to Service Appointment (dispatch). Leaving those
+   rows in the default list meant an officer scrolled past finished work every day.
+
+   They are NOT hidden: the Scheduled pill still lists them, with its own count
+   taken from the full set (render() counts each pill off ALL, not off this view).
+   That matters because a Scheduled row carries exactly one action, "Change
+   schedule", and this is still its only live home — ServiceAppointment's own
+   Approve/Override panel accepts a Scheduled record (PAST_APPROVAL excludes it),
+   but that widget is not uploaded yet. So the button keeps working here, one
+   click away, instead of being stranded. See
+   Proposals/DMS_Pipeline_Handoff_Plan_2026-10-22.md 6.4 — same hand-off, and the
+   same rule as before: never remove the only route to a live button. */
+const F = {
+  /* CHANGED 2026-11-06, per user ("hide nalang kung di naman need duon").
+     Active used to exclude only `scheduled`, so a CANCELLED request sat in the
+     default list forever and counted as outstanding work -- rowActions() gives
+     a cancelled row no button at all, so there was nothing to do with it there.
+     It is hidden, not deleted: a typed search still looks through EVERYTHING
+     while the Active pill is selected (see render()), and the High priority and
+     Pull out pills are stage-agnostic, so a cancelled row is still reachable by
+     all three. Nothing else changes -- every other pill reads its own stage. */
+  All: function(o){ var k = stageOf(o).key; return k !== 'scheduled' && k !== 'cancelled'; },
+  /* The work queue, in the order an officer meets it. */
+  /* ADDED 2026-11-06. The `waiting` stage -- "No appointment yet" and
+     "Appointment not readable" -- had no pill, so those rows sat inside Active
+     with nothing able to isolate them. That is why Active read 4 while Needs
+     site confirmation read 2 and every other work pill read 0: two rows nobody
+     could list. This stage is also the exact symptom of
+     SR_Created_Make_Appointment not being pasted live (the drawer already says
+     so per row), so a number here is a real signal, not decoration. */
+  NoAppt: function(o){ return stageOf(o).key === 'waiting'; },
+  NeedsSite: function(o){ return stageOf(o).key === 'siteconfirm'; },
+  Searching: function(o){ return stageOf(o).key === 'searching'; },
+  Suggested: function(o){ return stageOf(o).key === 'suggested'; },
+  Scheduled: function(o){ return stageOf(o).key === 'scheduled'; },
+  Flagged: function(o){ return stageOf(o).key === 'flagged'; },
+  PullOut: function(o){ return o.pullOut === 'Yes'; },
+  High: function(o){ return o.priority === 'High Priority'; }
+};
+const F_L = {
+  All: 'Active',
+  NoAppt: 'Walang appointment',
+  NeedsSite: 'Needs site confirmation',
+  Searching: 'Waiting for a slot',
+  Suggested: 'Suggestion to approve',
+  Scheduled: 'Scheduled',
+  Flagged: 'Flagged',
+  PullOut: 'Pull out',
+  High: 'High priority'
+};
+
+function matchSearch(o){
+  var q = SEARCH.trim().toLowerCase();
+  if(!q) return true;
+  return [o.sr, o.srNo, o.rma, o.so, o.originalSO, o.pac, o.customer, o.city, o.itemName, o.sku, o.sub, o.reason].join(' ').toLowerCase().indexOf(q) >= 0;
+}
+
+/* ---------------- cells ---------------- */
+/* The initial schedule, as one readable cell. This is the whole point of the
+   stage — it is what the engine anchors its slot search on. */
+function initSchedCell(o){
+  if(!o.deliveryDate) return '<span class="muted">not set</span>';
+  return '<div class="when"><div class="d">' + esc(fmtDate(o.deliveryDate)) + '</div>' +
+    (initTimeOf(o) ? '<div class="t">' + esc(initTimeOf(o)) + '</div>' : '') + '</div>';
+}
+
+/* What the engine has decided, if anything. Suggested and Confirmed are shown
+   differently on purpose: one is waiting for the officer, the other is done. */
+function autoSchedCell(o){
+  var sa = saOf(o);
+  var st = stageOf(o);
+  var out = '<span class="pill ' + st.cls + '">' + esc(st.label) + '</span>';
+  if(!sa) return out;
+  var conf = txt(sa.Confirmed_Schedule_Date), sugg = txt(sa.Suggested_Schedule_Date);
+  if(conf){
+    out += '<div class="sub2">' + esc(fmtDate(conf)) + (txt(sa.Confirmed_Time_Slot) ? ' · ' + esc(txt(sa.Confirmed_Time_Slot)) : '') + '</div>';
+  } else if(sugg){
+    out += '<div class="sub2">' + esc(fmtDate(sugg)) + (txt(sa.Suggested_Time_Slot) ? ' · ' + esc(txt(sa.Suggested_Time_Slot)) : '') + '</div>';
+  }
+  if(txt(sa.Installer)) out += '<div class="sub2">' + esc(txt(sa.Installer)) + '</div>';
+  return out;
+}
+
+/* One action per row, the one the stage actually calls for. Offering all three
+   at once would mean two of them always fail validation. */
+function rowActions(o){
+  var st = stageOf(o);
+  if(st.key === 'siteconfirm') return '<button class="btn sm primary" data-act="siteconfirm" data-id="' + esc(o.id) + '">Mark site confirmed</button>';
+  if(st.key === 'suggested') return '<button class="btn sm primary" data-act="approve" data-id="' + esc(o.id) + '">Approve</button>' +
+                                    '<button class="btn sm" data-act="override" data-id="' + esc(o.id) + '">Override</button>' +
+                                    '<button class="btn sm" data-act="engine" data-id="' + esc(o.id) + '" title="Re-run scheduling engine">Re-run</button>';
+  if(st.key === 'searching') return '<button class="btn sm primary" data-act="engine" data-id="' + esc(o.id) + '">Auto-schedule</button>' +
+                                    '<button class="btn sm" data-act="override" data-id="' + esc(o.id) + '">Set date manually</button>';
+  if(st.key === 'flagged') return '<button class="btn sm primary" data-act="engine" data-id="' + esc(o.id) + '">Retry scheduling</button>' +
+                                  '<button class="btn sm" data-act="override" data-id="' + esc(o.id) + '">Override</button>';
+  if(st.key === 'scheduled') return '<button class="btn sm" data-act="override" data-id="' + esc(o.id) + '">Change schedule</button>';
+  return '';
+}
+
+/* ---------------- per line item, in ONE place (2026-10-29) ----------------
+   Both the list's Item column and the drawer's item table used to work this out
+   for themselves, and both got it wrong the same way: every row showed the
+   HEADER's comma-joined summary of all the items, repeated once per row. The
+   user's words: "magkasama sila dapat magkahiwalay. per line item hindi
+   magkasama sa isang line."
+
+   Two separate causes, and this function is the only place either is handled:
+
+     (a) a row with a blank Item_Name fell back to the header Item_Name — the
+         whole joined list — so N blank rows rendered as N identical rows;
+     (b) records handed off BEFORE today carry that joined list written inside
+         each row, by the old hand-off's own fallback.
+
+   Both are repaired by splitting the header list and taking the index-th part.
+   The split is trusted ONLY when the part count matches the row count exactly;
+   an item name containing a comma would otherwise shift every row onto the
+   wrong value, which is worse than showing the summary. When there is no grid
+   at all, the header lists ARE the line items and are split into rows. */
+/* Service_Request1's Item_Name/SKU are single-line TEXT fields, so they stay
+   comma-joined - but Sales_Order and anything relayed from Initial Scheduling's
+   textareas can arrive newline-separated, so both separators are accepted. */
+function splitList(val){
+  return txt(val).split(/[\n,]/).map(function(x){ return x.trim(); }).filter(Boolean);
+}
+function lineItemsOf(o){
+  var rows = (o.items && o.items.length) ? o.items : null;
+  function parts(val, n){
+    var p = splitList(val);
+    return p.length === n ? p : null;
+  }
+  if(rows){
+    var nameParts = parts(o.itemName, rows.length);
+    var skuParts = parts(o.sku, rows.length);
+    var qtyParts = parts(o.qty, rows.length);
+    var joinedName = txt(o.itemName).trim();
+    var joinedSku = txt(o.sku).trim();
+    return rows.map(function(it, i){
+      var own = txt(it.Item_Name).trim();
+      if(own && own === joinedName) own = '';
+      var ownSku = (txt(it.SKU) || txt(it.sku)).trim();
+      if(ownSku && ownSku === joinedSku) ownSku = '';
+      var rawQ = (it.Quantity !== undefined && it.Quantity !== null && it.Quantity !== '') ? it.Quantity : (it.Qty !== undefined && it.Qty !== null && it.Qty !== '' ? it.Qty : it.QTY);
+      var q = (rawQ !== undefined && rawQ !== null && rawQ !== '') ? txt(rawQ) : '';
+      return {
+        name: own || (nameParts ? nameParts[i] : '') || (rows.length === 1 ? joinedName : ''),
+        sku: ownSku || (skuParts ? skuParts[i] : '') || (rows.length === 1 ? joinedSku : ''),
+        qty: q || (qtyParts ? qtyParts[i] : '') || (rows.length === 1 ? txt(o.qty) : ''),
+        pac: txt(it.PAC)
+      };
+    });
+  }
+  /* No grid: the header fields are all there is. A comma-joined Item_Name still
+     means several line items, so it is split the same way. */
+  var names = splitList(o.itemName);
+  if(!names.length) return [];
+  var skus = splitList(o.sku);
+  var qtys = splitList(o.qty);
+  return names.map(function(n, i){
+    return {
+      name: n,
+      sku: skus.length === names.length ? skus[i] : (names.length === 1 ? txt(o.sku) : ''),
+      qty: qtys.length === names.length ? qtys[i] : (names.length === 1 ? txt(o.qty) : ''),
+      pac: ''
+    };
+  });
+}
+
+/* CHANGED 2026-10-29, per user ("isama mo yung mga SO#, package, item name,
+   SKU, Qty") — SKU and Qty are spelled out per line instead of running together
+   in one grey string. A line with no SKU says so rather than silently dropping
+   the column, because a missing SKU on a dispatch list is worth noticing. */
+function renderItemCell(o){
+  var li = lineItemsOf(o);
+  if(!li.length) return '<span class="muted">—</span>';
+  return li.map(function(x){
+    var n = x.name || x.sku || '—';
+    var bits = [];
+    bits.push('SKU ' + (x.sku || '—'));
+    bits.push('Qty ' + (x.qty || '—'));
+    return '<div>' + esc(n) + '</div><div class="sub2 mono">' + esc(bits.join('  ·  ')) + '</div>';
+  }).join('<div style="margin-top:7px"></div>');
+}
+
+/* ───────── FORECAST (added 2026-11-04) ─────────
+   Read-only. Written by the Forecast_Stamp_Daily schedule onto this form's
+   Forecast_Delivery / Forecast_Window / Forecast_Status fields; this widget only
+   displays them.
+
+   The full window (e.g. "Nov 20 - Dec 15, 2026 | LCL | In transit") goes in the
+   title attribute rather than the cell, so the column stays one line wide. The
+   date shown is the midpoint of that window, never a promise.
+
+   Colours are the validated chart palette, not the app's UI amber: #2a78d6 /
+   #c47f00 / #d03b3b pass the lightness band, the contrast floor and deuteranopia
+   separation. Status also carries its own word, so it is never colour-alone.
+
+   fcEsc: these widgets disagree on what the escaper is called (escapeHtml here,
+   esc there), so this picks whichever exists and carries its own as a last
+   resort - it must never be the reason a row fails to render. */
+var fcEsc = (function () {
+  if (typeof escapeHtml === "function") return escapeHtml;
+  if (typeof esc === "function") return esc;
+  return function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+})();
+
+var FORECAST_TONE = {
+  "On Track":       { bg: "#eaf2fc", fg: "#1f5aa0", dot: "#2a78d6" },
+  "At Risk":        { bg: "#fdf4e3", fg: "#8a5a00", dot: "#c47f00" },
+  "Will Miss":      { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "Overdue":        { bg: "#fdecec", fg: "#a02a2a", dot: "#d03b3b" },
+  "No Client Date": { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+  "No Start Date":  { bg: "#f1f5f9", fg: "#64748b", dot: "#94a3b8" },
+};
+
+/* Creator hands dates back in whichever format the app is set to; this accepts the
+   four shapes seen across this app and returns "" rather than "Invalid Date". */
+function forecastDateText(v) {
+  if (!v) return "";
+  var s = String(v).trim();
+  var m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  if (m) return m[2] + " " + m[1] + ", " + m[3];
+  var d = new Date(s.replace(/-/g, "/"));
+  if (isNaN(d.getTime())) return s.split(" ")[0];
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+function forecastCell(r) {
+  r = r || {};
+  var raw = r.Forecast_Delivery;
+  var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
+  var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
+
+  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+
+  var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
+  var date = raw ? fcEsc(forecastDateText(raw)) : "—";
+  var tip = fcEsc(win || status || "");
+
+  return (
+    '<span title="' + tip + '" style="display:inline-flex;align-items:center;gap:6px;' +
+    "white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;" +
+    "font-weight:600;background:" + tone.bg + ";color:" + tone.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:' + tone.dot +
+    ';flex:none"></span>' + date +
+    (status && status !== "On Track" ? " &middot; " + fcEsc(status) : "") +
+    "</span>"
+  );
+}
+
+function requestTable(list){
+  if(!list.length) return emptyState('Walang service request dito', SEARCH ? 'No match for your search — try a shorter keyword.' : 'Galing sa Initial Scheduling ang mga request dito. Pindutin ang New request para gumawa nang manu-mano.');
+  return '<div class="tbl-wrap"><table class="q"><thead><tr><th>Request</th><th>SO # / Package</th><th>Reason</th><th>Item</th><th>Initial schedule</th><th>Auto-scheduling</th><th>Forecast</th><th>Priority</th><th style="text-align:right">Action</th></tr></thead><tbody>' +
+    list.map(function(o){
+      return '<tr data-row="' + esc(o.id) + '">' +
+        '<td class="c-ord"><div class="ord"><div class="so">' + esc(o.srNo || o.sr || '—') +
+          (o.rma ? ' <span class="mono muted">' + esc(o.rma) + '</span>' : '') + '</div>' +
+          '<div class="cust">' + esc(o.customer || '—') + '</div></div></td>' +
+        /* ADDED 2026-10-29 — the SO number and the package were buried in the
+           customer line, where the one identifier a dispatcher actually calls
+           out loud was the hardest thing on the row to find. Own column now. */
+        '<td data-label="SO # / Package"><div class="mono">' + esc(o.so || '—') + '</div>' +
+          '<div class="sub2 mono">' + esc(o.pac || '—') + '</div></td>' +
+        '<td data-label="Reason">' + (o.sub ? '<span class="pill ' + (SUB_CLS[o.sub] || 'p-gray') + '">' + esc(o.sub) + '</span>' : '<span class="muted">—</span>') +
+          (o.pullOut === 'Yes' ? '<div class="sub2">Pull out</div>' : '') + '</td>' +
+        '<td data-label="Item">' + renderItemCell(o) + '</td>' +
+        '<td data-label="Initial schedule">' + initSchedCell(o) + '</td>' +
+        '<td data-label="Auto-scheduling">' + autoSchedCell(o) + '</td>' +
+        /* FIXED 2026-11-06: was `o._raw`, which mapRow never sets -- it stores
+           `raw`. forecastCell() therefore got {} on EVERY row and the Forecast
+           column was a grey dash 100% of the time, whatever the record held.
+           `_raw` is the Purchase Request widget's spelling; this call was copied
+           from there without its mapper. InitialScheduling already uses `o.raw`. */
+        '<td data-label="Forecast">' + forecastCell(o.raw || {}) + '</td>' +
+        '<td data-label="Priority">' + (o.priority ? '<span class="pill ' + (PRIO_CLS[o.priority] || 'p-gray') + '">' + esc(o.priority.replace(' Priority', '')) + '</span>' : '<span class="muted">—</span>') + '</td>' +
+        /* The eye is gone, per user: the whole row already opens the record
+           (see the tr[data-row] handler) and .q tbody tr has carried
+           cursor:pointer all along, so the button was a second way to do what
+           clicking anywhere else on the line already did. */
+        '<td class="c-act"><div class="acts">' + iconBtn('edit', o.id, 'Edit record', 'edit') +
+          (rowActions(o) ? '<span class="sep" aria-hidden="true"></span>' + rowActions(o) : '') + '</div></td>' +
+      '</tr>';
+    }).join('') + '</tbody></table></div>';
+}
+
+/* ---------------- list order ----------------
+   CHANGED 2026-11-06 at the user's request ("pati yung service request ganun
+   dun. dapat naka descend"), matching Initial Scheduling. The list used to run
+   by DELIVERY DATE ascending, so the top row was whatever was due soonest and a
+   request raised this morning could land anywhere.
+
+   Added_Time is a Creator system field and the SDK does not reliably return it
+   on every report, so the record ID carries the same order as a fallback:
+   Creator hands out IDs strictly increasing, so the bigger ID is always the
+   newer record. Delivery date and SR number survive only as last tiebreaks.
+
+   KEPT: High Priority still pins to the top. The user asked for the ordering to
+   descend, not for urgent work to lose its place; dropping it is one line here
+   if they want it gone. */
+function addedMs(o){
+  var t = String(o.added || '').trim();
+  if(!t) return NaN;
+  /* Creator renders this as "06-Nov-2026 14:35:22" or "11/06/2026 14:35:22"
+     depending on the app's own date format; Date.parse takes both, plus ISO.
+     The dash-to-space retry is for the shapes it refuses outright. */
+  var ms = Date.parse(t);
+  if(!isNaN(ms)) return ms;
+  ms = Date.parse(t.replace(/-/g, ' '));
+  return isNaN(ms) ? NaN : ms;
+}
+function newestFirst(a, b){
+  /* this line is the High Priority pin - delete it to sort purely by age */
+  if((a.priority === 'High Priority') !== (b.priority === 'High Priority')) return a.priority === 'High Priority' ? -1 : 1;
+  var am = addedMs(a), bm = addedMs(b);
+  if(!isNaN(am) && !isNaN(bm) && am !== bm) return bm - am;
+  var ai = parseInt(a.id, 10), bi = parseInt(b.id, 10);
+  if(!isNaN(ai) && !isNaN(bi) && ai !== bi) return bi - ai;
+  if(a.deliveryDate !== b.deliveryDate) return (a.deliveryDate || '9999').localeCompare(b.deliveryDate || '9999');
+  return String(b.sr).localeCompare(String(a.sr));
+}
+
+/* ---------------- render ---------------- */
+function render(){
+  /* ADDED 2026-10-30 alongside the Active change — a typed search looks through
+     EVERYTHING, Scheduled rows included. Otherwise searching an SO# that happens
+     to be scheduled returns "no results", which reads as "the record is gone"
+     rather than "it is one pill over". Only the default Active view opens up;
+     a pill the officer picked on purpose stays honest. */
+  var searching = SEARCH.trim() !== '';
+  var list = ALL.filter(function(o){ return (searching && FILTER === 'All' ? true : F[FILTER](o)) && matchSearch(o); })
+    .sort(newestFirst);
+  var chips = Object.keys(F).map(function(k){
+    return '<button type="button" class="fchip ' + (FILTER === k ? 'on' : '') + '" data-f="' + k + '">' + esc(F_L[k]) +
+      '<span class="n">' + ALL.filter(F[k]).length + '</span></button>';
+  }).join('');
+  $('#view').innerHTML =
+    '<section class="panel">' +
+      '<div class="panel-head"><h2>Service requests</h2>' +
+      '<span class="hint">Galing sa Initial Scheduling. I-confirm ang site, tapos ang sistema na ang maghahanap ng slot base sa <b>initial schedule</b> — i-approve o i-override.</span>' +
+      '<div class="spacer"></div><div class="chips">' + chips + '</div></div>' +
+      requestTable(list) +
+    '</section>';
+}
+
+/* ---------------- write ---------------- */
+function rowById(id){ return ALL.filter(function(o){ return o.id === String(id); })[0]; }
+
+/* Zoho hands a failed Data API call back in several different shapes. The old
+   handler read only e.code, so a response that carried the real code inside a
+   JSON-STRINGIFIED responseText reached the screen as a bare "Code ?" with
+   nothing to act on. Same lesson already logged for DeliveryQueue's
+   describeSaveError (Widget/DMS/CLAUDE.md, 2026-09-14). 2026-10-26. */
+function errInfo(e){
+  var o = e, msg = '';
+  if(o && typeof o.responseText === 'string'){
+    try { o = JSON.parse(o.responseText); } catch(_err){ msg = o.responseText; o = e; }
+  } else if(o && o.responseText && typeof o.responseText === 'object'){
+    o = o.responseText;
+  }
+  var code = (o && (o.code || o.status)) || (e && e.code) || '';
+  if(!msg){
+    if(o && o.message) msg = o.message;
+    else if(o && o.description) msg = o.description;
+    else if(o && o.error) msg = (Object.prototype.toString.call(o.error) === '[object Array]' ? o.error.join('; ') : String(o.error));
+    else if(o && o.data && (o.data.message || o.data.error)) msg = String(o.data.message || o.data.error);
+    else { try { msg = JSON.stringify(e); } catch(_err2){ msg = String(e); } }
+  }
+  return { code: String(code || ''), msg: String(msg || '') };
+}
+
+/* ---------------- debug log ----------------
+   ADDED 2026-10-27, same as the Initial Scheduling widget. This app is tested
+   in the live Zoho UI and reported with screenshots, not with F12 open, so the
+   log has to be ON SCREEN to be any use. Every API call records what went out
+   and what came back. Last 40 entries. */
+var DBG = [];
+function dbg(step, data){
+  var entry = { t: new Date().toTimeString().slice(0, 8), step: step, data: data };
+  DBG.push(entry);
+  if(DBG.length > 40) DBG.shift();
+  try { console.log('[ServiceRequest] ' + step, data); } catch(_e){}
+}
+function dbgText(){
+  return DBG.map(function(e){
+    var body;
+    try { body = typeof e.data === 'string' ? e.data : JSON.stringify(e.data); }
+    catch(_e){ body = String(e.data); }
+    return e.t + '  ' + e.step + (body && body !== 'undefined' ? '\n    ' + body : '');
+  }).join('\n');
+}
+function openDebug(){
+  var text = DBG.length ? dbgText() : 'Wala pang naitatala. Gumawa ng aksyon (Mark site confirmed, Approve, Override, Refresh) tapos buksan ulit ito.';
+  openDrawer(
+    '<div class="dr-head"><div style="flex:1;min-width:0"><h3>Debug log</h3>' +
+      '<p>Ang huling ' + DBG.length + ' na palitan ng widget at ng Zoho</p></div>' +
+      '<button type="button" class="btn icon" data-close aria-label="Close">' + svg(IC.close, 16) + '</button></div>' +
+    '<div class="dr-body"><div class="dr-sec">' +
+      '<div class="acts" style="margin-bottom:10px">' +
+        '<button type="button" class="btn sm" id="dbgCopy">Copy</button>' +
+        '<button type="button" class="btn sm" id="dbgClear">Clear</button>' +
+      '</div>' +
+      '<pre id="dbgText" style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;margin:0">' + esc(text) + '</pre>' +
+    '</div></div>'
+  );
+  var c = $('#dbgCopy');
+  if(c) c.onclick = function(){
+    try { navigator.clipboard.writeText(dbgText()); toast('Debug log copied', 'ok'); }
+    catch(_e){ toast('Could not copy - select the text and copy it by hand', 'bad'); }
+  };
+  var cl = $('#dbgClear');
+  if(cl) cl.onclick = function(){ DBG = []; closeDrawer(); toast('Debug log cleared', 'ok'); };
+}
+
+function describe(code){
+  if(String(code) === '2945') return 'Session expired — refresh the page and try again';
+  if(String(code) === '3001') return 'A field did not accept its value — check the dropdowns';
+  if(String(code) === '3002') return 'A value was the wrong shape for its field — see Debug for which one';
+  if(String(code) === '2893') return 'Form or report name is wrong';
+  return 'Nothing was changed';
+}
+
+/* Same max+1 client-side scan every auto-number in this app uses (INQ_No,
+   RR_No). Only offered when the records already follow SR-00001; if they use
+   some other spelling the box is simply left blank for the officer to type. */
+function nextSRNo(){
+  var max = 0, seen = false;
+  ALL.forEach(function(o){
+    var m = /^SR-(\d+)$/.exec(o.sr || '');
+    if(m){ seen = true; var n = parseInt(m[1], 10); if(n > max) max = n; }
+  });
+  if(!seen) return '';
+  var s = String(max + 1);
+  while(s.length < 5) s = '0' + s;
+  return 'SR-' + s;
+}
+
+function fetchRequestDetail(id){
+  return ZOHO.CREATOR.DATA.getRecordById({
+    report_name: REPORT_NAME,
+    id: String(id),
+    field_config: 'all'
+  }).then(function(resp){
+    var ok = resp && (resp.code === 3000 || String(resp.code) === '3000');
+    return (ok && resp.data) ? resp.data : null;
+  }).catch(function(e){
+    console.error('[ServiceRequest] fetch detail error', e);
+    return null;
+  });
+}
+
+function saveRecord(id, data, okMsg){
+  if(BUSY) return;
+  BUSY = true;
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: String(id),
+    payload: { data: data }
+  }).then(function(resp){
+    BUSY = false;
+    var ok = resp && (resp.code === 3000 || String(resp.code) === '3000');
+    if(!ok){
+      console.error('[ServiceRequest] update failed', resp);
+      var RI = errInfo(resp); toast('Save failed (code ' + (RI.code || '?') + ') — ' + (RI.msg || describe(RI.code)), 'bad');
+      return;
+    }
+    toast(okMsg, 'ok'); announce(okMsg);
+    closeModal(); load();
+  }).catch(function(e){
+    BUSY = false;
+    var EI = errInfo(e); var code = EI.code;
+    console.error('[ServiceRequest] update error', e);
+    toast('Save failed' + (code ? ' (code ' + code + ')' : '') + ' — ' + (EI.msg || describe(code)), 'bad');
+  });
+}
+
+function addRecord(data, okMsg){
+  if(BUSY) return;
+  BUSY = true;
+  ZOHO.CREATOR.DATA.addRecords({
+    form_name: FORM_NAME,
+    payload: { data: [data] }
+  }).then(function(resp){
+    BUSY = false;
+    var ok = resp && (resp.code === 3000 || String(resp.code) === '3000');
+    if(!ok){
+      console.error('[ServiceRequest] add failed', resp);
+      var RI = errInfo(resp); toast('Could not add (code ' + (RI.code || '?') + ') — ' + (RI.msg || describe(RI.code)), 'bad');
+      return;
+    }
+    toast(okMsg, 'ok'); announce(okMsg);
+    closeModal(); load();
+  }).catch(function(e){
+    BUSY = false;
+    var EI = errInfo(e); var code = EI.code;
+    console.error('[ServiceRequest] add error', e);
+    toast('Could not add' + (code ? ' (code ' + code + ')' : '') + ' — ' + (EI.msg || describe(code)), 'bad');
+  });
+}
+
+/* ---------------- the three appointment actions ----------------
+   All three write to REPORT_SA, never to the Service Request, and never touch
+   Appointment_Status or Calendar_Entry_Created — the engine owns those. */
+function saveToAppointment(saId, data, okMsg){
+  if(BUSY) return;
+  BUSY = true;
+  dbg('APPOINTMENT -> updateRecordById ' + REPORT_SA + ' id=' + saId, data);
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_SA,
+    id: String(saId),
+    payload: { data: data }
+  }).then(function(resp){
+    BUSY = false;
+    dbg('APPOINTMENT <- raw response', resp);
+    var ok = resp && (resp.code === 3000 || String(resp.code) === '3000');
+    if(!ok){
+      var RI = errInfo(resp);
+      dbg('APPOINTMENT    FAILED', RI);
+      /* A cancel submit from Validations comes back as a failure with the alert
+         text in the message, so showing the real message matters more here than
+         anywhere else in this widget. */
+      toast('Could not save (code ' + (RI.code || '?') + ') — ' + (RI.msg || describe(RI.code)), 'bad');
+      return;
+    }
+    toast(okMsg, 'ok'); announce(okMsg);
+    closeModal(); closeDrawer(); load();
+  }).catch(function(e){
+    BUSY = false;
+    var EI = errInfo(e);
+    console.error('[ServiceRequest] appointment update error', e);
+    toast('Could not save' + (EI.code ? ' (code ' + EI.code + ')' : '') + ' — ' + (EI.msg || describe(EI.code)), 'bad');
+  });
+}
+
+/* 1. Site confirmation — the gate that lets the engine run.
+      Method AND Notes are both required by SA_Site_Confirmation_Validate,
+      which CANCELS THE SUBMIT without them, so both are marked required here
+      rather than letting the officer discover it from a server alert. */
+/* The body of a .notice goes in ONE <span>: the class is display:flex, so
+   bare text with inline tags would become a flex item per fragment and the
+   sentence would render as a column per piece. */
+function askSiteConfirm(o){
+  var sa = saOf(o);
+  if(!sa){ toast('No appointment to confirm yet — the Service Request has no Service Appointment ID.', 'bad'); return; }
+  showModal(
+    '<header><h3>Mark site confirmed</h3><p>' + esc(o.srNo || o.sr || o.so || '—') + ' · ' + esc(o.customer || '—') + '</p></header>' +
+    '<form novalidate>' +
+      '<div class="notice"><span>Pagkatapos nito, hahanap na ang sistema ng slot — mag-aanchor ito sa <b>initial schedule</b> (' +
+        esc(o.deliveryDate ? fmtDate(o.deliveryDate) : 'wala pang petsa') + ').</span></div>' +
+      '<div class="form-sec">' +
+        fSelect('Confirmation Method', 'method', CONF_METHODS, txt(sa.Confirmation_Method), { blank: 'Select…', req: true }) +
+        '<div class="field"><label>Site Confirmation Notes <span class="req">*</span></label><textarea name="notes" rows="3" data-required>' + esc(txt(sa.Site_Confirmation_Notes)) + '</textarea></div>' +
+      '</div>' +
+      '<div class="m-foot"><button type="button" class="btn" data-cancel>Cancel</button><button class="btn primary">Mark confirmed</button></div>' +
+    '</form>',
+    function(d){
+      if(!d.method){ toast('Confirmation Method is required — the server rejects the save without it.', 'bad'); return false; }
+      if(!String(d.notes || '').trim()){ toast('Site Confirmation Notes is required — the server rejects the save without it.', 'bad'); return false; }
+      saveToAppointment(o.saId, {
+        Site_Confirmation_Status: 'Confirmed',
+        Confirmation_Method: d.method,
+        Site_Confirmation_Notes: d.notes,
+        Date_Confirmed: TODAY
+      }, 'Site confirmed — the engine will look for a slot');
+      return false;
+    }
+  );
+}
+
+/* 2. Approve — copy the suggestion into Confirmed, unchanged.
+      Equal values make SA_Scheduling_Override_Validate's mismatchDetected read
+      false, so no Override By/Reason is demanded. Changing even the time here
+      would trip it, which is exactly why Override is a separate action. */
+function askApprove(o){
+  var sa = saOf(o);
+  if(!sa){ toast('No appointment to approve yet.', 'bad'); return; }
+  var sugg = txt(sa.Suggested_Schedule_Date), suggT = txt(sa.Suggested_Time_Slot);
+  if(!sugg){ toast('There is no system suggestion to approve yet.', 'bad'); return; }
+  showModal(
+    '<header><h3>Approve this schedule?</h3><p>' + esc(o.srNo || o.sr || o.so || '—') + ' · ' + esc(o.customer || '—') + '</p></header>' +
+    '<form novalidate>' +
+      '<div class="form-sec"><div class="kv-grid">' +
+        kv('Initial schedule', (o.deliveryDate ? fmtDate(o.deliveryDate) : '—') + (initTimeOf(o) ? ' · ' + initTimeOf(o) : '')) +
+        kv('System suggestion', fmtDate(sugg) + (suggT ? ' · ' + suggT : '')) +
+        kv('Installer', txt(sa.Installer)) +
+        kv('Driver', txt(sa.Assigned_to_Driver)) +
+      '</div></div>' +
+      '<div class="notice"><span>Ito ang magtatakda ng <b>Confirmed Schedule</b>. Ang engine na ang magsusulat ng calendar entry at maglalagay ng status sa <b>Scheduled</b> — pagkatapos nito ay lilitaw na ito sa Service Appointment para sa dispatch.</span></div>' +
+      '<div class="m-foot"><button type="button" class="btn" data-cancel>Cancel</button><button class="btn primary">Approve</button></div>' +
+    '</form>',
+    function(){
+      var data = { Confirmed_Schedule_Date: sugg };
+      /* Sent back EXACTLY as it was read. Re-formatting it through
+         to12Hour(to24Hour(x)) would risk a value that no longer equals
+         Suggested_Time_Slot, which would then demand override paperwork. */
+      if(suggT) data.Confirmed_Time_Slot = suggT;
+      saveToAppointment(o.saId, data, 'Schedule approved');
+      return false;
+    }
+  );
+}
+
+/* 3. Override — any date/time other than the suggestion.
+      Override_By and Override_Reason are both required by
+      SA_Scheduling_Override_Validate, which CANCELS THE SUBMIT without them. */
+function askOverride(o){
+  var sa = saOf(o);
+  if(!sa){ toast('No appointment to schedule yet.', 'bad'); return; }
+  var sugg = txt(sa.Suggested_Schedule_Date), suggT = txt(sa.Suggested_Time_Slot);
+  var curD = txt(sa.Confirmed_Schedule_Date) || sugg || o.deliveryDate || '';
+  var curT = to24Hour(txt(sa.Confirmed_Time_Slot) || suggT || '') || initTimeOf(o);
+  showModal(
+    '<header><h3>Set the schedule by hand</h3><p>' + esc(o.srNo || o.sr || o.so || '—') + ' · ' + esc(o.customer || '—') + '</p></header>' +
+    '<form novalidate>' +
+      '<div class="form-sec"><div class="kv-grid">' +
+        kv('Initial schedule', (o.deliveryDate ? fmtDate(o.deliveryDate) : '—') + (initTimeOf(o) ? ' · ' + initTimeOf(o) : '')) +
+        kv('System suggestion', sugg ? (fmtDate(sugg) + (suggT ? ' · ' + suggT : '')) : 'none') +
+      '</div></div>' +
+      '<div class="form-sec row2">' +
+        fInput('Confirmed date', 'date', curD, { type: 'date', req: true }) +
+        fInput('Confirmed time', 'time', curT, { type: 'time' }) +
+      '</div>' +
+      '<div class="form-sec row2">' +
+        fInput('Override By', 'by', txt(sa.Override_By), { req: true }) +
+        fInput('Override Reason', 'reason', txt(sa.Override_Reason), { req: true }) +
+      '</div>' +
+      '<div class="notice"><span>Hinihingi ng server ang <b>Override By</b> at <b>Override Reason</b> kapag iba ang petsa sa suggestion — hindi ito mase-save kung kulang.</span></div>' +
+      '<div class="m-foot"><button type="button" class="btn" data-cancel>Cancel</button><button class="btn primary">Save schedule</button></div>' +
+    '</form>',
+    function(d){
+      if(!d.date){ toast('A confirmed date is required.', 'bad'); return false; }
+      if(!String(d.by || '').trim()){ toast('Override By is required — the server rejects the save without it.', 'bad'); return false; }
+      if(!String(d.reason || '').trim()){ toast('Override Reason is required — the server rejects the save without it.', 'bad'); return false; }
+      var data = {
+        Confirmed_Schedule_Date: d.date,
+        Override_By: d.by,
+        Override_Reason: d.reason,
+        Override_Applied: true
+      };
+      if(d.time) data.Confirmed_Time_Slot = to12Hour(d.time);
+      /* Original_System_Suggestion keeps what the engine had actually proposed,
+         so the override is auditable after the fact. Only written when there
+         was a suggestion to record. */
+      if(sugg) data.Original_System_Suggestion = fmtDate(sugg) + (suggT ? ' ' + suggT : '');
+      saveToAppointment(o.saId, data, 'Schedule saved');
+      return false;
+    }
+  );
+}
+
+/* 4. Auto-schedule / Re-run Engine — invokes dms_reschedule Custom API on the appointment */
+function runAutoSchedule(o){
+  if(BUSY) return;
+  if(!o.saId){
+    toast('No linked Service Appointment yet.', 'bad');
+    return;
+  }
+  var sa = saOf(o);
+  if(!sa){
+    toast('Appointment data not loaded.', 'bad');
+    return;
+  }
+  if(txt(sa.Site_Confirmation_Status) !== 'Confirmed'){
+    toast('Site must be confirmed first before running auto-scheduling.', 'warn');
+    return;
+  }
+  BUSY = true;
+  dbg('AUTO-SCHEDULE -> invokeCustomApi ' + CUSTOM_API_RESCHEDULE, { recordId: String(o.saId) });
+  toast('Calculating schedule with the engine…', 'info');
+
+  ZOHO.CREATOR.DATA.invokeCustomApi({
+    api_name: CUSTOM_API_RESCHEDULE,
+    http_method: 'POST',
+    content_type: 'application/json',
+    payload: { recordId: String(o.saId) },
+    public_key: CUSTOM_API_RESCHEDULE_KEY
+  }).then(function(resp){
+    BUSY = false;
+    dbg('AUTO-SCHEDULE <- raw response', resp);
+    var out = (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp);
+    var st = out && out.status;
+    if(st === 'success' || st === 'ok' || st === 'confirmed'){
+      var msg = (out && out.message) || 'Suggestion ready';
+      toast(msg, 'ok');
+      announce(msg);
+      load();
+    } else if(st === 'flagged'){
+      var msg = (out && out.message) || 'Flagged — see the Exception Queue';
+      toast(msg, 'warn');
+      announce(msg);
+      load();
+    } else if(st === 'blocked' || st === 'skipped'){
+      toast((out && out.message) || 'Engine could not run on this record', 'warn');
+    } else {
+      var EI = errInfo(resp);
+      toast('Auto-scheduling failed: ' + (EI.msg || describe(EI.code)), 'bad');
+    }
+  }).catch(function(e){
+    BUSY = false;
+    var EI = errInfo(e);
+    dbg('AUTO-SCHEDULE THREW', EI);
+    toast('Auto-scheduling failed' + (EI.code ? ' (code ' + EI.code + ')' : '') + ' — ' + (EI.msg || describe(EI.code)), 'bad');
+  });
+}
+
+function requestForm(o){
+  o = o || { sr: nextSRNo(), rma: '', originalSO: '', reason: '', sub: '', so: '', pac: '', deliveryDate: '',
+             initTime: '', pullOut: 'No', deliveryType: '', itemName: '', sku: '', qty: '', priority: '', scheduledBy: '',
+             customer: '', customerAddress: '', city: '', email: '', phone: '' };
+  return '<form novalidate>' +
+    '<div class="form-sec row2">' +
+      fInput('Service Request #', 'sr', o.sr, { ph: 'SR-00001' }) +
+      fInput('RMA#', 'rma', o.rma) +
+    '</div>' +
+    '<div class="form-sec row2">' +
+      fInput('Original SO#', 'originalSO', o.originalSO) +
+      fInput('Package Number', 'pac', o.pac) +
+    '</div>' +
+    '<div class="form-sec">' +
+      '<div class="field"><label>Sales Order# <span class="req">*</span></label><textarea name="so" rows="2" data-required>' + esc(o.so) + '</textarea></div>' +
+      fSelect('Sub Reason', 'sub', SUBS, o.sub, { blank: 'Select…' }) +
+      '<div class="field"><label>Reason</label><textarea name="reason" rows="2">' + esc(o.reason) + '</textarea></div>' +
+    '</div>' +
+    /* Delivery_Date IS the initial schedule date — relabelled 2026-10-27 rather
+       than adding a second date field beside it. Initial Schedule Time is its
+       new companion; together they are what the engine anchors on. */
+    '<div class="form-sec row3">' +
+      fInput('Initial Schedule Date', 'deliveryDate', o.deliveryDate, { type: 'date' }) +
+      fInput('Initial Schedule Time', 'initTime', initTimeOf(o), { type: 'time' }) +
+      fInput('Delivery Type', 'deliveryType', o.deliveryType) +
+    '</div>' +
+    '<div class="form-sec row2">' +
+      fSelect('Priority Level', 'priority', PRIORITIES, o.priority, { blank: 'Select…' }) +
+      fSelect('Scheduled by', 'scheduledBy', SCHEDULERS, o.scheduledBy, { blank: 'Select…' }) +
+    '</div>' +
+    '<div class="form-sec">' + fRadio('If Pull Out', 'pullOut', o.pullOut === 'Yes') + '</div>' +
+    '<div class="form-sec row3">' +
+      fInput('Item Name', 'itemName', o.itemName) +
+      fInput('SKU', 'sku', o.sku) +
+      fInput('Quantity', 'qty', o.qty, { type: 'number', min: 0 }) +
+    '</div>' +
+    '<div class="form-sec row2">' +
+      fInput('Customer Name', 'customer', o.customer) +
+      fInput('City', 'city', o.city) +
+    '</div>' +
+    '<div class="form-sec">' +
+      '<div class="field"><label>Customer Address</label><textarea name="customerAddress" rows="2">' + esc(o.customerAddress) + '</textarea></div>' +
+    '</div>' +
+    '<div class="form-sec row2">' +
+      fInput('Email', 'email', o.email, { type: 'email' }) +
+      fInput('Phone', 'phone', o.phone) +
+    '</div>';
+}
+
+function payloadFrom(d){
+  var p = {
+    Service_Request1: d.sr || '',
+    RMA1: d.rma || '',
+    Original_SO: d.originalSO || '',
+    Reason: d.reason || '',
+    Sub: d.sub || '',
+    Sales_Order: d.so || '',
+    Package_Number: d.pac || '',
+    If_Pull_Out: d.pullOut || 'No',
+    Delivery_Type: d.deliveryType || '',
+    Item_Name: d.itemName || '',
+    SKU: d.sku || '',
+    Priority_Level: d.priority || '',
+    Scheduled_by: d.scheduledBy || '',
+    Customer_Name: d.customer || '',
+    Customer_Address: d.customerAddress || '',
+    City: d.city || '',
+    Email: d.email || '',
+    Phone_Number: d.phone || ''
+  };
+  /* Quantity is a number field — an empty string is rejected, so it is only
+     sent when the officer actually typed one. Same for the date. */
+  if(String(d.qty).trim() !== '') p.Quantity = Number(d.qty);
+  if(d.deliveryDate) p.Delivery_Date = d.deliveryDate;
+  /* Initial_Schedule_Time is a DATE-TIME field, so it needs a date as well as a
+     time — see the Initial Scheduling widget's own comment for the live 3002
+     this cost. "YYYY-MM-DD HH:mm:ss", the only datetime format proven live in
+     this app. Skipped unless both halves are present. */
+  if(d.initTime && d.deliveryDate){
+    var t = String(d.initTime);
+    p.Initial_Schedule_Time = d.deliveryDate + ' ' + (t.length === 5 ? t + ':00' : t);
+  }
+  return p;
+}
+
+function askNew(){
+  showModal(
+    '<header><h3>New service request</h3><p>Bagong record sa Service Request Form</p></header>' +
+    requestForm(null) +
+    '<div class="m-foot"><button type="button" class="btn" data-cancel>Cancel</button><button class="btn primary">Add request</button></div></form>',
+    function(d){
+      var data = payloadFrom(d);
+      /* A hand-made request joins the chain too, so SR_Created_Make_Appointment
+         builds it an appointment exactly like a handed-off one. */
+      data.SR_Status = 'New';
+      addRecord(data, 'Service request added');
+      return false;
+    }
+  );
+}
+
+function askEdit(o){
+  showModal(
+    '<header><h3>Edit service request</h3><p>' + esc(o.sr || o.so || '—') + '</p></header>' +
+    requestForm(o) +
+    '<div class="m-foot"><button type="button" class="btn" data-cancel>Cancel</button><button class="btn primary">Save</button></div></form>',
+    function(d){ saveRecord(o.id, payloadFrom(d), 'Service request saved'); return false; }
+  );
+}
+
+/* ---------------- detail drawer ---------------- */
+function kv(k, v, full){ return '<div' + (full ? ' class="full"' : '') + '><div class="k">' + esc(k) + '</div><div class="v">' + esc(v || '—') + '</div></div>'; }
+function resolveMissingSkuSR(so, pac, itemName){
+  if(!so || typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords !== 'function') return Promise.resolve('');
+  return ZOHO.CREATOR.DATA.getRecords({
+    report_name: 'Sales_Order_Readiness_Gate_Report',
+    criteria: '(sales_order_number == "' + String(so).trim() + '")',
+    page: 1,
+    pageSize: 10,
+    field_config: 'all'
+  }).then(function(resp){
+    var rows = (resp && (resp.code === 3000 || String(resp.code) === '3000') && resp.data) ? resp.data : [];
+    if(pac && pac !== '—'){
+      var hitPac = rows.find(function(x){ return txt(x.Package_Order) === pac && txt(x.SKU); });
+      if(hitPac) return txt(hitPac.SKU);
+    }
+    if(itemName){
+      var hitName = rows.find(function(x){ return txt(x.Item_Name).trim().toLowerCase() === itemName.trim().toLowerCase() && txt(x.SKU); });
+      if(hitName) return txt(hitName.SKU);
+    }
+    var hitAny = rows.find(function(x){ return !!txt(x.SKU); });
+    return hitAny ? txt(hitAny.SKU) : '';
+  }).catch(function(){ return ''; });
+}
+
+function openRecord(o){
+  var renderBody = function(){
+    if(!o.items || !o.items.length || o.items.length <= 1){
+      var nList = (o.itemName || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+      if(nList.length > 1){
+        var qList = (o.qty || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+        var pList = (o.pac || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+        var sList = (o.sku || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+        o.items = nList.map(function(name, idx){
+          return {
+            Item_Name: name,
+            SKU: sList[idx] || (idx === 0 ? o.sku : ''),
+            Quantity: qList[idx] || 1,
+            PAC: pList[idx] || pList[0] || o.pac || ''
+          };
+        });
+      }
+    }
+    /* One row per line item, resolved by lineItemsOf() — see its comment. */
+    var lineItems = lineItemsOf(o);
+    var items = lineItems.length
+      ? '<div class="tbl-wrap"><table class="q"><thead><tr><th>Item Name</th><th>SKU</th><th>Qty</th><th>Package</th></tr></thead><tbody>' +
+        lineItems.map(function(x){
+          return '<tr><td>' + esc(x.name || '—') + '</td><td>' + esc(x.sku || '—') + '</td><td>' + esc(x.qty || '1') + '</td><td>' + esc(x.pac || o.pac || '—') + '</td></tr>';
+        }).join('') + '</tbody></table></div>'
+      : '<p class="muted">Walang laman ang Item Details grid.</p>';
+
+    var sa = saOf(o);
+    var st = stageOf(o);
+    /* The scheduling section reads entirely off the appointment. When there is no
+       appointment it says so plainly rather than showing a grid of dashes — that
+       state means SR_Created_Make_Appointment has not run, which is a real thing
+       to go and check, not a blank record. */
+    var sched = sa
+      ? '<div class="kv-grid">' +
+          kv('Site confirmation', txt(sa.Site_Confirmation_Status)) +
+          kv('Date confirmed', txt(sa.Date_Confirmed) ? fmtDate(txt(sa.Date_Confirmed)) : '') +
+          kv('Suggested date', txt(sa.Suggested_Schedule_Date) ? fmtDate(txt(sa.Suggested_Schedule_Date)) : '') +
+          kv('Suggested time', txt(sa.Suggested_Time_Slot)) +
+          kv('Confirmed date', txt(sa.Confirmed_Schedule_Date) ? fmtDate(txt(sa.Confirmed_Schedule_Date)) : '') +
+          kv('Confirmed time', txt(sa.Confirmed_Time_Slot)) +
+          kv('Installer', txt(sa.Installer)) +
+          kv('Driver', txt(sa.Assigned_to_Driver)) +
+          kv('Delivery status', txt(sa.Appointment_Status)) +
+          kv('Exception', txt(sa.Exception_Status) + (txt(sa.Exception_Reason) ? ' — ' + txt(sa.Exception_Reason) : '')) +
+          kv('Requested (anchor)', (txt(sa.Requested_Delivery_Date) ? fmtDate(txt(sa.Requested_Delivery_Date)) : '—') + (txt(sa.Requested_Delivery_Time) ? ' · ' + txt(sa.Requested_Delivery_Time) : ''), true) +
+        '</div>'
+      : (o.saId
+          ? '<p class="muted">May Service Appointment ID (' + esc(o.saId) + ') pero hindi ito mabasa sa Service Appointment report. Baka na-delete, o nabigo ang pagbasa — tingnan ang console.</p>'
+          : '<p class="muted">Wala pang appointment. Ang <b>SR_Created_Make_Appointment</b> ang gumagawa nito kapag nabuo ang Service Request — kung blangko pa ito, hindi pa naka-paste nang live ang workflow na iyon.</p>');
+
+    openDrawer(
+      '<div class="dr-head"><div style="flex:1;min-width:0"><h3>' + esc(o.srNo || o.sr || '—') + '</h3>' +
+        '<p>' + esc(o.customer || '—') + (o.sub ? (' · ' + esc(o.sub)) : '') + ' ' +
+        '<span class="pill ' + st.cls + '">' + esc(st.label) + '</span></p></div>' +
+        '<button type="button" class="btn icon" data-close aria-label="Close">' + svg(IC.close, 16) + '</button></div>' +
+      '<div class="dr-body">' +
+        '<div class="dr-sec"><h4>Initial schedule</h4><div class="kv-grid">' +
+          kv('Initial date', o.deliveryDate ? fmtDate(o.deliveryDate) : '') +
+          kv('Initial time', initTimeOf(o)) +
+          kv('Package', o.pac) + kv('Delivery Type', o.deliveryType) +
+        '</div>' +
+        '<p class="muted">Ito ang i-aanchor ng engine sa paghahanap ng slot — hindi "ngayon".</p>' +
+        '</div>' +
+        '<div class="dr-sec"><h4>Auto-scheduling</h4>' + sched +
+          (rowActions(o) ? '<div class="acts" style="margin-top:12px">' + rowActions(o) + '</div>' : '') +
+        '</div>' +
+        '<div class="dr-sec"><h4>Chain</h4><div class="kv-grid">' +
+          kv('SR Status', o.srStatus) +
+          kv('Order Aggregation ID', o.oaId) +
+          kv('Initial Schedule ID', o.isId) +
+          kv('Service Appointment ID', o.saId) +
+        '</div></div>' +
+        '<div class="dr-sec"><h4>Request</h4><div class="kv-grid">' +
+          kv('Service Request #', o.sr) + kv('RMA#', o.rma) +
+          kv('Original SO#', o.originalSO) + kv('Sales Order#', o.so) +
+          kv('Package Number', o.pac) + kv('Delivery Date', o.deliveryDate ? fmtDate(o.deliveryDate) : '') +
+          kv('Sub Reason', o.sub) + kv('If Pull Out', o.pullOut) +
+          kv('Delivery Type', o.deliveryType) + kv('Priority Level', o.priority) +
+          kv('Scheduled by', o.scheduledBy) + kv('Reason', o.reason, true) +
+        '</div></div>' +
+        /* REMOVED 2026-10-29, per user — the Item Name / SKU / Quantity summary
+           that used to sit above this table. It restated the header's joined
+           list ("Multiple SKUs (2)", one lump quantity) directly above a table
+           that says the same thing properly, per line item. The table is the
+           answer; the summary only made the two look like they disagreed. */
+        '<div class="dr-sec"><h4>Item</h4>' + items + '</div>' +
+        '<div class="dr-sec"><h4>Customer</h4><div class="kv-grid">' +
+          kv('Name', o.customer) + kv('City', o.city) +
+          kv('Email', o.email) + kv('Phone', o.phone) +
+          kv('Customer Address', o.customerAddress, true) + kv('Address', o.address, true) +
+        '</div></div>' +
+        '<div class="dr-sec"><h4>Links</h4><div class="kv-grid">' +
+          kv('Complaint Record ID', o.complaintId) + kv('Appointment Record ID', o.appointmentId) +
+        '</div></div>' +
+      '</div>'
+    );
+  };
+
+  if(o.hydrated){
+    renderBody();
+  } else {
+    fetchRequestDetail(o.id).then(function(full){
+      if(full){
+        if(Array.isArray(full.Item_Details) && full.Item_Details.length) o.items = full.Item_Details;
+        if(full.Item_Name) o.itemName = txt(full.Item_Name);
+        if(full.SKU) o.sku = txt(full.SKU);
+        if(full.Quantity !== undefined && full.Quantity !== null && full.Quantity !== '') o.qty = txt(full.Quantity);
+        if(full.Customer_Name) o.customer = txt(full.Customer_Name);
+        if(full.Customer_Address) o.customerAddress = txt(full.Customer_Address);
+        if(full.City) o.city = txt(full.City);
+        if(full.Email) o.email = txt(full.Email);
+        if(full.Phone_Number) o.phone = txt(full.Phone_Number);
+        if(full.Package_Number) o.pac = txt(full.Package_Number);
+        o.hydrated = true;
+      }
+      if(!o.items || !o.items.length || o.items.length <= 1){
+        var nList = (o.itemName || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+        if(nList.length > 1){
+          var qList = (o.qty || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+          var pList = (o.pac || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+          var sList = (o.sku || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+          o.items = nList.map(function(name, idx){
+            return {
+              Item_Name: name,
+              SKU: sList[idx] || (idx === 0 ? o.sku : ''),
+              Quantity: qList[idx] || 1,
+              PAC: pList[idx] || pList[0] || o.pac || ''
+            };
+          });
+        }
+      }
+      var missingSku = (o.items || []).filter(function(it){ return !it.SKU && !it.sku; });
+      if(!o.sku || missingSku.length){
+        var promises = (o.items && o.items.length) ? o.items.map(function(it){
+          if(it.SKU || it.sku) return Promise.resolve(it.SKU || it.sku);
+          return resolveMissingSkuSR(o.so, it.PAC || o.pac, it.Item_Name).then(function(s){
+            if(s) it.SKU = s;
+            return s || '';
+          });
+        }) : [resolveMissingSkuSR(o.so, o.pac, o.itemName).then(function(s){ if(s) o.sku = s; return s || ''; })];
+        Promise.all(promises).then(function(results){
+          if(!o.sku && results[0]) o.sku = results[0];
+          renderBody();
+        });
+      } else {
+        renderBody();
+      }
+    });
+  }
+}
+
+/* ---------------- events ---------------- */
+document.addEventListener('click', function(e){
+  var chip = e.target.closest('[data-f]');
+  if(chip){ FILTER = chip.getAttribute('data-f'); render(); return; }
+
+  var btn = e.target.closest('[data-act]');
+  if(btn){
+    var o = rowById(btn.getAttribute('data-id'));
+    if(!o) return;
+    var act = btn.getAttribute('data-act');
+    if(act === 'open') openRecord(o);
+    else if(act === 'edit') askEdit(o);
+    else if(act === 'siteconfirm') askSiteConfirm(o);
+    else if(act === 'approve') askApprove(o);
+    else if(act === 'override') askOverride(o);
+    else if(act === 'engine') runAutoSchedule(o);
+    return;
+  }
+
+  var row = e.target.closest('tr[data-row]');
+  if(row && !e.target.closest('.c-act')){
+    var rec = rowById(row.getAttribute('data-row'));
+    if(rec) openRecord(rec);
+  }
+});
+
+$('#scrim').addEventListener('click', function(){
+  if($('#modal').classList.contains('on')) closeModal();
+  else if($('#drawer').classList.contains('on')) closeDrawer();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    if($('#modal').classList.contains('on')) closeModal();
+    else if($('#drawer').classList.contains('on')) closeDrawer();
+  } else if(e.key === 'Tab' && ($('#modal').classList.contains('on') || $('#drawer').classList.contains('on'))){
+    /* Guarded: the shared trapFocus() also probes #side, which only exists in
+       the prototype's sidebar shell. Unguarded, every Tab press throws. */
+    trapFocus(e);
+  }
+});
+$('#q').addEventListener('input', function(e){ SEARCH = e.target.value; render(); });
+$('#btnRefresh').addEventListener('click', load);
+$('#btnDebug').addEventListener('click', openDebug);
+$('#btnNew').addEventListener('click', askNew);
+
+syncInert();
+load();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Truck Maintenance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dms-tokens.css">
+<style>
+  /* The teal/slate palette that used to live here is now defined in
+     dms-legacy-palette.css, in terms of the shared design tokens, so this
+     widget matches the rest of DMS and follows dark mode. 2026-10-26. */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font-family:inherit}
+
+  .page{padding:24px;display:flex;flex-direction:column;gap:20px;min-height:100vh;box-sizing:border-box}
+  .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .page-header-left h1{font-size:24px;font-weight:700;color:#1A1A2E;letter-spacing:-.02em;line-height:1.2}
+  .page-header-left p{font-size:13px;color:var(--gray-500);margin-top:4px}
+  /* ADDED 2026-09-18, per user ("ba ganun nasataas yung search bar?") — the
+     search box and Add button used to live inside .page-header itself, right
+     next to the title; once the title took up enough width, that inner group
+     wrapped onto its own line UNDER the search box instead of staying beside
+     it. Pulled both into their own always-one-row toolbar below the title
+     instead, so this can't happen regardless of title length. */
+  .page-toolbar{display:flex;align-items:center;gap:10px}
+  .page-toolbar .btn{margin-left:auto}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:var(--radius);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-teal{background:var(--teal);color:var(--white);font-weight:600;box-shadow:0 1px 3px rgba(13,148,136,.3)}
+  .btn-teal:hover{background:var(--teal-dark)}
+  .btn-teal:disabled{background:var(--gray-300);color:var(--gray-500);box-shadow:none;cursor:not-allowed}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--gray-400);color:var(--gray-800)}
+  .btn-ghost:disabled{opacity:.4;cursor:not-allowed}
+  .btn-xs{height:26px;padding:0 9px;font-size:11.5px;gap:4px}
+
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transform:translateY(6px);transition:opacity 200ms ease,transform 200ms ease;pointer-events:none;max-width:340px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  .search-wrap{position:relative;flex:0 1 260px;min-width:180px}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400);pointer-events:none}
+  .search-input{width:100%;height:34px;padding:0 10px 0 32px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--white);color:var(--gray-700);font-size:13px;outline:none;transition:all var(--t);box-sizing:border-box}
+  .search-input:focus{border-color:var(--teal)}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .stat-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:14px 18px;box-shadow:var(--shadow)}
+  .stat-label{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em}
+  .stat-value{font-size:26px;font-weight:700;line-height:1.1;margin:6px 0 2px;color:var(--gray-800);font-variant-numeric:tabular-nums}
+  .stat-value.amber{color:var(--amber)}
+  .stat-value.blue{color:var(--blue)}
+  .stat-value.green{color:var(--green)}
+  .stat-value.red{color:var(--red)}
+
+  /* ==================== KANBAN BOARD ==================== */
+  /* CHANGED 2026-09-18, per user ("yung border dapat hanggang baba") — columns
+     used to size to their own content (`align-items:start`, `min-height:200px`),
+     so an empty/short column's border stopped right after a couple lines of
+     text instead of reading as a real board column. `align-items:stretch`
+     (the CSS grid default, explicitly restored here) makes all 3 columns
+     match the tallest one; the taller `min-height` keeps them a real board
+     shape even when every column is empty at once. */
+  .board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
+  .board-col{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius-lg);display:flex;flex-direction:column;max-height:calc(100vh - 230px);min-height:calc(100vh - 320px)}
+  .board-col-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:2px solid transparent;background:var(--white);border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+  .board-col[data-stage="Open"] .board-col-head{border-bottom-color:var(--amber)}
+  .board-col[data-stage="In Progress"] .board-col-head{border-bottom-color:var(--blue)}
+  .board-col[data-stage="Completed"] .board-col-head{border-bottom-color:var(--green)}
+  .board-col-head h3{font-size:13.5px;font-weight:700;color:var(--gray-800)}
+  .board-col-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:var(--gray-100);color:var(--gray-600);font-size:11.5px;font-weight:700}
+  .board-col-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .board-col-body::-webkit-scrollbar{width:6px}
+  .board-col-body::-webkit-scrollbar-thumb{background:var(--gray-300);border-radius:3px}
+
+  .card{background:var(--white);border:1px solid var(--gray-200);border-left:4px solid var(--gray-300);border-radius:var(--radius);padding:12px 13px;box-shadow:var(--shadow);cursor:pointer;transition:box-shadow var(--t),transform var(--t)}
+  .card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+  .card.issue{border-left-color:var(--red)}
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .card-vehicle{font-size:13.5px;font-weight:700;color:var(--gray-800);line-height:1.3}
+  .card-track{font-size:11px;color:var(--gray-400);font-variant-numeric:tabular-nums;margin-top:1px}
+  .card-meta{font-size:12px;color:var(--gray-600);margin:2px 0}
+  .card-meta b{color:var(--gray-700);font-weight:600}
+  .card-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px}
+  .card-tally{font-size:11.5px;color:var(--gray-500)}
+  .card-actions{display:flex;gap:6px;margin-top:10px}
+
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;border:1px solid transparent;white-space:nowrap}
+  .badge-red{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+  .badge-green{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .badge-amber{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+  .badge-blue{background:var(--blue-light);color:var(--blue);border-color:var(--blue-mid)}
+
+  .empty-col{padding:30px 12px;text-align:center;color:var(--gray-400);font-size:12.5px}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:2000;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:100%;max-width:620px;max-height:90vh;overflow-y:auto}
+  .modal-header{padding:18px 22px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--white);z-index:1}
+  .modal-header h2{font-size:16px;font-weight:700;color:var(--gray-800)}
+  .modal-header p{font-size:12px;color:var(--gray-500);margin-top:2px}
+  .modal-close{cursor:pointer;color:var(--gray-400);font-size:20px;line-height:1;background:none;border:none}
+  .modal-close:hover{color:var(--gray-700)}
+  .modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:16px}
+  .modal-footer{padding:16px 22px;border-top:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;bottom:0;background:var(--white)}
+
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
+  .detail-item label{display:block;font-size:10.5px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+  .detail-item .val{font-size:13.5px;color:var(--gray-800);font-weight:500}
+
+  .section-title{font-size:12px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.05em;padding-bottom:6px;border-bottom:1px solid var(--gray-100)}
+
+  .checklist-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+  .checklist-item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--gray-400)}
+  .checklist-item.checked{color:var(--gray-800)}
+  .checklist-item .tick{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--gray-300);display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+  .checklist-item.checked .tick{background:var(--green);border-color:var(--green);color:var(--white)}
+
+  .photo-gallery{display:flex;flex-wrap:wrap;gap:8px}
+  .photo-gallery img{width:84px;height:84px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--gray-200);background:var(--gray-100)}
+  .sig-wrap img{max-width:220px;max-height:100px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:var(--gray-50)}
+  .no-data{font-size:12.5px;color:var(--gray-400)}
+
+  .field-item label{display:block;font-size:11.5px;font-weight:600;color:var(--gray-600);margin-bottom:5px}
+  .field-item label .req{color:var(--red)}
+  .field-item select,.field-item input,.field-item textarea{width:100%;font-family:inherit;font-size:13.5px;color:var(--gray-800);background:var(--white);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:8px 10px;outline:none}
+  .field-item select:focus,.field-item input:focus,.field-item textarea:focus{border-color:var(--teal)}
+  .field-item.error select,.field-item.error input{border-color:var(--red)}
+  .field-item input[type="text"]{margin-top:8px}
+  .checklist-item.form label{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--gray-700);font-size:13px}
+  .checklist-item.form input[type="checkbox"]{width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0}
+
+  /* ADDED 2026-09-21, per user ("add Track Maintenance, Fuel Entries and Service Entries to this widget, dont create a new widget")
+     — the widget is now a 3-tab module: Track Maintenance (the original checklist Kanban), Fuel Entries, Service Entries. */
+  .tab-nav{display:flex;gap:4px;border-bottom:1.5px solid var(--gray-200)}
+  .tab-btn{display:flex;align-items:center;gap:7px;padding:12px 4px 11px;margin-right:22px;border:none;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;background:transparent;color:var(--gray-500);font-size:13.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:color var(--t),border-color var(--t)}
+  .tab-btn:hover{color:var(--gray-700)}
+  .tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:600}
+  #view-checklist,#view-fuel,#view-service{display:flex;flex-direction:column;gap:20px}
+  .toolbar-filter{height:34px;padding:0 10px;border:1.5px solid var(--gray-200);border-radius:999px;background:var(--white);color:var(--gray-700);font-size:13px;outline:none;max-width:200px}
+  .toolbar-filter:focus{border-color:var(--teal)}
+  .dtable-wrap{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow-x:auto}
+  .dtable{width:100%;border-collapse:collapse;min-width:860px}
+  .dtable thead tr{background:var(--gray-50);border-bottom:1.5px solid var(--gray-200)}
+  .dtable th{padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+  .dtable tbody tr{border-bottom:1px solid var(--gray-100);cursor:pointer;transition:background var(--t)}
+  .dtable tbody tr:hover{background:var(--gray-50)}
+  .dtable tbody tr:last-child{border-bottom:none}
+  .dtable td{padding:11px 14px;font-size:13px;color:var(--gray-700);vertical-align:middle}
+  .dtable td.num{font-variant-numeric:tabular-nums;text-align:right}
+  .dtable th.num{text-align:right}
+  .dtable .clip{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dtable-empty{padding:44px 12px;text-align:center;color:var(--gray-400);font-size:13px}
+  .tag-list{display:flex;flex-wrap:wrap;gap:4px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--teal-light);border:1px solid var(--teal-mid);color:var(--teal-dark);font-size:11px;font-weight:600;white-space:nowrap}
+  .field-item.plain input[type="text"]{margin-top:0}
+  .field-hint{font-size:11.5px;color:var(--gray-400);margin-top:4px}
+  .file-pick{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .file-pick input[type=file]{font-size:12.5px}
+  .file-preview{width:84px;height:84px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--gray-200)}
+  #signatureSection.error .sig-pad-wrap{border-color:#dc2626;border-style:solid}
+  #photosSection.error .file-pick{outline:2px solid #dc2626;outline-offset:4px;border-radius:6px}
+  .sig-pad-wrap{border:1px dashed var(--gray-300,#cbd5e1);border-radius:var(--radius-sm);background:#fff;max-width:420px;margin-top:8px}
+  .sig-pad{display:block;width:100%;height:130px;touch-action:none;cursor:crosshair}
+  .sig-pad-bar{display:flex;align-items:center;justify-content:space-between;max-width:420px;margin-top:4px}
+  .sig-clear{font-size:11.5px;font-weight:600;color:#334155;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:3px 10px;cursor:pointer}
+  .file-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .file-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--gray-100);border:1px solid var(--gray-200);color:var(--gray-600);font-size:11.5px}
+
+  @media (max-width:640px){.toolbar-filter{max-width:none;width:100%}.tab-btn{margin-right:14px}.tab-nav{overflow-x:auto;padding-bottom:2px}}
+
+  .hidden{display:none !important}
+
+  @media (max-width:900px){
+    .board{grid-template-columns:1fr;}
+    /* Columns stack to 1-per-row here — the tall desktop min-height would
+       otherwise force 3x that much empty scrolling on a phone/tablet. */
+    .board-col{max-height:none;min-height:220px}
+  }
+  @media (max-width:640px){
+    .page{padding:14px;gap:14px}
+    .page-toolbar{flex-direction:column;align-items:stretch}
+    .search-wrap{width:100%;flex:1 1 auto}
+    .stat-cards{grid-template-columns:repeat(2,1fr)}
+    .detail-grid{grid-template-columns:1fr}
+    .checklist-grid{grid-template-columns:1fr}
+    .modal-overlay{padding:10px}
+  }
+</style>
+  <link rel="stylesheet" href="dms-legacy-palette.css">
+</head>
+<body>
+
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>Truck Maintenance</h1>
+      <p id="pageSubtitle">Vehicle inspection issues — tracked from report to resolution: Open → In Progress → Completed</p>
+    </div>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-checklist" onclick="switchTab('checklist')">Track Maintenance</button>
+    <button class="tab-btn" id="tab-fuel" onclick="switchTab('fuel')">Fuel Entries</button>
+    <button class="tab-btn" id="tab-service" onclick="switchTab('service')">Service Entries</button>
+  </div>
+
+  <div id="view-checklist">
+  <div class="page-toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-input" id="searchInput" placeholder="Search vehicle, tracking #, driver, checker…" oninput="renderBoard()" />
+    </div>
+    <button class="btn btn-teal" id="btnAdd" onclick="openAddModal()">+ Add Checklist</button>
+  </div>
+
+  <div class="stat-cards" id="statCards"></div>
+
+  <div class="board" id="board">
+    <div class="board-col" data-stage="Open">
+      <div class="board-col-head"><h3>⚠ Open</h3><span class="board-col-count" id="countOpen">0</span></div>
+      <div class="board-col-body" id="colOpen"></div>
+    </div>
+    <div class="board-col" data-stage="In Progress">
+      <div class="board-col-head"><h3>In Progress</h3><span class="board-col-count" id="countProgress">0</span></div>
+      <div class="board-col-body" id="colProgress"></div>
+    </div>
+    <div class="board-col" data-stage="Completed">
+      <div class="board-col-head"><h3>✓ Completed</h3><span class="board-col-count" id="countCompleted">0</span></div>
+      <div class="board-col-body" id="colCompleted"></div>
+    </div>
+  </div>
+  </div><!-- /view-checklist -->
+
+  <div id="view-fuel" class="hidden">
+    <div class="page-toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="fuelSearch" placeholder="Search vehicle, vendor, invoice no…" oninput="renderFuel()" />
+      </div>
+      <select class="toolbar-filter" id="fuelVehicleFilter" onchange="renderFuel()"><option value="">All vehicles</option></select>
+      <button class="btn btn-teal" onclick="openFuelModal()">+ Add Fuel Entry</button>
+    </div>
+    <div class="stat-cards" id="fuelStats"></div>
+    <div class="dtable-wrap">
+      <table class="dtable">
+        <thead><tr>
+          <th>Date</th><th>Vehicle</th><th class="num">Gas Bar</th><th class="num">Odometer</th><th class="num">Price/Unit</th>
+          <th>Vendor</th><th>Invoice No#</th><th>Receipts</th><th>Remarks</th><th></th>
+        </tr></thead>
+        <tbody id="fuelBody"><tr><td colspan="10"><div class="dtable-empty">No record.</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="view-service" class="hidden">
+    <div class="page-toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="svcSearch" placeholder="Search vehicle, service, invoice no…" oninput="renderService()" />
+      </div>
+      <select class="toolbar-filter" id="svcVehicleFilter" onchange="renderService()"><option value="">All vehicles</option></select>
+      <button class="btn btn-teal" onclick="openServiceModal()">+ Add Service Entry</button>
+    </div>
+    <div class="stat-cards" id="svcStats"></div>
+    <div class="dtable-wrap">
+      <table class="dtable">
+        <thead><tr>
+          <th>Vehicle</th><th>Service</th><th>Remarks</th><th class="num">Labor</th><th class="num">Parts</th><th>Tax</th>
+          <th class="num">Total</th><th>Invoice Number</th><th>Receipts</th><th>Submitted by</th><th></th>
+        </tr></thead>
+        <tbody id="svcBody"><tr><td colspan="11"><div class="dtable-empty">No record.</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2 id="modalTitle">Checklist Detail</h2>
+        <p id="modalSubtitle"></p>
+      </div>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid">
+        <div class="field-item" id="wrap_fDateTime">
+          <label>Date &amp; Time <span class="req">*</span></label>
+          <input type="datetime-local" id="fDateTime" step="1" />
+        </div>
+        <div class="field-item" id="wrap_fVehicle">
+          <label>Vehicle <span class="req">*</span></label>
+          <select id="fVehicle" onchange="toggleOther('fVehicle')">
+            <option value="">-Select-</option>
+            <option>Traviz (NIB-3823)</option>
+            <option>Hino (NBX-1446)</option>
+            <option>Choice 3</option>
+            <option>Others</option>
+          </select>
+          <input type="text" id="fVehicleOther" class="hidden" placeholder="Type vehicle name…" />
+        </div>
+        <div class="field-item" id="wrap_fDriver">
+          <label>Driver <span class="req">*</span></label>
+          <select id="fDriver" onchange="toggleOther('fDriver')">
+            <option value="">-Select-</option>
+            <option>Zaldy</option>
+            <option>Marlon</option>
+            <option>Rash</option>
+            <option>Judy</option>
+            <option>Others</option>
+          </select>
+          <input type="text" id="fDriverOther" class="hidden" placeholder="Type driver name…" />
+        </div>
+        <div class="field-item" id="wrap_fChecker">
+          <label>Checker</label>
+          <select id="fChecker" onchange="toggleOther('fChecker')">
+            <option value="">-Select-</option>
+            <option>Zaldy</option>
+            <option>Rash</option>
+            <option>Norman</option>
+            <option>Marlon</option>
+            <option>Judy</option>
+            <option>Others</option>
+          </select>
+          <input type="text" id="fCheckerOther" class="hidden" placeholder="Type checker name…" />
+        </div>
+        <div class="field-item" id="wrap_fOdo">
+          <label>ODO Number <span class="req">*</span></label>
+          <input type="number" id="fOdo" min="0" />
+        </div>
+        <div class="field-item">
+          <label>Gas Number</label>
+          <input type="number" id="fGas" min="0" />
+        </div>
+        <div class="field-item" id="wrap_fIssueFound">
+          <label>Issue Found? <span class="req">*</span></label>
+          <select id="fIssueFound" onchange="onIssueFoundChange()">
+            <option value="">-Select-</option>
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="issueDescWrap" class="field-item hidden">
+        <label>Issue Description</label>
+        <textarea id="fIssueDesc" rows="2"></textarea>
+      </div>
+
+      <div>
+        <div class="section-title" style="margin-bottom:8px">Vehicle Checklist <span class="req">*</span> <span class="no-data">(at least 1)</span></div>
+        <div class="checklist-grid" id="fChecklist"></div>
+      </div>
+
+      <div id="photosSection">
+        <div class="section-title" style="margin-bottom:8px">Odometer Photo <span class="req" id="photoReqStar">*</span></div>
+        <div class="photo-gallery" id="dPhotos"><span class="no-data">No photos.</span></div>
+        <div class="file-pick">
+          <input type="file" id="fOdoPhoto" accept="image/*" capture="environment" onchange="onOdoPhotoChange()" />
+          <img id="fOdoPhotoPreview" class="file-preview hidden" alt="Selected photo" />
+        </div>
+        <div class="field-hint" id="photoHint">Take or choose 1 photo of the odometer.</div>
+      </div>
+
+      <div id="signatureSection">
+        <div class="section-title" style="margin-bottom:8px">Checker's Signature <span class="req" id="sigReqStar">*</span></div>
+        <div class="sig-wrap" id="dSignature"><span class="no-data">No signature.</span></div>
+        <div class="sig-pad-wrap"><canvas class="sig-pad" id="fSigPad"></canvas></div>
+        <div class="sig-pad-bar">
+          <span class="field-hint" id="sigHint" style="margin-top:0">Sign inside the box.</span>
+          <button type="button" class="sig-clear" onclick="clearSigPad()">Clear</button>
+        </div>
+      </div>
+
+      <div class="field-item">
+        <label>Status</label>
+        <select id="fStatus">
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span class="no-data" id="modalTrack">—</span>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-teal" id="btnSaveChecklist" onclick="saveChecklist()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADDED 2026-09-21 — Fuel Entries add/edit -->
+<div class="modal-overlay" id="fuelOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div><h2 id="fuelModalTitle">Add Fuel Entry</h2><p id="fuelModalSub"></p></div>
+      <button class="modal-close" onclick="closeFuelModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid">
+        <div class="field-item" id="wrap_fFuelVehicle">
+          <label>Vehicle <span class="req">*</span></label>
+          <select id="fFuelVehicle" onchange="toggleOther('fFuelVehicle')"></select>
+          <input type="text" id="fFuelVehicleOther" class="hidden" placeholder="Type vehicle name…" />
+        </div>
+        <div class="field-item plain" id="wrap_fFuelDate">
+          <label>Date <span class="req">*</span></label>
+          <input type="date" id="fFuelDate" />
+        </div>
+        <div class="field-item"><label>Gas Bar</label><input type="number" id="fFuelGas" step="any" /></div>
+        <div class="field-item"><label>Odometer</label><input type="number" id="fFuelOdo" step="any" min="0" /></div>
+        <div class="field-item"><label>Price/Unit</label><input type="number" id="fFuelPrice" step="any" min="0" /></div>
+        <div class="field-item plain"><label>Vendor</label><input type="text" id="fFuelVendor" /></div>
+        <div class="field-item plain"><label>Invoice No#</label><input type="text" id="fFuelInvoice" /></div>
+      </div>
+      <div class="field-item"><label>Remarks</label><textarea id="fFuelRemarks" rows="3"></textarea></div>
+      <div id="fuelReceiptSection">
+        <div class="section-title" style="margin-bottom:8px">Invoice Receipt</div>
+        <div class="photo-gallery" id="fuelReceipts"><span class="no-data">No receipt.</span></div>
+        <div class="no-data" style="margin-top:6px">Receipts can only be added via the native Zoho form / mobile app, not here.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span class="no-data" id="fuelModalTrack">—</span>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="closeFuelModal()">Cancel</button>
+        <button class="btn btn-teal" id="btnSaveFuel" onclick="saveFuel()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADDED 2026-09-21 — Service Entries add/edit -->
+<div class="modal-overlay" id="svcOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div><h2 id="svcModalTitle">Add Service Entry</h2><p id="svcModalSub"></p></div>
+      <button class="modal-close" onclick="closeServiceModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-item" id="wrap_fSvcVehicle">
+        <label>Vehicle <span class="req">*</span></label>
+        <select id="fSvcVehicle" onchange="toggleOther('fSvcVehicle')"></select>
+        <input type="text" id="fSvcVehicleOther" class="hidden" placeholder="Type vehicle name…" />
+      </div>
+      <div>
+        <div class="section-title" style="margin-bottom:8px">Service</div>
+        <div class="checklist-grid" id="fSvcChecks"></div>
+      </div>
+      <div class="field-item"><label>Remarks</label><textarea id="fSvcRemarks" rows="3"></textarea></div>
+
+      <div class="section-title">Invoice Details</div>
+      <div class="detail-grid">
+        <div class="field-item"><label>Labor</label><input type="number" id="fSvcLabor" step="any" min="0" oninput="autoSvcTotal()" /></div>
+        <div class="field-item"><label>Parts</label><input type="number" id="fSvcParts" step="any" min="0" oninput="autoSvcTotal()" /></div>
+        <div class="field-item plain"><label>Tax</label><input type="text" id="fSvcTax" /></div>
+        <div class="field-item" id="wrap_fSvcTotal">
+          <label>Total <span class="req">*</span></label>
+          <input type="number" id="fSvcTotal" step="any" min="0" oninput="document.getElementById('fSvcTotal').dataset.auto='0'" />
+          <div class="field-hint">Fills in as Labor + Parts until you type your own total.</div>
+        </div>
+        <div class="field-item plain"><label>Invoice Number</label><input type="text" id="fSvcInvoice" /></div>
+        <div class="field-item plain"><label>Submitted by</label><input type="text" id="fSvcSubmittedBy" /></div>
+      </div>
+      <div id="svcReceiptSection">
+        <div class="section-title" style="margin-bottom:8px">Invoice Receipt</div>
+        <div class="photo-gallery" id="svcReceipts"><span class="no-data">No receipt.</span></div>
+        <div class="no-data" style="margin-top:6px">Receipts can only be added via the native Zoho form / mobile app, not here.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span class="no-data" id="svcModalTrack">—</span>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="closeServiceModal()">Cancel</button>
+        <button class="btn btn-teal" id="btnSaveSvc" onclick="saveService()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* ==================== CONFIG ====================
+   Form: Daily_Checklist_for_Vehicle, Report: Daily_Checklist_for_Vehicle_Report —
+   CONFIRMED 2026-09-18 against the user's own live .rpt definition (not the
+   project's usual "All_<FormName>" pattern this time, a custom report name
+   instead). That live report definition explicitly lists 12 named fields
+   (Date_Time, Vehicle_Name, ODO_Number, Gas_Number, Vehicle_Checker,
+   Vehicle_Driver, Vehicle_Checklist, Issue_Found, Issue_Description,
+   Odometer_Photo_Upload, Checker_s_Signature, Tracking_Number) — Zoho Creator
+   reports built this way only expose the fields explicitly added to them, not
+   automatically every form field. The new Status field below is NOT on that
+   list yet — see its own comment, this is the SAME class of bug this project
+   already hit once today on a completely different widget (Fleet Decision
+   silently reading blank because the report's own Configure Fields never
+   included it, even though the form field itself was real and populated). */
+const FORM_NAME = 'Daily_Checklist_for_Vehicle';
+const REPORT_NAME = 'Daily_Checklist_for_Vehicle_Report';
+
+/* ADDED 2026-09-18 — the form as given had NO field to track an issue's resolution
+   status, which this whole Kanban board is built around (per user: Open = issue
+   found, not yet addressed; In Progress = being worked on; Completed = resolved or
+   no issue at all). Needs a NEW field created live on Daily_Checklist_for_Vehicle:
+     Field Name: Status
+     Field Type: Dropdown (Picklist)
+     Choices: Open, In Progress, Completed
+     Default: leave blank (the paired on-add workflow below sets it on submit;
+       existing old records with no Status are treated as "Open" by this widget's
+       own stageOf() fallback below, never left invisible in no column).
+   IMPORTANT, per REPORT_NAME's own comment above: creating this field on the FORM
+   is not enough by itself — Daily_Checklist_for_Vehicle_Report's own field list
+   must also have Status added to it (Report Builder → Configure Fields / similar),
+   or getRecords will keep returning records with Status silently absent no matter
+   what the form itself holds — the exact bug already hit once today elsewhere in
+   this project.
+   See PASTE_DailyChecklistStatusOnAdd.txt (repo root, Widget/DMS/) for the on-add
+   workflow that auto-sets this per new submission. */
+const STATUS_FIELD = 'Status';
+
+// Checklist choices, alphabetized to match the form's own `sortorder = ascending` —
+// order here is just for a stable, predictable rendering in the detail modal, not
+// tied to any real field metadata.
+const CHECKLIST_ITEMS = ['Aircon','Battery','Belt','Brakes','Coolant Level','Engine',
+  'Engine Temp','Fuel Gauge','Horn','Lights (Head, Turn, Parking)','Oil & Filter',
+  'Plate Number','Steering','Tires','Vehicle Sound'];
+
+const STAGES = ['Open', 'In Progress', 'Completed'];
+
+// Picklist fields with an "Others" free-text option, per the form's own
+// `others option = true` flag. Kept as one lookup so populate/resolve/reset
+// helpers can loop over all 3 instead of repeating near-identical code per field.
+const OTHERS_FIELDS = ['fVehicle', 'fDriver', 'fChecker'];
+
+/* ==================== STATE ==================== */
+var ALL_ROWS = [];
+var CURRENT_ID = null;
+var EDIT_MODE = 'add'; // 'add' or 'edit'
+
+window.addEventListener('load', loadList);
+
+function showToast(msg, duration){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, duration || 3200);
+}
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function errCode(e){
+  try {
+    if(e && e.responseText) return JSON.parse(e.responseText).code;
+    var s = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+    return JSON.parse(JSON.parse(s).responseText || s).code;
+  } catch(_){ return null; }
+}
+
+// Turns a Zoho error (resolved non-3000 response OR rejected promise) into a toast
+// message. code 2945 / Z223 = the widget's session token expired (a hard refresh of
+// this tab fixes it, not a code bug). code 3001/3002 = a field value was rejected;
+// the field name + reason is pulled out of the response so no console is needed.
+function saveErrorMessage(e){
+  var obj = e;
+  try { if(e && e.responseText) obj = JSON.parse(e.responseText); } catch(_){}
+  var code = (obj && obj.code !== undefined) ? obj.code : errCode(e);
+  if(String(code) === '2945' || (obj && obj.description === 'Z223')){
+    return 'Session expired — press Ctrl+Shift+R to reload this page, then save again right away.';
+  }
+  var detail = '';
+  var err = obj && (obj.error || (obj.data && obj.data.error));
+  if(Array.isArray(err)){
+    detail = err.map(function(x){
+      if(typeof x === 'string') return x;
+      if(x && typeof x === 'object'){
+        var parts = [];
+        Object.keys(x).forEach(function(k){ parts.push(k + ': ' + (typeof x[k] === 'string' ? x[k] : JSON.stringify(x[k]))); });
+        return parts.join(', ');
+      }
+      return String(x);
+    }).join('; ');
+  } else if(err && typeof err === 'object'){
+    detail = Object.keys(err).map(function(k){ return k + ': ' + (typeof err[k] === 'string' ? err[k] : JSON.stringify(err[k])); }).join('; ');
+  } else if(typeof err === 'string'){
+    detail = err;
+  } else if(obj && (obj.message || obj.description)){
+    detail = obj.message || obj.description;
+  }
+  if(String(code) === '3002' && (detail.indexOf('Odometer_Photo_Upload') !== -1 || detail.indexOf('Checker_s_Signature') !== -1)){
+    return 'Save blocked by Zoho: in Form Builder, "Mandatory" must be unticked for Odometer Photo Upload & Checker\'s Signature (API cannot carry files on create; widget enforces required photo & signature directly).';
+  }
+  return 'Save failed (code ' + code + ')' + (detail ? ' — ' + detail : ' — see console');
+}
+
+// Every existing record before the Status field/workflow existed has a blank
+// Status — treat those as "Open" so nothing silently disappears from the board.
+function stageOf(r){
+  var s = (r[STATUS_FIELD] || '').toString().trim();
+  return STAGES.indexOf(s) !== -1 ? s : 'Open';
+}
+
+// Checkboxes field can come back as a real array, a comma-separated string, or a
+// newline-separated string depending on report field_config — normalize to an
+// array of trimmed, non-empty strings (same defensive shape as this project's
+// other checkbox-field renderers, e.g. FieldServiceSiteVisits' tagList()).
+function checklistArray(v){
+  if(Array.isArray(v)) return v.filter(Boolean);
+  if(!v) return [];
+  return String(v).split(/\r?\n|,/).map(function(s){ return s.trim(); }).filter(Boolean);
+}
+
+// Multi-file image fields can come back as an array of URL strings OR a single
+// string — normalize to an array either way (same gap FieldServiceSiteVisits'
+// firstImageUrl() hit live: passing a raw array into setImageData throws
+// "m.startsWith is not a function").
+function imageUrlArray(v){
+  if(Array.isArray(v)) return v.filter(Boolean);
+  if(!v) return [];
+  return [v];
+}
+// Cross-origin gotcha confirmed elsewhere in this project (FieldServiceSiteVisits,
+// Receiving/Exception's Evidence_Photos): a bare Creator download URL 404s in a
+// plain <img src> because the widget iframe is served from zappsusercontent.com,
+// a different origin. ZOHO.CREATOR.UTIL.setImageData(imgEl, url, cb) resolves it
+// correctly — needs a live DOM element, so callers render a placeholder first.
+function applyCreatorImage(imgEl, url){
+  if(!imgEl || !url) return;
+  if(typeof ZOHO!=='undefined' && ZOHO.CREATOR && ZOHO.CREATOR.UTIL && ZOHO.CREATOR.UTIL.setImageData){
+    ZOHO.CREATOR.UTIL.setImageData(imgEl, url, function(){});
+  } else {
+    imgEl.src = url;
+  }
+}
+
+function fmtDateTime(v){
+  if(!v) return '—';
+  return String(v);
+}
+
+// UNVERIFIED, needs live confirmation — no zoho-mcp/browser access this session
+// to check exactly what format a plain DateTime field expects on
+// addRecords/updateRecordById vs. what getRecords actually returns it as.
+// Zoho's v2.1 Data API conventionally wants "MM/dd/yyyy HH:mm:ss" (24h)
+// regardless of the account's display locale — this pair assumes that
+// convention, same as every other Date/DateTime field this project has had to
+// convert for a native <input>. If saving a new record throws a date-format
+// error (matching this project's own recurring `code:3002` "Enter a valid
+// date format" class of bug), this is the first place to fix.
+function toZohoDateTime(localValue){
+  // localValue from <input type="datetime-local" step="1">: "YYYY-MM-DDTHH:MM:SS"
+  if(!localValue) return '';
+  var m = localValue.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if(!m) return '';
+  // FIXED 2026-09-25: was "MM/dd/yyyy HH:mm:ss", rejected live with code:3002. This app's
+  // date format is yyyy-MM-dd (same as DeliveryQueue's working Confirmed_Schedule_Date writes).
+  return m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5] + ':' + (m[6]||'00');
+}
+function fromZohoDateTime(rawValue){
+  // Tries "MM/dd/yyyy HH:mm:ss" first (the format toZohoDateTime writes); falls
+  // back to letting the browser's own Date parser take a swing at whatever
+  // getRecords actually returned, since the read-back format is unconfirmed.
+  if(!rawValue) return '';
+  var s = String(rawValue).trim();
+  var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})[\sT](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(iso){
+    return iso[1] + '-' + iso[2] + '-' + iso[3] + 'T' + iso[4].padStart(2,'0') + ':' + iso[5] + ':' + (iso[6]||'00');
+  }
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(m){
+    return m[3] + '-' + m[1].padStart(2,'0') + '-' + m[2].padStart(2,'0') + 'T' +
+      m[4].padStart(2,'0') + ':' + m[5] + ':' + (m[6]||'00');
+  }
+  var d = new Date(s);
+  if(isNaN(d.getTime())) return '';
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') +
+    'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+}
+function nowLocalDateTime(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') +
+    'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+}
+
+/* ==================== "OTHERS" PICKLIST HELPER ====================
+   3 fields (Vehicle/Driver/Checker) have `others option = true` on the live
+   form — the select offers a fixed list plus "Others", and a free-text input
+   appears/hides alongside it. Populate reads the record's real value in: if it
+   matches a hardcoded choice, select it; otherwise (a genuinely custom value
+   the checker typed on the native form) select "Others" and put the real
+   value in the text input, so an edit never silently clobbers a real typed
+   name with blank. Resolve does the reverse on save. */
+function toggleOther(fieldId){
+  var sel = document.getElementById(fieldId);
+  var other = document.getElementById(fieldId + 'Other');
+  if(!sel || !other) return;
+  other.classList.toggle('hidden', sel.value !== 'Others');
+}
+function populateOthersField(fieldId, value){
+  var sel = document.getElementById(fieldId);
+  var other = document.getElementById(fieldId + 'Other');
+  if(!sel) return;
+  var knownValues = Array.prototype.slice.call(sel.options).map(function(o){ return o.value; });
+  var v = value || '';
+  if(v && knownValues.indexOf(v) === -1){
+    sel.value = 'Others';
+    if(other) other.value = v;
+  } else {
+    sel.value = v;
+    if(other) other.value = '';
+  }
+  toggleOther(fieldId);
+}
+function resolveOthersField(fieldId){
+  var sel = document.getElementById(fieldId);
+  var other = document.getElementById(fieldId + 'Other');
+  if(!sel) return '';
+  if(sel.value === 'Others') return (other && other.value.trim()) || '';
+  return sel.value;
+}
+
+/* ==================== LOAD ==================== */
+function loadList(){
+  // CHANGED 2026-09-18, per user ("wag mong gawing loading. ilagay mo nalang
+  // no record") — no spinner/"Loading…" placeholder anymore; columns start
+  // showing the same plain "No record." empty-state text renderBoard() would
+  // show anyway, and get replaced the moment real data arrives.
+  ['colOpen','colProgress','colCompleted'].forEach(function(id){
+    document.getElementById(id).innerHTML = '<div class="empty-col">No record.</div>';
+  });
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    console.error('[DailyChecklistVehicle] SDK not available');
+    showToast('Widget SDK not available — see console');
+    return;
+  }
+  // REMOVED 2026-09-18 — this used to wrap the call in a `ZOHO.CREATOR.init()`
+  // promise first. Live-tested and confirmed stuck forever on "Loading…" with
+  // no error ever reaching either .then() or .catch() — that init() call
+  // itself never resolved. None of this project's other DMS widgets
+  // (DailyTeamAvailability, DeliveryQueue, etc.) call it either; they all go
+  // straight to ZOHO.CREATOR.DATA.getRecords(), which is the proven-working
+  // pattern restored here.
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: REPORT_NAME,
+    page: 1,
+    pageSize: 200,
+    field_config: 'all'
+  }).then(function(resp){
+    var ok = resp && (resp.code===3000 || String(resp.code)==='3000');
+    ALL_ROWS = (ok && resp.data) ? resp.data : [];
+    renderBoard();
+  }).catch(function(e){
+    var c = errCode(e);
+    if(c===9220 || c===9280){ ALL_ROWS = []; renderBoard(); return; }
+    console.error('[DailyChecklistVehicle] getRecords failed', e);
+    ['colOpen','colProgress','colCompleted'].forEach(function(id){
+      document.getElementById(id).innerHTML = '<div class="empty-col">Could not load — see console. Check REPORT_NAME matches the live report.</div>';
+    });
+  });
+}
+
+function updateStats(){
+  var open = ALL_ROWS.filter(function(r){ return stageOf(r)==='Open'; }).length;
+  var prog = ALL_ROWS.filter(function(r){ return stageOf(r)==='In Progress'; }).length;
+  var done = ALL_ROWS.filter(function(r){ return stageOf(r)==='Completed'; }).length;
+  var issues = ALL_ROWS.filter(function(r){ return (r.Issue_Found||'')==='Yes'; }).length;
+  document.getElementById('statCards').innerHTML =
+    '<div class="stat-card"><div class="stat-label">Total Checklists</div><div class="stat-value">' + ALL_ROWS.length + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Open</div><div class="stat-value amber">' + open + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value blue">' + prog + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value green">' + done + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Issues Found</div><div class="stat-value red">' + issues + '</div></div>';
+}
+
+function matchesSearch(r, q){
+  if(!q) return true;
+  q = q.toLowerCase();
+  return [r.Vehicle_Name, r.Tracking_Number, r.Vehicle_Driver, r.Vehicle_Checker]
+    .some(function(v){ return v && String(v).toLowerCase().indexOf(q)!==-1; });
+}
+
+function cardHtml(r){
+  var checklist = checklistArray(r.Vehicle_Checklist);
+  var hasIssue = (r.Issue_Found||'')==='Yes';
+  var stage = stageOf(r);
+  var idx = STAGES.indexOf(stage);
+  var canBack = idx > 0;
+  var canFwd = idx < STAGES.length - 1;
+  return '<div class="card' + (hasIssue?' issue':'') + '" onclick="openEditModal(\'' + r.ID + '\')">' +
+    '<div class="card-top">' +
+      '<div><div class="card-vehicle">' + esc(r.Vehicle_Name||'—') + '</div>' +
+      '<div class="card-track">' + esc(r.Tracking_Number||'') + '</div></div>' +
+      (hasIssue ? '<span class="badge badge-red">⚠ Issue</span>' : '') +
+    '</div>' +
+    '<div class="card-meta"><b>Driver:</b> ' + esc(r.Vehicle_Driver||'—') + '</div>' +
+    '<div class="card-meta"><b>Checker:</b> ' + esc(r.Vehicle_Checker||'—') + '</div>' +
+    '<div class="card-row">' +
+      '<span class="card-tally">✓ ' + checklist.length + '/' + CHECKLIST_ITEMS.length + ' checked</span>' +
+      '<span class="card-tally">' + fmtDateTime(r.Date_Time) + '</span>' +
+    '</div>' +
+    '<div class="card-actions" onclick="event.stopPropagation()">' +
+      '<button class="btn btn-ghost btn-xs" ' + (canBack?'':'disabled') + ' onclick="moveStage(\'' + r.ID + '\',-1)">← Back</button>' +
+      '<button class="btn btn-ghost btn-xs" style="flex:1" onclick="openEditModal(\'' + r.ID + '\')">Edit</button>' +
+      '<button class="btn btn-ghost btn-xs" ' + (canFwd?'':'disabled') + ' onclick="moveStage(\'' + r.ID + '\',1)">Next →</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderBoard(){
+  updateStats();
+  var q = document.getElementById('searchInput').value.trim();
+  var byStage = { 'Open': [], 'In Progress': [], 'Completed': [] };
+  ALL_ROWS.filter(function(r){ return matchesSearch(r, q); }).forEach(function(r){
+    byStage[stageOf(r)].push(r);
+  });
+  var map = { 'Open': 'colOpen', 'In Progress': 'colProgress', 'Completed': 'colCompleted' };
+  var countMap = { 'Open': 'countOpen', 'In Progress': 'countProgress', 'Completed': 'countCompleted' };
+  STAGES.forEach(function(stage){
+    var body = document.getElementById(map[stage]);
+    var rows = byStage[stage];
+    document.getElementById(countMap[stage]).textContent = rows.length;
+    body.innerHTML = rows.length
+      ? rows.map(cardHtml).join('')
+      : '<div class="empty-col">' + (q ? 'No record matching your search.' : 'No record.') + '</div>';
+  });
+}
+
+/* ==================== STAGE MOVE (from card buttons) ==================== */
+function moveStage(id, dir){
+  var r = ALL_ROWS.find(function(x){ return x.ID===id; });
+  if(!r) return;
+  var idx = STAGES.indexOf(stageOf(r));
+  var newIdx = idx + dir;
+  if(newIdx < 0 || newIdx >= STAGES.length) return;
+  setStatus(id, STAGES[newIdx]);
+}
+
+function setStatus(id, newStatus){
+  var payload = {};
+  payload[STATUS_FIELD] = newStatus;
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: String(id),
+    payload: { data: payload }
+  }).then(function(resp){
+    var r = ALL_ROWS.find(function(x){ return x.ID===id; });
+    if(r) r[STATUS_FIELD] = newStatus;
+    renderBoard();
+    showToast('Moved to ' + newStatus);
+  }).catch(function(e){
+    console.error('[DailyChecklistVehicle] update Status failed', e);
+    showToast(saveErrorMessage(e), 9000);
+  });
+}
+
+/* ==================== CHECKLIST RENDER (shared by add + edit) ==================== */
+function renderChecklistInputs(checkedItems){
+  document.getElementById('fChecklist').innerHTML = CHECKLIST_ITEMS.map(function(item, i){
+    var isChecked = checkedItems.indexOf(item) !== -1;
+    return '<div class="checklist-item form"><label>' +
+      '<input type="checkbox" id="chk_' + i + '" data-item="' + esc(item) + '"' + (isChecked?' checked':'') + ' />' +
+      esc(item) + '</label></div>';
+  }).join('');
+}
+function getCheckedItems(){
+  var out = [];
+  CHECKLIST_ITEMS.forEach(function(item, i){
+    var el = document.getElementById('chk_' + i);
+    if(el && el.checked) out.push(item);
+  });
+  return out;
+}
+
+function onIssueFoundChange(){
+  var isYes = document.getElementById('fIssueFound').value === 'Yes';
+  document.getElementById('issueDescWrap').classList.toggle('hidden', !isYes);
+}
+
+function clearFieldErrors(){
+  document.querySelectorAll('.field-item.error').forEach(function(f){ f.classList.remove('error'); });
+}
+
+/* ==================== ADD / EDIT MODAL ==================== */
+function openAddModal(){
+  EDIT_MODE = 'add';
+  CURRENT_ID = null;
+  clearFieldErrors();
+
+  document.getElementById('modalTitle').textContent = 'Add Checklist';
+  document.getElementById('modalSubtitle').textContent = '';
+  document.getElementById('modalTrack').textContent = 'New record';
+  document.getElementById('btnSaveChecklist').textContent = 'Create Checklist';
+
+  document.getElementById('fDateTime').value = nowLocalDateTime();
+  OTHERS_FIELDS.forEach(function(f){ populateOthersField(f, ''); });
+  document.getElementById('fOdo').value = '';
+  document.getElementById('fGas').value = '';
+  document.getElementById('fIssueFound').value = '';
+  document.getElementById('fIssueDesc').value = '';
+  document.getElementById('issueDescWrap').classList.add('hidden');
+  renderChecklistInputs([]);
+  document.getElementById('fStatus').value = 'Open';
+
+  // New record: nothing existing to show, just the inputs.
+  document.getElementById('photosSection').classList.remove('hidden');
+  document.getElementById('signatureSection').classList.remove('hidden');
+  document.getElementById('dPhotos').innerHTML = '';
+  document.getElementById('dSignature').innerHTML = '';
+  document.getElementById('photoReqStar').classList.remove('hidden');
+  document.getElementById('photoHint').textContent = 'Take or choose 1 photo of the odometer.';
+  document.getElementById('sigHint').textContent = 'Sign inside the box.';
+  document.getElementById('sigReqStar').classList.remove('hidden');
+  resetFileInputs();
+
+  document.getElementById('modalOverlay').classList.add('show');
+  initSigPad();
+}
+
+function openEditModal(id){
+  var r = ALL_ROWS.find(function(x){ return x.ID===id; });
+  if(!r) return;
+  EDIT_MODE = 'edit';
+  CURRENT_ID = id;
+  clearFieldErrors();
+
+  document.getElementById('modalTitle').textContent = r.Vehicle_Name || 'Edit Checklist';
+  document.getElementById('modalSubtitle').textContent = fmtDateTime(r.Date_Time);
+  document.getElementById('modalTrack').textContent = r.Tracking_Number ? ('Tracking #' + r.Tracking_Number) : '—';
+  document.getElementById('btnSaveChecklist').textContent = 'Save Changes';
+
+  document.getElementById('fDateTime').value = fromZohoDateTime(r.Date_Time);
+  populateOthersField('fVehicle', r.Vehicle_Name || '');
+  populateOthersField('fDriver', r.Vehicle_Driver || '');
+  populateOthersField('fChecker', r.Vehicle_Checker || '');
+  document.getElementById('fOdo').value = (r.ODO_Number!==undefined && r.ODO_Number!==null) ? r.ODO_Number : '';
+  document.getElementById('fGas').value = (r.Gas_Number!==undefined && r.Gas_Number!==null) ? r.Gas_Number : '';
+  document.getElementById('fIssueFound').value = r.Issue_Found || '';
+  document.getElementById('fIssueDesc').value = r.Issue_Description || '';
+  onIssueFoundChange();
+  renderChecklistInputs(checklistArray(r.Vehicle_Checklist));
+  document.getElementById('fStatus').value = stageOf(r);
+
+  document.getElementById('photosSection').classList.remove('hidden');
+  document.getElementById('signatureSection').classList.remove('hidden');
+  var photos = imageUrlArray(r.Odometer_Photo_Upload);
+  var photoWrap = document.getElementById('dPhotos');
+  if(photos.length){
+    photoWrap.innerHTML = photos.map(function(_, i){ return '<img id="dPhoto' + i + '" alt="Odometer photo" />'; }).join('');
+    photos.forEach(function(url, i){ applyCreatorImage(document.getElementById('dPhoto' + i), url); });
+  } else {
+    photoWrap.innerHTML = '<span class="no-data">No photos.</span>';
+  }
+  var sigWrap = document.getElementById('dSignature');
+  var sigUrl = imageUrlArray(r.Checker_s_Signature)[0];
+  if(sigUrl){
+    sigWrap.innerHTML = '<img id="dSigImg" alt="Checker signature" />';
+    applyCreatorImage(document.getElementById('dSigImg'), sigUrl);
+  } else {
+    sigWrap.innerHTML = '<span class="no-data">No signature.</span>';
+  }
+  // Edit: photo already exists on most records, so a new one is optional (replaces it).
+  var hasPhoto = photos.length > 0;
+  document.getElementById('photoReqStar').classList.toggle('hidden', hasPhoto);
+  document.getElementById('photoHint').textContent = hasPhoto ? 'Choose a new photo only to replace the current one.' : 'Take or choose 1 photo of the odometer.';
+  document.getElementById('sigHint').textContent = sigUrl ? 'Draw only to replace the current signature.' : 'Sign inside the box.';
+  document.getElementById('sigReqStar').classList.toggle('hidden', !!sigUrl);
+  resetFileInputs();
+
+  document.getElementById('modalOverlay').classList.add('show');
+  initSigPad();
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('show');
+  CURRENT_ID = null;
+}
+
+/* ==================== ODOMETER PHOTO + SIGNATURE (ADDED 2026-09-25) ====================
+   The live form has Odometer_Photo_Upload as mandatory, and a Data API addRecords call
+   can't carry file bytes, so the create itself can never satisfy it. Needs the field's
+   Mandatory flag turned OFF in Form Builder; the widget then enforces "photo required"
+   itself (validateChecklistForm) and uploads it with ZOHO.CREATOR.FILE.uploadFile right
+   after the record is created. One photo only: this project confirmed multi-file image
+   fields REPLACE on each uploadFile call instead of appending (FieldServiceSiteVisits,
+   2026-07-22). Signature pad = same canvas -> PNG pattern as QC Checklist. */
+var SIG_DIRTY = false;
+
+function selectedOdoPhoto(){
+  var inp = document.getElementById('fOdoPhoto');
+  return (inp && inp.files && inp.files[0]) || null;
+}
+function onOdoPhotoChange(){
+  var f = selectedOdoPhoto();
+  var prev = document.getElementById('fOdoPhotoPreview');
+  if(f){
+    prev.src = URL.createObjectURL(f);
+    prev.classList.remove('hidden');
+    document.getElementById('photosSection').classList.remove('error');
+  } else {
+    prev.removeAttribute('src');
+    prev.classList.add('hidden');
+  }
+}
+function resetFileInputs(){
+  var inp = document.getElementById('fOdoPhoto');
+  if(inp) inp.value = '';
+  onOdoPhotoChange();
+  document.getElementById('photosSection').classList.remove('error');
+}
+
+function initSigPad(){
+  var canvas = document.getElementById('fSigPad');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var rect = canvas.getBoundingClientRect();
+  var ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, rect.width * ratio);
+  canvas.height = Math.max(1, rect.height * ratio);
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1e293b';
+  SIG_DIRTY = false;
+  if(canvas._sigBound) return; // listeners only once; the canvas element is reused
+  canvas._sigBound = true;
+  var drawing = false, last = null;
+  function pt(ev){
+    var r = canvas.getBoundingClientRect();
+    var t = ev.touches && ev.touches[0];
+    return { x: (t ? t.clientX : ev.clientX) - r.left, y: (t ? t.clientY : ev.clientY) - r.top };
+  }
+  function start(ev){ ev.preventDefault(); drawing = true; last = pt(ev); }
+  function move(ev){
+    if(!drawing) return;
+    ev.preventDefault();
+    var c = canvas.getContext('2d');
+    var p = pt(ev);
+    c.beginPath(); c.moveTo(last.x, last.y); c.lineTo(p.x, p.y); c.stroke();
+    last = p; SIG_DIRTY = true;
+    document.getElementById('signatureSection').classList.remove('error');
+  }
+  function end(){ drawing = false; last = null; }
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', end);
+  canvas.addEventListener('mouseleave', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', end);
+}
+function clearSigPad(){ initSigPad(); }
+
+function sigPadFile(){
+  return new Promise(function(resolve){
+    var canvas = document.getElementById('fSigPad');
+    if(!canvas || !SIG_DIRTY) return resolve(null);
+    canvas.toBlob(function(blob){
+      resolve(blob ? new File([blob], 'checker_signature.png', { type: 'image/png' }) : null);
+    }, 'image/png');
+  });
+}
+
+// Uploads the picked photo and drawn signature (if any). Resolves to the failure count.
+function uploadChecklistFiles(recId){
+  var failed = 0;
+  if(!recId || typeof ZOHO==='undefined' || !ZOHO.CREATOR) return Promise.resolve(0);
+  function up(fieldName, file){
+    if(!file) return Promise.resolve();
+    var fileObj = { report_name: REPORT_NAME, id: String(recId), field_name: fieldName, file: file };
+    function tryUtil(){
+      if(ZOHO.CREATOR.UTIL && typeof ZOHO.CREATOR.UTIL.uploadFile === 'function'){
+        return ZOHO.CREATOR.UTIL.uploadFile(fileObj).then(function(r2){
+          if(!(r2 && (r2.code===3000 || String(r2.code)==='3000'))){
+            failed++;
+            console.warn('[DailyChecklistVehicle] upload failed (UTIL)', fieldName, JSON.stringify(r2));
+          }
+        }).catch(function(e2){
+          failed++;
+          console.error('[DailyChecklistVehicle] upload error (UTIL)', fieldName, e2);
+        });
+      }
+      failed++;
+      return Promise.resolve();
+    }
+    if(ZOHO.CREATOR.FILE && typeof ZOHO.CREATOR.FILE.uploadFile === 'function'){
+      return ZOHO.CREATOR.FILE.uploadFile(fileObj).then(function(r){
+        if(!(r && (r.code===3000 || String(r.code)==='3000'))){
+          return tryUtil();
+        }
+      }).catch(function(err){
+        console.warn('[DailyChecklistVehicle] FILE.uploadFile error, trying UTIL fallback', fieldName, err);
+        return tryUtil();
+      });
+    }
+    return tryUtil();
+  }
+  var photo = selectedOdoPhoto();
+  return up('Odometer_Photo_Upload', photo)
+    .then(function(){ return sigPadFile(); })
+    .then(function(sig){ return up('Checker_s_Signature', sig); })
+    .then(function(){ return failed; });
+}
+
+// Shared by both Create and Save Changes — same "must have" fields the live
+// form itself enforces (Date_Time, Vehicle_Name, ODO_Number, Vehicle_Driver,
+// Vehicle_Checklist, Issue_Found), checked here too since a widget update/add
+// call bypasses the native form's own client-side validation entirely.
+function validateChecklistForm(){
+  clearFieldErrors();
+  var missing = [];
+  if(!document.getElementById('fDateTime').value){ missing.push('wrap_fDateTime'); }
+  if(!resolveOthersField('fVehicle')){ missing.push('wrap_fVehicle'); }
+  if(!resolveOthersField('fDriver')){ missing.push('wrap_fDriver'); }
+  if(!document.getElementById('fOdo').value){ missing.push('wrap_fOdo'); }
+  if(!document.getElementById('fIssueFound').value){ missing.push('wrap_fIssueFound'); }
+  if(getCheckedItems().length === 0){ missing.push('fChecklist'); }
+  if(!document.getElementById('photoReqStar').classList.contains('hidden') && !selectedOdoPhoto()){ missing.push('photosSection'); }
+  // Checker's Signature is mandatory on the native form too; enforced here since the field's Mandatory flag must be off for widget creates.
+  if(!document.getElementById('sigReqStar').classList.contains('hidden') && !SIG_DIRTY){ missing.push('signatureSection'); }
+  else document.getElementById('signatureSection').classList.remove('error');
+  missing.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.classList.add('error');
+  });
+  return missing.length === 0;
+}
+
+function saveChecklist(){
+  if(!validateChecklistForm()){
+    showToast('Please fill in all required (*) fields.');
+    return;
+  }
+  var btn = document.getElementById('btnSaveChecklist');
+  btn.disabled = true;
+
+  var data = {
+    Date_Time: toZohoDateTime(document.getElementById('fDateTime').value),
+    Vehicle_Name: resolveOthersField('fVehicle'),
+    Vehicle_Driver: resolveOthersField('fDriver'),
+    Vehicle_Checker: resolveOthersField('fChecker'),
+    ODO_Number: document.getElementById('fOdo').value,
+    Gas_Number: document.getElementById('fGas').value,
+    Issue_Found: document.getElementById('fIssueFound').value,
+    Issue_Description: document.getElementById('fIssueDesc').value,
+    Vehicle_Checklist: getCheckedItems()
+  };
+  data[STATUS_FIELD] = document.getElementById('fStatus').value;
+
+  var isAdd = EDIT_MODE === 'add';
+  var request = isAdd
+    ? ZOHO.CREATOR.DATA.addRecords({ form_name: FORM_NAME, payload: { data: data } })
+    : ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_NAME, id: String(CURRENT_ID), payload: { data: data } });
+
+  request.then(function(resp){
+    var ok = resp && (resp.code===3000 || String(resp.code)==='3000');
+    if(!ok){
+      showToast(saveErrorMessage(resp), 9000);
+      console.error('[DailyChecklistVehicle] save non-3000 response', resp);
+      return;
+    }
+    var saved = resp && resp.data && (Array.isArray(resp.data) ? resp.data[0] : resp.data);
+    var recId = isAdd ? (saved && (saved.ID || saved.id || saved.record_id)) : CURRENT_ID;
+    return uploadChecklistFiles(recId).then(function(failed){
+      if(failed) showToast((isAdd ? 'Checklist created' : 'Changes saved') + ', but ' + failed + ' file upload(s) failed — see console', 9000);
+      else showToast(isAdd ? 'Checklist created.' : 'Changes saved.');
+      closeModal();
+      loadList(); // simplest way to pick up the new/updated record with a real ID + Tracking_Number
+    });
+  }).catch(function(e){
+    console.error('[DailyChecklistVehicle] save failed', e);
+    showToast(saveErrorMessage(e), 9000);
+  }).finally(function(){
+    btn.disabled = false;
+  });
+}
+
+/* ==================== TABS (ADDED 2026-09-21) ==================== */
+var CURRENT_TAB = 'checklist';
+var TAB_SUBTITLES = {
+  checklist: 'Vehicle inspection issues — tracked from report to resolution: Open → In Progress → Completed',
+  fuel: 'Fuel purchases per vehicle — date, gas bar, odometer, price per unit and vendor',
+  service: 'Repairs and servicing per vehicle — services done, labor, parts and invoice'
+};
+function switchTab(tab){
+  CURRENT_TAB = tab;
+  ['checklist', 'fuel', 'service'].forEach(function(t){
+    document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+  document.getElementById('pageSubtitle').textContent = TAB_SUBTITLES[tab];
+  if(tab === 'fuel' && !FUEL_LOADED) loadFuel();
+  if(tab === 'service' && !SERVICE_LOADED) loadService();
+}
+
+/* ==================== SHARED HELPERS for the two new tabs ==================== */
+// Report + form names CONFIRMED against the user's own .fld/.rpt definitions (Fuel_Entries / Service_Entries files,
+// 2026-09-21): reports All_Fuel_Entries and All_Service_Entries, both listing every form field.
+const FUEL_FORM = 'Fuel_Entries';
+const FUEL_REPORT = 'All_Fuel_Entries';
+const SERVICE_FORM = 'Service_Entries';
+const SERVICE_REPORT = 'All_Service_Entries';
+
+// Picklist values copied verbatim from the live forms (both have `others option = true`). Note these are NOT the same
+// spellings the checklist form uses (e.g. "NKI-4696 - Travis" here vs "Traviz (NKI-4969)" there) — each form keeps its own.
+const VEHICLE_CHOICES = ['Innova', 'NBX-1446 - Hino', 'NIB-3823 - Travis', 'NKI-4696 - Travis', 'Rav4'];
+const SERVICE_ITEMS = ['Car Lights Repair', 'Change Oil', 'Charging Port', 'Fixing Break', 'Fixing Engine',
+  'Inflating Tire', 'Oil Filter', 'Repaint', 'Transmission Repair'];
+
+var FUEL_ROWS = [], SERVICE_ROWS = [];
+var FUEL_LOADED = false, SERVICE_LOADED = false;
+var FUEL_ID = null, SERVICE_ID = null;
+
+function isOk(resp){ return resp && (resp.code === 3000 || String(resp.code) === '3000'); }
+function numOrNull(v){
+  if(v === null || v === undefined || v === '') return null;
+  var n = parseFloat(String(v).replace(/,/g, ''));
+  return isNaN(n) ? null : n;
+}
+function fmtNum(v, dec){
+  var n = numOrNull(v);
+  if(n === null) return '—';
+  return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+// <input type="date"> needs YYYY-MM-DD. DailyTeamAvailability (proven) reads/writes plain ISO dates against the
+// Creator API, so the same is assumed here; anything else falls back to the browser's own parser.
+function toISODate(v){
+  if(!v) return '';
+  var s = String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  var d = new Date(s);
+  if(isNaN(d.getTime())) return '';
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function todayISO(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function idNum(r){ var n = parseInt(String(r.ID), 10); return isNaN(n) ? 0 : n; }
+
+function fetchReport(reportName, cb, failMsg){
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords !== 'function'){
+    showToast('Widget SDK not available — see console');
+    cb([]);
+    return;
+  }
+  ZOHO.CREATOR.DATA.getRecords({ report_name: reportName, page: 1, pageSize: 200, field_config: 'all' })
+    .then(function(resp){ cb(isOk(resp) && resp.data ? resp.data : []); })
+    .catch(function(e){
+      var c = errCode(e);
+      if(c === 9220 || c === 9280){ cb([]); return; }
+      console.error('[TruckMaintenance] ' + reportName + ' load failed', e);
+      showToast(failMsg + ' (code ' + c + ')');
+      cb([]);
+    });
+}
+
+function fillVehicleSelect(selId){
+  var sel = document.getElementById(selId);
+  sel.innerHTML = '<option value="">-Select-</option>' +
+    VEHICLE_CHOICES.map(function(v){ return '<option>' + esc(v) + '</option>'; }).join('') +
+    '<option>Others</option>';
+}
+function fillVehicleFilter(selId, rows){
+  var sel = document.getElementById(selId);
+  var keep = sel.value;
+  var seen = {};
+  VEHICLE_CHOICES.forEach(function(v){ seen[v] = true; });
+  rows.forEach(function(r){ if(r.Vehicle) seen[r.Vehicle] = true; });
+  sel.innerHTML = '<option value="">All vehicles</option>' +
+    Object.keys(seen).sort().map(function(v){ return '<option>' + esc(v) + '</option>'; }).join('');
+  sel.value = keep;
+}
+function receiptGallery(wrapId, raw){
+  var wrap = document.getElementById(wrapId);
+  var files = imageUrlArray(raw);
+  if(!files.length){ wrap.innerHTML = '<span class="no-data">No receipt.</span>'; return; }
+  var imgs = [], html = '';
+  files.forEach(function(f, i){
+    var url = (f && typeof f === 'object') ? (f.url || f.download_url || f.value || '') : String(f);
+    var name = decodeURIComponent((String(url).match(/[?&]filepath=([^&]+)/) || [])[1] || String(url).split('/').pop().split('?')[0] || 'file');
+    if(/\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(name) || String(url).indexOf('.') === -1){
+      html += '<img id="' + wrapId + '_' + i + '" alt="Receipt" />';
+      imgs.push({ id: wrapId + '_' + i, url: url });
+    } else {
+      html += '<span class="file-chip">📎 ' + esc(name.replace(/^\d+_/, '')) + '</span>';
+    }
+  });
+  wrap.innerHTML = html;
+  imgs.forEach(function(it){ applyCreatorImage(document.getElementById(it.id), it.url); });
+}
+function receiptCount(raw){ return imageUrlArray(raw).length; }
+
+/* ==================== FUEL ENTRIES ==================== */
+function loadFuel(){
+  document.getElementById('fuelBody').innerHTML = '<tr><td colspan="10"><div class="dtable-empty">No record.</div></td></tr>';
+  fetchReport(FUEL_REPORT, function(rows){
+    FUEL_ROWS = rows; FUEL_LOADED = true;
+    fillVehicleFilter('fuelVehicleFilter', rows);
+    renderFuel();
+  }, 'Could not load Fuel Entries');
+}
+function renderFuel(){
+  var month = todayISO().slice(0, 7);
+  var vehicles = {};
+  var prices = [];
+  var thisMonth = 0;
+  FUEL_ROWS.forEach(function(r){
+    if(r.Vehicle) vehicles[r.Vehicle] = true;
+    if(toISODate(r.Date_field).slice(0, 7) === month) thisMonth++;
+    var p = numOrNull(r.Price_Unit); if(p !== null && p > 0) prices.push(p);
+  });
+  var avg = prices.length ? prices.reduce(function(a, b){ return a + b; }, 0) / prices.length : null;
+  document.getElementById('fuelStats').innerHTML =
+    '<div class="stat-card"><div class="stat-label">Total Fuel Entries</div><div class="stat-value">' + FUEL_ROWS.length + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">This Month</div><div class="stat-value blue">' + thisMonth + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Vehicles Fueled</div><div class="stat-value">' + Object.keys(vehicles).length + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Avg Price/Unit</div><div class="stat-value green">' + (avg === null ? '—' : fmtNum(avg, 2)) + '</div></div>';
+
+  var q = document.getElementById('fuelSearch').value.trim().toLowerCase();
+  var vf = document.getElementById('fuelVehicleFilter').value;
+  var rows = FUEL_ROWS.filter(function(r){
+    if(vf && r.Vehicle !== vf) return false;
+    if(!q) return true;
+    return [r.Vehicle, r.Vendor, r.Invoice_No, r.Remarks].some(function(v){ return v && String(v).toLowerCase().indexOf(q) !== -1; });
+  }).sort(function(a, b){
+    var da = toISODate(a.Date_field), db = toISODate(b.Date_field);
+    return da === db ? idNum(b) - idNum(a) : (db > da ? 1 : -1);
+  });
+  var body = document.getElementById('fuelBody');
+  if(!rows.length){
+    body.innerHTML = '<tr><td colspan="10"><div class="dtable-empty">' + (q || vf ? 'No record matching your search.' : 'No record.') + '</div></td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    var rc = receiptCount(r.Invoice_Receipt);
+    return '<tr onclick="openFuelModal(\'' + r.ID + '\')">' +
+      '<td>' + esc(toISODate(r.Date_field) || r.Date_field || '—') + '</td>' +
+      '<td><b>' + esc(r.Vehicle || '—') + '</b></td>' +
+      '<td class="num">' + fmtNum(r.Gas_Bar, 0) + '</td>' +
+      '<td class="num">' + fmtNum(r.Odometer, 0) + '</td>' +
+      '<td class="num">' + fmtNum(r.Price_Unit, 2) + '</td>' +
+      '<td>' + esc(r.Vendor || '—') + '</td>' +
+      '<td>' + esc(r.Invoice_No || '—') + '</td>' +
+      '<td>' + (rc ? '<span class="badge badge-blue">📎 ' + rc + '</span>' : '—') + '</td>' +
+      '<td><div class="clip" title="' + esc(r.Remarks || '') + '">' + esc(r.Remarks || '—') + '</div></td>' +
+      '<td onclick="event.stopPropagation()"><button class="btn btn-ghost btn-xs" onclick="openFuelModal(\'' + r.ID + '\')">Edit</button></td>' +
+    '</tr>';
+  }).join('');
+}
+function openFuelModal(id){
+  clearFieldErrors();
+  fillVehicleSelect('fFuelVehicle');
+  var r = id ? FUEL_ROWS.find(function(x){ return String(x.ID) === String(id); }) : null;
+  FUEL_ID = r ? r.ID : null;
+  document.getElementById('fuelModalTitle').textContent = r ? (r.Vehicle || 'Edit Fuel Entry') : 'Add Fuel Entry';
+  document.getElementById('fuelModalSub').textContent = r ? (toISODate(r.Date_field) || '') : '';
+  document.getElementById('fuelModalTrack').textContent = r ? ('Entry #' + r.ID) : 'New record';
+  document.getElementById('btnSaveFuel').textContent = r ? 'Save Changes' : 'Create Fuel Entry';
+  populateOthersField('fFuelVehicle', r ? (r.Vehicle || '') : '');
+  document.getElementById('fFuelDate').value = r ? toISODate(r.Date_field) : todayISO();
+  document.getElementById('fFuelGas').value = r && numOrNull(r.Gas_Bar) !== null ? numOrNull(r.Gas_Bar) : '';
+  document.getElementById('fFuelOdo').value = r && numOrNull(r.Odometer) !== null ? numOrNull(r.Odometer) : '';
+  document.getElementById('fFuelPrice').value = r && numOrNull(r.Price_Unit) !== null ? numOrNull(r.Price_Unit) : '';
+  document.getElementById('fFuelVendor').value = r ? (r.Vendor || '') : '';
+  document.getElementById('fFuelInvoice').value = r ? (r.Invoice_No || '') : '';
+  document.getElementById('fFuelRemarks').value = r ? (r.Remarks || '') : '';
+  document.getElementById('fuelReceiptSection').classList.toggle('hidden', !r);
+  if(r) receiptGallery('fuelReceipts', r.Invoice_Receipt);
+  document.getElementById('fuelOverlay').classList.add('show');
+}
+function closeFuelModal(){
+  document.getElementById('fuelOverlay').classList.remove('show');
+  FUEL_ID = null;
+}
+function saveFuel(){
+  clearFieldErrors();
+  var vehicle = resolveOthersField('fFuelVehicle');
+  var date = document.getElementById('fFuelDate').value;
+  var missing = [];
+  if(!vehicle) missing.push('wrap_fFuelVehicle');
+  if(!date) missing.push('wrap_fFuelDate');
+  if(missing.length){
+    missing.forEach(function(id){ document.getElementById(id).classList.add('error'); });
+    showToast('Please fill in all required (*) fields.');
+    return;
+  }
+  var isAdd = !FUEL_ID;
+  var data = {
+    Vehicle: vehicle,
+    Date_field: date,
+    Vendor: document.getElementById('fFuelVendor').value.trim(),
+    Invoice_No: document.getElementById('fFuelInvoice').value.trim(),
+    Remarks: document.getElementById('fFuelRemarks').value
+  };
+  // Number fields: omitted when blank on ADD (nothing to record); on EDIT a blank is sent as 0, same convention the
+  // proven DailyTeamAvailability widget uses for its own optional number fields (`|| 0`).
+  [['Gas_Bar', 'fFuelGas'], ['Odometer', 'fFuelOdo'], ['Price_Unit', 'fFuelPrice']].forEach(function(p){
+    var n = numOrNull(document.getElementById(p[1]).value);
+    if(n !== null) data[p[0]] = n; else if(!isAdd) data[p[0]] = 0;
+  });
+  var btn = document.getElementById('btnSaveFuel');
+  btn.disabled = true;
+  var req = isAdd
+    ? ZOHO.CREATOR.DATA.addRecords({ form_name: FUEL_FORM, payload: { data: data } })
+    : ZOHO.CREATOR.DATA.updateRecordById({ report_name: FUEL_REPORT, id: String(FUEL_ID), payload: { data: data } });
+  req.then(function(resp){
+    if(!isOk(resp)){
+      console.error('[TruckMaintenance] fuel save non-3000', resp);
+      showToast(saveErrorMessage(resp), 9000);
+      return;
+    }
+    showToast(isAdd ? 'Fuel entry created.' : 'Changes saved.');
+    closeFuelModal();
+    loadFuel();
+  }).catch(function(e){
+    console.error('[TruckMaintenance] fuel save failed', e);
+    showToast(saveErrorMessage(e), 9000);
+  }).finally(function(){ btn.disabled = false; });
+}
+
+/* ==================== SERVICE ENTRIES ==================== */
+function loadService(){
+  document.getElementById('svcBody').innerHTML = '<tr><td colspan="11"><div class="dtable-empty">No record.</div></td></tr>';
+  fetchReport(SERVICE_REPORT, function(rows){
+    SERVICE_ROWS = rows; SERVICE_LOADED = true;
+    fillVehicleFilter('svcVehicleFilter', rows);
+    renderService();
+  }, 'Could not load Service Entries');
+}
+function renderService(){
+  var total = 0, labor = 0, parts = 0;
+  SERVICE_ROWS.forEach(function(r){
+    total += numOrNull(r.Total) || 0; labor += numOrNull(r.Labor) || 0; parts += numOrNull(r.Parts) || 0;
+  });
+  document.getElementById('svcStats').innerHTML =
+    '<div class="stat-card"><div class="stat-label">Total Service Entries</div><div class="stat-value">' + SERVICE_ROWS.length + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Total Cost</div><div class="stat-value green">' + fmtNum(total, 2) + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Labor</div><div class="stat-value blue">' + fmtNum(labor, 2) + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Parts</div><div class="stat-value amber">' + fmtNum(parts, 2) + '</div></div>';
+
+  var q = document.getElementById('svcSearch').value.trim().toLowerCase();
+  var vf = document.getElementById('svcVehicleFilter').value;
+  var rows = SERVICE_ROWS.filter(function(r){
+    if(vf && r.Vehicle !== vf) return false;
+    if(!q) return true;
+    var hay = [r.Vehicle, r.Remarks, r.Invoice_Number, r.Submitted_by].concat(checklistArray(r.Service)).join(' ').toLowerCase();
+    return hay.indexOf(q) !== -1;
+  }).sort(function(a, b){ return idNum(b) - idNum(a); }); // newest first — this form has no date field
+  var body = document.getElementById('svcBody');
+  if(!rows.length){
+    body.innerHTML = '<tr><td colspan="11"><div class="dtable-empty">' + (q || vf ? 'No record matching your search.' : 'No record.') + '</div></td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    var rc = receiptCount(r.Invoice_Receipt);
+    var tags = checklistArray(r.Service).map(function(s){ return '<span class="tag">' + esc(s) + '</span>'; }).join('');
+    return '<tr onclick="openServiceModal(\'' + r.ID + '\')">' +
+      '<td><b>' + esc(r.Vehicle || '—') + '</b></td>' +
+      '<td><div class="tag-list">' + (tags || '—') + '</div></td>' +
+      '<td><div class="clip" title="' + esc(r.Remarks || '') + '">' + esc(r.Remarks || '—') + '</div></td>' +
+      '<td class="num">' + fmtNum(r.Labor, 2) + '</td>' +
+      '<td class="num">' + fmtNum(r.Parts, 2) + '</td>' +
+      '<td>' + esc(r.Tax || '—') + '</td>' +
+      '<td class="num"><b>' + fmtNum(r.Total, 2) + '</b></td>' +
+      '<td>' + esc(r.Invoice_Number || '—') + '</td>' +
+      '<td>' + (rc ? '<span class="badge badge-blue">📎 ' + rc + '</span>' : '—') + '</td>' +
+      '<td>' + esc(r.Submitted_by || '—') + '</td>' +
+      '<td onclick="event.stopPropagation()"><button class="btn btn-ghost btn-xs" onclick="openServiceModal(\'' + r.ID + '\')">Edit</button></td>' +
+    '</tr>';
+  }).join('');
+}
+// The live checkbox choices, plus (on edit) any value already saved on the record that isn't in the list — so an
+// edit never silently drops a service someone chose on the native form.
+function renderServiceInputs(checked){
+  var items = SERVICE_ITEMS.slice();
+  checked.forEach(function(c){ if(items.indexOf(c) === -1) items.push(c); });
+  document.getElementById('fSvcChecks').innerHTML = items.map(function(item, i){
+    return '<div class="checklist-item form"><label>' +
+      '<input type="checkbox" id="svc_' + i + '" data-item="' + esc(item) + '"' + (checked.indexOf(item) !== -1 ? ' checked' : '') + ' />' +
+      esc(item) + '</label></div>';
+  }).join('');
+}
+function getCheckedServices(){
+  var out = [];
+  document.querySelectorAll('#fSvcChecks input[type="checkbox"]').forEach(function(el){
+    if(el.checked) out.push(el.getAttribute('data-item'));
+  });
+  return out;
+}
+function autoSvcTotal(){
+  var tot = document.getElementById('fSvcTotal');
+  if(tot.dataset.auto === '0') return;
+  var l = numOrNull(document.getElementById('fSvcLabor').value) || 0;
+  var p = numOrNull(document.getElementById('fSvcParts').value) || 0;
+  tot.value = (l || p) ? (Math.round((l + p) * 100) / 100) : '';
+}
+function openServiceModal(id){
+  clearFieldErrors();
+  fillVehicleSelect('fSvcVehicle');
+  var r = id ? SERVICE_ROWS.find(function(x){ return String(x.ID) === String(id); }) : null;
+  SERVICE_ID = r ? r.ID : null;
+  document.getElementById('svcModalTitle').textContent = r ? (r.Vehicle || 'Edit Service Entry') : 'Add Service Entry';
+  document.getElementById('svcModalSub').textContent = '';
+  document.getElementById('svcModalTrack').textContent = r ? ('Entry #' + r.ID) : 'New record';
+  document.getElementById('btnSaveSvc').textContent = r ? 'Save Changes' : 'Create Service Entry';
+  populateOthersField('fSvcVehicle', r ? (r.Vehicle || '') : '');
+  renderServiceInputs(r ? checklistArray(r.Service) : []);
+  document.getElementById('fSvcRemarks').value = r ? (r.Remarks || '') : '';
+  document.getElementById('fSvcLabor').value = r && numOrNull(r.Labor) !== null ? numOrNull(r.Labor) : '';
+  document.getElementById('fSvcParts').value = r && numOrNull(r.Parts) !== null ? numOrNull(r.Parts) : '';
+  document.getElementById('fSvcTax').value = r ? (r.Tax || '') : '';
+  var tot = document.getElementById('fSvcTotal');
+  tot.value = r && numOrNull(r.Total) !== null ? numOrNull(r.Total) : '';
+  tot.dataset.auto = r ? '0' : '1'; // an existing record's saved total is never overwritten by the auto-sum
+  document.getElementById('fSvcInvoice').value = r ? (r.Invoice_Number || '') : '';
+  document.getElementById('fSvcSubmittedBy').value = r ? (r.Submitted_by || '') : '';
+  document.getElementById('svcReceiptSection').classList.toggle('hidden', !r);
+  if(r) receiptGallery('svcReceipts', r.Invoice_Receipt);
+  document.getElementById('svcOverlay').classList.add('show');
+}
+function closeServiceModal(){
+  document.getElementById('svcOverlay').classList.remove('show');
+  SERVICE_ID = null;
+}
+function saveService(){
+  clearFieldErrors();
+  var vehicle = resolveOthersField('fSvcVehicle');
+  var totalN = numOrNull(document.getElementById('fSvcTotal').value);
+  var missing = [];
+  if(!vehicle) missing.push('wrap_fSvcVehicle');
+  if(totalN === null) missing.push('wrap_fSvcTotal'); // `must have Total` on the live form
+  if(missing.length){
+    missing.forEach(function(id){ document.getElementById(id).classList.add('error'); });
+    showToast('Please fill in all required (*) fields.');
+    return;
+  }
+  var isAdd = !SERVICE_ID;
+  var data = {
+    Vehicle: vehicle,
+    Service: getCheckedServices(),
+    Remarks: document.getElementById('fSvcRemarks').value,
+    Tax: document.getElementById('fSvcTax').value.trim(),
+    Total: totalN,
+    Invoice_Number: document.getElementById('fSvcInvoice').value.trim(),
+    Submitted_by: document.getElementById('fSvcSubmittedBy').value.trim()
+  };
+  [['Labor', 'fSvcLabor'], ['Parts', 'fSvcParts']].forEach(function(p){
+    var n = numOrNull(document.getElementById(p[1]).value);
+    if(n !== null) data[p[0]] = n; else if(!isAdd) data[p[0]] = 0;
+  });
+  var btn = document.getElementById('btnSaveSvc');
+  btn.disabled = true;
+  var req = isAdd
+    ? ZOHO.CREATOR.DATA.addRecords({ form_name: SERVICE_FORM, payload: { data: data } })
+    : ZOHO.CREATOR.DATA.updateRecordById({ report_name: SERVICE_REPORT, id: String(SERVICE_ID), payload: { data: data } });
+  req.then(function(resp){
+    if(!isOk(resp)){
+      console.error('[TruckMaintenance] service save non-3000', resp);
+      showToast(saveErrorMessage(resp), 9000);
+      return;
+    }
+    showToast(isAdd ? 'Service entry created.' : 'Changes saved.');
+    closeServiceModal();
+    loadService();
+  }).catch(function(e){
+    console.error('[TruckMaintenance] service save failed', e);
+    showToast(saveErrorMessage(e), 9000);
+  }).finally(function(){ btn.disabled = false; });
+}
+</script>
+</body>
+</html>

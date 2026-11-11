@@ -16,11 +16,16 @@ function Spark({ data, color }) {
   return <svg className="spark" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><polyline points={pts} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" /></svg>;
 }
 
-function Kpi({ label, value, sub, k, color, goodWhen }) {
+function Kpi({ label, value, sub, k, color, goodWhen, icon }) {
   const d = k ? k.deltaPct : null;
   const good = d === null || d === 0 ? null : goodWhen === 'down' ? d < 0 : goodWhen === 'up' ? d > 0 : null;
   return (
-    <div className="card kpi">
+    <div className="card kpi" style={{ position: 'relative' }}>
+      {icon && (
+        <span style={{ position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>
+          {icon}
+        </span>
+      )}
       <div className="stat-label">{label}</div>
       <div className="stat-value">{value}</div>
       <div className="muted kpi-sub">{sub}</div>
@@ -81,14 +86,14 @@ export default function ProcurementDashboard() {
       </header>
 
       <div className="kpi-grid">
-        <Kpi label="Purchase Requests" value={d.pr.count} sub="last 4 weeks vs prior 4" k={d.pr} color="#eb6834" />
-        <Kpi label="Active Purchase Orders" value={d.po.count} sub="not yet completed / cancelled" k={d.po} color="#2a78d6" />
-        <Kpi label="Open Exceptions" value={d.exc.count} sub="not resolved / closed" k={d.exc} color="#d03b3b" goodWhen="down" />
-        <Kpi label="Open Inquiries" value={d.inq.count} sub="last 4 weeks vs prior 4" k={d.inq} color="#3987e5" />
-        <Kpi label="Shipments In Transit" value={d.ship.count} sub="not yet delivered" k={d.ship} color="#2a78d6" />
-        <Kpi label="Pending Receiving" value={d.recv.count} sub={d.totalMissing > 0 ? `${d.totalMissing} units short-shipped total` : 'not yet fully received'} k={d.recv} color="#fab219" goodWhen="down" />
-        <Kpi label="Open Replacement Requests" value={d.rr.count} sub="not completed" k={d.rr} color="#d03b3b" goodWhen="down" />
-        <Kpi label="Total Suppliers" value={d.supplierCount} sub={`${spendText} total PO spend`} />
+        <Kpi label="Purchase Requests" value={d.pr.count} sub="last 4 weeks vs prior 4" k={d.pr} color="#eb6834" icon="📄" />
+        <Kpi label="Active Purchase Orders" value={d.po.count} sub="not yet completed / cancelled" k={d.po} color="#2a78d6" icon="📦" />
+        <Kpi label="Open Exceptions" value={d.exc.count} sub="not resolved / closed" k={d.exc} color="#d03b3b" goodWhen="down" icon="⚠" />
+        <Kpi label="Open Inquiries" value={d.inq.count} sub="last 4 weeks vs prior 4" k={d.inq} color="#3987e5" icon="📥" />
+        <Kpi label="Shipments In Transit" value={d.ship.count} sub="not yet delivered" k={d.ship} color="#2a78d6" icon="🚢" />
+        <Kpi label="Pending Receiving" value={d.recv.count} sub={d.totalMissing > 0 ? `${d.totalMissing} units short-shipped total` : 'not yet fully received'} k={d.recv} color="#fab219" goodWhen="down" icon="🗄" />
+        <Kpi label="Open Replacement Requests" value={d.rr.count} sub="not completed" k={d.rr} color="#d03b3b" goodWhen="down" icon="↻" />
+        <Kpi label="Total Suppliers" value={d.supplierCount} sub={`${spendText} total PO spend`} icon="🚚" />
       </div>
 
       <div className="dash-two">

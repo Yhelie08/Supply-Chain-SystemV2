@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DMS Exception Queue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+
+<!--
+  REDESIGNED 2026-10-22 against hc-dms-widget (5).html, the design the user sent.
+  Source of the design: Delivery Management System/reference/hc-dms-widget-v5_2026-10-22.html
+  Shared CSS: Widget/DMS/_shared/design/ — change it THERE and re-copy, never here.
+
+  Tailwind is gone from this widget. The design is plain CSS with custom
+  properties, so the whole precompiled-tailwind.css staleness class of bug
+  (which hit this exact widget on 2026-09-21) cannot happen here any more.
+
+  KEPT verbatim from the previous version — none of this came from the prototype,
+  which runs on demo data:
+    - report All_DMS_Exception_Queue, SDK 2.0, DATA.getRecords / updateRecordById
+    - NO ZOHO.CREATOR.init() — it never resolves (see Widget/DMS/CLAUDE.md,
+      2026-09-18: it is what left DailyChecklistVehicle stuck on "Loading…")
+    - the 4-field write payload: Assigned_To, Status, Resolution_Action,
+      Revert_to_System
+    - both save validations: Revert only when Resolved, and Resolution Action
+      required to mark Resolved or Dismissed
+    - soDisplay() for the Sales_Order_Reference lookup's object read shape
+    - errCode() and the 9220 "genuinely empty report" case
+    - nextStepFor() — the Next Step guidance
+    - the Dispatch-stage "🔄 Reschedule" flag
+    - the 4 stat cards
+
+  NEW in this round:
+    - the card layout, severity-coloured edge, pills and empty state from the design
+    - E.4's resolution SLA: High = same day, Medium = 2 days, Low = 5 days, with an
+      overdue marker. Flagged as missing on 2026-09-11 and never built until now.
+    - per-card action buttons: Start, Resolve, Dismiss — the widget previously had
+      no way to act on an exception except opening the editor and changing a dropdown
+    - an In Progress filter chip (the filter existed in code with no pill to reach it)
+    - dark mode, inherited from the shared tokens
+
+  CHANGED 2026-11-09 on "gawin mong list nalang ito hindi card":
+    - the card grid is gone. The queue is one table (table.q, the shared
+      table style every other DMS widget uses), one exception per row.
+    - nothing else changed: same report, same 4-field write payload, same
+      two save validations, same modals, same stat cards, same filters,
+      same SLA/next-step logic. Only the markup that paints a row.
+    - the severity colour moved from the card's left edge to the row's
+      first cell (inset box-shadow), so severity is still scannable.
+    - under 820px the shared CSS already turns table.q into stacked
+      blocks, so every cell carries data-label for the mobile labels.
+-->
+<link rel="stylesheet" href="dms-tokens.css">
+<link rel="stylesheet" href="dms-shell.css">
+<style>
+  /* This widget runs standalone inside a Creator page — no sidebar, so .app is
+     deliberately not used. .main / .main-in carry the layout on their own. */
+  body{background:var(--bg)}
+  .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+  @media (max-width:900px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (max-width:520px){ .kpis{grid-template-columns:1fr} }
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+  /* ---- list view (replaced the card grid, 2026-11-09) ---- */
+  /* .q tr.flagged's edge is hardcoded to --bad; severity needs its own, so
+     the row carries --sev and paints the edge itself. */
+  .q tbody tr.sevrow td:first-child{box-shadow:inset 3px 0 0 var(--sev)}
+  .q tbody tr.isdone{opacity:.72}
+  .q td .clip{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .q td.c-act .acts{justify-content:flex-end}
+  .q th.ta-r{text-align:right}
+  @media (max-width:820px){
+    /* td:first-child is no longer a left edge once the rows stack. */
+    .q tbody tr.sevrow{box-shadow:inset 3px 0 0 var(--sev)}
+    .q tbody tr.sevrow td:first-child{box-shadow:none}
+    .q td .clip{max-width:none;white-space:normal}
+    .q td.c-act .acts{justify-content:flex-start}
+  }
+</style>
+</head>
+<body>
+
+<main class="main">
+  <div class="main-in">
+
+    <div class="top">
+      <div>
+        <h1 style="margin:0;font-size:var(--fs-2xl);letter-spacing:-.02em">Exception Queue</h1>
+        <p class="muted" style="margin:3px 0 0;font-size:var(--fs-md)">The human intervention layer — everything the system will not resolve on its own.</p>
+      </div>
+      <div class="top-actions">
+        <label class="sr-only" for="searchInput">Search exceptions</label>
+        <input id="searchInput" type="search" placeholder="Search SO#, customer, reason…" oninput="renderList()" style="height:36px;min-width:230px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:10px;padding:0 11px">
+        <button class="btn" onclick="loadList()" data-tip="Reload from Creator">Refresh</button>
+      </div>
+    </div>
+
+    <div class="kpis" id="statCards"></div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Exceptions</h2>
+        <span class="hint">Showing: <strong id="viewLabel">Open</strong> · if the system is uncertain, it stops and escalates.</span>
+        <div class="spacer"></div>
+        <div class="chips" id="filterPills">
+          <button class="fchip on" data-filter="open" onclick="setFilter('open')">Open</button>
+          <button class="fchip" data-filter="in-progress" onclick="setFilter('in-progress')">In Progress</button>
+          <button class="fchip" data-filter="resolved" onclick="setFilter('resolved')">Closed</button>
+          <button class="fchip" data-filter="all" onclick="setFilter('all')">All</button>
+        </div>
+      </div>
+      <div id="listBody"></div>
+    </section>
+
+  </div>
+</main>
+
+<div class="scrim" id="scrim" onclick="closeModal()"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"></div>
+<div class="toasts" id="toasts"></div>
+<div class="sr-only" id="srLive" aria-live="polite"></div>
+
+<script>
+/* ==================== CONFIG — unchanged from the previous version ==================== */
+const REPORT_NAME = 'All_DMS_Exception_Queue';
+
+/* E.4 Exception Queue Board View — severity drives both the colour and the
+   resolution deadline. days:0 means "must be resolved same day". */
+const SEV = {
+  High:   { cls: 'p-bad',  c: 'var(--bad)',  days: 0 },
+  Medium: { cls: 'p-warn', c: 'var(--warn)', days: 2 },
+  Low:    { cls: 'p-yel',  c: 'var(--yel)',  days: 5 }
+};
+const STATUS_PILL = { 'Open':'p-bad', 'In Progress':'p-acc', 'Resolved':'p-ok', 'Dismissed':'p-gray' };
+const ASSIGNEES = ['Delivery Officer', 'Dispatcher', 'Scheduler', 'Warehouse'];
+
+/* ==================== STATE ==================== */
+var ALL_ROWS = [];
+var CURRENT_FILTER = 'open';
+var EDITING_ID = null;
+var LAST_FOCUS = null;
+
+window.addEventListener('load', loadList);
+
+/* ==================== HELPERS — kept verbatim ==================== */
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+/* The design stacks toasts in a .toasts container and animates each one in; it
+   has no .show toggle on a single element. tone drives the leading dot colour. */
+function showToast(msg, tone){
+  var wrap = document.getElementById('toasts');
+  var t = document.createElement('div');
+  t.className = 'toast' + (tone ? ' ' + tone : '');
+  t.setAttribute('role', 'status');
+  t.innerHTML = '<i></i><span></span>';
+  t.querySelector('span').textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 4200);
+}
+
+function announce(msg){
+  var r = document.getElementById('srLive');
+  if(r){ r.textContent = ''; setTimeout(function(){ r.textContent = msg; }, 30); }
+}
+
+function errCode(e){
+  try {
+    if(e && e.code) return e.code;
+    if(e && e.responseText) return JSON.parse(e.responseText).code;
+    var s = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+    return JSON.parse(JSON.parse(s).responseText || s).code;
+  } catch(_){ return null; }
+}
+
+/* Sales_Order_Reference is a Lookup — the v2.1 read shape is an object
+   ({Sales_Order_Display, ID, zc_display_value}), not a plain string. */
+function soDisplay(field){
+  if(field === null || field === undefined) return '';
+  if(typeof field === 'object') return field.Sales_Order_Display || field.zc_display_value || field.ID || '';
+  return field;
+}
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function isoOf(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+const TODAY = isoOf(new Date());
+function addDays(iso, n){
+  var d = new Date(iso + 'T00:00:00');
+  if(isNaN(d.getTime())) return iso;
+  d.setDate(d.getDate() + n);
+  return isoOf(d);
+}
+function fmtDate(iso){
+  if(!iso) return '—';
+  var d = new Date(String(iso).slice(0,10) + 'T00:00:00');
+  if(isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+}
+
+/* Date_Raised comes back as a DateTime string. Take the date half only — the SLA
+   is measured in whole days, and the shape has varied across this app's forms. */
+function raisedDate(r){
+  var v = r.Date_Raised || '';
+  var m = String(v).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return m[0];
+  var d = new Date(v);
+  return isNaN(d.getTime()) ? '' : isoOf(d);
+}
+
+function isActive(r){
+  var st = r.Status || 'Open';
+  return st === 'Open' || st === 'In Progress';
+}
+
+/* E.4's resolution rule, per severity. Returns the due date and whether it has
+   already passed while the exception is still open. */
+function slaDue(r){
+  var sev = SEV[r.Severity] ? r.Severity : 'Medium';
+  var raised = raisedDate(r);
+  if(!raised) return { due:'', overdue:false, sameDay: sev==='High' };
+  var due = addDays(raised, SEV[sev].days);
+  return { due: due, overdue: isActive(r) && due < TODAY, sameDay: sev === 'High' };
+}
+
+/* ==================== NEXT STEP — kept verbatim ==================== */
+function nextStepFor(r){
+  var st = r.Status || 'Open';
+  var owner = r.Assigned_To || 'Dispatcher';
+  if(st==='Dismissed') return {here:'Dismissed', action:'Dismissed', who:'', tone:'done'};
+  if(st==='Resolved') return {here:'Resolved', action:'Back to Initial Scheduling for rescheduling', who:'Scheduler', tone:'done'};
+  if(st==='In Progress') return {here:'In Progress', action:'Set the resolution, then mark Resolved', who:owner, tone:'next'};
+  if(!r.Assigned_To) return {here:'Open', action:'Assign an owner', who:'Dispatcher', tone:'next'};
+  return {here:'Open', action:'Investigate and resolve', who:owner, tone:'next'};
+}
+
+/* ADDED 2026-08-01, kept: the Field Work reschedule integration
+   (dms_field_work_reschedule.txt) is still the ONLY source of
+   Exception_Stage="Dispatch" in this build, so every Dispatch-stage row IS a
+   reschedule request — a visible flag on an existing value, no new field. */
+function stageChip(r){
+  var base = '<span class="pill plain p-gray">' + esc(r.Exception_Stage || '—') + '</span>';
+  if(r.Exception_Stage === 'Dispatch'){
+    base += ' <span class="pill plain" style="color:var(--vio);background:var(--vio-soft);border-color:transparent">🔄 Reschedule</span>';
+  }
+  return base;
+}
+
+/* ==================== LIST ==================== */
+function loadList(){
+  document.getElementById('listBody').innerHTML =
+    '<div class="empty"><strong>Loading…</strong><p class="muted" style="margin:6px 0 0">Reading ' + REPORT_NAME + '</p></div>';
+
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
+    console.error('[DMSExceptionQueue] SDK not available');
+    document.getElementById('listBody').innerHTML =
+      '<div class="empty"><strong>Widget SDK not available</strong><p class="muted" style="margin:6px 0 0">Open this inside its Creator page.</p></div>';
+    return;
+  }
+
+  /* No ZOHO.CREATOR.init() wrapper — it never resolves. See the header note. */
+  ZOHO.CREATOR.DATA.getRecords({
+    report_name: REPORT_NAME,
+    page: 1,
+    pageSize: 200,
+    field_config: 'all'
+  }).then(function(resp){
+    ALL_ROWS = (resp && resp.code===3000 && resp.data) ? resp.data : [];
+    renderList();
+  }).catch(function(e){
+    var c = errCode(e);
+    if(c===9220 || c===9280){      /* genuinely empty report, not a failure */
+      ALL_ROWS = [];
+      renderList();
+      return;
+    }
+    console.error('[DMSExceptionQueue] getRecords error', e);
+    var msg = (c===2945)
+      ? 'Session expired — press Ctrl+Shift+R, then try again.'
+      : 'Could not load — see console.';
+    document.getElementById('listBody').innerHTML =
+      '<div class="empty"><strong>' + esc(msg) + '</strong></div>';
+  });
+}
+
+function setFilter(f){
+  CURRENT_FILTER = f;
+  /* 'high' and 'overdue' have no chip, so no chip lights up for them -- the stat
+     card the officer clicked is the affordance. The panel head says which view
+     is active either way. */
+  document.querySelectorAll('#filterPills .fchip').forEach(function(p){
+    p.classList.toggle('on', p.dataset.filter===f);
+  });
+  var label = { open:'Open', 'in-progress':'In Progress', resolved:'Closed', all:'All',
+                high:'Open · High severity', overdue:'Past resolve-by' }[f] || f;
+  document.getElementById('viewLabel').textContent = label;
+  renderList();
+}
+
+function filterRows(){
+  var q = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+  var rank = { High:0, Medium:1, Low:2 };
+  return ALL_ROWS.filter(function(r){
+    var st = (r.Status||'Open').toLowerCase();
+    if(CURRENT_FILTER==='open' && st!=='open') return false;
+    if(CURRENT_FILTER==='in-progress' && st!=='in progress') return false;
+    if(CURRENT_FILTER==='resolved' && st!=='resolved' && st!=='dismissed') return false;
+    /* Reached from the stat cards rather than a chip. */
+    if(CURRENT_FILTER==='high' && !(st==='open' && r.Severity==='High')) return false;
+    if(CURRENT_FILTER==='overdue' && !slaDue(r).overdue) return false;
+    if(q){
+      var hay = [r.Exception_ID, soDisplay(r.Sales_Order_Reference), r.Customer_Name,
+                 r.Exception_Reason, r.Exception_Stage, r.Assigned_To]
+                .map(function(x){ return String(x===null||x===undefined?'':x); })
+                .join(' ').toLowerCase();
+      if(hay.indexOf(q)===-1) return false;
+    }
+    return true;
+  }).sort(function(a,b){
+    var ra = rank[a.Severity]===undefined ? 9 : rank[a.Severity];
+    var rb = rank[b.Severity]===undefined ? 9 : rank[b.Severity];
+    if(ra!==rb) return ra-rb;
+    return String(b.Date_Raised||'').localeCompare(String(a.Date_Raised||''));
+  });
+}
+
+/* ONE ROW PER EXCEPTION. Was a card (exCard) until 2026-11-09; every value it
+   showed is still here, just in cells. Columns:
+   Exception | Severity | Order | Raised | Assigned | Resolve by | Status | Actions */
+function exRow(r){
+  var sev = SEV[r.Severity] ? r.Severity : null;
+  var sevPill = sev
+    ? '<span class="pill ' + SEV[sev].cls + '">' + esc(sev) + '</span>'
+    : '<span class="pill plain p-gray">No severity</span>';
+  var active = isActive(r);
+  var sla = slaDue(r);
+  var ns = nextStepFor(r);
+  var so = soDisplay(r.Sales_Order_Reference);
+
+  /* One column does double duty: the SLA deadline while the exception is live,
+     the resolution once it is closed -- exactly what the card did. */
+  var lastCol, lastLabel;
+  if(active){
+    lastLabel = 'Resolve by';
+    var dueTxt = sla.sameDay ? 'Same day' : (sla.due ? fmtDate(sla.due) : '—');
+    lastCol = '<div' + (sla.overdue ? ' class="overdue"' : '') + '>' + esc(dueTxt)
+            + (sla.overdue ? ' · overdue' : '') + '</div>'
+            + '<div class="sub2 clip" title="' + esc(ns.action) + '">' + esc(ns.action)
+            + (ns.who ? ' (' + esc(ns.who) + ')' : '') + '</div>';
+  } else {
+    lastLabel = 'Resolution';
+    lastCol = '<div class="clip" title="' + esc(r.Resolution_Action || '') + '">'
+            + (r.Resolution_Action ? esc(r.Resolution_Action) : '—') + '</div>'
+            + (isTrue(r.Revert_to_System) ? '<div class="sub2">sent back to the engine</div>' : '');
+  }
+
+  /* Buttons sit inside a clickable row, so each one swallows the click before
+     the row's own openDetail can fire. */
+  var acts = active
+    ? (r.Status === 'Open'
+        ? '<button class="btn sm" onclick="rowAct(event,\'startWork\',\'' + esc(r.ID) + '\')">Start</button>' : '')
+      + '<button class="btn sm primary" onclick="rowAct(event,\'openResolve\',\'' + esc(r.ID) + '\')">Resolve</button>'
+      + '<button class="btn sm ghost" onclick="rowAct(event,\'openDismiss\',\'' + esc(r.ID) + '\')">Dismiss</button>'
+      + '<button class="btn sm ghost" onclick="rowAct(event,\'openDetail\',\'' + esc(r.ID) + '\')">Edit</button>'
+    : '<button class="btn sm ghost" onclick="rowAct(event,\'openDetail\',\'' + esc(r.ID) + '\')">View</button>';
+
+  return '<tr class="sevrow' + (active ? '' : ' isdone') + '"'
+    + ' style="--sev:' + (sev ? SEV[sev].c : 'var(--border-strong)') + '"'
+    + ' onclick="openDetail(\'' + esc(r.ID) + '\')">'
+    + '<td class="c-ord ord" data-label="Exception">'
+      + '<div class="so mono">' + esc(r.Exception_ID || '—') + '</div>'
+      + '<div class="cust clip" title="' + esc(r.Exception_Reason || '') + '">'
+        + esc(r.Exception_Reason || 'No reason recorded') + '</div>'
+    + '</td>'
+    + '<td data-label="Severity">' + sevPill
+      + '<div style="margin-top:4px">' + stageChip(r) + '</div></td>'
+    + '<td class="ord" data-label="Order">'
+      + '<div class="so' + (so ? ' mono' : '') + '">' + (so ? esc(so) : '—') + '</div>'
+      + (r.Customer_Name ? '<div class="cust clip" title="' + esc(r.Customer_Name) + '">' + esc(r.Customer_Name) + '</div>' : '')
+    + '</td>'
+    + '<td data-label="Raised"><div>' + fmtDate(raisedDate(r)) + '</div>'
+      + '<div class="sub2">' + esc(r.Raised_By || 'System') + '</div></td>'
+    + '<td data-label="Assigned">'
+      + (r.Assigned_To ? esc(r.Assigned_To) : '<span class="muted">Nobody yet</span>') + '</td>'
+    + '<td data-label="' + lastLabel + '">' + lastCol + '</td>'
+    + '<td data-label="Status"><span class="pill ' + (STATUS_PILL[r.Status] || 'p-gray') + '">'
+      + esc(r.Status || 'Open') + '</span></td>'
+    + '<td class="c-act" data-label="Actions"><div class="acts">' + acts + '</div></td>'
+    + '</tr>';
+}
+
+/* The row itself opens the editor, so an action button must not let its click
+   bubble up to it. Routed through window[fn] so the EDITING_ID wrapper at the
+   bottom of this file still runs. */
+function rowAct(ev, fn, id){
+  if(ev && ev.stopPropagation) ev.stopPropagation();
+  if(typeof window[fn] === 'function') window[fn](id);
+}
+
+function renderList(){
+  var rows = filterRows();
+  var body = document.getElementById('listBody');
+  if(!rows.length){
+    var q = (document.getElementById('searchInput').value||'').trim();
+    body.innerHTML = '<div class="empty"><strong>'
+      + (q ? 'Nothing matches that search' : 'No exceptions in this view')
+      + '</strong><p class="muted" style="margin:6px 0 0">'
+      + (q ? 'Try the SO#, the customer, or part of the reason.'
+           : 'Nothing here needs a human right now — that is the good outcome.')
+      + '</p></div>';
+  } else {
+    body.innerHTML = '<div class="tbl-wrap"><table class="q"><thead><tr>'
+      + '<th>Exception</th><th>Severity</th><th>Order</th><th>Raised</th>'
+      + '<th>Assigned</th><th>Resolve by / Resolution</th><th>Status</th>'
+      + '<th class="ta-r">Actions</th>'
+      + '</tr></thead><tbody>' + rows.map(exRow).join('') + '</tbody></table></div>';
+  }
+  updateStats();
+}
+
+/* A Creator Decision Box reads back as true, "true" or "Yes" depending on the
+   path — never test it with a bare truthiness check. */
+function isTrue(v){
+  return v === true || v === 'true' || v === 'Yes' || v === 'yes';
+}
+
+/* The design's .kpi carries cursor:pointer and an :active transform -- it is meant
+   to be clickable. Each card jumps to the matching filter. */
+function kpi(label, value, color, filter){
+  return '<button type="button" class="kpi" onclick="setFilter(\'' + filter + '\')"'
+       + ' data-tip="Show ' + esc(label) + '">'
+       + '<div class="lbl">' + esc(label) + '</div>'
+       + '<div class="val"' + (color ? ' style="color:' + color + '"' : '') + '>' + value + '</div></button>';
+}
+
+function updateStats(){
+  var open = ALL_ROWS.filter(function(r){ return (r.Status||'Open')==='Open'; });
+  var high = open.filter(function(r){ return r.Severity==='High'; }).length;
+  var overdue = ALL_ROWS.filter(function(r){ return slaDue(r).overdue; }).length;
+  var resolved = ALL_ROWS.filter(function(r){ return r.Status==='Resolved'; }).length;
+  document.getElementById('statCards').innerHTML =
+      kpi('Open Exceptions', open.length, 'var(--bad)', 'open')
+    + kpi('Open — High Severity', high, 'var(--bad)', 'high')
+    + kpi('Past Resolve-By', overdue, overdue ? 'var(--bad)' : '', 'overdue')
+    + kpi('Resolved (All Time)', resolved, 'var(--ok)', 'resolved');
+}
+
+/* ==================== ACTIONS ==================== */
+function rowById(id){
+  return ALL_ROWS.find(function(x){ return String(x.ID)===String(id); });
+}
+
+/* Start = Open -> In Progress. Nothing else changes, and Resolution Action is
+   deliberately NOT demanded here — the officer has not resolved anything yet. */
+function startWork(id){
+  var r = rowById(id);
+  if(!r) return;
+  saveFields(id, { Status: 'In Progress' }, 'Started — ' + (r.Exception_ID || id));
+}
+
+function openResolve(id){
+  var r = rowById(id);
+  if(!r) return;
+  showModal(
+    'Resolve ' + esc(r.Exception_ID || ''),
+    esc(r.Exception_Reason || '') + (soDisplay(r.Sales_Order_Reference) ? ' · ' + esc(soDisplay(r.Sales_Order_Reference)) : ''),
+      '<div class="field"><label for="mAction">Resolution action <span class="req">*</span></label>'
+    + '<textarea id="mAction" rows="3" placeholder="What did you do to resolve this?"></textarea></div>'
+    + '<div class="field"><label for="mAssign">Assigned to</label>'
+    + selectHtml('mAssign', ASSIGNEES, r.Assigned_To) + '</div>'
+    + '<label class="check"><input type="checkbox" id="mRevert" checked> '
+    + 'Revert to system — send the order back to the scheduling engine</label>',
+    'Mark resolved',
+    function(){
+      var action = document.getElementById('mAction').value.trim();
+      if(!action){
+        document.getElementById('mAction').closest('.field').classList.add('err');
+        showToast('Resolution Action is required to mark this Resolved', 'bad');
+        document.getElementById('mAction').focus();
+        return false;
+      }
+      return {
+        Status: 'Resolved',
+        Resolution_Action: action,
+        Assigned_To: document.getElementById('mAssign').value,
+        Revert_to_System: document.getElementById('mRevert').checked
+      };
+    }
+  );
+}
+
+function openDismiss(id){
+  var r = rowById(id);
+  if(!r) return;
+  showModal(
+    'Dismiss ' + esc(r.Exception_ID || ''),
+    'A dismissed exception is never deleted — it stays on the record (E.5).',
+      '<div class="field"><label for="mAction">Why is this being dismissed? <span class="req">*</span></label>'
+    + '<textarea id="mAction" rows="3" placeholder="Reason for dismissing"></textarea></div>',
+    'Dismiss',
+    function(){
+      var action = document.getElementById('mAction').value.trim();
+      if(!action){
+        document.getElementById('mAction').closest('.field').classList.add('err');
+        showToast('Resolution Action is required to mark this Dismissed', 'bad');
+        document.getElementById('mAction').focus();
+        return false;
+      }
+      /* Revert_to_System is forced false: a dismissed exception means "no
+         requeue needed", matching EXC_Resolve_Sync's own Resolved-only gate. */
+      return { Status:'Dismissed', Resolution_Action: action, Revert_to_System: false };
+    }
+  );
+}
+
+/* The full editor — every writable field, for the cases the three buttons above
+   do not cover (reassigning, correcting a resolution, reopening). */
+function openDetail(id){
+  var r = rowById(id);
+  if(!r) return;
+  var ns = nextStepFor(r);
+  showModal(
+    esc(r.Exception_ID || 'Exception'),
+    esc(r.Exception_Reason || ''),
+      '<div class="notice" style="margin:0 0 12px">Next step: ' + esc(ns.action)
+        + (ns.who ? ' · <strong>' + esc(ns.who) + '</strong>' : '') + '</div>'
+    + '<div class="field"><label for="mStatus">Status</label>'
+    + selectHtml('mStatus', ['Open','In Progress','Resolved','Dismissed'], r.Status || 'Open') + '</div>'
+    + '<div class="field"><label for="mAssign">Assigned to</label>'
+    + selectHtml('mAssign', ASSIGNEES, r.Assigned_To) + '</div>'
+    + '<div class="field"><label for="mAction">Resolution action</label>'
+    + '<textarea id="mAction" rows="3">' + esc(r.Resolution_Action || '') + '</textarea></div>'
+    + '<label class="check"><input type="checkbox" id="mRevert"' + (isTrue(r.Revert_to_System) ? ' checked' : '') + '> '
+    + 'Revert to system — only applies when Status is Resolved</label>',
+    'Save',
+    function(){
+      var status = document.getElementById('mStatus').value;
+      var revert = document.getElementById('mRevert').checked;
+      var action = document.getElementById('mAction').value.trim();
+      /* Both validations kept exactly as they were. */
+      if(revert && status!=='Resolved'){
+        showToast('Revert to System only applies when Status is Resolved', 'bad');
+        return false;
+      }
+      if((status==='Resolved' || status==='Dismissed') && !action){
+        document.getElementById('mAction').closest('.field').classList.add('err');
+        showToast('Resolution Action is required to mark this ' + status, 'bad');
+        document.getElementById('mAction').focus();
+        return false;
+      }
+      return {
+        Status: status,
+        Assigned_To: document.getElementById('mAssign').value,
+        Resolution_Action: action,
+        Revert_to_System: revert
+      };
+    }
+  );
+}
+
+function selectHtml(id, opts, val){
+  return '<select id="' + id + '">'
+    + '<option value="">— Not set —</option>'
+    + opts.map(function(o){
+        return '<option value="' + esc(o) + '"' + (String(o)===String(val||'') ? ' selected' : '') + '>' + esc(o) + '</option>';
+      }).join('')
+    + '</select>';
+}
+
+/* ==================== SAVE ==================== */
+function saveFields(id, data, okMsg){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
+    showToast('Widget SDK not available');
+    return;
+  }
+  ZOHO.CREATOR.DATA.updateRecordById({
+    report_name: REPORT_NAME,
+    id: String(id),
+    payload: { data: data }
+  }).then(function(resp){
+    if(resp && (resp.code===3000 || String(resp.code)==='3000')){
+      showToast(okMsg || 'Saved');
+      announce(okMsg || 'Saved');
+      closeModal();
+      loadList();
+    } else {
+      showToast(saveError(resp), 'bad');
+      console.error('[DMSExceptionQueue] update error', resp);
+    }
+  }).catch(function(e){
+    showToast(saveError(e), 'bad');
+    console.error('[DMSExceptionQueue] update error', e);
+  });
+}
+
+/* Name the rejected field in the toast rather than sending the officer to the
+   console — this app's testing happens in the live UI, not DevTools. */
+function saveError(resp){
+  var c = errCode(resp) || (resp && resp.code);
+  if(c===2945) return 'Session expired — press Ctrl+Shift+R, then try again.';
+  var detail = '';
+  try {
+    if(resp && resp.error){
+      detail = Array.isArray(resp.error)
+        ? resp.error.map(function(x){ return (x && (x.message || x.error_message)) || JSON.stringify(x); }).join('; ')
+        : String(resp.error);
+    } else if(resp && resp.message){
+      detail = resp.message;
+    }
+  } catch(_){ }
+  return 'Save failed' + (c ? ' (code ' + c + ')' : '') + (detail ? ' — ' + detail : ' — see console');
+}
+
+/* ==================== MODAL ==================== */
+function showModal(title, sub, bodyHtml, okLabel, collect){
+  LAST_FOCUS = document.activeElement;
+  var m = document.getElementById('modal');
+  /* `.modal form` is what carries the padding and the 12px field gap in the
+     design -- there is no .m-body. novalidate + type=button keeps the browser's
+     own validation bubbles out of the way; collect() does the validating. */
+  m.innerHTML = '<header><h3 id="modalTitle">' + title + '</h3>'
+    + (sub ? '<p class="muted" style="margin:4px 0 0;font-size:var(--fs-sm)">' + sub + '</p>' : '')
+    + '</header><form novalidate onsubmit="return false">' + bodyHtml
+    + '<div class="m-foot"><button type="button" class="btn" onclick="closeModal()">Cancel</button>'
+    + '<button type="button" class="btn primary" id="mOk">' + esc(okLabel) + '</button></div>'
+    + '</form>';
+  document.getElementById('mOk').onclick = function(){
+    var data = collect();
+    if(data === false) return;
+    document.getElementById('mOk').disabled = true;
+    saveFields(EDITING_ID, data, null);
+  };
+  m.classList.add('on');
+  document.getElementById('scrim').classList.add('on');
+  var first = m.querySelector('textarea, select, input');
+  if(first) first.focus();
+}
+
+function closeModal(){
+  document.getElementById('modal').classList.remove('on');
+  document.getElementById('scrim').classList.remove('on');
+  EDITING_ID = null;
+  if(LAST_FOCUS && LAST_FOCUS.focus) LAST_FOCUS.focus();
+}
+
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape' && document.getElementById('modal').classList.contains('on')) closeModal();
+});
+
+/* Every action routes through one place so EDITING_ID can never drift from the
+   card that was clicked. */
+['openResolve','openDismiss','openDetail'].forEach(function(fn){
+  var orig = window[fn];
+  window[fn] = function(id){ EDITING_ID = id; orig(id); };
+});
+</script>
+</body>
+</html>

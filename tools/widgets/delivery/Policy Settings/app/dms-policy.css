@@ -1,0 +1,18 @@
+/* Extracted verbatim from hc-dms-widget (5).html, 2026-10-22.
+   Source kept at Delivery Management System/reference/hc-dms-widget-v5_2026-10-22.html
+   Do not hand-edit a copy inside a widget zip -- change it here and re-copy,
+   or the ten widgets drift apart again. */
+
+/* Policy Settings only (Build Plan F). Only the new Policy Settings widget
+   needs this. */
+
+/* ---------- Policy ---------- */
+.pol-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:12px;padding:16px}
+.pol{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.pol h3{margin:0;padding:10px 14px;font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface-2);border-bottom:1px solid var(--border)}
+.pol-row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border);align-items:center}
+.pol-row:last-child{border-bottom:0}
+.pol-row .k{display:flex;align-items:center;gap:6px;font-family:"JetBrains Mono",monospace;font-size:var(--fs-sm);font-weight:600;word-break:break-all}
+.pol-row .d{grid-column:1/2;font-size:var(--fs-sm);color:var(--muted)}
+.pol-row .v{grid-row:1/3;grid-column:2;font-weight:600;font-size:var(--fs-md);text-align:right}
+.lock{color:var(--warn);flex:none}
