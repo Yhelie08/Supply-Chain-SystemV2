@@ -2,17 +2,17 @@
 title: inquiryApproveSrp
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:231"
+source: "src/domain/actions.js:304"
 ---
 
 # inquiryApproveSrp
 
 Approves the selling price (SRP) in PHP, from the detail view or straight from a Quote Group chip.
 
-**Source:** `src/domain/actions.js:231`
+**Source:** `src/domain/actions.js:304`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[timeline]]

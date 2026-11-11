@@ -2,14 +2,14 @@
 title: prResume
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:468"
+source: "src/domain/actions.js:541"
 ---
 
 # prResume
 
 Clears the hold (Resume) or the cancellation (Restore), so the PR carries on from the status it already had.
 
-**Source:** `src/domain/actions.js:468`
+**Source:** `src/domain/actions.js:541`
 
 ## Offered on
 - [[Purchase Request]] (Procurement)

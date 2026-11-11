@@ -2,14 +2,14 @@
 title: poSend
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:505"
+source: "src/domain/actions.js:578"
 ---
 
 # poSend
 
 Sends a Draft PO to its supplier. An unrecognised supplier is refused. A Local PO is issued without any accounting push.
 
-**Source:** `src/domain/actions.js:505`
+**Source:** `src/domain/actions.js:578`
 
 ## Offered on
 - [[Purchase Order]] (Procurement)

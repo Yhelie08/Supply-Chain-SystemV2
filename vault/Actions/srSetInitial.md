@@ -1,19 +1,19 @@
 ---
 title: srSetInitial
-tags: [action, delivery]
-module: Delivery
-source: "src/domain/actions.js:785"
+tags: [action, delivery-management]
+module: Delivery Management
+source: "src/domain/actions.js:1211"
 ---
 
 # srSetInitial
 
 Sets or changes the initial delivery date, which anchors the scheduling engine's search.
 
-**Source:** `src/domain/actions.js:785`
+**Source:** `src/domain/actions.js:1211`
 
 ## Offered on
-- [[Initial Scheduling]] (Delivery)
-- [[Service Request]] (Delivery)
+- [[Initial Scheduling]] (Delivery Management)
+- [[Service Request]] (Delivery Management)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

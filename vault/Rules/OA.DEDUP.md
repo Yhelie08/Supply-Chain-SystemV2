@@ -13,9 +13,9 @@ module: Order Aggregation
 **Kind:** BLOCKS · **Module:** Order Aggregation
 
 ## Enforced by
-- [[dispatch]] (`src/domain/actions.js:767`)
+- [[dispatch]] (`src/domain/actions.js:1177`)
 
 ## Seen on
-- [[Order Aggregation]]
+- [[To Ship]]
 
 Back to [[Rules Index]].

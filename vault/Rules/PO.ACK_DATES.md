@@ -13,9 +13,12 @@ module: Purchase Order
 **Kind:** REQUIRED · **Module:** Purchase Order
 
 ## Enforced by
-- [[poAcknowledge]] (`src/domain/actions.js:514`)
+- [[poAcknowledge]] (`src/domain/actions.js:587`)
+- [[supplierAckPO]] (`src/domain/actions.js:1010`)
 
 ## Seen on
 - [[Purchase Order]]
+- [[Tony Fan - Purchase Order]]
+- [[Fenteng Lighting - Purchase Order]]
 
 Back to [[Rules Index]].

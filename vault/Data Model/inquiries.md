@@ -8,14 +8,18 @@ label: Inquiry
 
 **Inquiry.** A customer enquiry that is quoted by a supplier, estimated, and approved into a Sales Order.
 
-27 rows in the sample data.
+47 rows in the sample data.
 
 ## Created by
 - [[inquiryCreate]]
 
 ## Shown on
-- [[Dashboard]]
-- [[Inquiry]]
+- [[Supply Chain Analytic]]
+- [[Procurement Dashboard]]
+- [[Inquiry List]]
+- [[Forecast Setting]]
+- [[Tony Fan - Inquiries]]
+- [[Fenteng Lighting - Inquiries]]
 
 ## Lifecycle (`status`)
 

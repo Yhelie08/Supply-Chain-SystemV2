@@ -13,12 +13,12 @@ module: Inquiry
 **Kind:** BLOCKS · **Module:** Inquiry
 
 ## Enforced by
-- [[inquiryUpdate]] (`src/domain/actions.js:210`)
-- [[inquiryDelete]] (`src/domain/actions.js:222`)
-- [[inquiryApproveSrp]] (`src/domain/actions.js:231`)
-- [[inquiryEstimate]] (`src/domain/actions.js:245`)
+- [[inquiryUpdate]] (`src/domain/actions.js:283`)
+- [[inquiryDelete]] (`src/domain/actions.js:295`)
+- [[inquiryApproveSrp]] (`src/domain/actions.js:304`)
+- [[inquiryEstimate]] (`src/domain/actions.js:318`)
 
 ## Seen on
-- [[Inquiry]]
+- [[Inquiry List]]
 
 Back to [[Rules Index]].

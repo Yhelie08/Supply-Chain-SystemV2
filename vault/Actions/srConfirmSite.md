@@ -1,19 +1,19 @@
 ---
 title: srConfirmSite
-tags: [action, delivery]
-module: Delivery
-source: "src/domain/actions.js:793"
+tags: [action, delivery-management]
+module: Delivery Management
+source: "src/domain/actions.js:1219"
 ---
 
 # srConfirmSite
 
 Confirms the site with a method and notes. Both are required, and only a person can confirm.
 
-**Source:** `src/domain/actions.js:793`
+**Source:** `src/domain/actions.js:1219`
 
 ## Offered on
-- [[Initial Scheduling]] (Delivery)
-- [[Service Request]] (Delivery)
+- [[Initial Scheduling]] (Delivery Management)
+- [[Service Request]] (Delivery Management)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

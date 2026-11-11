@@ -13,7 +13,7 @@ module: Crate
 **Kind:** BLOCKS · **Module:** Crate
 
 ## Enforced by
-- [[crateComplete]] (`src/domain/actions.js:759`)
+- [[crateComplete]] (`src/domain/actions.js:1169`)
 
 ## Seen on
 - [[Crate]]

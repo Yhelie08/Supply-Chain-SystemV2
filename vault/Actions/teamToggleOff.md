@@ -1,18 +1,18 @@
 ---
 title: teamToggleOff
-tags: [action, delivery]
-module: Delivery
-source: "src/domain/actions.js:874"
+tags: [action, delivery-management]
+module: Delivery Management
+source: "src/domain/actions.js:1300"
 ---
 
 # teamToggleOff
 
 Marks a date as a day off for a team, or brings the team back if it was already off.
 
-**Source:** `src/domain/actions.js:874`
+**Source:** `src/domain/actions.js:1300`
 
 ## Offered on
-- [[Teams & Capacity]] (Delivery)
+- [[Daily Team Availability]] (Delivery Management)
 
 ## Rules
 - [[GEN.FIELD]]: A required field is missing.

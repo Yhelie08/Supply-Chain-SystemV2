@@ -13,6 +13,6 @@ module: Purchase Request
 **Kind:** BLOCKS · **Module:** Purchase Request
 
 ## Enforced by
-- [[prConvert]] (`src/domain/actions.js:477`)
+- [[prConvert]] (`src/domain/actions.js:550`)
 
 Back to [[Rules Index]].

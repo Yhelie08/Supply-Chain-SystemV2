@@ -13,25 +13,29 @@ This vault is generated from the source by `npm run vault`. Edit the app, not th
 
 - [[System Map]]: the whole flow on one diagram
 - [[Running the app]] and [[How the engine works]]
-- [[Rules Index]]: 76 rules
-- [[Data Model]]: 18 collections
+- [[Rules Index]]: 118 rules
+- [[Data Model]]: 24 collections
 - [[Differences from the Zoho system]] and [[Not built yet]]
 - [[Design decisions]], [[Testing]], [[Glossary]]
 
-## Modules
+## Sections
 
-| Module | Pages |
+The six sections of the dropdown in the top bar, plus the Reference link.
+
+| Section | Pages |
 | --- | --- |
-| [[Overview]] | [[Dashboard]] |
-| [[Procurement]] | [[Inquiry]], [[Purchase Request]], [[Purchase Order]], [[Shipments]], [[Receiving]], [[Exceptions]], [[Replacement]] |
-| [[Fulfillment]] | [[Readiness Gate]], [[Pick]], [[Pack]], [[QC Checklist]], [[Crate]], [[Order Aggregation]] |
-| [[Delivery]] | [[Initial Scheduling]], [[Service Request]], [[Appointments]], [[Ongoing Service]], [[Exception Queue]], [[Teams & Capacity]] |
+| [[Analytic]] | [[Supply Chain Analytic]] |
+| [[Procurement]] | [[Procurement Dashboard]], [[Inquiry List]], [[Purchase Request]], [[Purchase Order]], [[Shipments]], [[Receiving]], [[Replacement Request]], [[Exceptions]], [[Forecast Setting]] |
+| [[Tony Fan]] | [[Tony Fan - Inquiries]], [[Tony Fan - Purchase Request]], [[Tony Fan - Purchase Order]], [[Tony Fan - Shipments]], [[Tony Fan - Replacement Request]] |
+| [[Fenteng Lighting]] | [[Fenteng Lighting - Inquiries]], [[Fenteng Lighting - Purchase Request]], [[Fenteng Lighting - Purchase Order]], [[Fenteng Lighting - Shipments]], [[Fenteng Lighting - Replacement Request]] |
+| [[Fulfillment]] | [[Fulfillment Dashboard]], [[Sales Order Report]], [[Pre-Order]], [[Order Readiness]], [[Pick]], [[Pack & QC]], [[Crate]], [[To Ship]], [[Exception Control]], [[Transfer Item]] |
+| [[Delivery Management]] | [[Delivery Analytics]], [[Daily Team Availability]], [[Initial Scheduling]], [[Service Request]], [[Service Appointment]], [[Ongoing Service]], [[Archived]], [[Field Service Site Visits]], [[Sales Returns]], [[DMS Exception Queue]], [[Truck Maintenance]], [[Schedule Requests]] |
 | [[Reference]] | [[Rules]], [[Activity]] |
 
 ## In numbers
 
-- 22 pages, 48 workflow steps, 76 rules, 18 collections
-- 32 blocking rules, 19 required-field rules
+- 44 pages (0 not built yet), 80 workflow steps, 118 rules, 24 collections
+- 51 blocking rules, 31 required-field rules
 
 ## All workflow steps
 
@@ -57,24 +61,56 @@ This vault is generated from the source by `npm run vault`. Edit the app, not th
 | [[prGroupCreatePO]] | Create PO on a Sales Order group: the active PRs of that order go to one supplier in one PO. Refused if suppliers are mixed, a PR is not ready, or one is already converted. Held and cancelled PRs are left out. |
 | [[poSend]] | Sends a Draft PO to its supplier. An unrecognised supplier is refused. A Local PO is issued without any accounting push. |
 | [[poAcknowledge]] | Records the supplier's ETD and ETA, once only. Creates the Shipment and its Receiving if they are missing. |
+| [[poCancel]] | Cancels a Draft, Sent or Confirmed PO that has not shipped, with a reason. Its pending shipment and receiving are removed and its PRs return to the Ready queue. |
 | [[shipmentTransit]] | Marks a Pending shipment In Transit and stamps the date shipped. |
 | [[shipmentArrive]] | Marks an In Transit shipment Arrived, which opens its Receiving for counting. |
 | [[receive]] | Counts goods off the truck: accepted, damaged, missing. Totals may not exceed expected. Damage or shortage raises an exception; a full accept frees the waiting Sales Order items. |
 | [[exceptionCreateRR]] | Raises a Replacement Request for an open exception, sourced from a chosen supplier. One replacement per exception. |
 | [[rrApprove]] | Approves a replacement with an expected ship date and ETA, once only. Creates the replacement shipment and its receiving. |
+| [[rrCancel]] | Cancels a replacement before it ships, with a reason. The replacement shipment is removed and the exception opens again. |
+| [[rrClose]] | Closes a replacement that has been received. |
+| [[exceptionRaise]] | Raises an exception by hand (Raise Exception): source, item, type, quantity and optional supplier and notes. |
+| [[exceptionReview]] | Assigns an exception to a person with a due date and department. It then reads Under Review. |
+| [[exceptionResolve]] | Resolves an Open or Under Review exception by hand, with a note about how it was resolved. |
+| [[receivingSendToBooks]] | Sends a receiving that was counted in full to Books. Once only. |
+| [[receivingCreate]] | New Receiving, Create From Scratch: a receiving with no PO, for goods that arrived without one. Needs a supplier, an item and a quantity. |
+| [[packageCreateOrder]] | Sales Order Report and Pre-Order: creates one package for a whole Sales Order, with a Delivery Type. Every item must be received. |
+| [[ecRework]] | Exception Control: sends a QC reject to rework. |
+| [[ecUnrepairable]] | Exception Control: marks a QC reject unrepairable, which is what allows a replacement to be requested. |
+| [[ecComplete]] | Exception Control: finishes the rework, closes the exception and lets the item be rechecked. |
+| [[transferCreate]] | Transfer Item: creates a warehouse request or a warehouse-to-warehouse transfer. |
+| [[transferAdvance]] | Transfer Item: moves a request to Done, or a transfer through Dispatched to Received. |
+| [[salesReturnCreate]] | Archived: opens a sales return for a completed or failed delivery. Once per delivery. |
+| [[salesReturnSendToBooks]] | Sales Returns: sends a return to Books with an RMA number, reason, quantity and signature. |
+| [[siteVisitCreate]] | Field Service Site Visits: schedules an assessment for a service request. |
+| [[siteVisitUpdate]] | Field Service Site Visits: records whether the site is ready, with notes. |
+| [[truckChecklistCreate]] | Truck Maintenance: opens a daily vehicle checklist. |
+| [[truckChecklistAdvance]] | Truck Maintenance: starts a checklist, then completes it with a signature. |
+| [[truckEntryAdd]] | Truck Maintenance: adds a fuel or service entry. |
+| [[scheduleRequestCreate]] | Schedule Requests: records a client request to move a delivery date. |
+| [[scheduleRequestDecide]] | Schedule Requests: confirms (the delivery starts from the new date) or declines with a reason. |
+| [[supplierRespondInquiry]] | Supplier portal: a supplier answers an inquiry line with availability, lead time and prices. Only while the line is Waiting or Submit Response. Unavailable or Cannot Produce declines it and removes it from the supplier queue. |
+| [[supplierCollateral]] | Supplier portal: the selected supplier confirms the product collateral (sample, 3D image, drawing, specification). When every item is Completed or N/A the response is Completed and locked for good. |
+| [[supplierRespondPR]] | Supplier portal: a supplier quotes a purchase request raised by hand. A PR that came from an inquiry is view-only, and a held or cancelled PR cannot be quoted. |
+| [[supplierAckPO]] | Supplier portal: the supplier acknowledges a sent PO with an ETD and ETA, which confirms it and creates the shipment. Blocked if every line is held or cancelled. |
+| [[supplierShip]] | Supplier portal: the supplier ships a pending shipment with a date shipped (not in the future) and a mode. The shipment goes In Transit. |
+| [[supplierApproveRR]] | Supplier portal: the supplier approves a replacement request with a mode, expected ship date and ETA. It becomes Acknowledged and the replacement shipment is created. |
+| [[supplierRRProgress]] | Supplier portal: the supplier moves an approved replacement forward to In Production, then Shipped, and may update the dates. Shipped puts the replacement shipment In Transit. It never goes backwards. |
 | [[createPackage]] | Assigns a PAC number to a received item. Refused while the item is still on order. |
 | [[assignPicker]] | Names the picker who will collect the item. |
 | [[setPayment]] | Sets the item's payment to Paid, Unpaid or Credit. |
 | [[approveOverride]] | Lets an unpaid item through the gate and dispatch, with a reason and a valid-until date in the future. |
 | [[gateRelease]] | Releases an item from the Readiness Gate to Pick. Needs a package, a picker and settled payment. |
-| [[pickDone]] | Marks the item picked and opens its Pack record. The picker is deliberately not carried forward. |
-| [[packSend]] | Names the packer and sends the item to QC. The packer becomes the Quality Checker. |
+| [[pickDone]] | Marks the item picked and sends it straight to Pack & QC. The picker is deliberately not carried forward. |
+| [[qcAssign]] | Pack & QC: names the packer, who is also the quality checker. Approve and Reject are refused until this is done. |
 | [[qcApprove]] | Approves at QC. Goes to Crate if the item needs crating, otherwise straight to Order Aggregation. |
 | [[qcReject]] | Rejects at QC with a reason and raises a Fulfillment exception. |
-| [[qcRecheck]] | Sends a rejected item (or one whose replacement arrived) back to Pack for a fresh QC. |
+| [[qcRecheck]] | Puts a rejected item (or one whose replacement arrived) back in Pack & QC for a fresh check, with no packer assigned. |
 | [[crateSet]] | Updates Crating Status: Pending, In Progress or Done. |
 | [[crateComplete]] | Moves a crated item on to Order Aggregation. Refused until Crating Status is Done. |
 | [[dispatch]] | Dispatches an item from Order Aggregation. Blocked on payment, once only, and creates the Service Request in Delivery Management. |
+| [[forecastSettingsSave]] | Saves the forecast lead-time settings (each leg is a min and max in days), the two toggles and the weeks shown. A minimum above its maximum is refused. Every forecast date is recalculated from them. |
+| [[forecastSettingsReset]] | Puts every forecast setting back to its default. |
 | [[srSetInitial]] | Sets or changes the initial delivery date, which anchors the scheduling engine's search. |
 | [[srConfirmSite]] | Confirms the site with a method and notes. Both are required, and only a person can confirm. |
 | [[srHandOff]] | Hands a job from Initial Scheduling to Service Request. Needs an initial date. |

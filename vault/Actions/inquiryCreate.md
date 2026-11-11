@@ -2,17 +2,17 @@
 title: inquiryCreate
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:187"
+source: "src/domain/actions.js:260"
 ---
 
 # inquiryCreate
 
 Saves a new inquiry from the form: matched item and customer, quotes, collateral, specs and SRP. Tags every supplier, assigns the quote group, and starts the timeline.
 
-**Source:** `src/domain/actions.js:187`
+**Source:** `src/domain/actions.js:260`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[inquiries]]

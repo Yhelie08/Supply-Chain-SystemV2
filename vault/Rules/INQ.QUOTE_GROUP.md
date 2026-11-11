@@ -19,6 +19,6 @@ module: Inquiry
 This rule is documentation of what the step does by itself. No code path refuses with it.
 
 ## Seen on
-- [[Inquiry]]
+- [[Inquiry List]]
 
 Back to [[Rules Index]].

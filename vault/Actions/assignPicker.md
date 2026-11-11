@@ -2,17 +2,17 @@
 title: assignPicker
 tags: [action, fulfillment]
 module: Fulfillment
-source: "src/domain/actions.js:663"
+source: "src/domain/actions.js:1071"
 ---
 
 # assignPicker
 
 Names the picker who will collect the item.
 
-**Source:** `src/domain/actions.js:663`
+**Source:** `src/domain/actions.js:1071`
 
 ## Offered on
-- [[Readiness Gate]] (Fulfillment)
+- [[Order Readiness]] (Fulfillment)
 
 ## Rules
 - [[GEN.FIELD]]: A required field is missing.

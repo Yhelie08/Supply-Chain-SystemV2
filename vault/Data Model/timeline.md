@@ -8,7 +8,7 @@ label: Timeline entry
 
 **Timeline entry.** One line of an inquiry history: created, updated (with the changed fields), SRP approved, estimate, messages, deleted.
 
-72 rows in the sample data.
+116 rows in the sample data.
 
 ## Created by
 - [[inquiryCreate]]
@@ -18,9 +18,13 @@ label: Timeline entry
 - [[inquiryEstimate]]
 - [[inquiryApprove]]
 - [[chatSend]]
+- [[supplierRespondInquiry]]
+- [[supplierCollateral]]
 
 ## Shown on
-- [[Inquiry]]
+- [[Inquiry List]]
+- [[Tony Fan - Inquiries]]
+- [[Fenteng Lighting - Inquiries]]
 
 ## Fields
 - `id`

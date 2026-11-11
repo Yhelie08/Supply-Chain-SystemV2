@@ -13,7 +13,7 @@ module: Purchase Request
 **Kind:** REQUIRED · **Module:** Purchase Request
 
 ## Enforced by
-- [[prHold]] (`src/domain/actions.js:454`)
+- [[prHold]] (`src/domain/actions.js:527`)
 
 ## Seen on
 - [[Purchase Request]]

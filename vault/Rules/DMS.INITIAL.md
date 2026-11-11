@@ -13,8 +13,8 @@ module: Initial Scheduling
 **Kind:** REQUIRED · **Module:** Initial Scheduling
 
 ## Enforced by
-- [[srSetInitial]] (`src/domain/actions.js:785`)
-- [[srHandOff]] (`src/domain/actions.js:801`)
+- [[srSetInitial]] (`src/domain/actions.js:1211`)
+- [[srHandOff]] (`src/domain/actions.js:1227`)
 
 ## Seen on
 - [[Initial Scheduling]]

@@ -2,17 +2,17 @@
 title: inquiryUpdate
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:210"
+source: "src/domain/actions.js:283"
 ---
 
 # inquiryUpdate
 
 Saves edits to an inquiry. Runs the same checks as create, and writes only what changed to the timeline. Locked once the inquiry is a Sales Order.
 
-**Source:** `src/domain/actions.js:210`
+**Source:** `src/domain/actions.js:283`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[timeline]]

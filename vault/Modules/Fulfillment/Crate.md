@@ -1,18 +1,29 @@
 ---
 title: Crate
-tags: [page, fulfillment]
+tags: [page, fulfillment, built]
 module: Fulfillment
 route: "#/fulfillment/crate"
+status: partial
 source: src/pages/screens.jsx (CrateScreen)
 ---
 
 # Crate
 
-> Nothing moves on until Crating Status is Done.
+> Crate checklist: nothing moves on until Crating Status is Done.
 
-**Module:** [[Fulfillment]] · **Route:** `#/fulfillment/crate` · **Source:** `src/pages/screens.jsx` (`CrateScreen`)
+**Section:** [[Fulfillment]] · **Route:** `#/fulfillment/crate` · **Source:** `src/pages/screens.jsx` (`CrateScreen`) · **Status:** built, not yet at parity
 
 **Shows:** [[items]]
+
+## What the live page has
+
+- **Stat cards:** Pending · Done · Total Crates
+- **Buttons:** Save Changes
+
+### Still missing from this page
+
+- stat card: Total Crates
+- button: Save Changes
 
 ## Steps on this page
 
@@ -23,6 +34,6 @@ source: src/pages/screens.jsx (CrateScreen)
 
 ## In the flow
 
-Work arrives from: [[QC Checklist]]
+Work arrives from: [[Pack & QC]]
 
-Work goes on to: [[Order Aggregation]]
+Work goes on to: [[To Ship]]

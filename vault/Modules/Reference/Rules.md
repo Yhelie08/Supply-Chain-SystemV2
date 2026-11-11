@@ -1,14 +1,15 @@
 ---
 title: Rules
-tags: [page, reference]
+tags: [page, reference, built]
 module: Reference
 route: "#/rules"
+status: built
 source: src/pages/info.jsx (RulesScreen)
 ---
 
 # Rules
 
-> Every workflow rule, searchable and filterable by tag. Refusal messages name the rule id shown here.
+> Every workflow rule, searchable and filterable by tag.
 
-**Module:** [[Reference]] · **Route:** `#/rules` · **Source:** `src/pages/info.jsx` (`RulesScreen`)
+**Section:** [[Reference]] · **Route:** `#/rules` · **Source:** `src/pages/info.jsx` (`RulesScreen`) · **Status:** matches the live page
 

@@ -8,15 +8,23 @@ label: Shipment
 
 **Shipment.** A supplier shipment on its way to the warehouse. Replacement shipments carry an RR number instead of a PO.
 
-3 rows in the sample data.
+11 rows in the sample data.
 
 ## Created by
 - [[poAcknowledge]]
 - [[rrApprove]]
+- [[receivingCreate]]
+- [[supplierAckPO]]
+- [[supplierApproveRR]]
 
 ## Shown on
-- [[Dashboard]]
+- [[Supply Chain Analytic]]
+- [[Procurement Dashboard]]
+- [[Purchase Order]]
 - [[Shipments]]
+- [[Forecast Setting]]
+- [[Tony Fan - Shipments]]
+- [[Fenteng Lighting - Shipments]]
 
 ## Lifecycle (`status`)
 
@@ -31,7 +39,7 @@ flowchart LR
 | Pending | In Transit | [[shipmentTransit]] |
 | In Transit | Arrived | [[shipmentArrive]] |
 
-Values seen in the sample data: `Arrived`, `In Transit`.
+Values seen in the sample data: `Arrived`, `In Transit`, `Pending`.
 
 ## Fields
 - `id`
@@ -48,6 +56,7 @@ Values seen in the sample data: `Arrived`, `In Transit`.
 - `eta`
 - `dateShipped`
 - `status`
+- `createdOn`
 
 ## A sample row
 
@@ -68,7 +77,8 @@ Values seen in the sample data: `Arrived`, `In Transit`.
   "etd": "2026-10-22",
   "eta": "2026-11-09",
   "dateShipped": "2026-11-11",
-  "status": "Arrived"
+  "status": "Arrived",
+  "createdOn": "2026-11-11"
 }
 ```
 

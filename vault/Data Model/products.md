@@ -8,13 +8,13 @@ label: Catalog item
 
 **Catalog item.** An item in the product catalog. Picking one on an inquiry autofills SKU, description, unit and SRP.
 
-27 rows in the sample data.
+51 rows in the sample data.
 
 ## Created by
 - [[productCreate]]
 
 ## Shown on
-- [[Inquiry]]
+- [[Inquiry List]]
 - [[Purchase Request]]
 
 ## Fields

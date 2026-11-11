@@ -14,7 +14,7 @@ label: Internal note
 - [[noteSend]]
 
 ## Shown on
-- [[Inquiry]]
+- [[Inquiry List]]
 
 ## Fields
 - `id`

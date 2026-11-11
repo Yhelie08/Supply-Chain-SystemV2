@@ -2,17 +2,17 @@
 title: inquiryEstimate
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:245"
+source: "src/domain/actions.js:318"
 ---
 
 # inquiryEstimate
 
 Creates or updates the estimate. Needs all five readiness conditions and a project, and also covers the other Ready inquiries of the same project, with one shared estimate number.
 
-**Source:** `src/domain/actions.js:245`
+**Source:** `src/domain/actions.js:318`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[timeline]]

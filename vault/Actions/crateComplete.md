@@ -2,14 +2,14 @@
 title: crateComplete
 tags: [action, fulfillment]
 module: Fulfillment
-source: "src/domain/actions.js:759"
+source: "src/domain/actions.js:1169"
 ---
 
 # crateComplete
 
 Moves a crated item on to Order Aggregation. Refused until Crating Status is Done.
 
-**Source:** `src/domain/actions.js:759`
+**Source:** `src/domain/actions.js:1169`
 
 ## Offered on
 - [[Crate]] (Fulfillment)

@@ -14,7 +14,9 @@ label: Supplier message
 - [[chatSend]]
 
 ## Shown on
-- [[Inquiry]]
+- [[Inquiry List]]
+- [[Tony Fan - Inquiries]]
+- [[Fenteng Lighting - Inquiries]]
 
 ## Fields
 - `id`

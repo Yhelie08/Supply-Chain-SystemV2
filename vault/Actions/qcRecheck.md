@@ -2,17 +2,17 @@
 title: qcRecheck
 tags: [action, fulfillment]
 module: Fulfillment
-source: "src/domain/actions.js:742"
+source: "src/domain/actions.js:1152"
 ---
 
 # qcRecheck
 
-Sends a rejected item (or one whose replacement arrived) back to Pack for a fresh QC.
+Puts a rejected item (or one whose replacement arrived) back in Pack & QC for a fresh check, with no packer assigned.
 
-**Source:** `src/domain/actions.js:742`
+**Source:** `src/domain/actions.js:1152`
 
 ## Offered on
-- [[QC Checklist]] (Fulfillment)
+- [[Pack & QC]] (Fulfillment)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

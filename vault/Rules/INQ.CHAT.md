@@ -13,9 +13,11 @@ module: Inquiry
 **Kind:** REQUIRED · **Module:** Inquiry
 
 ## Enforced by
-- [[chatSend]] (`src/domain/actions.js:361`)
+- [[chatSend]] (`src/domain/actions.js:434`)
 
 ## Seen on
-- [[Inquiry]]
+- [[Inquiry List]]
+- [[Tony Fan - Inquiries]]
+- [[Fenteng Lighting - Inquiries]]
 
 Back to [[Rules Index]].

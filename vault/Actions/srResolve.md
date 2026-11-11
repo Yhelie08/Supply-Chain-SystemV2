@@ -1,18 +1,18 @@
 ---
 title: srResolve
-tags: [action, delivery]
-module: Delivery
-source: "src/domain/actions.js:852"
+tags: [action, delivery-management]
+module: Delivery Management
+source: "src/domain/actions.js:1278"
 ---
 
 # srResolve
 
 Resolves a failed delivery by Rescheduling (new date, priority job) or Reverting to System (engine starts over).
 
-**Source:** `src/domain/actions.js:852`
+**Source:** `src/domain/actions.js:1278`
 
 ## Offered on
-- [[Exception Queue]] (Delivery)
+- [[DMS Exception Queue]] (Delivery Management)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

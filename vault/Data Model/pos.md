@@ -8,16 +8,19 @@ label: Purchase Order
 
 **Purchase Order.** The order sent to a supplier. One per supplier per conversion.
 
-3 rows in the sample data.
+11 rows in the sample data.
 
 ## Created by
 - [[prConvert]]
 - [[prGroupCreatePO]]
 
 ## Shown on
-- [[Dashboard]]
+- [[Supply Chain Analytic]]
+- [[Procurement Dashboard]]
 - [[Purchase Request]]
 - [[Purchase Order]]
+- [[Tony Fan - Purchase Order]]
+- [[Fenteng Lighting - Purchase Order]]
 
 ## Fields
 - `id`
@@ -33,6 +36,7 @@ label: Purchase Order
 - `etd`
 - `eta`
 - `ackAt`
+- `createdOn`
 
 ## A sample row
 
@@ -51,10 +55,11 @@ label: Purchase Order
   "qty": 20,
   "total": 17000,
   "currency": "CNY",
-  "status": "Acknowledged",
+  "status": "Completed",
   "etd": "2026-10-22",
   "eta": "2026-11-09",
-  "ackAt": "2026-11-11T02:57:46.325Z"
+  "ackAt": "2026-11-11T05:11:32.904Z",
+  "createdOn": "2026-11-11"
 }
 ```
 

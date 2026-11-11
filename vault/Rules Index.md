@@ -5,10 +5,10 @@ tags: [index, rule]
 
 # Rules Index
 
-76 rules. A refusal in the app names its rule id, which is the note name here.
+118 rules. A refusal in the app names its rule id, which is the note name here.
 
 ## BLOCKS
-*The system stops you.* (32)
+*The system stops you.* (51)
 
 | Rule | Module | What it says |
 | --- | --- | --- |
@@ -28,6 +28,7 @@ tags: [index, rule]
 | [[PR.HELD]] | Purchase Request | A PR that is On Hold or Cancelled cannot be converted to a PO. |
 | [[PO.SUPPLIER]] | Purchase Order | A PO for an unrecognised supplier cannot be sent. |
 | [[PO.ACK_ONCE]] | Purchase Order | A PO can be acknowledged only once. |
+| [[PO.CANCEL]] | Purchase Order | A PO can be cancelled only before anything has shipped, and needs a reason. Its pending shipment and receiving are removed and its PRs go back to the queue. |
 | [[SHP.TRANSIT]] | Shipments | A shipment must be In Transit before it can be marked arrived. |
 | [[RCV.ARRIVED]] | Receiving | Goods can be received only after the shipment has arrived. |
 | [[RCV.TOTAL]] | Receiving | Accepted + Damaged + Missing may not exceed Expected. Partial receipts are allowed. |
@@ -37,16 +38,34 @@ tags: [index, rule]
 | [[GATE.PAC]] | Readiness Gate | A package (PAC #) must exist before release. A blank PAC means no package covers the line. |
 | [[GATE.PICKER]] | Readiness Gate | Assign a picker before releasing to Pick. |
 | [[GATE.PAYMENT]] | Readiness Gate | An unpaid item needs credit terms or a still-valid Approve Dispatch override before release. |
-| [[PACK.PACKER]] | Pack | Send to QC is refused until a packer is named. The packer becomes the Quality Checker on the QC record. |
+| [[PACK.PACKER]] | Pack & QC | Approve and Reject at QC are refused until a packer is assigned. The packer is the Quality Checker. The Pack stage itself was retired: Pick goes straight to Pack & QC. |
+| [[SOR.ONE_PACKAGE]] | Sales Order Report | A Sales Order has one package. Creating a second is refused. |
+| [[SOR.READY]] | Sales Order Report | A package covers the whole Sales Order, so every item on it must be received first. |
+| [[EC.STATE]] | Exception Control | A QC reject moves Pending to In Rework to Completed, or to Unrepairable. It cannot skip a step or go back. |
+| [[EC.RR]] | Exception Control | A replacement can be requested for a QC reject only when it is Unrepairable. |
+| [[XFER.DONE]] | Transfer Item | A warehouse request goes Pending then Done. A warehouse transfer goes Pending Dispatch, Dispatched, then Received. Nothing moves past its last step. |
+| [[RET.NEW]] | Sales Returns | A sales return can be opened only for a completed or failed delivery, and only once per delivery. |
+| [[SCHED.DECIDE]] | Schedule Requests | Declining needs a reason. Confirming moves the delivery's start date, and works only while the delivery is still in Initial Scheduling or Service Request. |
 | [[CRATE.DONE]] | Crate | Nothing moves on from Crate until Crating Status is Done. |
 | [[OA.PAYMENT]] | Order Aggregation | Dispatch is blocked on payment, with the same credit and override exceptions as the Readiness Gate. |
 | [[OA.DEDUP]] | Order Aggregation | An item that has already been dispatched cannot create a second Service Request. |
 | [[DMS.SITE]] | Service Request | A delivery cannot be scheduled until the site is confirmed. Pick Up jobs are exempt. |
 | [[DMS.FULL]] | Service Request | If no team has free capacity in the next 14 days, scheduling is refused rather than overbooking. |
+| [[FC.RANGE]] | Forecast | In every leg the minimum days cannot be above the maximum days. |
+| [[FC.VALUES]] | Forecast | Leg lengths must be zero or more, and the weeks shown must be a whole number from 1 to 52. |
+| [[SUP.OWN]] | Supplier Portal | A supplier can only act on records assigned to it. Each portal shows only its own supplier's lines. |
+| [[SUP.LOCKED]] | Supplier Portal | A response is locked once the buyer selected another supplier, once this supplier is selected (pricing locks, collateral opens), and for good when it is Completed. |
+| [[SUP.PR_VIEW]] | Supplier Portal | A PR that came from an inquiry is view-only for the supplier, and a held or cancelled PR cannot be quoted. |
+| [[SUP.PO_HELD]] | Supplier Portal | A PO or shipment cannot be acknowledged or shipped while every line on it is on hold or cancelled. |
+| [[RR.PROGRESS]] | Replacement | After approving, the supplier moves a replacement forward: Acknowledged, In Production, Shipped. It cannot go back, and Received comes only from the physical receipt. |
+| [[EXC.RESOLVE]] | Exceptions | An exception is resolved by hand only while it is Open or Under Review, with a note. One with a replacement under way closes by itself when the replacement is received. |
+| [[RR.CANCEL]] | Replacement | A replacement can be cancelled before it ships, with a reason. Its pending replacement shipment is removed and the exception opens again. |
+| [[RR.CLOSE]] | Replacement | Only a replacement that has been received can be closed. |
+| [[RCV.BOOKS]] | Receiving | A receiving goes to Books once, and only after it was counted in full. |
 | [[GEN.STATE]] | General | That step is not available in the record's current status. |
 
 ## REQUIRED
-*A field you must fill in.* (19)
+*A field you must fill in.* (31)
 
 | Rule | Module | What it says |
 | --- | --- | --- |
@@ -63,15 +82,27 @@ tags: [index, rule]
 | [[EXC.SUPPLIER]] | Exceptions | A Replacement Request needs the supplier it will be sourced from. |
 | [[RR.DATES]] | Replacement | Approving a replacement needs both an Expected Ship Date and an ETA. |
 | [[GATE.OVERRIDE]] | Readiness Gate | An Approve Dispatch override needs a reason and a valid-until date in the future. |
+| [[SOR.TYPE]] | Sales Order Report | Creating a package needs a Delivery Type: Delivery, Pick Up or Installation. |
+| [[XFER.NEW]] | Transfer Item | A transfer or warehouse request needs an item, a quantity above zero and two different warehouses. |
+| [[RET.BOOKS]] | Sales Returns | Sending a return to Books needs an RMA number, a reason, a quantity above zero and a signature. It goes once. |
+| [[TRUCK.NEW]] | Truck Maintenance | A checklist needs a known truck and a date. |
+| [[TRUCK.SIGN]] | Truck Maintenance | A checklist cannot be completed without a signature. It goes Open, In Progress, Completed. |
+| [[TRUCK.ENTRY]] | Truck Maintenance | A fuel or service entry needs a known truck, a date and a cost above zero. |
+| [[SCHED.NEW]] | Schedule Requests | A schedule request needs a new date and a reason, and a delivery can have only one waiting for review. |
 | [[QC.REJECT]] | QC Checklist | Rejecting QC needs a reason, and it raises a Fulfillment Exception. |
 | [[DMS.INITIAL]] | Initial Scheduling | The initial delivery date must be set before the job is handed off to Service Request. |
 | [[DMS.CONFIRM]] | Initial Scheduling | Confirming the site needs both a Confirmation Method and Notes. Only a person may set Confirmed. |
 | [[DMS.FAIL]] | Ongoing Service | Marking a delivery failed needs a reason, and sends it to the Exception Queue. |
 | [[DMS.RESOLVE]] | Exception Queue | Resolving an exception needs a Resolution Action. Reschedule also needs a new date. Revert to System hands the job back to the engine. |
+| [[SUP.RESPONSE]] | Supplier Portal | A response needs an availability. Unless the supplier declines (Unavailable or Cannot Produce), it also needs an Initial Price above zero and a Lead Time. |
+| [[SUP.SHIP]] | Supplier Portal | Shipping needs a Date Shipped (not in the future) and a Mode. |
+| [[EXC.RAISE]] | Exceptions | Raising an exception by hand needs where it came from, the item, a type and a quantity above zero. |
+| [[EXC.REVIEW]] | Exceptions | Assigning an exception for review needs an assignee and a due date. It then reads Under Review. |
+| [[RCV.SCRATCH]] | Receiving | A receiving created from scratch needs a supplier, an item and a quantity above zero. It has no PO. |
 | [[GEN.FIELD]] | General | A required field is missing. |
 
 ## AUTOMATIC
-*The system does it by itself.* (16)
+*The system does it by itself.* (18)
 
 | Rule | Module | What it says |
 | --- | --- | --- |
@@ -82,6 +113,7 @@ tags: [index, rule]
 | [[INQ.PROJECT_CODE]] | Inquiry | A new project gets the next PRJ-xxxxx code and starts Active. |
 | [[PR.READY]] | Purchase Request | A PR becomes Ready for PO by itself when four conditions pass: supplier selected, final price confirmed, shipping mode selected (Local needs none) and a target date. It goes back to For Sourcing if one stops passing. |
 | [[PO.ONE_PER_SUPPLIER]] | Purchase Order | Converting PRs creates one PO per supplier. |
+| [[PO.COMPLETE]] | Purchase Order | A Confirmed PO becomes Completed by itself once every shipment on it has arrived and been received in full. |
 | [[PO.ACK_AUTO]] | Purchase Order | Acknowledging a PO creates its Shipment and its Receiving. |
 | [[SHP.ARRIVE]] | Shipments | Marking a shipment arrived opens its Receiving. |
 | [[RCV.EXCEPTION]] | Receiving | Any damaged or missing quantity raises a Procurement Exception with its context. |
@@ -91,9 +123,10 @@ tags: [index, rule]
 | [[QC.ROUTE]] | QC Checklist | Approving QC routes on "For Crate": to the Crate checklist, or straight to Order Aggregation. |
 | [[OA.DMS]] | Order Aggregation | Dispatch creates the Service Request in Delivery Management, at Initial Scheduling. |
 | [[DMS.PICKUP]] | Service Request | A Pick Up job is scheduled without a team, because the customer collects it. |
+| [[SUP.DECLINE]] | Supplier Portal | Declining (Unavailable or Cannot Produce) asks for confirmation, tells the buyer, and removes the line from the supplier's queue. |
 
 ## REFERENCE
-*A fact about how a module behaves.* (9)
+*A fact about how a module behaves.* (18)
 
 | Rule | Module | What it says |
 | --- | --- | --- |
@@ -106,3 +139,12 @@ tags: [index, rule]
 | [[PO.LOCAL]] | Purchase Order | A Local (HC System) PO never reaches the accounting system. |
 | [[RCV.ONE]] | Receiving | There is only one Receiving per Shipment. |
 | [[DMS.ENGINE]] | Service Request | The engine searches from the initial date (or today if that has passed), skips Sundays and days a team is off, and picks the least-loaded team with room. |
+| [[FC.WINDOW]] | Forecast | The forecast is a window (Earliest, Likely, Latest), never one exact date. Likely is the midpoint. |
+| [[FC.ANCHOR]] | Forecast | With re-anchoring on, the forecast counts from the most advanced real event: shipped date, arrival, or the current Fulfillment stage, so the window tightens as the order moves. |
+| [[FC.STOCK]] | Forecast | An order that has reached Fulfillment and is not a pre-order has no import leg left: only preparation and delivery. |
+| [[FC.TARGET]] | Forecast | An order with no client target date is counted separately as No target. You cannot be on time against a promise nobody recorded. |
+| [[FC.SEVERITY]] | Forecast | Overdue: today is past the client date. On track: the latest date fits. At risk: only the earliest date fits. Will miss: even the earliest is too late. |
+| [[FC.SOURCE]] | Forecast | The forecast is built from the Purchase Requests, so a pure-stock order with no PR is not listed. Cancelled PRs and delivered orders are left out. |
+| [[SUP.VISIBLE]] | Supplier Portal | A supplier sees a PO only once it is sent, and a shipment only once the PO is acknowledged (or the replacement approved). The supplier status of an inquiry or PR line is worked out from the quotes, never stored. |
+| [[EXC.SEVERITY]] | Exceptions | Severity is worked out, never stored: Damaged, Defective and Wrong item are High, anything of 5 or more units is High, the rest are Medium. An exception is Overdue when its due date has passed and it is not Resolved or Closed. |
+| [[SHP.FLAGS]] | Shipments | Delayed, Arriving in 1 Week, Needs Attention and Ship Mode Unmatched are worked out from the dates and modes each time, never stored. Delayed: not arrived and the ETA has passed. Needs Attention: delayed, still pending after its ETD, or due after the date the client wants it. Ship Mode Unmatched: the supplier shipped by a different mode than the PO. |

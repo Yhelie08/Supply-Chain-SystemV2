@@ -13,9 +13,9 @@ module: Inquiry
 **Kind:** BLOCKS · **Module:** Inquiry
 
 ## Enforced by
-- [[customerCreate]] (`src/domain/actions.js:309`)
+- [[customerCreate]] (`src/domain/actions.js:382`)
 
 ## Seen on
-- [[Inquiry]]
+- [[Inquiry List]]
 
 Back to [[Rules Index]].

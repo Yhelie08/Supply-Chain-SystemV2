@@ -1,0 +1,83 @@
+/* ───────────── Top navigation, like the live Creator app ───────────── */
+.app { min-height: 100vh; }
+.topnav { background: var(--nav); color: #fff; position: relative; z-index: 30; }
+.topnav-row { display: flex; align-items: center; gap: 16px; padding: 10px 22px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05rem; color: #fff; }
+.brand-mark { background: #e5484d; color: #fff; font-size: 0.62rem; font-weight: 800; padding: 6px 5px; border-radius: 8px; letter-spacing: 0.02em; }
+
+.section-switch { position: relative; }
+.section-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--nav-2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; padding: 8px 14px; font: inherit; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+.section-btn:hover { background: #1a3280; }
+.chev { font-size: 0.7rem; opacity: 0.8; }
+.rocket { width: 14px; height: 14px; display: inline-block; flex: none; background: currentColor; opacity: 0.85; clip-path: polygon(50% 0, 85% 40%, 70% 100%, 30% 100%, 15% 40%); }
+.section-menu { position: absolute; top: calc(100% + 8px); left: 0; min-width: 240px; background: var(--surface); color: var(--text); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); padding: 8px; display: flex; flex-direction: column; gap: 2px; z-index: 50; }
+.section-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; color: var(--text); }
+a.section-item:hover { background: var(--surface-2); }
+.section-item.on { background: var(--accent-green); color: #fff; font-weight: 600; }
+.section-item.disabled { color: var(--muted); cursor: not-allowed; }
+.section-item small { margin-left: auto; font-size: 0.68rem; background: var(--surface-2); color: var(--muted); border-radius: 999px; padding: 2px 8px; }
+
+.tabbar { display: flex; gap: 4px; padding: 8px 18px 14px; overflow-x: auto; scrollbar-width: thin; }
+.tab-link { color: #d6def5; padding: 8px 14px; border-radius: 8px; white-space: nowrap; font-size: 0.9rem; font-weight: 500; }
+.tab-link:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.tab-link.active { background: var(--accent-green); color: #fff; font-weight: 700; }
+
+/* The page sits in a white panel that overlaps the navy band, as in Creator. */
+.main { padding: 0 22px 48px; background: linear-gradient(var(--nav) 0, var(--nav) 56px, var(--bg) 56px); min-height: calc(100vh - 100px); }
+.panel { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); padding: 24px 28px 32px; max-width: 1560px; margin: 0 auto; }
+.panel .screen-head h1 { color: var(--text); }
+
+@media (max-width: 640px) {
+  .topnav-row { padding: 10px 14px; flex-wrap: wrap; }
+  .tabbar { padding: 6px 10px 12px; }
+  .main { padding: 0 10px 40px; }
+  .panel { padding: 16px 14px 24px; border-radius: 12px; }
+}
+
+/* ───────────── Reference link, notification bell, placeholder pages ───────────── */
+.topnav-spacer { flex: 1; }
+.ref-link { color: #d6def5; font-size: 0.85rem; padding: 6px 10px; border-radius: 8px; }
+.ref-link:hover, .ref-link.on { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+.bell { position: relative; }
+.bell-btn { position: relative; background: transparent; border: 0; color: #fff; cursor: pointer; padding: 8px; border-radius: 10px; display: inline-flex; }
+.bell-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.bell-count { position: absolute; top: 2px; right: 0; background: #e5484d; color: #fff; font-size: 0.62rem; font-weight: 700; min-width: 16px; height: 16px; line-height: 16px; border-radius: 999px; text-align: center; padding: 0 4px; }
+.bell-panel { position: absolute; right: 0; top: calc(100% + 8px); width: min(360px, 92vw); background: var(--surface); color: var(--text); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); z-index: 50; overflow: hidden; }
+.bell-head { padding: 12px 14px; font-weight: 700; border-bottom: 1px solid var(--line); }
+.bell-panel ul { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+.bell-panel li { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
+.bell-empty { padding: 14px; }
+.bell-all { display: block; padding: 10px 14px; text-align: center; font-size: 0.85rem; font-weight: 600; }
+
+.ph-banner { background: var(--surface-2); border: 1px dashed var(--line); border-radius: 10px; padding: 12px 16px; margin: 4px 0 18px; }
+.ph-block { margin-bottom: 16px; }
+.ph-block h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 8px; }
+.ph-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.ph-chips li { background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.85rem; }
+.stage-switch { margin-bottom: 12px; }
+
+/* ───────────── Supplier portals ───────────── */
+.portal-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.portal-badge { background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.8rem; font-weight: 600; }
+.lang-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.lang-toggle button { background: transparent; border: 0; padding: 5px 14px; font: inherit; font-size: 0.82rem; cursor: pointer; color: var(--muted); }
+.lang-toggle button.on { background: var(--accent-green); color: #fff; font-weight: 700; }
+.view-tabs { margin-bottom: 14px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.group-card { margin-bottom: 16px; }
+.group-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.confirm-ask { white-space: pre-line; }
+.supplier-chat { margin-top: 18px; }
+.supplier-chat textarea { width: 100%; margin-top: 8px; }
+
+/* ───────────── Bars, grouping and lists used by the dashboards ───────────── */
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 16px 0; }
+.card.pad + .card.pad, .stats + .card.pad { margin-top: 16px; }
+.bar-track { display: block; height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--accent-green); border-radius: 999px; }
+.bar-fill.bad { background: #d03b3b; }
+.bar-val { text-align: right; font-variant-numeric: tabular-nums; }
+.bar-row { margin-bottom: 6px; }
+.plain-list { list-style: none; margin: 0; padding: 10px 16px; display: grid; gap: 6px; font-size: 0.88rem; }
+.grouping .card-title { margin: 14px 0 8px; }
+.att-ok { color: var(--accent-green); }

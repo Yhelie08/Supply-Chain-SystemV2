@@ -21,9 +21,9 @@ label: Audit entry
 ```json
 {
   "at": "2026-11-11T08:00:00.000Z",
-  "action": "srConfirmSite",
-  "ref": "sr211",
-  "msg": "Site confirmed for SR-00006 by Phone call."
+  "action": "qcReject",
+  "ref": "it388",
+  "msg": "SO-16632 rejected. EXC-FF-00002 raised."
 }
 ```
 

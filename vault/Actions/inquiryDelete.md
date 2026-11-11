@@ -2,17 +2,17 @@
 title: inquiryDelete
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:222"
+source: "src/domain/actions.js:295"
 ---
 
 # inquiryDelete
 
 Deletes an inquiry after confirmation. Its timeline keeps a trail. Locked once the inquiry is a Sales Order.
 
-**Source:** `src/domain/actions.js:222`
+**Source:** `src/domain/actions.js:295`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[timeline]]

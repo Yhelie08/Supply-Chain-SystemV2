@@ -8,13 +8,13 @@ label: Customer
 
 **Customer.** A customer from the customer master, with type, contacts and billing and shipping addresses.
 
-26 rows in the sample data.
+38 rows in the sample data.
 
 ## Created by
 - [[customerCreate]]
 
 ## Shown on
-- [[Inquiry]]
+- [[Inquiry List]]
 - [[Purchase Request]]
 
 ## Fields

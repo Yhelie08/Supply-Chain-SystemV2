@@ -8,13 +8,13 @@ label: Project
 
 **Project.** A customer project with a PRJ-xxxxx code and a group discount. Inquiries of the same project and discount share a quote group.
 
-25 rows in the sample data.
+37 rows in the sample data.
 
 ## Created by
 - [[projectCreate]]
 
 ## Shown on
-- [[Inquiry]]
+- [[Inquiry List]]
 
 ## Fields
 - `id`

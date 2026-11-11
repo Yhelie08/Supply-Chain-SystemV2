@@ -2,17 +2,17 @@
 title: noteSend
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:373"
+source: "src/domain/actions.js:446"
 ---
 
 # noteSend
 
 Adds a note to the internal Sales and Purchasing conversation on an inquiry.
 
-**Source:** `src/domain/actions.js:373`
+**Source:** `src/domain/actions.js:446`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[notes]]

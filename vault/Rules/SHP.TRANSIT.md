@@ -13,7 +13,7 @@ module: Shipments
 **Kind:** BLOCKS · **Module:** Shipments
 
 ## Enforced by
-- [[shipmentArrive]] (`src/domain/actions.js:555`)
+- [[shipmentArrive]] (`src/domain/actions.js:620`)
 
 ## Seen on
 - [[Shipments]]

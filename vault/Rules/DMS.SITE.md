@@ -13,7 +13,7 @@ module: Service Request
 **Kind:** BLOCKS · **Module:** Service Request
 
 ## Enforced by
-- [[srSchedule]] (`src/domain/actions.js:809`)
+- [[srSchedule]] (`src/domain/actions.js:1235`)
 
 ## Seen on
 - [[Service Request]]

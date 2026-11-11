@@ -13,7 +13,7 @@ module: Purchase Order
 **Kind:** BLOCKS · **Module:** Purchase Order
 
 ## Enforced by
-- [[poSend]] (`src/domain/actions.js:505`)
+- [[poSend]] (`src/domain/actions.js:578`)
 
 ## Seen on
 - [[Purchase Order]]

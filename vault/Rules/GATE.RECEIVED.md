@@ -13,9 +13,6 @@ module: Readiness Gate
 **Kind:** BLOCKS · **Module:** Readiness Gate
 
 ## Enforced by
-- [[createPackage]] (`src/domain/actions.js:655`)
-
-## Seen on
-- [[Readiness Gate]]
+- [[createPackage]] (`src/domain/actions.js:1062`)
 
 Back to [[Rules Index]].

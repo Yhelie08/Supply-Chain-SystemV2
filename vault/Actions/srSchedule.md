@@ -1,18 +1,18 @@
 ---
 title: srSchedule
-tags: [action, delivery]
-module: Delivery
-source: "src/domain/actions.js:809"
+tags: [action, delivery-management]
+module: Delivery Management
+source: "src/domain/actions.js:1235"
 ---
 
 # srSchedule
 
 Runs the scheduling engine: earliest team with room from the initial date, skipping Sundays and days off. Pick Up jobs skip the engine.
 
-**Source:** `src/domain/actions.js:809`
+**Source:** `src/domain/actions.js:1235`
 
 ## Offered on
-- [[Service Request]] (Delivery)
+- [[Service Request]] (Delivery Management)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

@@ -2,14 +2,14 @@
 title: prGroupCreatePO
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:489"
+source: "src/domain/actions.js:562"
 ---
 
 # prGroupCreatePO
 
 Create PO on a Sales Order group: the active PRs of that order go to one supplier in one PO. Refused if suppliers are mixed, a PR is not ready, or one is already converted. Held and cancelled PRs are left out.
 
-**Source:** `src/domain/actions.js:489`
+**Source:** `src/domain/actions.js:562`
 
 ## Offered on
 - [[Purchase Request]] (Procurement)

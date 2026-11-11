@@ -8,15 +8,23 @@ label: Purchase Request
 
 **Purchase Request.** One request per Sales Order item that must be bought from a supplier.
 
-7 rows in the sample data.
+19 rows in the sample data.
 
 ## Created by
 - [[inquiryApprove]]
 - [[prCreate]]
 
 ## Shown on
-- [[Dashboard]]
+- [[Supply Chain Analytic]]
+- [[Procurement Dashboard]]
 - [[Purchase Request]]
+- [[Purchase Order]]
+- [[Forecast Setting]]
+- [[Tony Fan - Purchase Request]]
+- [[Tony Fan - Purchase Order]]
+- [[Fenteng Lighting - Purchase Request]]
+- [[Fenteng Lighting - Purchase Order]]
+- [[Pre-Order]]
 
 ## Lifecycle (`status`)
 

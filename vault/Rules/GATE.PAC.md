@@ -13,9 +13,9 @@ module: Readiness Gate
 **Kind:** BLOCKS · **Module:** Readiness Gate
 
 ## Enforced by
-- [[gateRelease]] (`src/domain/actions.js:684`)
+- [[gateRelease]] (`src/domain/actions.js:1092`)
 
 ## Seen on
-- [[Readiness Gate]]
+- [[Order Readiness]]
 
 Back to [[Rules Index]].

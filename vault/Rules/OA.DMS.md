@@ -18,6 +18,6 @@ module: Order Aggregation
 This rule is documentation of what the step does by itself. No code path refuses with it.
 
 ## Seen on
-- [[Order Aggregation]]
+- [[To Ship]]
 
 Back to [[Rules Index]].

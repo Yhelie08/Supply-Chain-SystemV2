@@ -2,14 +2,14 @@
 title: receive
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:564"
+source: "src/domain/actions.js:629"
 ---
 
 # receive
 
 Counts goods off the truck: accepted, damaged, missing. Totals may not exceed expected. Damage or shortage raises an exception; a full accept frees the waiting Sales Order items.
 
-**Source:** `src/domain/actions.js:564`
+**Source:** `src/domain/actions.js:629`
 
 ## Offered on
 - [[Receiving]] (Procurement)
@@ -22,6 +22,7 @@ Counts goods off the truck: accepted, damaged, missing. Totals may not exceed ex
 - [[GEN.STATE]]: That step is not available in the record's current status.
 - [[RCV.NUMBERS]]: Quantities must be whole numbers, zero or more, and at least one must be above zero.
 - [[RCV.TOTAL]]: Accepted + Damaged + Missing may not exceed Expected. Partial receipts are allowed.
+- [[PO.COMPLETE]]: A Confirmed PO becomes Completed by itself once every shipment on it has arrived and been received in full.
 - [[RCV.EXCEPTION]]: Any damaged or missing quantity raises a Procurement Exception with its context.
 - [[RCV.STOCK]]: When a Receiving is fully accepted, the Sales Order items waiting on it become available to Fulfillment.
 

@@ -3,19 +3,26 @@ title: PACK.PACKER
 tags: [rule, blocks]
 rule: PACK.PACKER
 kind: BLOCKS
-module: Pack
+module: Pack & QC
 ---
 
 # PACK.PACKER
 
-> Send to QC is refused until a packer is named. The packer becomes the Quality Checker on the QC record.
+> Approve and Reject at QC are refused until a packer is assigned. The packer is the Quality Checker. The Pack stage itself was retired: Pick goes straight to Pack & QC.
 
-**Kind:** BLOCKS · **Module:** Pack
+**Kind:** BLOCKS · **Module:** Pack & QC
 
 ## Enforced by
-- [[packSend]] (`src/domain/actions.js:703`)
+- [[qcAssign]] (`src/domain/actions.js:1113`)
+- [[qcApprove]] (`src/domain/actions.js:1122`)
+- [[qcReject]] (`src/domain/actions.js:1137`)
+
+## Describes behaviour of
+- [[qcAssign]]
+
+This rule is documentation of what the step does by itself. No code path refuses with it.
 
 ## Seen on
-- [[Pack]]
+- [[Pack & QC]]
 
 Back to [[Rules Index]].

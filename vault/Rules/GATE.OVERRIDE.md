@@ -13,9 +13,9 @@ module: Readiness Gate
 **Kind:** REQUIRED · **Module:** Readiness Gate
 
 ## Enforced by
-- [[approveOverride]] (`src/domain/actions.js:677`)
+- [[approveOverride]] (`src/domain/actions.js:1085`)
 
 ## Seen on
-- [[Readiness Gate]]
+- [[Order Readiness]]
 
 Back to [[Rules Index]].

@@ -13,7 +13,7 @@ module: Initial Scheduling
 **Kind:** REQUIRED · **Module:** Initial Scheduling
 
 ## Enforced by
-- [[srConfirmSite]] (`src/domain/actions.js:793`)
+- [[srConfirmSite]] (`src/domain/actions.js:1219`)
 
 ## Seen on
 - [[Initial Scheduling]]

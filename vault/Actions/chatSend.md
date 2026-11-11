@@ -2,17 +2,19 @@
 title: chatSend
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:361"
+source: "src/domain/actions.js:434"
 ---
 
 # chatSend
 
 Sends a message in a supplier conversation. Only Fenteng and Tony have threads, and only when they are quoted on the inquiry.
 
-**Source:** `src/domain/actions.js:361`
+**Source:** `src/domain/actions.js:434`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
+- [[Tony Fan - Inquiries]] (Tony Fan)
+- [[Fenteng Lighting - Inquiries]] (Fenteng Lighting)
 
 ## Creates records in
 - [[messages]]

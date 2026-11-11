@@ -1,18 +1,18 @@
 ---
 title: srStart
-tags: [action, delivery]
-module: Delivery
-source: "src/domain/actions.js:827"
+tags: [action, delivery-management]
+module: Delivery Management
+source: "src/domain/actions.js:1253"
 ---
 
 # srStart
 
 Starts a Scheduled job, moving it to Ongoing.
 
-**Source:** `src/domain/actions.js:827`
+**Source:** `src/domain/actions.js:1253`
 
 ## Offered on
-- [[Appointments]] (Delivery)
+- [[Service Appointment]] (Delivery Management)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

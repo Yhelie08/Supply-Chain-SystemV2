@@ -2,14 +2,14 @@
 title: prSetSrp
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:444"
+source: "src/domain/actions.js:517"
 ---
 
 # prSetSrp
 
 Approves the SRP (PHP) for a PR. An approved SRP is the top-priority final price and what goes onto the Purchase Order.
 
-**Source:** `src/domain/actions.js:444`
+**Source:** `src/domain/actions.js:517`
 
 ## Offered on
 - [[Purchase Request]] (Procurement)

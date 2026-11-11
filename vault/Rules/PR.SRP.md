@@ -13,7 +13,7 @@ module: Purchase Request
 **Kind:** REQUIRED · **Module:** Purchase Request
 
 ## Enforced by
-- [[prSetSrp]] (`src/domain/actions.js:444`)
+- [[prSetSrp]] (`src/domain/actions.js:517`)
 
 ## Seen on
 - [[Purchase Request]]

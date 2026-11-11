@@ -13,11 +13,11 @@ module: Inquiry
 **Kind:** BLOCKS · **Module:** Inquiry
 
 ## Enforced by
-- [[inquiryCreate]] (`src/domain/actions.js:187`)
-- [[inquiryUpdate]] (`src/domain/actions.js:210`)
-- [[projectCreate]] (`src/domain/actions.js:325`)
+- [[inquiryCreate]] (`src/domain/actions.js:260`)
+- [[inquiryUpdate]] (`src/domain/actions.js:283`)
+- [[projectCreate]] (`src/domain/actions.js:398`)
 
 ## Seen on
-- [[Inquiry]]
+- [[Inquiry List]]
 
 Back to [[Rules Index]].

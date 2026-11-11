@@ -5,9 +5,11 @@ tags: [module, reference]
 
 # Reference
 
-| Page | What it is for |
-| --- | --- |
-| [[Rules]] | Every workflow rule, searchable and filterable by tag. Refusal messages name the rule id shown here. |
-| [[Activity]] | Every workflow step taken in this browser, newest first. |
+2 page tabs.
+
+| Page | Status | What it is for |
+| --- | --- | --- |
+| [[Rules]] | matches the live page | Every workflow rule, searchable and filterable by tag. |
+| [[Activity]] | matches the live page | Every workflow step taken in this browser, newest first. |
 
 Up: [[System Map]].

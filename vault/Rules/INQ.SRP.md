@@ -13,9 +13,9 @@ module: Inquiry
 **Kind:** REQUIRED · **Module:** Inquiry
 
 ## Enforced by
-- [[inquiryApproveSrp]] (`src/domain/actions.js:231`)
+- [[inquiryApproveSrp]] (`src/domain/actions.js:304`)
 
 ## Seen on
-- [[Inquiry]]
+- [[Inquiry List]]
 
 Back to [[Rules Index]].

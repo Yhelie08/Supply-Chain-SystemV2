@@ -13,8 +13,8 @@ module: Purchase Request
 **Kind:** BLOCKS · **Module:** Purchase Request
 
 ## Enforced by
-- [[prConvert]] (`src/domain/actions.js:477`)
-- [[prGroupCreatePO]] (`src/domain/actions.js:489`)
+- [[prConvert]] (`src/domain/actions.js:550`)
+- [[prGroupCreatePO]] (`src/domain/actions.js:562`)
 
 ## Seen on
 - [[Purchase Request]]

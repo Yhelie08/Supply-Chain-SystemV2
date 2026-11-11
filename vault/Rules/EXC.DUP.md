@@ -13,9 +13,10 @@ module: Exceptions
 **Kind:** BLOCKS · **Module:** Exceptions
 
 ## Enforced by
-- [[exceptionCreateRR]] (`src/domain/actions.js:615`)
+- [[exceptionCreateRR]] (`src/domain/actions.js:681`)
 
 ## Seen on
 - [[Exceptions]]
+- [[Exception Control]]
 
 Back to [[Rules Index]].

@@ -2,17 +2,17 @@
 title: dispatch
 tags: [action, fulfillment]
 module: Fulfillment
-source: "src/domain/actions.js:767"
+source: "src/domain/actions.js:1177"
 ---
 
 # dispatch
 
 Dispatches an item from Order Aggregation. Blocked on payment, once only, and creates the Service Request in Delivery Management.
 
-**Source:** `src/domain/actions.js:767`
+**Source:** `src/domain/actions.js:1177`
 
 ## Offered on
-- [[Order Aggregation]] (Fulfillment)
+- [[To Ship]] (Fulfillment)
 
 ## Creates records in
 - [[serviceRequests]]

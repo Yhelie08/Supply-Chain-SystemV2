@@ -15,9 +15,9 @@ tags: [guide]
 | ETD / ETA | Estimated time of departure from the supplier / of arrival at the warehouse. |
 | LCL / FCL / Air | Shipping modes: less-than-container load, full container load, air freight. |
 | Local / HC System | Local sourcing: no freight and no accounting push. The supplier named HC System. |
-| Readiness Gate | The checkpoint before Pick: received, packaged, picker assigned, payment settled. |
+| Order Readiness | The checkpoint before Pick: received, packaged, picker assigned, payment settled. |
 | QC | Quality check, done by whoever packed the item. |
-| Order Aggregation | Where finished items wait to be dispatched together to Delivery. |
+| To Ship | Where finished items wait to be dispatched together to Delivery (called Order Aggregation inside the code). |
 | DMS | Delivery Management System, the third module here (Delivery). |
 | Initial date | The first delivery date requested. The scheduler searches forward from it. |
 | Pick Up | A delivery type where the customer collects. It needs no team and no site confirmation. |

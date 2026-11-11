@@ -2,17 +2,17 @@
 title: inquiryApprove
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:269"
+source: "src/domain/actions.js:342"
 ---
 
 # inquiryApprove
 
 Converts the estimate to a Sales Order. Raises a Purchase Request for the selected supplier (or none for Warehouse Stock) and the Fulfillment item.
 
-**Source:** `src/domain/actions.js:269`
+**Source:** `src/domain/actions.js:342`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[prs]]

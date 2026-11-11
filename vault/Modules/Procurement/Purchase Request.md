@@ -1,18 +1,29 @@
 ---
 title: Purchase Request
-tags: [page, procurement]
+tags: [page, procurement, built]
 module: Procurement
 route: "#/procurement/pr"
+status: partial
 source: src/pages/pr/ (PRPage)
 ---
 
 # Purchase Request
 
-> One PR per item. A PR becomes Ready for PO by itself once four conditions pass, then its Sales Order group is turned into a PO. Includes the Ready queue, PR Groups, the supplier load view, holds and the supplier recommendation.
+> One PR per item. A PR becomes Ready for PO by itself once four conditions pass, then its Sales Order group becomes a PO.
 
-**Module:** [[Procurement]] · **Route:** `#/procurement/pr` · **Source:** `src/pages/pr/` (`PRPage`)
+**Section:** [[Procurement]] · **Route:** `#/procurement/pr` · **Source:** `src/pages/pr/` (`PRPage`) · **Status:** built, not yet at parity
 
 **Shows:** [[prs]], [[pos]], [[products]], [[customers]]
+
+## What the live page has
+
+- **Inner tabs:** All PRs · Ready for PO Queue · Converted to PO · On Hold · Cancelled · PR Groups · Supplier Load View
+- **Stat cards:** Total Ready PRs · High Priority · At Risk · Supplier Overrides · Near Capacity Suppliers · On Hold
+- **Buttons:** + New PR · PO Grouping Workspace · Group→PO
+
+### Still missing from this page
+
+- button: Group→PO
 
 ## Steps on this page
 
@@ -27,6 +38,6 @@ source: src/pages/pr/ (PRPage)
 
 ## In the flow
 
-Work arrives from: [[Inquiry]]
+Work arrives from: [[Inquiry List]]
 
 Work goes on to: [[Purchase Order]]

@@ -13,7 +13,7 @@ module: Receiving
 **Kind:** REQUIRED · **Module:** Receiving
 
 ## Enforced by
-- [[receive]] (`src/domain/actions.js:564`)
+- [[receive]] (`src/domain/actions.js:629`)
 
 ## Seen on
 - [[Receiving]]

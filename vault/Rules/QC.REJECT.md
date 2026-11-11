@@ -13,9 +13,9 @@ module: QC Checklist
 **Kind:** REQUIRED · **Module:** QC Checklist
 
 ## Enforced by
-- [[qcReject]] (`src/domain/actions.js:728`)
+- [[qcReject]] (`src/domain/actions.js:1137`)
 
 ## Seen on
-- [[QC Checklist]]
+- [[Pack & QC]]
 
 Back to [[Rules Index]].

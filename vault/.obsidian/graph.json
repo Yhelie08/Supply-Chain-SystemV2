@@ -1,0 +1,47 @@
+{
+  "colorGroups": [
+    {
+      "query": "path:\"Modules/Procurement\"",
+      "color": {
+        "a": 1,
+        "rgb": 7032792
+      }
+    },
+    {
+      "query": "path:\"Modules/Fulfillment\"",
+      "color": {
+        "a": 1,
+        "rgb": 2781142
+      }
+    },
+    {
+      "query": "path:\"Modules/Delivery\"",
+      "color": {
+        "a": 1,
+        "rgb": 953989
+      }
+    },
+    {
+      "query": "path:Rules",
+      "color": {
+        "a": 1,
+        "rgb": 12597547
+      }
+    },
+    {
+      "query": "path:Actions",
+      "color": {
+        "a": 1,
+        "rgb": 14716427
+      }
+    },
+    {
+      "query": "path:\"Data Model\"",
+      "color": {
+        "a": 1,
+        "rgb": 3056219
+      }
+    }
+  ],
+  "showTags": false
+}

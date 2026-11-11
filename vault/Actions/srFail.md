@@ -1,18 +1,18 @@
 ---
 title: srFail
-tags: [action, delivery]
-module: Delivery
-source: "src/domain/actions.js:843"
+tags: [action, delivery-management]
+module: Delivery Management
+source: "src/domain/actions.js:1269"
 ---
 
 # srFail
 
 Marks an Ongoing job failed with a reason and sends it to the Exception Queue.
 
-**Source:** `src/domain/actions.js:843`
+**Source:** `src/domain/actions.js:1269`
 
 ## Offered on
-- [[Ongoing Service]] (Delivery)
+- [[Ongoing Service]] (Delivery Management)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

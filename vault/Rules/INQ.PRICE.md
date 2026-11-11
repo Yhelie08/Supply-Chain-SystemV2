@@ -13,10 +13,13 @@ module: Inquiry
 **Kind:** BLOCKS · **Module:** Inquiry
 
 ## Enforced by
-- [[inquiryCreate]] (`src/domain/actions.js:187`)
-- [[inquiryUpdate]] (`src/domain/actions.js:210`)
+- [[inquiryCreate]] (`src/domain/actions.js:260`)
+- [[inquiryUpdate]] (`src/domain/actions.js:283`)
+- [[supplierRespondInquiry]] (`src/domain/actions.js:938`)
 
 ## Seen on
-- [[Inquiry]]
+- [[Inquiry List]]
+- [[Tony Fan - Inquiries]]
+- [[Fenteng Lighting - Inquiries]]
 
 Back to [[Rules Index]].

@@ -2,17 +2,17 @@
 title: customerCreate
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:309"
+source: "src/domain/actions.js:382"
 ---
 
 # customerCreate
 
 Creates a customer from the New Customer modal: type, contact details, billing and shipping address. Names must be unique.
 
-**Source:** `src/domain/actions.js:309`
+**Source:** `src/domain/actions.js:382`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[customers]]

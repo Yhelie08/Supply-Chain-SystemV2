@@ -11,8 +11,10 @@ label: Team
 3 rows in the sample data.
 
 ## Shown on
-- [[Order Aggregation]]
-- [[Teams & Capacity]]
+- [[To Ship]]
+- [[Delivery Analytics]]
+- [[Daily Team Availability]]
+- [[Archived]]
 
 ## Fields
 - `id`

@@ -1,18 +1,18 @@
 ---
 title: srHandOff
-tags: [action, delivery]
-module: Delivery
-source: "src/domain/actions.js:801"
+tags: [action, delivery-management]
+module: Delivery Management
+source: "src/domain/actions.js:1227"
 ---
 
 # srHandOff
 
 Hands a job from Initial Scheduling to Service Request. Needs an initial date.
 
-**Source:** `src/domain/actions.js:801`
+**Source:** `src/domain/actions.js:1227`
 
 ## Offered on
-- [[Initial Scheduling]] (Delivery)
+- [[Initial Scheduling]] (Delivery Management)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

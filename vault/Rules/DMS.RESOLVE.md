@@ -13,9 +13,9 @@ module: Exception Queue
 **Kind:** REQUIRED · **Module:** Exception Queue
 
 ## Enforced by
-- [[srResolve]] (`src/domain/actions.js:852`)
+- [[srResolve]] (`src/domain/actions.js:1278`)
 
 ## Seen on
-- [[Exception Queue]]
+- [[DMS Exception Queue]]
 
 Back to [[Rules Index]].

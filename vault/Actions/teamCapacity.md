@@ -1,18 +1,18 @@
 ---
 title: teamCapacity
-tags: [action, delivery]
-module: Delivery
-source: "src/domain/actions.js:867"
+tags: [action, delivery-management]
+module: Delivery Management
+source: "src/domain/actions.js:1293"
 ---
 
 # teamCapacity
 
 Sets how many jobs a team can take per day.
 
-**Source:** `src/domain/actions.js:867`
+**Source:** `src/domain/actions.js:1293`
 
 ## Offered on
-- [[Teams & Capacity]] (Delivery)
+- [[Daily Team Availability]] (Delivery Management)
 
 ## Rules
 - [[GEN.FIELD]]: A required field is missing.

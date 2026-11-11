@@ -8,14 +8,19 @@ label: Receiving
 
 **Receiving.** The count of goods off a shipment. One per shipment.
 
-3 rows in the sample data.
+11 rows in the sample data.
 
 ## Created by
 - [[poAcknowledge]]
 - [[rrApprove]]
+- [[receivingCreate]]
+- [[supplierAckPO]]
+- [[supplierApproveRR]]
 
 ## Shown on
-- [[Dashboard]]
+- [[Supply Chain Analytic]]
+- [[Procurement Dashboard]]
+- [[Shipments]]
 - [[Receiving]]
 
 ## Lifecycle (`status`)
@@ -55,6 +60,7 @@ Values seen in the sample data: `Received`, `Open`, `Closed – Exceptions`.
 - `damaged`
 - `missing`
 - `status`
+- `createdOn`
 - `lastReceived`
 
 ## A sample row
@@ -78,6 +84,7 @@ Values seen in the sample data: `Received`, `Open`, `Closed – Exceptions`.
   "damaged": 0,
   "missing": 0,
   "status": "Received",
+  "createdOn": "2026-11-11",
   "lastReceived": "2026-11-11"
 }
 ```

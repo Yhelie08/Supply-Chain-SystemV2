@@ -14,13 +14,18 @@ label: Service Request
 - [[dispatch]]
 
 ## Shown on
-- [[Dashboard]]
+- [[Supply Chain Analytic]]
+- [[Forecast Setting]]
+- [[Delivery Analytics]]
+- [[Daily Team Availability]]
 - [[Initial Scheduling]]
 - [[Service Request]]
-- [[Appointments]]
+- [[Service Appointment]]
 - [[Ongoing Service]]
-- [[Exception Queue]]
-- [[Teams & Capacity]]
+- [[Archived]]
+- [[Field Service Site Visits]]
+- [[DMS Exception Queue]]
+- [[Schedule Requests]]
 
 ## Lifecycle (`status`)
 
@@ -66,6 +71,7 @@ Values seen in the sample data: `Initial Scheduling`, `Service Request`, `Schedu
 - `priority`
 - `exceptionReason`
 - `resolution`
+- `createdOn`
 - `startedOn`
 - `completedOn`
 
@@ -92,7 +98,8 @@ Values seen in the sample data: `Initial Scheduling`, `Service Request`, `Schedu
   "scheduledDate": "",
   "priority": false,
   "exceptionReason": "",
-  "resolution": ""
+  "resolution": "",
+  "createdOn": "2026-11-11"
 }
 ```
 

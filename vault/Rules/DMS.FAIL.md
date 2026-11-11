@@ -13,7 +13,7 @@ module: Ongoing Service
 **Kind:** REQUIRED · **Module:** Ongoing Service
 
 ## Enforced by
-- [[srFail]] (`src/domain/actions.js:843`)
+- [[srFail]] (`src/domain/actions.js:1269`)
 
 ## Seen on
 - [[Ongoing Service]]

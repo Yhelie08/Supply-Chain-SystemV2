@@ -13,9 +13,9 @@ module: Inquiry
 **Kind:** REQUIRED · **Module:** Inquiry
 
 ## Enforced by
-- [[productCreate]] (`src/domain/actions.js:343`)
+- [[productCreate]] (`src/domain/actions.js:416`)
 
 ## Seen on
-- [[Inquiry]]
+- [[Inquiry List]]
 
 Back to [[Rules Index]].

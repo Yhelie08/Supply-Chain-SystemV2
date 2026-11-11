@@ -13,9 +13,9 @@ module: Inquiry
 **Kind:** BLOCKS · **Module:** Inquiry
 
 ## Enforced by
-- [[inquiryEstimate]] (`src/domain/actions.js:245`)
+- [[inquiryEstimate]] (`src/domain/actions.js:318`)
 
 ## Seen on
-- [[Inquiry]]
+- [[Inquiry List]]
 
 Back to [[Rules Index]].

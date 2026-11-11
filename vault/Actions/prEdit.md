@@ -2,14 +2,14 @@
 title: prEdit
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:418"
+source: "src/domain/actions.js:491"
 ---
 
 # prEdit
 
 Edits the supplier, shipping mode, priority, supplier price, target date or quantity of a PR that has not been converted. Choosing a supplier other than the recommended one needs an override reason. Recomputes whether the PR is Ready for PO.
 
-**Source:** `src/domain/actions.js:418`
+**Source:** `src/domain/actions.js:491`
 
 ## Offered on
 - [[Purchase Request]] (Procurement)

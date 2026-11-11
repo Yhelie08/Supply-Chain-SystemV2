@@ -13,8 +13,8 @@ module: Purchase Request
 **Kind:** REQUIRED · **Module:** Purchase Request
 
 ## Enforced by
-- [[prCreate]] (`src/domain/actions.js:385`)
-- [[prEdit]] (`src/domain/actions.js:418`)
+- [[prCreate]] (`src/domain/actions.js:458`)
+- [[prEdit]] (`src/domain/actions.js:491`)
 
 ## Seen on
 - [[Purchase Request]]

@@ -1,18 +1,15 @@
 ---
 title: createPackage
-tags: [action, fulfillment]
-module: Fulfillment
-source: "src/domain/actions.js:655"
+tags: [action, domain]
+module: Domain
+source: "src/domain/actions.js:1062"
 ---
 
 # createPackage
 
 Assigns a PAC number to a received item. Refused while the item is still on order.
 
-**Source:** `src/domain/actions.js:655`
-
-## Offered on
-- [[Readiness Gate]] (Fulfillment)
+**Source:** `src/domain/actions.js:1062`
 
 ## Rules
 - [[GATE.RECEIVED]]: A package cannot be created for an item that has not been received into the warehouse.

@@ -8,46 +8,47 @@ label: Fulfillment item
 
 **Fulfillment item.** One record per Sales Order item, carried through every Fulfillment stage by changing its stage.
 
-21 rows in the sample data.
+33 rows in the sample data.
 
 ## Created by
 - [[inquiryApprove]]
 
 ## Shown on
-- [[Dashboard]]
-- [[Readiness Gate]]
+- [[Supply Chain Analytic]]
+- [[Purchase Order]]
+- [[Forecast Setting]]
+- [[Fulfillment Dashboard]]
+- [[Order Readiness]]
 - [[Pick]]
-- [[Pack]]
-- [[QC Checklist]]
+- [[Pack & QC]]
 - [[Crate]]
-- [[Order Aggregation]]
+- [[To Ship]]
+- [[Exception Control]]
 
 ## Lifecycle (`stage`)
 
 ```mermaid
 flowchart LR
   Readiness_Gate["Readiness Gate"] -->|gateRelease| Pick["Pick"]
-  Pick["Pick"] -->|pickDone| Pack["Pack"]
-  Pack["Pack"] -->|packSend| QC["QC"]
+  Pick["Pick"] -->|pickDone| QC["QC"]
   QC["QC"] -->|qcApprove| Crate["Crate"]
   QC["QC"] -->|qcApprove| Order_Aggregation["Order Aggregation"]
   Crate["Crate"] -->|crateComplete| Order_Aggregation["Order Aggregation"]
-  QC["QC"] -->|qcRecheck| Pack["Pack"]
+  QC["QC"] -->|qcRecheck| QC["QC"]
   Order_Aggregation["Order Aggregation"] -->|dispatch| Dispatched["Dispatched"]
 ```
 
 | From | To | Step |
 | --- | --- | --- |
 | Readiness Gate | Pick | [[gateRelease]] |
-| Pick | Pack | [[pickDone]] |
-| Pack | QC | [[packSend]] |
+| Pick | QC | [[pickDone]] |
 | QC | Crate | [[qcApprove]] |
 | QC | Order Aggregation | [[qcApprove]] |
 | Crate | Order Aggregation | [[crateComplete]] |
-| QC | Pack | [[qcRecheck]] |
+| QC | QC | [[qcRecheck]] |
 | Order Aggregation | Dispatched | [[dispatch]] |
 
-QC goes to Crate only when the item needs crating. A rejected item stays in QC until [[qcRecheck]] sends it back to Pack.
+QC goes to Crate only when the item needs crating. A rejected item stays in QC until [[qcRecheck]] puts it back for a fresh check.
 
 Values seen in the sample data: `Pick`, `Readiness Gate`, `QC`, `Crate`, `Order Aggregation`, `Dispatched`.
 
@@ -72,6 +73,8 @@ Values seen in the sample data: `Pick`, `Readiness Gate`, `QC`, `Crate`, `Order 
 - `stage`
 - `received`
 - `srNo`
+- `createdOn`
+- `gateOn`
 
 ## A sample row
 
@@ -96,7 +99,9 @@ Values seen in the sample data: `Pick`, `Readiness Gate`, `QC`, `Crate`, `Order 
   "qcStatus": "",
   "stage": "Pick",
   "received": true,
-  "srNo": ""
+  "srNo": "",
+  "createdOn": "2026-11-11",
+  "gateOn": "2026-11-11"
 }
 ```
 

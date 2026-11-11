@@ -2,14 +2,14 @@
 title: prConvert
 tags: [action, domain]
 module: Domain
-source: "src/domain/actions.js:477"
+source: "src/domain/actions.js:550"
 ---
 
 # prConvert
 
 Converts the selected Ready PRs into Purchase Orders, one PO per supplier, and locks the PRs. Used by the group step.
 
-**Source:** `src/domain/actions.js:477`
+**Source:** `src/domain/actions.js:550`
 
 ## Creates records in
 - [[pos]]

@@ -1,8 +1,9 @@
 ---
 title: Activity
-tags: [page, reference]
+tags: [page, reference, built]
 module: Reference
 route: "#/activity"
+status: built
 source: src/pages/info.jsx (ActivityScreen)
 ---
 
@@ -10,5 +11,5 @@ source: src/pages/info.jsx (ActivityScreen)
 
 > Every workflow step taken in this browser, newest first.
 
-**Module:** [[Reference]] · **Route:** `#/activity` · **Source:** `src/pages/info.jsx` (`ActivityScreen`)
+**Section:** [[Reference]] · **Route:** `#/activity` · **Source:** `src/pages/info.jsx` (`ActivityScreen`) · **Status:** matches the live page
 

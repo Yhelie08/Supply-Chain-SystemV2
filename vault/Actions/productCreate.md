@@ -2,17 +2,17 @@
 title: productCreate
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:343"
+source: "src/domain/actions.js:416"
 ---
 
 # productCreate
 
 Adds an item to the catalog by Item ID, or updates the item if that ID is already there.
 
-**Source:** `src/domain/actions.js:343`
+**Source:** `src/domain/actions.js:416`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[products]]

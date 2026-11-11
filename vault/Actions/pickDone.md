@@ -2,14 +2,14 @@
 title: pickDone
 tags: [action, fulfillment]
 module: Fulfillment
-source: "src/domain/actions.js:695"
+source: "src/domain/actions.js:1103"
 ---
 
 # pickDone
 
-Marks the item picked and opens its Pack record. The picker is deliberately not carried forward.
+Marks the item picked and sends it straight to Pack & QC. The picker is deliberately not carried forward.
 
-**Source:** `src/domain/actions.js:695`
+**Source:** `src/domain/actions.js:1103`
 
 ## Offered on
 - [[Pick]] (Fulfillment)

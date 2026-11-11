@@ -2,14 +2,14 @@
 title: poAcknowledge
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:514"
+source: "src/domain/actions.js:587"
 ---
 
 # poAcknowledge
 
 Records the supplier's ETD and ETA, once only. Creates the Shipment and its Receiving if they are missing.
 
-**Source:** `src/domain/actions.js:514`
+**Source:** `src/domain/actions.js:587`
 
 ## Offered on
 - [[Purchase Order]] (Procurement)

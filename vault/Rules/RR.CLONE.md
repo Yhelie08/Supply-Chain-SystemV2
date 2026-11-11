@@ -18,6 +18,6 @@ module: Replacement
 This rule is documentation of what the step does by itself. No code path refuses with it.
 
 ## Seen on
-- [[Replacement]]
+- [[Replacement Request]]
 
 Back to [[Rules Index]].

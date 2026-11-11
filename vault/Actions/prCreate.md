@@ -2,14 +2,14 @@
 title: prCreate
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:385"
+source: "src/domain/actions.js:458"
 ---
 
 # prCreate
 
 Creates a PR by hand from the New PR form, for an item that did not come through an inquiry. Needs item, target date, quantity, customer, customer type and sales owner. Local sourcing goes to HC System with no freight.
 
-**Source:** `src/domain/actions.js:385`
+**Source:** `src/domain/actions.js:458`
 
 ## Offered on
 - [[Purchase Request]] (Procurement)

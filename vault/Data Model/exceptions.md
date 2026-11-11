@@ -8,15 +8,21 @@ label: Exception
 
 **Exception.** Damaged, missing or QC-rejected goods. Source is Procurement or Fulfillment.
 
-2 rows in the sample data.
+8 rows in the sample data.
 
 ## Created by
 - [[receive]]
+- [[exceptionRaise]]
 - [[qcReject]]
 
 ## Shown on
-- [[Dashboard]]
+- [[Supply Chain Analytic]]
+- [[Procurement Dashboard]]
 - [[Exceptions]]
+- [[Tony Fan - Replacement Request]]
+- [[Fenteng Lighting - Replacement Request]]
+- [[Fulfillment Dashboard]]
+- [[Exception Control]]
 
 ## Lifecycle (`status`)
 
@@ -33,7 +39,7 @@ flowchart LR
 
 Closed happens when the replacement shipment is received in full.
 
-Values seen in the sample data: `Open`.
+Values seen in the sample data: `Open`, `RR Created`.
 
 ## Fields
 - `id`
@@ -51,7 +57,9 @@ Values seen in the sample data: `Open`.
 - `status`
 - `rrNo`
 - `raisedOn`
+- `createdOn`
 - `notes`
+- `fcStatus`
 
 ## A sample row
 
@@ -73,7 +81,8 @@ Values seen in the sample data: `Open`.
   "itemId": "",
   "status": "Open",
   "rrNo": "",
-  "raisedOn": "2026-11-11"
+  "raisedOn": "2026-11-11",
+  "createdOn": "2026-11-11"
 }
 ```
 

@@ -2,17 +2,17 @@
 title: rrApprove
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:630"
+source: "src/domain/actions.js:697"
 ---
 
 # rrApprove
 
 Approves a replacement with an expected ship date and ETA, once only. Creates the replacement shipment and its receiving.
 
-**Source:** `src/domain/actions.js:630`
+**Source:** `src/domain/actions.js:697`
 
 ## Offered on
-- [[Replacement]] (Procurement)
+- [[Replacement Request]] (Procurement)
 
 ## Creates records in
 - [[shipments]]

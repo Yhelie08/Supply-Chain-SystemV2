@@ -13,9 +13,12 @@ module: Replacement
 **Kind:** BLOCKS · **Module:** Replacement
 
 ## Enforced by
-- [[rrApprove]] (`src/domain/actions.js:630`)
+- [[rrApprove]] (`src/domain/actions.js:697`)
+- [[supplierApproveRR]] (`src/domain/actions.js:1032`)
 
 ## Seen on
-- [[Replacement]]
+- [[Replacement Request]]
+- [[Tony Fan - Replacement Request]]
+- [[Fenteng Lighting - Replacement Request]]
 
 Back to [[Rules Index]].

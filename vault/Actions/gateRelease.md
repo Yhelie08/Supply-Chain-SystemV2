@@ -2,17 +2,17 @@
 title: gateRelease
 tags: [action, fulfillment]
 module: Fulfillment
-source: "src/domain/actions.js:684"
+source: "src/domain/actions.js:1092"
 ---
 
 # gateRelease
 
 Releases an item from the Readiness Gate to Pick. Needs a package, a picker and settled payment.
 
-**Source:** `src/domain/actions.js:684`
+**Source:** `src/domain/actions.js:1092`
 
 ## Offered on
-- [[Readiness Gate]] (Fulfillment)
+- [[Order Readiness]] (Fulfillment)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

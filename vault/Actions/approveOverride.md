@@ -2,17 +2,17 @@
 title: approveOverride
 tags: [action, fulfillment]
 module: Fulfillment
-source: "src/domain/actions.js:677"
+source: "src/domain/actions.js:1085"
 ---
 
 # approveOverride
 
 Lets an unpaid item through the gate and dispatch, with a reason and a valid-until date in the future.
 
-**Source:** `src/domain/actions.js:677`
+**Source:** `src/domain/actions.js:1085`
 
 ## Offered on
-- [[Readiness Gate]] (Fulfillment)
+- [[Order Readiness]] (Fulfillment)
 
 ## Rules
 - [[GATE.OVERRIDE]]: An Approve Dispatch override needs a reason and a valid-until date in the future.

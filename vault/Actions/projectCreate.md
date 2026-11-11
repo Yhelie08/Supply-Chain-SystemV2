@@ -2,17 +2,17 @@
 title: projectCreate
 tags: [action, procurement]
 module: Procurement
-source: "src/domain/actions.js:325"
+source: "src/domain/actions.js:398"
 ---
 
 # projectCreate
 
 Creates a project for a customer from the New Project modal, with the next PRJ-xxxxx code, a group discount and status Active.
 
-**Source:** `src/domain/actions.js:325`
+**Source:** `src/domain/actions.js:398`
 
 ## Offered on
-- [[Inquiry]] (Procurement)
+- [[Inquiry List]] (Procurement)
 
 ## Creates records in
 - [[projects]]

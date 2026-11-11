@@ -2,14 +2,14 @@
 title: crateSet
 tags: [action, fulfillment]
 module: Fulfillment
-source: "src/domain/actions.js:751"
+source: "src/domain/actions.js:1161"
 ---
 
 # crateSet
 
 Updates Crating Status: Pending, In Progress or Done.
 
-**Source:** `src/domain/actions.js:751`
+**Source:** `src/domain/actions.js:1161`
 
 ## Offered on
 - [[Crate]] (Fulfillment)
