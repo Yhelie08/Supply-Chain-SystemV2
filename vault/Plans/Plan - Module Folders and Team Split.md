@@ -4,7 +4,7 @@ tags:
   - plan
   - team
   - git
-status: restructure done 2026-11-12 (PR #2); owners and review rules still to be filled in (section 8)
+status: restructure done 2026-11-12, in PR #3 waiting for review; owners and review rules still to be filled in (section 8)
 date: 2026-11-12
 ---
 
@@ -14,7 +14,7 @@ date: 2026-11-12
 # Plan: one folder per module, a shared core nobody edits casually
 
 > [!SUCCESS] Status 2026-11-12
-> The restructure of section 9 is done on branch `feature/postgres-data-layer` (PR #2): `server/modules/<module>/` exists for all six sections, the server finds the modules by itself, `ported.json` is per module, the tests are in `tests/core/` and `tests/procurement/`, and `.github/CODEOWNERS` is in place (core to `@Yhelie08`, module lines commented until the usernames are known). It changed nothing in how the app behaves: 249 tests pass (245 before, plus 4 new ones for the modules). The only number that moved is the custom API count, 6 of 21 became 6 of 25, because four `approve_po_*` APIs that the Create PO button calls are now listed. The team can start once PR #2 is reviewed and merged (section 10).
+> The restructure of section 9 is done on branch `feature/postgres-data-layer` and waits in [PR #3](https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/3) (PR #2 was merged earlier without it): `server/modules/<module>/` exists for all six sections, the server finds the modules by itself, `ported.json` is per module, the tests are in `tests/core/` and `tests/procurement/`, and `.github/CODEOWNERS` is in place (core to `@Yhelie08`, module lines commented until the usernames are known). It changed nothing in how the app behaves: 249 tests pass (245 before, plus 4 new ones for the modules). The only number that moved is the custom API count, 6 of 21 became 6 of 25, because four `approve_po_*` APIs that the Create PO button calls are now listed. The team can start once PR #3 is reviewed and merged (section 10).
 
 ## 1. Buod (Tagalog)
 - Tama ang hati: **bawat tao ay may sariling module at sariling folder** para doon siya mag-edit. Ang mga module ay ang nasa dropdown ng app: Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment, Delivery Management.

@@ -12,6 +12,9 @@ date: 2026-11-12
 
 # Branches and pull requests
 
+> [!SUCCESS] Status update 2026-11-12
+> **PR #2 was merged into `main` at 04:33 UTC**, one minute after it was opened, so `main` now has the Postgres layer, the hooks, the Books client and the Inquiry and Purchase Request ports. The module restructure and the team-split plan were added to the branch afterwards and are **not in `main` yet**: they are in **[PR #3](https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/3)**. **Teammates should wait until PR #3 is merged before they clone and start a module branch**, so that everyone starts from the same layout. The sections below describe the plan as it was written, before PR #2 was merged.
+
 ## 1. Buod (Tagalog)
 - **Isang pull request lang ang kailangan**: mula sa `feature/postgres-data-layer` papunta sa `main`.
 - Ang `feature/zoho-backend-adapter` ay **naka-merge na** (PR #1). Walang gagawin dito; pwede na itong burahin sa GitHub.
