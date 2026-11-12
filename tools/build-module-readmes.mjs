@@ -83,13 +83,16 @@ fs.writeFileSync(path.join(ROOT, 'modules', 'README.md'), top);
 
 // ---------- Obsidian: vault/Deluge Scripts (Obsidian)/00 - Port Status.md ----------
 const apiOfFn = Object.fromEntries(Object.entries(apiToFn).map(([api, fn]) => [fn, api]));
+// A module can also say which Deluge functions it ports without a custom API of their own, in its index.mjs:
+//   portedFunctions: { fnName: 'Ported (a short note, no pipe characters)' }
+const declaredFunctions = Object.assign({}, ...modules.map((m) => m.portedFunctions || {}));
 const statusOf = (fn) => {
+  if (declaredFunctions[fn]) return declaredFunctions[fn];
   const api = apiOfFn[fn];
-  if (!api || !ported.has(api)) return 'Not ported yet';
-  return fn === 'pushDmsMessageToCms' ? 'Skipped locally (CMS sync is off)' : 'Ported';
+  return api && ported.has(api) ? 'Ported' : 'Not ported yet';
 };
 const fnRows = Object.values(functions).sort((a, b) => a.name.localeCompare(b.name));
-const nPorted = fnRows.filter((r) => statusOf(r.name) === 'Ported').length;
+const nPorted = fnRows.filter((r) => /^Ported/.test(statusOf(r.name))).length;
 // Form workflows that are ported or need no port: server/modules/<module>/ported.json, merged
 const wfPorts = {};
 for (const m of modules) {
