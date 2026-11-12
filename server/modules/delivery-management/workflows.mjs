@@ -3,6 +3,7 @@
 // Hooks of one form run in the order they are registered; Zoho runs SA_Scheduling_Engine before SA_Sync_Sales_Order_Display.
 import './scheduling-engine.mjs';
 import './service-appointment.mjs';
+import './geocode.mjs';
 import './field-work.mjs';
 import './delivery-scheduling.mjs';
 import './exception-queue.mjs';

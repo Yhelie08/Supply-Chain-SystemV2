@@ -16,6 +16,7 @@ import { register } from '../../workflows/index.mjs';
 import { zohoNow } from '../../criteria.mjs';
 import { idOf, truthy, blank } from '../../workflows/deluge.mjs';
 import { SA, scheduleSlot } from './scheduling.mjs';
+import { fireAfterAdd } from './hooks.mjs';
 
 const EXC = 'DMS_Exception_Queue';
 
@@ -49,7 +50,8 @@ async function resolveSync({ id, record: input, store, user }) {
       };
       if (failed.Customer_Name != null && failed.Customer_Name !== '') copy.Customer_Name = failed.Customer_Name;
       copy.Item_Details = (failed.Item_Details || []).map((it) => ({ Item_Name: it.Item_Name, SKU: it.SKU, Quantity: it.Quantity, PAC: it.PAC }));
-      await store.addRecord(SA, copy, user);
+      const copyId = await store.addRecord(SA, copy, user);
+      await fireAfterAdd(store, SA, copyId, user); // Zoho runs the form's workflows for a scripted insert (hooks.mjs)
       // The original attempt is marked Failed so it is archived properly.
       await store.updateRecord(SA, ref, { Appointment_Status: 'Failed' }, { byForm: true });
     }
