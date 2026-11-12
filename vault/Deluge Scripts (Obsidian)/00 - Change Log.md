@@ -11,6 +11,13 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-12
 
+**Procurement, Purchase Request stage (`server/workflows/purchase-request.mjs`)**
+- 14 of the 20 `Purchase_Request1` workflows ported; 5 need no port (native-form only or inactive); 1 not yet: `PR1_Forecast_Stamp`, which only calls the forecast engine `fcPrToPreOrder` -> `fcStampPurchaseRequest` (458 lines, shared by the Fulfillment forecast workflows).
+- The "on validate" scripts run as steps of one function in Zoho's order (number, supplier load balancing and recommended supplier, selected supplier, readiness, default status, lock after PO, shipment timeline, shipment mode, priority); "on success" hooks make the Tony and Fenteng copies, keep them in step on edit, stamp `Last_Update`, copy the item photo, and delete the copies with the PR.
+- Quirks kept and tested ("mirrors Zoho"): readiness is worked out before the shipment mode is set, so a new PR is ready one save later. Reading `input.Supplier_Target_Date` in the timeline script is taken as the field `supplier_target_date`; Zoho Development has to confirm it. `PR_Export_Selected_Supplier` assigns the final price to a variable it never uses, so that part is a no-op.
+- Shared code moved to `server/workflows/suppliers.mjs` (the two supplier portals, `supplierIndex`, `quoteBooksId`) and date helpers added to `deluge.mjs`. Subform numbers written by the workflows are text with two decimals, like the rows exported from Zoho.
+- Port Status now: 22 of 165 form workflows.
+
 **Procurement, Inquiry stage on the Postgres backend (Phase 3 of [[Plan - Full Migration Off Zoho Creator]])**
 - Branch `feature/postgres-data-layer`, committed locally in groups, not pushed.
 - `server/workflows/index.mjs`: workflow hooks (`beforeAdd`, `afterAdd`, `beforeUpdate`, `afterUpdate`, `beforeDelete`, `afterDelete`) around the Postgres store; widget writes through `/api/*` run them, writes made by a hook or a custom API do not. Only "on validate" (before) and "on success" (after) events are ported, because "on load", "field rules" and "on user input" only drive Zoho's own forms.

@@ -24,5 +24,32 @@
       "Notify_Suppliers_on_Inqui": "inactive in Zoho",
       "Log_Updated_Itemm": "has no script"
     }
+  },
+  "Purchase_Request1": {
+    "ported": [
+      "PR_Generate_Number",
+      "PR_Sync_Supplier_Load_Bal",
+      "PR_Sync_Supplier_Selected",
+      "PR_Check_Readiness",
+      "PR_Set_Default_Status",
+      "PR_Lock_After_PO1",
+      "PR_Populate_From_PR",
+      "PR_Changed",
+      "PR_Deleted",
+      "PR_Export_Selected_Suppli",
+      "PR_Compute_Shipment_Timel",
+      "PR_Set_Shipment_Mode",
+      "PR_Compute_Priority",
+      "PR1_Sync_Own_Image"
+    ],
+    "nativeFormOnly": [
+      "PR_AutoFill_Item_Details",
+      "autofill_customer_type",
+      "Select_Unselect_Supplier",
+      "PR_Lock_UI_Fields"
+    ],
+    "notNeeded": {
+      "Notify_on_Purchase_Reques1": "inactive in Zoho"
+    }
   }
 }

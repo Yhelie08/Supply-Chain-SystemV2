@@ -33,3 +33,14 @@ export const stamp = (d = new Date()) => {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 };
+
+// Dates: Zoho date fields are "YYYY-MM-DD" and date-times "YYYY-MM-DD hh:mm:ss AM/PM"; both are read as a local calendar day.
+const pad2 = (n) => String(n).padStart(2, '0');
+export function parseDate(v) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v ?? '').trim());
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+export const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+export const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+export const dayDiff = (a, b) => Math.round((a - b) / 86400000); // whole days from b to a
+export const todayDate = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };

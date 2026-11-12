@@ -8,28 +8,16 @@
 import { register } from './index.mjs';
 import { zohoNow } from '../criteria.mjs';
 import { idOf, idsOf, unbracket, truthy, blank, toNum, hasValue, sameValue, lower, inquiryNumber, round2, lit, stamp } from './deluge.mjs';
+import { SUPPLIERS, supplierIndex, quoteBooksId } from './suppliers.mjs';
 
-// The two supplier portals an inquiry fans out to: the form each one reads, its Books vendor id,
-// the name its quote rows carry, and where its notifications go.
-export const SUPPLIERS = [
-  { key: 'tony', form: 'Supplier_2', booksId: '2680178000002735078', nameToken: 'tony', imageField: 'Product_Image_Supplier2_INQ',
-    notifications: 'Tony_Notifications', page: 'Tony_Fan_Inquiries', param: 'tonyinquiriesid', emailEnv: 'TONY_PORTAL_EMAIL' },
-  { key: 'fenteng', form: 'Supplier_1', booksId: '2680178000049168001', nameToken: 'fenteng', imageField: 'Product_Image_Supplier1_INQ',
-    notifications: 'Fenteng_Notifications', page: 'Fenteng_Lighting_Inquiries', param: 'fentenginquiriesid', emailEnv: 'FENTENG_PORTAL_EMAIL' },
-];
+export { SUPPLIERS };
 
 // ----- lookups -----
-// Suppliers by record ID: { name: first_name, booksId }
-async function supplierIndex(store) {
-  const rows = await store.find('Suppliers');
-  return new Map(rows.map((r) => [String(r.ID), { name: r.Supplier_Name?.first_name ?? '', booksId: String(r.Supplier_ID ?? '') }]));
-}
 async function projectCode(store, projects) {
   const id = idOf(projects);
   if (!id) return null;
   try { return (await store.getRecordById('Projects', id, { raw: true })).Project_Code ?? null; } catch { return null; }
 }
-const quoteBooksId = (quote, suppliers) => suppliers.get(unbracket(quote.Supplier_ID))?.booksId ?? '';
 
 // ----- the supplier-tag <-> quote-row bookkeeping shared by the validate scripts -----
 // Adds a "Not Selected" row for every tagged supplier that has no row yet (matched by ID first, then by name).
