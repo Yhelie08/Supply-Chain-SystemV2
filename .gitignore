@@ -7,3 +7,6 @@ data/
 .impeccable/questions/
 server/zoho-credentials.json
 self_client.json
+.env
+.env.*
+!.env.example
