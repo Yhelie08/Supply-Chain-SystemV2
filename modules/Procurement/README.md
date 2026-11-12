@@ -18,7 +18,11 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 
 | Custom API | Deluge function | Local app |
 |---|---|---|
+| `Approve_P_O_H_C` | [approvePOHC](../../zoho-export/parsed/functions/approvePOHC.dg) | Not ported yet |
 | `add_item_by_id` | [addItemByIdBooks](../../zoho-export/parsed/functions/addItemByIdBooks.dg) | Ported |
+| `approve_po_fenteng` | [approvePOFenteng](../../zoho-export/parsed/functions/approvePOFenteng.dg) | Not ported yet |
+| `approve_po_main` | [approvePOMain](../../zoho-export/parsed/functions/approvePOMain.dg) | Not ported yet |
+| `approve_po_tony` | [approvePOTony](../../zoho-export/parsed/functions/approvePOTony.dg) | Not ported yet |
 | `clone_shipment_for_replacement` | [cloneShipmentForReplacement](../../zoho-export/parsed/functions/cloneShipmentForReplacement.dg) | Not ported yet |
 | `create_bin_receiving` | [createBinReceivingWidget](../../zoho-export/parsed/functions/createBinReceivingWidget.dg) | Not ported yet |
 | `create_books_contact` | [createBooksContact](../../zoho-export/parsed/functions/createBooksContact.dg) | Ported |
@@ -127,6 +131,10 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 ## Deluge functions
 
 - [addItemByIdBooks](../../zoho-export/parsed/functions/addItemByIdBooks.dg)(String itemBooksId)
+- [approvePOFenteng](../../zoho-export/parsed/functions/approvePOFenteng.dg)(String soNo)
+- [approvePOHC](../../zoho-export/parsed/functions/approvePOHC.dg)(String soNo)
+- [approvePOMain](../../zoho-export/parsed/functions/approvePOMain.dg)(String soNo)
+- [approvePOTony](../../zoho-export/parsed/functions/approvePOTony.dg)(String soNo)
 - [cloneShipmentForReplacement](../../zoho-export/parsed/functions/cloneShipmentForReplacement.dg)(String rrRecordId)
 - [createBinReceivingWidget](../../zoho-export/parsed/functions/createBinReceivingWidget.dg)(String receivingId)
 - [createBooksContact](../../zoho-export/parsed/functions/createBooksContact.dg)(String customerId, String custName, String custType, String custEmail, String custPhone, String custMobile, String companyName, String custSubType, String salutation, String firstName, String lastName, String billAddress, String billCity, String billState, String billZip, String billCountry, String billAttention, String billPhone, String billFax, String shipAddress, String shipCity, String shipState, String shipZip, String shipCountry, String shipAttention, String shipPhone, String shipFax)

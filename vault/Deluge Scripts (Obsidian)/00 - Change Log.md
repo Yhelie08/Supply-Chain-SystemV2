@@ -11,6 +11,13 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-12
 
+**One folder per module (`server/modules/<module>/`), so the team can work without shared-file conflicts**
+- `server/modules/` has a folder for each section of the app (Procurement, Tony Fan, Fenteng Lighting, Fulfillment, Delivery Management, Analytic) with `index.mjs` (label, forms, custom API map, APIs), `apis.mjs`, `ported.json` and, for Procurement, `workflows.mjs` plus the Inquiry and Purchase Request ports and the three Books APIs. `server/modules/index.mjs` finds the modules by itself and merges their APIs (a duplicate API name stops the server at start-up).
+- `server/custom-apis.mjs` and `server/workflows/all.mjs` became thin; `server/custom-api-helpers.mjs` has `ok`, `fail`, `notPorted` and `withPlaceholders`. The three Delivery APIs moved to `delivery-management/apis.mjs`. `server/workflows/ported.json` is now one `ported.json` per module.
+- Port Status and the Port Checklist read the modules instead of regexes and hard-coded lists. Custom APIs went from 6 of 21 to 6 of 25: `approve_po_main`, `approve_po_fenteng`, `approve_po_tony`, `Approve_P_O_H_C` (called by the Create PO button, not known to the server before) are listed as not ported; Create PO now answers "not ported yet" instead of "Unknown custom API".
+- Tests moved to `tests/core/` and `tests/procurement/` (`npm test` runs `tests/**/*.test.js`); new `tests/core/modules.test.js` checks that modules load, forms and API names are not shared, and that every API name a widget calls has a handler or placeholder. 249 tests pass. `.github/CODEOWNERS` added.
+- Checked on a local Postgres: an inquiry gets its number through the hooks, ported and unported APIs answer as before, and all 65 widget reports still answer.
+
 **Procurement, Purchase Request stage (`server/workflows/purchase-request.mjs`)**
 - 14 of the 20 `Purchase_Request1` workflows ported; 5 need no port (native-form only or inactive); 1 not yet: `PR1_Forecast_Stamp`, which only calls the forecast engine `fcPrToPreOrder` -> `fcStampPurchaseRequest` (458 lines, shared by the Fulfillment forecast workflows).
 - The "on validate" scripts run as steps of one function in Zoho's order (number, supplier load balancing and recommended supplier, selected supplier, readiness, default status, lock after PO, shipment timeline, shipment mode, priority); "on success" hooks make the Tony and Fenteng copies, keep them in step on edit, stamp `Last_Update`, copy the item photo, and delete the copies with the PR.

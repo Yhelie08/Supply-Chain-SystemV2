@@ -14,13 +14,13 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | Part | Total | Ported |
 |---|---:|---:|
 | Deluge functions | 43 | 5 |
-| Custom APIs called by widgets | 21 | 6 |
+| Custom APIs called by widgets | 25 | 6 |
 | Form workflows (on validate, on success, field rules) | 165 | 22 |
 | Scheduled workflows | 6 | 0 |
 | Report-button functions | 16 | 0 |
 
 > [!INFO] What "Ported" means
-> The function's logic runs in `server/custom-apis.mjs` (Books ones in `server/books/apis.mjs`) against the app's database. Zoho Books calls need the Books client configured (see `.env.example`); CMS calls are not connected, so those parts are skipped.
+> The function's logic runs in its module, `server/modules/<module>/apis.mjs`, against the app's database. Zoho Books calls need the Books client configured (see `.env.example`); CMS calls are not connected, so those parts are skipped.
 
 ## Deluge functions
 
@@ -32,10 +32,10 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `addDmsScheduleRequestMessage` | — | — | Not ported yet | `zoho-export/parsed/functions/addDmsScheduleRequestMessage.dg` |
 | `addItemByIdBooks` | `add_item_by_id` | Procurement, Fulfillment | Ported | `zoho-export/parsed/functions/addItemByIdBooks.dg` |
 | `Approve_Multiple_PRs` | — | — | Not ported yet | `zoho-export/parsed/functions/Approve_Multiple_PRs.dg` |
-| `approvePOFenteng` | — | — | Not ported yet | `zoho-export/parsed/functions/approvePOFenteng.dg` |
-| `approvePOHC` | — | — | Not ported yet | `zoho-export/parsed/functions/approvePOHC.dg` |
-| `approvePOMain` | — | — | Not ported yet | `zoho-export/parsed/functions/approvePOMain.dg` |
-| `approvePOTony` | — | — | Not ported yet | `zoho-export/parsed/functions/approvePOTony.dg` |
+| `approvePOFenteng` | `approve_po_fenteng` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOFenteng.dg` |
+| `approvePOHC` | `Approve_P_O_H_C` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOHC.dg` |
+| `approvePOMain` | `approve_po_main` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOMain.dg` |
+| `approvePOTony` | `approve_po_tony` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOTony.dg` |
 | `approveRRFenteng` | `approve_rr_fenteng` | Fenteng Lighting | Not ported yet | `zoho-export/parsed/functions/approveRRFenteng.dg` |
 | `approveRRTony` | `approve_rr_tony` | Tony Fan | Not ported yet | `zoho-export/parsed/functions/approveRRTony.dg` |
 | `checkPaymentStatus` | `check_payment_status` | Fulfillment | Not ported yet | `zoho-export/parsed/functions/checkPaymentStatus.dg` |
@@ -74,9 +74,13 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Custom API | Deluge function | Status |
 |---|---|---|
+| `Approve_P_O_H_C` | `approvePOHC` | Not ported yet |
 | `acknowledge_po_fenteng` | `acknowledgePOFenteng` | Not ported yet |
 | `acknowledge_po_tony` | `acknowledgePOTony` | Not ported yet |
 | `add_item_by_id` | `addItemByIdBooks` | Ported |
+| `approve_po_fenteng` | `approvePOFenteng` | Not ported yet |
+| `approve_po_main` | `approvePOMain` | Not ported yet |
+| `approve_po_tony` | `approvePOTony` | Not ported yet |
 | `approve_rr_fenteng` | `approveRRFenteng` | Not ported yet |
 | `approve_rr_tony` | `approveRRTony` | Not ported yet |
 | `check_payment_status` | `checkPaymentStatus` | Not ported yet |
@@ -98,4 +102,4 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 ## Workflows
 
-22 of the 165 form workflows run in the app (the ported ones are listed in `server/workflows/ported.json`); another 14 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.
+22 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 14 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.

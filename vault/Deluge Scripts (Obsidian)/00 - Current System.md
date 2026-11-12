@@ -40,8 +40,9 @@ flowchart LR
 
 - **Widgets are the real Zoho widget source**, one folder per tab: `modules/<Section>/<Tab>/app/`. The server serves them with Zoho's SDK swapped for `server/public/zoho-shim.js`, so every `ZOHO.CREATOR.*` call goes to the server.
 - **Postgres layer (`server/pg/`):** `schema.mjs` builds one table per Zoho form from `zoho-export/parsed/`; `store.mjs` reads and writes (Postgres filters and pages, lookups are resolved in one query per lookup form, shown the way Zoho's display format says); `import.mjs` loads a backup. Record IDs are `BIGINT` in the database and always strings in JavaScript, because a Zoho ID has 19 digits and does not fit a JavaScript number.
-- **Workflow hooks (`server/workflows/`):** the Zoho form workflows that run on API writes ("on validate" before, "on success" after) are ported as hooks around the store. Ported so far: 8 Inquiry and 14 Purchase Request workflows ([[00 - Port Status]], `server/workflows/ported.json`).
-- **Books and Inventory (`server/books/`):** a client with its own OAuth refresh token (`ZOHO_BOOKS_*`) and the ported custom APIs `create_books_contact`, `add_item_by_id`, `create_estimate`. Not configured yet, so they answer "Zoho Books is not configured".
+- **Modules (`server/modules/<module>/`):** each section of the app has its own folder (Procurement, Tony Fan, Fenteng Lighting, Fulfillment, Delivery Management, Analytic) with its workflow ports, its custom APIs (`apis.mjs`), its forms and its `ported.json`. The server finds them by itself (`server/modules/index.mjs`), so adding to a module never touches a shared file. Who owns what: [[Plan - Module Folders and Team Split]].
+- **Workflow hooks (core, `server/workflows/`):** the Zoho form workflows that run on API writes ("on validate" before, "on success" after) are ported as hooks around the store. Ported so far: 8 Inquiry and 14 Purchase Request workflows, in `server/modules/procurement/` ([[00 - Port Status]]).
+- **Books and Inventory (`server/books/client.mjs`):** a client with its own OAuth refresh token (`ZOHO_BOOKS_*`); the ported custom APIs that use it (`create_books_contact`, `add_item_by_id`, `create_estimate`) live in `server/modules/procurement/`. Not configured yet, so they answer "Zoho Books is not configured".
 - **Zoho adapter (`server/zoho/`):** translates widget calls to Zoho Creator REST v2.1 with a 15-second cache, token refresh and a queue that protects Zoho's rate limits. Its custom API calls still run the local ports, not Zoho.
 - **Sections and tabs:** 6 sections, 42 tabs + 3 hidden pages listed in `server/pages.json`.
 
@@ -99,7 +100,8 @@ Environment: `PORT`, `DATA_DIR`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, 
 | Path | What |
 |---|---|
 | `server/` | the app server, sign-in, custom APIs, pages |
-| `server/pg/`, `server/workflows/`, `server/books/` | Postgres layer, ported workflows and hooks, Books client and APIs |
+| `server/pg/`, `server/workflows/`, `server/books/` | the shared core: Postgres layer, the hooks framework and helpers, the Books client |
+| `server/modules/<module>/` | one folder per section: its workflow ports, custom APIs, forms and `ported.json` |
 | `server/model.mjs`, `server/criteria.mjs` | the form model from the export and the Zoho criteria compiler, shared by SQLite and Postgres |
 | `modules/` | widget source per section/tab, plus a README per section |
 | `zoho-export/` | the `.ds` file and everything parsed from it |

@@ -4,7 +4,7 @@ tags:
   - plan
   - team
   - git
-status: draft - owners and review rules to be filled in (section 8)
+status: restructure done 2026-11-12 (PR #2); owners and review rules still to be filled in (section 8)
 date: 2026-11-12
 ---
 
@@ -12,6 +12,9 @@ date: 2026-11-12
 > How the team splits the work by module without stepping on each other. The migration: [[Plan - Full Migration Off Zoho Creator]]. How a branch reaches `main`: [[Plan - Branches and Pull Requests]]. The first module being finished: [[Plan - Finish Procurement]]. How to port one script: [[00 - Porting a Workflow]]. What is left, by section: [[00 - Port Checklist]].
 
 # Plan: one folder per module, a shared core nobody edits casually
+
+> [!SUCCESS] Status 2026-11-12
+> The restructure of section 9 is done on branch `feature/postgres-data-layer` (PR #2): `server/modules/<module>/` exists for all six sections, the server finds the modules by itself, `ported.json` is per module, the tests are in `tests/core/` and `tests/procurement/`, and `.github/CODEOWNERS` is in place (core to `@Yhelie08`, module lines commented until the usernames are known). It changed nothing in how the app behaves: 249 tests pass (245 before, plus 4 new ones for the modules). The only number that moved is the custom API count, 6 of 21 became 6 of 25, because four `approve_po_*` APIs that the Create PO button calls are now listed. The team can start once PR #2 is reviewed and merged (section 10).
 
 ## 1. Buod (Tagalog)
 - Tama ang hati: **bawat tao ay may sariling module at sariling folder** para doon siya mag-edit. Ang mga module ay ang nasa dropdown ng app: Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment, Delivery Management.
@@ -106,7 +109,7 @@ These need a talk between the owners; none can be decided by one person alone.
 | 4 | Who owns the Books-to-app sync and the forecast engine, which several modules need? | The Procurement owner for the Books sync; forecast decided later | |
 | 5 | Does the restructure go ahead before anyone clones the repo? | Yes: one PR, done first, by one person | |
 
-## 9. The restructure itself (one PR, before the others start)
+## 9. The restructure itself (done)
 Nothing about how the app behaves changes; files move and two registries become automatic.
 1. Create `server/modules/<module>/` for the six sections, each with `index.mjs`, `workflows.mjs`, `apis.mjs` and `ported.json`.
 2. Move the Inquiry and Purchase Request ports (`server/workflows/inquiry.mjs`, `purchase-request.mjs`) and the Books APIs (`server/books/apis.mjs`, `estimates.mjs`) into `procurement/`; move the three Delivery APIs out of `server/custom-apis.mjs` into `delivery-management/`; split the "not ported yet" placeholders by owner.

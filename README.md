@@ -20,6 +20,7 @@ Where to read more, in the Obsidian vault (`vault/`):
 - `Deluge Scripts (Obsidian)/00 - Port Status.md`: how much of the Zoho logic is ported
 - `Deluge Scripts (Obsidian)/00 - Porting a Workflow.md`: how to port the next script
 - `Plans/Plan - Full Migration Off Zoho Creator.md`: the plan and its phases
+- `Plans/Plan - Module Folders and Team Split.md`: one folder per module (`server/modules/<module>/`), who owns what, working rules
 
 ## The earlier React prototype
 
