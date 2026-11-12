@@ -20,6 +20,13 @@
     "nativeFormOnly": [],
     "notNeeded": {}
   },
+  "DMS_Exception_Queue": {
+    "ported": [
+      "EXC_Resolve_Sync"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  },
   "Delivery_Scheduling": {
     "ported": [
       "DS_Validate_Team_Capacity1"
