@@ -5,3 +5,5 @@ data/
 .impeccable/review/
 .impeccable/mocks/
 .impeccable/questions/
+server/zoho-credentials.json
+self_client.json
