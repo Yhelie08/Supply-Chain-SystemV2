@@ -18,9 +18,12 @@ The supply chain app in Zoho Creator stops being used. Our cloud app (Railway) b
 ## Decisions (owner, 2026-11-12)
 - Zoho Creator supply chain app: no longer used. Books and Inventory: stay.
 - Business data: **Postgres on Railway**. Users and sessions stay as they are for now.
-- Cutover **module by module**; Zoho is the bridge for a module until it is ported.
-- **Admin side first.** Suppliers (Tony Fan, Fenteng) come after the admin screens work.
+- Build **module by module**, but staff go live **all at once** when every module is ported (decided later the same day). No bridge to Zoho Creator is built.
+- **Admin side first**, but the Tony Fan and Fenteng portals are part of "Procurement done", not a later phase: see [[Plan - Finish Procurement]].
 - Order: Procurement (Inquiry → PR → PO → Shipments → Receiving), then Fulfillment, then Delivery.
+- Sales orders, payments and invoices come from Zoho Books by our server **polling Books**; today they are pushed by functions inside Books that are not in the Creator export (see the plan note).
+- Emails: **in-app notifications only** for now.
+- The server runs with time zone **Asia/Manila**, like the Zoho organization.
 
 ## Size of the port
 | Part | Total | Ported |
@@ -53,7 +56,7 @@ Known gap: `invokeCustomApi` in `server/zoho/adapter.mjs` calls the local port i
 - [ ] Railway variables set: Zoho credentials, `ZOHO_ENV`, database URL, `BACKEND`.
 
 ## Phase 3 - Procurement (admin screens)
-What is left, by section: [[00 - Port Checklist]]. Status 2026-11-12: workflow hooks, Books/Inventory client, the Inquiry stage and the Purchase Request stage are built and tested (mocks); the PR forecast stamp (`PR1_Forecast_Stamp`) waits for the forecast engine. Open: Books credentials from the owner, an oracle comparison against Zoho Development, then PO, Shipments, Receiving, Replacement, Exceptions.
+What is left, by section: [[00 - Port Checklist]]. Detailed plan for the first module and the questions for the team: [[Plan - Finish Procurement]]. Status 2026-11-12: workflow hooks, Books/Inventory client, the Inquiry stage and the Purchase Request stage are built and tested (mocks); the PR forecast stamp (`PR1_Forecast_Stamp`) waits for the forecast engine. Open: Books credentials from the owner, an oracle comparison against Zoho Development, then PO, Shipments, Receiving, Replacement, Exceptions.
 
 Port in pipeline order, because each stage creates the records the next one uses.
 
