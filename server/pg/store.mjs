@@ -4,7 +4,7 @@
 // IDs are strings in JavaScript and BIGINT in Postgres; they are never turned into numbers, because a
 // Zoho ID (19 digits) does not fit in one. Filtering is done by Postgres when criteria-sql.mjs can
 // translate the Zoho criteria; otherwise the rows are filtered in JavaScript exactly like db.mjs does.
-import { columns, formOfReport, formByName } from '../model.mjs';
+import { columns, formOfReport, formByName, lookupDisplay, displayFromFormat } from '../model.mjs';
 import { ZohoError, zohoNow, compileCriteria } from '../criteria.mjs';
 import { q, ownColumns } from './schema.mjs';
 import { criteriaToSql } from './criteria-sql.mjs';
@@ -55,6 +55,11 @@ export function createStore(db) {
     ...ownColumns(form).map(([n, c]) => (c.kind === 'num' ? `t.${q(n)}::text AS ${q(n)}` : `t.${q(n)}`))].join(', ');
 
   function displayOf(form, row) {
+    // Zoho's own display format for this form first ("[item_name]"); the first filled text column if that gives nothing.
+    if (lookupDisplay[form]) {
+      const shown = displayFromFormat(lookupDisplay[form], row);
+      if (shown.trim() !== '') return shown;
+    }
     for (const [name, c] of ownColumns(form)) {
       const v = row[name];
       if (c.kind === 'text' && v != null && v !== '' && !c.lookup) return String(v);

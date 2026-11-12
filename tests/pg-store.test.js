@@ -115,3 +115,22 @@ test('paging: page and pageSize', async () => {
   assert.equal(p2.length, 1);
   assert.ok(BigInt(p1[0].ID) < BigInt(p2[0].ID));
 });
+
+test('lookup display values follow the format Zoho defines for each form', async () => {
+  const supplier = await store.addRecord('Suppliers', { Supplier_ID: '2680178000002735078', Supplier_Name: { first_name: 'Tony', last_name: 'Fan' } });
+  const item = await store.addRecord('Items', { ID1: 'B1', item_name: 'Spot lamp', SKU: 'S-1' });
+  const inquiry = await store.addRecord('Inquiry_Form', { sku: 'S-1', Items: item, Suppliers: [supplier] });
+  const [row] = await store.getRecords('Inquiry_Form', { criteria: `ID == "${inquiry}"` });
+  assert.equal(row.Items.display_value, 'Spot lamp', 'Items show item_name, not their Books id');
+  assert.equal(row.Suppliers[0].display_value, ' Tony', 'Suppliers use [" " + Supplier_Name.first_name], leading space included');
+});
+
+test('display formats: fields, dotted fields, quoted text and +; anything else gives nothing', async () => {
+  const { displayFromFormat } = await import('../server/model.mjs');
+  const row = { customer_name: 'ACME', Supplier_Name: { first_name: 'Tony' }, empty: null };
+  assert.equal(displayFromFormat('[customer_name]', row), 'ACME');
+  assert.equal(displayFromFormat('[" " + Supplier_Name.first_name]', row), ' Tony');
+  assert.equal(displayFromFormat('[customer_name + " - " + Supplier_Name.first_name]', row), 'ACME - Tony');
+  assert.equal(displayFromFormat('[empty]', row), '');
+  for (const bad of ['[customer_name +]', '[+ customer_name]', '[customer_name customer_name]', '[ifnull(customer_name, "")]']) assert.equal(displayFromFormat(bad, row), '', bad);
+});

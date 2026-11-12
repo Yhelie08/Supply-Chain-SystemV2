@@ -31,6 +31,39 @@ for (const form of Object.values(forms)) {
   columns[form.name] = cols;
 }
 
+// How Zoho shows a record of each form when another form looks it up, e.g. Items -> "[item_name]",
+// Suppliers -> `[" " + Supplier_Name.first_name]` (the form's lookup fields all agree on one format).
+export const lookupDisplay = {};
+for (const form of Object.values(forms)) {
+  for (const f of form.fields) {
+    if (f.lookup && typeof f.lookup === 'object' && f.displayformat) lookupDisplay[f.lookup.form] ??= f.displayformat;
+  }
+}
+
+// Evaluates a display format such as `[customer_name]` or `[" " + Supplier_Name.first_name]` on a stored row.
+// Only field names (with a dotted part for name/address fields), string literals and + are understood; anything
+// else gives '' so the caller can fall back.
+export function displayFromFormat(format, row) {
+  const inner = String(format ?? '').trim().replace(/^\[/, '').replace(/\]$/, '');
+  const token = /\s*(?:"((?:[^"\\]|\\.)*)"|([A-Za-z_]\w*(?:\.\w+)*)|(\+))/y;
+  let out = '', expectValue = true, m;
+  token.lastIndex = 0;
+  while (token.lastIndex < inner.length) {
+    if (!(m = token.exec(inner))) return '';
+    if (m[3]) { if (expectValue) return ''; expectValue = true; continue; }
+    if (!expectValue) return '';
+    expectValue = false;
+    if (m[1] !== undefined) out += m[1].replace(/\\(.)/g, '$1');
+    else {
+      const [field, ...path] = m[2].split('.');
+      let v = row[field];
+      for (const p of path) v = v?.[p];
+      out += v == null || typeof v === 'object' ? '' : String(v);
+    }
+  }
+  return expectValue ? '' : out;
+}
+
 export function formOfReport(reportName) {
   const r = reports[reportName];
   if (r?.form && columns[r.form]) return { form: r.form, criteria: r.criteria, report: r };
