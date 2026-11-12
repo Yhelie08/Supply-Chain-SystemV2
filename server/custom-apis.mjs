@@ -74,10 +74,11 @@ export const customApis = {
   create_estimate: notPorted('createEstimateForInquiry'),
 };
 
-export async function invokeCustomApi(name, payload, data = sqlite) {
+// ctx = { books } : the Zoho Books/Inventory client (server/books/client.mjs), when the backend has one.
+export async function invokeCustomApi(name, payload, data = sqlite, ctx = {}) {
   const fn = customApis[name];
   if (!fn) return fail(`Unknown custom API "${name}".`);
-  return fn(payload || {}, data);
+  return fn(payload || {}, data, ctx);
 }
 
 

@@ -5,10 +5,11 @@ import { createPool } from './pool.mjs';
 import { ensureSchema } from './schema.mjs';
 import { createStore } from './store.mjs';
 import { createHookedStore, workflows } from '../workflows/index.mjs';
+import { createZohoApi } from '../books/client.mjs';
 
 // `store` is the hooked store: widget writes run the form workflows (server/workflows). Custom APIs get
 // `rawStore`, whose writes do not fire them again.
-export function createPgApi(store, invokeCustomApi, rawStore = store) {
+export function createPgApi(store, invokeCustomApi, rawStore = store, ctx = {}) {
   return {
     getRecords: async (b, user) => ({ code: 3000, data: await store.getRecords(b.report_name, { ...b, user }) }),
     getRecordById: async (b) => ({ code: 3000, data: await store.getRecordById(b.report_name, b.id) }),
@@ -33,7 +34,7 @@ export function createPgApi(store, invokeCustomApi, rawStore = store) {
       return { code: 3000, result };
     },
     deleteRecordById: async (b, user) => ({ code: 3000, data: { ID: await store.deleteRecord(b.report_name, b.id, { user }) }, message: 'Record Deleted Successfully!' }),
-    invokeCustomApi: async (b) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload, rawStore) }),
+    invokeCustomApi: async (b) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload, rawStore, ctx) }),
   };
 }
 
@@ -43,6 +44,8 @@ export async function startPg(invokeCustomApi) {
   const changes = await ensureSchema(pool);
   console.log(`[pg] connected; schema ready (${changes} change${changes === 1 ? '' : 's'})`);
   const store = createStore(pool);
-  const hooked = createHookedStore(store, workflows);
-  return { pool, store, api: createPgApi(hooked, invokeCustomApi, store) };
+  const books = createZohoApi();
+  console.log(`[books] Zoho Books/Inventory ${books.isConfigured() ? 'configured' : 'not configured (workflows and APIs that call Books will report it)'}`);
+  const hooked = createHookedStore(store, workflows, { books });
+  return { pool, store, api: createPgApi(hooked, invokeCustomApi, store, { books }) };
 }
