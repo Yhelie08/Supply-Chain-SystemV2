@@ -4,14 +4,14 @@ tags: [page, delivery-management, built]
 module: Delivery Management
 route: "#/delivery/analytics"
 status: partial
-source: src/pages/extras.jsx (DeliveryAnalytics)
+source: src/pages/delivery/ (DeliveryAnalytics)
 ---
 
 # Delivery Analytics
 
 > Read-only dashboard: service requests, installations, deliveries and exceptions at a glance.
 
-**Section:** [[Delivery Management]] · **Route:** `#/delivery/analytics` · **Source:** `src/pages/extras.jsx` (`DeliveryAnalytics`) · **Status:** built, not yet at parity
+**Section:** [[Delivery Management]] · **Route:** `#/delivery/analytics` · **Source:** `src/pages/delivery/` (`DeliveryAnalytics`) · **Status:** built, not yet at parity
 
 **Shows:** [[serviceRequests]], [[teams]]
 

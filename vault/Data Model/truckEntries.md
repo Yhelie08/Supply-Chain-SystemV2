@@ -13,6 +13,9 @@ label: Truck entry
 ## Created by
 - [[truckEntryAdd]]
 
+## Shown on
+- [[Truck Maintenance]]
+
 ## Fields
 - `id`
 - `kind`

@@ -19,5 +19,6 @@ module: Initial Scheduling
 ## Seen on
 - [[Initial Scheduling]]
 - [[Service Request]]
+- [[Service Appointment]]
 
 Back to [[Rules Index]].

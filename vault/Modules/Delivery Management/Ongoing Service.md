@@ -4,35 +4,22 @@ tags: [page, delivery-management, built]
 module: Delivery Management
 route: "#/delivery/ongoing"
 status: partial
-source: src/pages/screens.jsx (OngoingScreen)
+source: src/pages/delivery/ (OngoingScreen)
 ---
 
 # Ongoing Service
 
 > Installation and site completion form for deliveries in the field.
 
-**Section:** [[Delivery Management]] · **Route:** `#/delivery/ongoing` · **Source:** `src/pages/screens.jsx` (`OngoingScreen`) · **Status:** built, not yet at parity
+**Section:** [[Delivery Management]] · **Route:** `#/delivery/ongoing` · **Source:** `src/pages/delivery/` (`OngoingScreen`) · **Status:** built, not yet at parity
 
-**Shows:** [[serviceRequests]]
+**Shows:** [[serviceRequests]], [[teams]]
 
 ## What the live page has
 
 - **Inner tabs:** Today · All Ongoing · Not Started · Started · Installation Completed
 - **Stat cards:** Ongoing Deliveries · Not Started · Started · Installation Completed
 - **Buttons:** Save Field Work
-
-### Still missing from this page
-
-- tab: Today
-- tab: All Ongoing
-- tab: Not Started
-- tab: Started
-- tab: Installation Completed
-- stat card: Ongoing Deliveries
-- stat card: Not Started
-- stat card: Started
-- stat card: Installation Completed
-- button: Save Field Work
 
 ## Steps on this page
 

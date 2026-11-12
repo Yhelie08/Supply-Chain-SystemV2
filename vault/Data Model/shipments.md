@@ -22,6 +22,7 @@ label: Shipment
 - [[Procurement Dashboard]]
 - [[Purchase Order]]
 - [[Shipments]]
+- [[Receiving]]
 - [[Forecast Setting]]
 - [[Tony Fan - Shipments]]
 - [[Fenteng Lighting - Shipments]]

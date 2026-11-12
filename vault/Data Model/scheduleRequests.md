@@ -13,6 +13,9 @@ label: Schedule request
 ## Created by
 - [[scheduleRequestCreate]]
 
+## Shown on
+- [[Schedule Requests]]
+
 ## Fields
 - `id`
 - `no`

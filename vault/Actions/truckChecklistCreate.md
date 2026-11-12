@@ -1,7 +1,7 @@
 ---
 title: truckChecklistCreate
-tags: [action, delivery-management]
-module: Delivery Management
+tags: [action, domain]
+module: Domain
 source: "src/domain/actions.js:880"
 ---
 
@@ -10,9 +10,6 @@ source: "src/domain/actions.js:880"
 Truck Maintenance: opens a daily vehicle checklist.
 
 **Source:** `src/domain/actions.js:880`
-
-## Offered on
-- [[Truck Maintenance]] (Delivery Management)
 
 ## Creates records in
 - [[truckChecks]]

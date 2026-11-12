@@ -19,6 +19,8 @@ label: Purchase Order
 - [[Procurement Dashboard]]
 - [[Purchase Request]]
 - [[Purchase Order]]
+- [[Shipments]]
+- [[Receiving]]
 - [[Tony Fan - Purchase Order]]
 - [[Fenteng Lighting - Purchase Order]]
 
@@ -58,7 +60,7 @@ label: Purchase Order
   "status": "Completed",
   "etd": "2026-10-22",
   "eta": "2026-11-09",
-  "ackAt": "2026-11-11T05:11:32.904Z",
+  "ackAt": "2026-11-12T00:09:00.837Z",
   "createdOn": "2026-11-11"
 }
 ```

@@ -13,6 +13,10 @@ label: Sales Return
 ## Created by
 - [[salesReturnCreate]]
 
+## Shown on
+- [[Archived]]
+- [[Sales Returns]]
+
 ## Fields
 - `id`
 - `no`

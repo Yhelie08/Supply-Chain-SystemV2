@@ -13,7 +13,7 @@ source: src/pages/screens.jsx (ShipmentScreen)
 
 **Section:** [[Procurement]] · **Route:** `#/procurement/shipments` · **Source:** `src/pages/screens.jsx` (`ShipmentScreen`) · **Status:** built, not yet at parity
 
-**Shows:** [[shipments]], [[receivings]]
+**Shows:** [[shipments]], [[pos]], [[prs]], [[receivings]]
 
 ## What the live page has
 

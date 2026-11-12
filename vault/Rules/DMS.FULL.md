@@ -17,5 +17,6 @@ module: Service Request
 
 ## Seen on
 - [[Service Request]]
+- [[Service Appointment]]
 
 Back to [[Rules Index]].

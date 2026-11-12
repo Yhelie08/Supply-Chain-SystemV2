@@ -15,7 +15,4 @@ module: Schedule Requests
 ## Enforced by
 - [[scheduleRequestCreate]] (`src/domain/actions.js:910`)
 
-## Seen on
-- [[Schedule Requests]]
-
 Back to [[Rules Index]].

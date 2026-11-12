@@ -13,6 +13,9 @@ label: Site visit
 ## Created by
 - [[siteVisitCreate]]
 
+## Shown on
+- [[Field Service Site Visits]]
+
 ## Fields
 - `id`
 - `no`

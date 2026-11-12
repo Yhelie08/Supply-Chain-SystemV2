@@ -13,6 +13,9 @@ label: Truck checklist
 ## Created by
 - [[truckChecklistCreate]]
 
+## Shown on
+- [[Truck Maintenance]]
+
 ## Fields
 - `id`
 - `no`

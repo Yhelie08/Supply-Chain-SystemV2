@@ -6,7 +6,8 @@ import { DatabaseSync } from 'node:sqlite';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PARSED = path.join(ROOT, 'zoho-export', 'parsed');
-export const DATA_DIR = path.join(ROOT, 'data');
+// DATA_DIR holds the database and uploads; on Railway it points at a persistent volume.
+export const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 export const forms = Object.fromEntries(

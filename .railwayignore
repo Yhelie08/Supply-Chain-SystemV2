@@ -1,0 +1,19 @@
+# Only the server, its pages and the widget/spec files it reads are deployed.
+# Every rule starts with "/" so it matches at the project root only: an unanchored
+# "index.html" would also drop server/public/index.html and every widget's index.html.
+/data/
+/node_modules/
+/.git/
+/.claude/
+/.impeccable/review/
+/vault/
+/src/
+/tests/
+/ui-tests/
+/tools/
+/index.html
+/vite.config.js
+/dashboard-live.png
+# The raw Zoho export holds a third-party API key and is not read by the server.
+/zoho-export/Supply_Chain_App.ds
+/zoho-export/parsed/raw/

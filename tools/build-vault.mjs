@@ -559,9 +559,12 @@ export async function buildVault(outDir) {
     ]) +
     `\n## What is not tested\n\n- Clicking. The render test is server-side, so button handlers, forms and the drawer are untested.\n- A real browser. Nobody has looked at the layout at phone width or in dark mode.\n- Anything against Zoho. There is no Zoho connection in this app. See ${link('Differences from the Zoho system')}.\n`);
 
+  // The real system moved on after this prototype: say so at the top of the notes that describe it.
+  const PROTOTYPE_NOTE = '> [!WARNING] This is the earlier prototype\n> These notes describe the React prototype in `src/`. The real system now runs the original Zoho widgets on our own server, with a database, sign-in and users, hosted on Railway. See `vault/Deluge Scripts (Obsidian)/00 - Current System.md` and `00 - Port Status.md`.\n\n';
+
   put('Guides/Differences from the Zoho system.md',
     fm({ title: 'Differences from the Zoho system', tags: ['guide', 'context'] }) +
-    `# Differences from the Zoho system\n\nThe live system runs on Zoho Creator (Deluge scripts and widgets) with Zoho Books and Inventory behind it. This app is a standalone React model of the same flow. It is not connected to any of that.\n\n` +
+    `# Differences from the Zoho system\n\n${PROTOTYPE_NOTE}The live system runs on Zoho Creator (Deluge scripts and widgets) with Zoho Books and Inventory behind it. This app is a standalone React model of the same flow. It is not connected to any of that.\n\n` +
     table(['Live system', 'This app'], [
       ['Separate forms for Gate, Pick, Pack, QC, Crate and Order Aggregation, each synced by a script', 'One item record whose \`stage\` changes. No sync scripts, so none can drift or fail silently.'],
       ['Estimates, invoices, packages and stock in Books and Inventory', 'Estimate and package numbers are generated locally. There is no accounting.'],
@@ -587,7 +590,7 @@ export async function buildVault(outDir) {
 
   put('Guides/Not built yet.md',
     fm({ title: 'Not built yet', tags: ['guide', 'backlog'] }) +
-    `# Not built yet\n\nEvery tab of the live app exists in the menu. The pages marked **not built yet** show a placeholder, and the built pages list what they still lack under *Still missing from this page*.\n\n- Sign-in, roles and who-did-it on the audit trail.\n- A shared database, so more than one person can work at once. Today the data is in one browser.\n- Notifications beyond the bell, which lists recent steps.\n- Attachments, photos and signatures.\n- The supplier portals (${link('Tony Fan')} and ${link('Fenteng Lighting')}): placeholders for now.\n- Scheduled jobs: delivery forecast, shipment delay flagging, urgency.\n- Accounting and stock integration.\n- Clicking tests and a real-browser visual check.\n- Resetting a single module's sample data instead of everything.\n`);
+    `# Not built yet\n\n${PROTOTYPE_NOTE}Every tab of the live app exists in the menu. The pages marked **not built yet** show a placeholder, and the built pages list what they still lack under *Still missing from this page*.\n\n- Sign-in, roles and who-did-it on the audit trail.\n- A shared database, so more than one person can work at once. Today the data is in one browser.\n- Notifications beyond the bell, which lists recent steps.\n- Attachments, photos and signatures.\n- The supplier portals (${link('Tony Fan')} and ${link('Fenteng Lighting')}): placeholders for now.\n- Scheduled jobs: delivery forecast, shipment delay flagging, urgency.\n- Accounting and stock integration.\n- Clicking tests and a real-browser visual check.\n- Resetting a single module's sample data instead of everything.\n`);
 
   put('Guides/Glossary.md',
     fm({ title: 'Glossary', tags: ['guide'] }) +
@@ -612,7 +615,7 @@ export async function buildVault(outDir) {
   // ── Home ──
   put('Home.md',
     fm({ title: 'Home', tags: ['index'] }) +
-    `# Supply Chain System v2\n\nA React model of the Home Cartel supply chain: Procurement, Fulfillment and Delivery, with the workflow rules enforced in one place.\n\nThis vault is generated from the source by \`npm run vault\`. Edit the app, not these notes.\n\n` +
+    `# Supply Chain System v2\n\n${PROTOTYPE_NOTE}A React model of the Home Cartel supply chain: Procurement, Fulfillment and Delivery, with the workflow rules enforced in one place.\n\nThis vault is generated from the source by \`npm run vault\`. Edit the app, not these notes.\n\n` +
     `## Start here\n\n- ${link('System Map')}: the whole flow on one diagram\n- ${link('Running the app')} and ${link('How the engine works')}\n- ${link('Rules Index')}: ${RULES.length} rules\n- ${link('Data Model')}: ${collections.length} collections\n- ${link('Differences from the Zoho system')} and ${link('Not built yet')}\n- ${link('Design decisions')}, ${link('Testing')}, ${link('Glossary')}\n\n` +
     `## Sections\n\nThe six sections of the dropdown in the top bar, plus the Reference link.\n\n${table(['Section', 'Pages'], [...navGroups.map((g) => [link(g.group), g.items.map((i) => link(pages.find((p) => p.path === i.path).label)).join(', ')])])}\n\n` +
     `## In numbers\n\n- ${pages.length} pages (${pages.filter((p) => p.status === 'placeholder').length} not built yet), ${actions.length} workflow steps, ${RULES.length} rules, ${collections.length} collections\n- ${RULES.filter((r) => r.tag === 'BLOCKS').length} blocking rules, ${RULES.filter((r) => r.tag === 'REQUIRED').length} required-field rules\n\n` +

@@ -15,4 +15,7 @@ module: Truck Maintenance
 ## Enforced by
 - [[truckEntryAdd]] (`src/domain/actions.js:902`)
 
+## Seen on
+- [[Truck Maintenance]]
+
 Back to [[Rules Index]].

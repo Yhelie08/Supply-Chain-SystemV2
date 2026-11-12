@@ -13,7 +13,7 @@ source: src/pages/screens.jsx (ReceivingScreen)
 
 **Section:** [[Procurement]] · **Route:** `#/procurement/receiving` · **Source:** `src/pages/screens.jsx` (`ReceivingScreen`) · **Status:** built, not yet at parity
 
-**Shows:** [[receivings]], [[rrs]]
+**Shows:** [[receivings]], [[shipments]], [[pos]], [[prs]], [[rrs]]
 
 ## What the live page has
 

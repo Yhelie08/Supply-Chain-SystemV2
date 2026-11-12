@@ -13,6 +13,7 @@ Runs the scheduling engine: earliest team with room from the initial date, skipp
 
 ## Offered on
 - [[Service Request]] (Delivery Management)
+- [[Service Appointment]] (Delivery Management)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

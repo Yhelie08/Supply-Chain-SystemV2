@@ -15,7 +15,4 @@ module: Truck Maintenance
 ## Enforced by
 - [[truckChecklistCreate]] (`src/domain/actions.js:880`)
 
-## Seen on
-- [[Truck Maintenance]]
-
 Back to [[Rules Index]].

@@ -4,14 +4,16 @@ tags: [page, delivery-management, built]
 module: Delivery Management
 route: "#/delivery/returns"
 status: partial
-source: src/pages/extras.jsx (SalesReturns)
+source: src/pages/delivery/ (SalesReturns)
 ---
 
 # Sales Returns
 
 > Returns and reverse logistics, sent to Books.
 
-**Section:** [[Delivery Management]] · **Route:** `#/delivery/returns` · **Source:** `src/pages/extras.jsx` (`SalesReturns`) · **Status:** built, not yet at parity
+**Section:** [[Delivery Management]] · **Route:** `#/delivery/returns` · **Source:** `src/pages/delivery/` (`SalesReturns`) · **Status:** built, not yet at parity
+
+**Shows:** [[salesReturns]], [[serviceRequests]]
 
 ## What the live page has
 

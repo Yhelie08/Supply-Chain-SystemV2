@@ -19,5 +19,6 @@ This rule is documentation of what the step does by itself. No code path refuses
 
 ## Seen on
 - [[Service Request]]
+- [[Service Appointment]]
 
 Back to [[Rules Index]].

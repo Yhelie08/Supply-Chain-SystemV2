@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Users – Supply Chain App</title>
+<link rel="stylesheet" href="/theme/pages.css">
+</head>
+<body>
+<div class="topbar">
+  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="none" stroke="#f2f4f7" stroke-width="3"/><rect x="1" y="9" width="20" height="4" rx="1" fill="#f2b705"/></svg>
+  Supply Chain App
+  <a class="back" href="/">Back to the app</a>
+</div>
+<div class="rail"></div>
+<main>
+  <div class="wide">
+    <h1>Users</h1>
+    <p class="lede">Everyone who can sign in. New users get a temporary password and choose their own the first time they sign in.</p>
+    <div class="panel">
+      <form class="bar" id="add">
+        <div><label for="email">Email</label><input id="email" type="email" required autocomplete="off"></div>
+        <div><label for="name">Name</label><input id="name" autocomplete="off"></div>
+        <div style="flex:0 0 130px"><label for="role">Access</label><select id="role"><option value="user">User</option><option value="admin">Admin</option></select></div>
+        <button class="btn primary" type="submit">Add user</button>
+      </form>
+      <p class="secret" id="secret" role="status" hidden></p>
+      <p class="note bad" id="err" role="alert" style="margin:12px 20px" hidden></p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Access</th><th>Last sign-in</th><th><span class="sr" hidden>Actions</span></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var me = null;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function call(method, path, body) {
+    return fetch(path, { method: method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().then(function (b) { if (!r.ok) throw new Error(b.message || 'Something went wrong.'); return b; }); });
+  }
+  function fail(e) { $('err').textContent = e.message; $('err').hidden = false; }
+  function showPassword(email, password, verb) {
+    $('err').hidden = true;
+    $('secret').innerHTML = esc(verb) + ' <strong>' + esc(email) + '</strong>. Temporary password: <code>' + esc(password) + '</code> '
+      + '<button class="btn small" type="button" id="copy">Copy</button> Send it to them; it is shown only once.';
+    $('secret').hidden = false;
+    $('copy').onclick = function () { navigator.clipboard && navigator.clipboard.writeText(password).then(function () { $('copy').textContent = 'Copied'; }); };
+  }
+  function render(users) {
+    $('rows').innerHTML = users.map(function (u) {
+      var self = me && u.id === me.id;
+      return '<tr data-id="' + u.id + '">'
+        + '<td>' + (esc(u.name) || '<span class="sub">No name</span>') + (self ? ' <span class="sub">(you)</span>' : '') + '</td>'
+        + '<td>' + esc(u.email) + '</td>'
+        + '<td><span class="pill ' + (u.role === 'admin' ? 'admin' : '') + '">' + (u.role === 'admin' ? 'Admin' : 'User') + '</span>'
+        + (u.active ? '' : ' <span class="pill off">Turned off</span>') + (u.mustChangePassword && u.active ? ' <span class="sub">temporary password</span>' : '') + '</td>'
+        + '<td>' + (u.lastLogin ? esc(u.lastLogin) : '<span class="sub">Never</span>') + '</td>'
+        + '<td class="actions">'
+        + '<button class="btn small" data-act="reset">Reset password</button>'
+        + (self ? '' : '<button class="btn small" data-act="role">' + (u.role === 'admin' ? 'Make user' : 'Make admin') + '</button>'
+          + '<button class="btn small" data-act="active">' + (u.active ? 'Turn off' : 'Turn on') + '</button>'
+          + '<button class="btn small danger" data-act="delete">Delete</button>')
+        + '</td></tr>';
+    }).join('');
+  }
+  var users = [];
+  function load() { return call('GET', '/api/admin/users').then(function (list) { users = list; render(list); }).catch(fail); }
+
+  fetch('/api/me').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+    if (!m) { location.href = '/login'; return; }
+    me = m; load();
+  });
+
+  $('add').addEventListener('submit', function (e) {
+    e.preventDefault();
+    call('POST', '/api/admin/users', { email: $('email').value, name: $('name').value, role: $('role').value })
+      .then(function (r) { $('add').reset(); showPassword(r.user.email, r.password, 'Added'); return load(); })
+      .catch(fail);
+  });
+
+  $('rows').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-act]');
+    if (!b) return;
+    var id = b.closest('tr').dataset.id;
+    var u = users.find(function (x) { return String(x.id) === id; });
+    var act = b.dataset.act;
+    if (act === 'delete' && !b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Confirm delete'; return; }
+    var done = act === 'reset' ? call('POST', '/api/admin/users/' + id + '/reset').then(function (r) { showPassword(r.user.email, r.password, 'New password for'); })
+      : act === 'role' ? call('POST', '/api/admin/users/' + id, { role: u.role === 'admin' ? 'user' : 'admin' })
+      : act === 'active' ? call('POST', '/api/admin/users/' + id, { active: !u.active })
+      : call('DELETE', '/api/admin/users/' + id);
+    done.then(load).catch(fail);
+  });
+</script>
+</body>
+</html>

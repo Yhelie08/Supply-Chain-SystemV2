@@ -4,35 +4,22 @@ tags: [page, delivery-management, built]
 module: Delivery Management
 route: "#/delivery/exceptions"
 status: partial
-source: src/pages/screens.jsx (DmsExceptionScreen)
+source: src/pages/delivery/ (DmsExceptionScreen)
 ---
 
 # DMS Exception Queue
 
 > Failed deliveries and reschedule requests waiting for a decision.
 
-**Section:** [[Delivery Management]] · **Route:** `#/delivery/exceptions` · **Source:** `src/pages/screens.jsx` (`DmsExceptionScreen`) · **Status:** built, not yet at parity
+**Section:** [[Delivery Management]] · **Route:** `#/delivery/exceptions` · **Source:** `src/pages/delivery/` (`DmsExceptionScreen`) · **Status:** built, not yet at parity
 
-**Shows:** [[serviceRequests]]
+**Shows:** [[serviceRequests]], [[teams]]
 
 ## What the live page has
 
 - **Inner tabs:** Open · In Progress · Resolved · All
 - **Stat cards:** Open Exceptions · Open — High Severity · Past Resolve-By · Resolved
 - **Buttons:** Start · Resolve · Dismiss
-
-### Still missing from this page
-
-- tab: Open
-- tab: In Progress
-- tab: Resolved
-- tab: All
-- stat card: Open Exceptions
-- stat card: Open — High Severity
-- stat card: Past Resolve-By
-- stat card: Resolved
-- button: Start
-- button: Dismiss
 
 ## Steps on this page
 

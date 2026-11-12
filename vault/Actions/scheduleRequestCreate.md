@@ -1,7 +1,7 @@
 ---
 title: scheduleRequestCreate
-tags: [action, delivery-management]
-module: Delivery Management
+tags: [action, domain]
+module: Domain
 source: "src/domain/actions.js:910"
 ---
 
@@ -10,9 +10,6 @@ source: "src/domain/actions.js:910"
 Schedule Requests: records a client request to move a delivery date.
 
 **Source:** `src/domain/actions.js:910`
-
-## Offered on
-- [[Schedule Requests]] (Delivery Management)
 
 ## Creates records in
 - [[scheduleRequests]]

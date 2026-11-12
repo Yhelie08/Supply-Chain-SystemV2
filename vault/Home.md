@@ -5,6 +5,9 @@ tags: [index]
 
 # Supply Chain System v2
 
+> [!WARNING] This is the earlier prototype
+> These notes describe the React prototype in `src/`. The real system now runs the original Zoho widgets on our own server, with a database, sign-in and users, hosted on Railway. See `vault/Deluge Scripts (Obsidian)/00 - Current System.md` and `00 - Port Status.md`.
+
 A React model of the Home Cartel supply chain: Procurement, Fulfillment and Delivery, with the workflow rules enforced in one place.
 
 This vault is generated from the source by `npm run vault`. Edit the app, not these notes.

@@ -21,11 +21,6 @@ source: src/pages/inquiry/ (InquiryPage)
 - **Stat cards:** Open INQs · Quote Groups · Ready for Estimate · Blocked / Not Ready · Fully Ready Groups
 - **Buttons:** + New Inquiry · Create Estimate
 
-### Still missing from this page
-
-- stat card: Open INQs
-- stat card: Blocked / Not Ready
-
 ## Steps on this page
 
 | Step | What it does | Rules |

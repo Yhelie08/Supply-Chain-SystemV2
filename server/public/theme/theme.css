@@ -1,0 +1,129 @@
+/* Supply Chain App theme layer: the rail network (surface brief: .impeccable/surfaces/server-public-index-html.md).
+   Injected by server/index.mjs into every widget, last in <head>, with two attributes on <html>:
+     data-hc-kit   dms | legacy | tw   which style system the widget was built with
+     data-hc-line  the section's line  procurement | tony-fan | fenteng-lighting | fulfillment | delivery | analytic
+   Widget files are never edited. */
+
+@font-face { font-family: "Overpass"; src: url("/theme/fonts/overpass-latin.woff2") format("woff2"); font-weight: 300 800; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Overpass"; src: url("/theme/fonts/overpass-latin-ext.woff2") format("woff2"); font-weight: 300 800; font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+/* ---------- tokens: platform concrete, station navy, flat line colours ---------- */
+:root {
+  --hc-ground: #eceff3; --hc-panel: #ffffff; --hc-panel-2: #f5f7f9; --hc-panel-3: #e4e8ee;
+  --hc-hair: #d5dbe3; --hc-hair-strong: #b7c0cc;
+  --hc-ink: #1b2330; --hc-ink-2: #4a5566; --hc-ink-3: #5f6a7c;
+  --hc-ok: #17693f; --hc-ok-soft: #e2f2e8; --hc-ok-fill: #2e9a5f;
+  --hc-warn: #a8480b; --hc-warn-soft: #fcebdc; --hc-warn-fill: #e07a2e;
+  --hc-bad: #b3261e; --hc-bad-soft: #fbe4e2; --hc-bad-fill: #d64541;
+  --hc-info: #245ea6; --hc-info-soft: #e3ecf8; --hc-info-fill: #3f7fd0;
+  --hc-vio: #5b3ea8; --hc-vio-soft: #ece7f8; --hc-vio-fill: #7a5fd2;
+  --hc-yel: #765a00; --hc-yel-soft: #fbf1cc; --hc-yel-fill: #d9a90b;
+  --hc-shadow: 0 1px 2px rgba(27, 35, 48, .06), 0 3px 10px rgba(27, 35, 48, .05);
+  --hc-shadow-lg: 0 16px 40px rgba(27, 35, 48, .18);
+  --hc-radius: 8px; --hc-radius-sm: 5px;
+  --hc-font: "Overpass", "Segoe UI", system-ui, sans-serif;
+  /* The section's line. fill = solid areas, on = text on the fill, ink = line-coloured text on white, soft = tint. */
+  --hc-line-fill: #1b2330; --hc-line-on: #ffffff; --hc-line-ink: #1b2330; --hc-line-soft: #e4e8ee;
+}
+:root[data-hc-line="procurement"]      { --hc-line-fill: #6a3a9e; --hc-line-on: #fff; --hc-line-ink: #6a3a9e; --hc-line-soft: #efe8f7; }
+:root[data-hc-line="tony-fan"]         { --hc-line-fill: #96367f; --hc-line-on: #fff; --hc-line-ink: #96367f; --hc-line-soft: #f6e7f2; }
+:root[data-hc-line="fenteng-lighting"] { --hc-line-fill: #4744a6; --hc-line-on: #fff; --hc-line-ink: #4744a6; --hc-line-soft: #e9e8f7; }
+:root[data-hc-line="fulfillment"]      { --hc-line-fill: #f2b705; --hc-line-on: #1b2330; --hc-line-ink: #7a5a00; --hc-line-soft: #fdf3d0; }
+:root[data-hc-line="delivery"]         { --hc-line-fill: #1f5fad; --hc-line-on: #fff; --hc-line-ink: #1f5fad; --hc-line-soft: #e3ecf8; }
+
+/* Dark only where the widgets support it (Delivery). */
+@media (prefers-color-scheme: dark) {
+  :root[data-hc-kit="dms"]:not([data-theme="light"]) {
+    --hc-ground: #12161d; --hc-panel: #19202a; --hc-panel-2: #1f2733; --hc-panel-3: #27303d;
+    --hc-hair: #2c3542; --hc-hair-strong: #3a4554;
+    --hc-ink: #e6eaf0; --hc-ink-2: #a9b3c1; --hc-ink-3: #8c97a7;
+    --hc-ok: #4cc38a; --hc-ok-soft: #13291f; --hc-warn: #f08a4b; --hc-warn-soft: #2e1e12;
+    --hc-bad: #f07070; --hc-bad-soft: #331818; --hc-info: #7aa8f0; --hc-info-soft: #16233a;
+    --hc-vio: #a992f2; --hc-vio-soft: #231d3a; --hc-yel: #e5c55a; --hc-yel-soft: #2b2611;
+    --hc-line-fill: #5b95e6; --hc-line-on: #0d1520; --hc-line-ink: #7fb0f0; --hc-line-soft: #17253a;
+    --hc-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 14px rgba(0, 0, 0, .25);
+    --hc-shadow-lg: 0 18px 44px rgba(0, 0, 0, .5);
+  }
+}
+
+/* ---------- every widget ---------- */
+:root body { font-family: var(--hc-font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+:root :is(button, input, select, textarea) { font-family: inherit; }
+:root :is(h1, h2, h3) { letter-spacing: -0.01em; text-wrap: balance; }
+/* Sentence-case headers and labels: faster to scan than tracked capitals. Columns never move (tabular figures above). */
+:root th { text-transform: none; letter-spacing: 0; }
+:root :is(.uppercase, .stat-label, .kpi-label, .section-title, .sec-title) { text-transform: none; letter-spacing: 0.005em; }
+:root :focus-visible { outline: 2px solid var(--hc-line-ink); outline-offset: 2px; }
+:root ::selection { background: var(--hc-line-soft); color: var(--hc-ink); }
+:root input, :root textarea { caret-color: var(--hc-line-ink); }
+:root a { text-underline-offset: 0.18em; }
+:root { scrollbar-color: var(--hc-hair-strong) transparent; }
+@media (prefers-reduced-motion: reduce) {
+  :root *, :root *::before, :root *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+}
+
+/* ---------- dms: Delivery widgets ---------- */
+:root[data-hc-kit="dms"]:root {
+  --bg: var(--hc-ground); --surface: var(--hc-panel); --surface-2: var(--hc-panel-2); --surface-3: var(--hc-panel-3);
+  --border: var(--hc-hair); --border-strong: var(--hc-hair-strong);
+  --text: var(--hc-ink); --muted: var(--hc-ink-2); --faint: var(--hc-ink-3);
+  --accent: var(--hc-line-fill); --accent-soft: var(--hc-line-soft); --accent-text: var(--hc-line-on);
+  --ok: var(--hc-ok); --ok-soft: var(--hc-ok-soft);
+  --warn: var(--hc-warn); --warn-soft: var(--hc-warn-soft);
+  --bad: var(--hc-bad); --bad-soft: var(--hc-bad-soft);
+  --yel: var(--hc-yel); --yel-soft: var(--hc-yel-soft);
+  --vio: var(--hc-vio); --vio-soft: var(--hc-vio-soft);
+  --shadow-sm: none; --shadow: var(--hc-shadow); --shadow-lg: var(--hc-shadow-lg);
+  --radius: var(--hc-radius); --radius-sm: var(--hc-radius-sm); --radius-lg: 10px;
+  --font-sans: var(--hc-font);
+  --gray-50: var(--hc-panel-2); --gray-100: var(--hc-panel-3); --gray-200: var(--hc-hair); --gray-300: var(--hc-hair-strong);
+  --gray-400: var(--hc-ink-3); --gray-500: var(--hc-ink-3); --gray-600: var(--hc-ink-2); --gray-700: var(--hc-ink-2); --gray-800: var(--hc-ink);
+}
+
+/* ---------- legacy: Procurement + supplier portals ---------- */
+:root[data-hc-kit="legacy"]:root {
+  --blue: var(--hc-line-fill); --orange: var(--hc-line-ink);
+  --green: var(--hc-ok); --amber: var(--hc-warn); --red: var(--hc-bad); --purple: var(--hc-vio);
+  --white: var(--hc-panel);
+  --gray-50: var(--hc-panel-2); --gray-300: var(--hc-hair-strong); --gray-400: var(--hc-ink-3); --gray-600: var(--hc-ink-2);
+  --radius-sm: var(--hc-radius-sm);
+  --shadow: var(--hc-shadow); --shadow-lg: var(--hc-shadow-lg);
+}
+:root[data-hc-kit="legacy"] body { background: var(--hc-ground); color: var(--hc-ink); }
+
+/* ---------- tw: Tailwind widgets (specificity 0,2,0+ beats Tailwind's 0,1,0) ---------- */
+[data-hc-kit="tw"] body { background: var(--hc-ground); color: var(--hc-ink); }
+[data-hc-kit="tw"] .bg-white { background-color: var(--hc-panel); }
+[data-hc-kit="tw"] .bg-slate-50 { background-color: var(--hc-panel-2); }
+[data-hc-kit="tw"] .bg-slate-100 { background-color: var(--hc-panel-3); }
+[data-hc-kit="tw"] .bg-slate-200 { background-color: var(--hc-hair); }
+/* Dark fills are the primary action / active choice: they take the line colour, with the line's own text colour. */
+[data-hc-kit="tw"] :is(.bg-slate-900, .bg-slate-800) { background-color: var(--hc-line-fill); color: var(--hc-line-on); }
+[data-hc-kit="tw"] :is(.bg-slate-900, .bg-slate-800):is(.text-white, .text-slate-50, .text-slate-100),
+[data-hc-kit="tw"] :is(.bg-slate-900, .bg-slate-800) :is(.text-white, .text-slate-100, .text-slate-200, .text-slate-300) { color: var(--hc-line-on); }
+[data-hc-kit="tw"] :is(.text-slate-900, .text-slate-800) { color: var(--hc-ink); }
+[data-hc-kit="tw"] :is(.text-slate-700, .text-slate-600) { color: var(--hc-ink-2); }
+[data-hc-kit="tw"] :is(.text-slate-500, .text-slate-400) { color: var(--hc-ink-3); }
+[data-hc-kit="tw"] :is(.border-slate-100, .border-slate-200) { border-color: var(--hc-hair); }
+[data-hc-kit="tw"] .border-slate-300 { border-color: var(--hc-hair-strong); }
+[data-hc-kit="tw"] :is(.divide-slate-50, .divide-slate-100) > :not([hidden]) ~ :not([hidden]) { border-color: var(--hc-hair); }
+[data-hc-kit="tw"] :is(.ring-slate-200, .ring-slate-300) { --tw-ring-color: var(--hc-hair-strong); }
+[data-hc-kit="tw"] :is(.shadow-card, .shadow-sm) { box-shadow: var(--hc-shadow); }
+/* status colours keep their meaning on every line */
+[data-hc-kit="tw"] :is(.text-emerald-600, .text-emerald-700, .text-green-600, .text-green-700) { color: var(--hc-ok); }
+[data-hc-kit="tw"] :is(.bg-emerald-50, .bg-emerald-100, .bg-green-50) { background-color: var(--hc-ok-soft); }
+[data-hc-kit="tw"] :is(.bg-emerald-400, .bg-emerald-500, .bg-emerald-600) { background-color: var(--hc-ok-fill); }
+[data-hc-kit="tw"] :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-orange-600, .text-orange-700) { color: var(--hc-warn); }
+[data-hc-kit="tw"] :is(.bg-amber-50, .bg-amber-100, .bg-orange-50) { background-color: var(--hc-warn-soft); }
+[data-hc-kit="tw"] :is(.bg-amber-400, .bg-amber-500, .bg-orange-500) { background-color: var(--hc-warn-fill); }
+[data-hc-kit="tw"] :is(.text-rose-500, .text-rose-600, .text-rose-700, .text-red-600) { color: var(--hc-bad); }
+[data-hc-kit="tw"] :is(.bg-rose-50, .bg-red-50) { background-color: var(--hc-bad-soft); }
+[data-hc-kit="tw"] :is(.bg-rose-500, .bg-rose-600) { background-color: var(--hc-bad-fill); }
+[data-hc-kit="tw"] :is(.text-blue-600, .text-blue-700, .text-indigo-600, .text-indigo-700) { color: var(--hc-info); }
+[data-hc-kit="tw"] :is(.bg-blue-50, .bg-blue-100, .bg-indigo-50) { background-color: var(--hc-info-soft); }
+[data-hc-kit="tw"] :is(.bg-blue-500, .bg-indigo-500, .bg-indigo-600) { background-color: var(--hc-info-fill); }
+[data-hc-kit="tw"] :is(.text-violet-600, .text-violet-700, .text-purple-600, .text-purple-700) { color: var(--hc-vio); }
+[data-hc-kit="tw"] :is(.bg-violet-50, .bg-purple-50) { background-color: var(--hc-vio-soft); }
+[data-hc-kit="tw"] :is(.bg-violet-500, .bg-purple-600) { background-color: var(--hc-vio-fill); }

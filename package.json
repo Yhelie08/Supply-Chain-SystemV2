@@ -12,7 +12,8 @@
     "test:ui": "vitest run",
     "test:all": "npm test && npm run test:ui",
     "server": "node server/index.mjs",
-    "parse-ds": "node tools/parse-ds.mjs"
+    "parse-ds": "node tools/parse-ds.mjs",
+    "start": "node server/index.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -26,5 +27,8 @@
     "jsdom": "^25.0.1",
     "vite": "^5.4.11",
     "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

@@ -14,7 +14,10 @@ label: Team
 - [[To Ship]]
 - [[Delivery Analytics]]
 - [[Daily Team Availability]]
+- [[Service Appointment]]
+- [[Ongoing Service]]
 - [[Archived]]
+- [[DMS Exception Queue]]
 
 ## Fields
 - `id`

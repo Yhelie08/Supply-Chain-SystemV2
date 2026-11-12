@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Change password – Supply Chain App</title>
+<link rel="stylesheet" href="/theme/pages.css">
+</head>
+<body>
+<div class="topbar">
+  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="none" stroke="#f2f4f7" stroke-width="3"/><rect x="1" y="9" width="20" height="4" rx="1" fill="#f2b705"/></svg>
+  Supply Chain App
+  <a class="back" href="/" id="back">Back to the app</a>
+</div>
+<div class="rail"></div>
+<main>
+  <form class="panel narrow" id="form">
+    <h1>Change password</h1>
+    <p class="lede" id="lede">Signed in as <strong id="email"></strong>.</p>
+    <p class="note warn" id="first" hidden>You signed in with a temporary password. Choose your own to continue.</p>
+    <label for="current">Current password</label>
+    <input id="current" type="password" autocomplete="current-password" required>
+    <label for="next">New password</label>
+    <input id="next" type="password" autocomplete="new-password" minlength="10" required aria-describedby="rule">
+    <p class="help" id="rule" style="margin-top:6px">At least 10 characters.</p>
+    <label for="again">New password again</label>
+    <input id="again" type="password" autocomplete="new-password" minlength="10" required>
+    <p class="note" id="msg" role="status" hidden></p>
+    <button class="btn primary full" type="submit">Save new password</button>
+  </form>
+</main>
+<script>
+  var first = new URLSearchParams(location.search).get('first') === '1';
+  var $ = function (id) { return document.getElementById(id); };
+  $('first').hidden = !first;
+  $('back').hidden = first;
+  fetch('/api/me').then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+    if (!me) { location.href = '/login'; return; }
+    $('email').textContent = me.email;
+  });
+  function say(kind, text) { var m = $('msg'); m.className = 'note ' + kind; m.textContent = text; m.hidden = false; }
+  $('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if ($('next').value !== $('again').value) return say('bad', 'The two new passwords are different. Type the same one twice.');
+    fetch('/api/account/password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current: $('current').value, next: $('next').value }),
+    }).then(function (r) { return r.json().then(function (b) { return { ok: r.ok, b: b }; }); }).then(function (x) {
+      if (!x.ok) return say('bad', x.b.message || 'Could not change the password.');
+      if (first) { location.href = '/'; return; }
+      $('form').reset();
+      say('ok', 'Password changed.');
+    }).catch(function () { say('bad', 'Could not reach the server. Check your connection and try again.'); });
+  });
+</script>
+</body>
+</html>

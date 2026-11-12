@@ -12,6 +12,9 @@ tags:
 
 This is the central directory linking every **Widget**, **Frontend HTML Interface**, **Swimlane Process Flow**, and **Deluge Script** across the entire Home Cartel Supply Chain System.
 
+> [!SUCCESS] Current state (2026-11-12)
+> All of these widgets now run locally and on Railway, behind a login: see [[00 - Current System]]. Which Deluge scripts still only run in Zoho: [[00 - Port Status]]. Widget source: `modules/<Section>/<Tab>/app/`. The `file:///C:/Users/Enduser/...` links below are from the original author's computer and do not open here.
+
 ---
 
 ## 🔄 End-to-End Supply Chain Flow

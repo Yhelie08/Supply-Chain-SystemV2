@@ -21,10 +21,6 @@ source: src/pages/forecast/ (ForecastPage)
 - **Stat cards:** Open orders · This week · At risk · Will miss · No client date
 - **Buttons:** Refresh
 
-### Still missing from this page
-
-- button: Refresh
-
 ## Steps on this page
 
 | Step | What it does | Rules |

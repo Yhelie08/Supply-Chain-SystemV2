@@ -1,13 +1,12 @@
 /* Stand-in for Zoho's widget SDK (widgetsdk-min.js v2). The original widgets run unchanged;
    every ZOHO.CREATOR.* call goes to the local server instead of creator.zoho.com. */
 (function () {
-  function user() {
-    try { return localStorage.getItem('local-app:user') || 'admin@local'; } catch (e) { return 'admin@local'; }
-  }
+  // The server writes the signed-in user into each page (window.HC_USER); requests carry the session cookie.
+  function user() { return (window.HC_USER && window.HC_USER.email) || ''; }
   function post(op, body) {
     return fetch('/api/' + op, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-User': user() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body || {}),
     }).then(function (r) { return r.json(); }).then(function (res) {
       // Zoho's SDK rejects on errors with { code, message, responseText }
@@ -27,7 +26,7 @@
   function upload(cfg) {
     var file = cfg.file;
     var qs = new URLSearchParams({ report: cfg.report_name || '', id: String(cfg.id || ''), field: cfg.field_name || '', name: (file && file.name) || 'file' });
-    return fetch('/api/uploadFile?' + qs, { method: 'POST', headers: { 'X-User': user() }, body: file })
+    return fetch('/api/uploadFile?' + qs, { method: 'POST', body: file })
       .then(function (r) { return r.json(); });
   }
 
@@ -62,7 +61,7 @@
   // FILE.readFile({ report_name, id, field_name }) -> { code: 3000, data: { filecontent: Blob } }
   function readFile(cfg) {
     return fetch('/api/readFile', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User': user() },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ report_name: cfg.report_name || cfg.reportName, id: String(cfg.id), field_name: cfg.field_name || cfg.fieldName }),
     }).then(function (r) {
       if (!r.ok) return r.json().then(function (e) { var err = new Error(e.message); err.code = e.code; throw err; });

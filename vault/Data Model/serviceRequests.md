@@ -24,6 +24,7 @@ label: Service Request
 - [[Ongoing Service]]
 - [[Archived]]
 - [[Field Service Site Visits]]
+- [[Sales Returns]]
 - [[DMS Exception Queue]]
 - [[Schedule Requests]]
 

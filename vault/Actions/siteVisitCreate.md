@@ -1,7 +1,7 @@
 ---
 title: siteVisitCreate
-tags: [action, delivery-management]
-module: Delivery Management
+tags: [action, domain]
+module: Domain
 source: "src/domain/actions.js:865"
 ---
 
@@ -10,9 +10,6 @@ source: "src/domain/actions.js:865"
 Field Service Site Visits: schedules an assessment for a service request.
 
 **Source:** `src/domain/actions.js:865`
-
-## Offered on
-- [[Field Service Site Visits]] (Delivery Management)
 
 ## Creates records in
 - [[siteVisits]]

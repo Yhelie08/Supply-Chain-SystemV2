@@ -1,7 +1,7 @@
 ---
 title: truckEntryAdd
-tags: [action, domain]
-module: Domain
+tags: [action, delivery-management]
+module: Delivery Management
 source: "src/domain/actions.js:902"
 ---
 
@@ -10,6 +10,9 @@ source: "src/domain/actions.js:902"
 Truck Maintenance: adds a fuel or service entry.
 
 **Source:** `src/domain/actions.js:902`
+
+## Offered on
+- [[Truck Maintenance]] (Delivery Management)
 
 ## Creates records in
 - [[truckEntries]]

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11T17:30:00+08:00",
+  "title": "Design System: Supply Chain App",
+  "extensions": {
+    "colorMeta": {
+      "station-navy": { "role": "neutral", "displayName": "Station Navy", "canonical": "#1b2330", "tonalRamp": ["#0b0f15", "#141a24", "#1b2330", "#2b3445", "#465267", "#6c7890", "#a3adbf", "#dfe3ea"] },
+      "platform-concrete": { "role": "neutral", "displayName": "Platform Concrete", "canonical": "#eceff3", "tonalRamp": ["#2a2f36", "#4a5058", "#6e757e", "#959ca5", "#b9bfc7", "#d6dbe1", "#eceff3", "#f8f9fb"] },
+      "line-procurement-violet": { "role": "primary", "displayName": "Procurement Violet", "canonical": "#6a3a9e", "tonalRamp": ["#26113d", "#3c1e5f", "#532b80", "#6a3a9e", "#8659b8", "#a888d0", "#cfbde6", "#efe8f7"] },
+      "line-fulfillment-yellow": { "role": "primary", "displayName": "Fulfillment Yellow", "canonical": "#f2b705", "tonalRamp": ["#3d2d00", "#5c4400", "#7a5a00", "#a87d00", "#d39d00", "#f2b705", "#f9d872", "#fdf3d0"] },
+      "line-delivery-blue": { "role": "primary", "displayName": "Delivery Blue", "canonical": "#1f5fad", "tonalRamp": ["#0a213d", "#11355f", "#184a86", "#1f5fad", "#3f7fd0", "#78a7e1", "#b4cff0", "#e3ecf8"] }
+    },
+    "typographyMeta": {
+      "station-label": { "displayName": "Station label", "purpose": "Tab names on the station strip." },
+      "line-code": { "displayName": "Line code", "purpose": "Short codes in line badges." }
+    },
+    "shadows": [
+      { "name": "panel", "value": "0 1px 2px rgba(27,35,48,.06), 0 3px 10px rgba(27,35,48,.05)", "purpose": "Panels on the concrete ground." },
+      { "name": "lifted", "value": "0 16px 40px rgba(27,35,48,.18)", "purpose": "Menus and dialogs." }
+    ],
+    "motion": [
+      { "name": "station-ease", "value": "180ms cubic-bezier(.2,.7,.2,1)", "purpose": "Station hover growth and menu caret." }
+    ],
+    "breakpoints": [ { "name": "compact", "value": "760px" } ]
+  },
+  "components": [
+    {
+      "name": "Station strip",
+      "kind": "nav",
+      "refersTo": "station-strip",
+      "description": "The section's line: tabs are stations, the current one large and filled.",
+      "html": "<nav class=\"ds-line\"><a href=\"#\">Daily Team Availability</a><a href=\"#\" aria-current=\"page\">Initial Scheduling</a><a href=\"#\">Service Request</a></nav>",
+      "css": ".ds-line{display:flex;background:#fff;border-bottom:1px solid #d5dbe3;font-family:Overpass,system-ui,sans-serif;--l:#1f5fad}.ds-line a{position:relative;padding:8px 10px 27px;color:#4a5566;text-decoration:none;font-size:13px;font-weight:550;white-space:nowrap}.ds-line a::before{content:\"\";position:absolute;left:0;right:0;bottom:9px;height:4px;background:var(--l)}.ds-line a:first-child::before{left:50%}.ds-line a:last-child::before{right:50%}.ds-line a::after{content:\"\";position:absolute;left:50%;bottom:5px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#fff;border:3px solid var(--l);box-sizing:border-box;transition:transform .18s cubic-bezier(.2,.7,.2,1)}.ds-line a:hover::after{transform:scale(1.15)}.ds-line a[aria-current=page]{color:#1b2330;font-weight:750}.ds-line a[aria-current=page]::after{width:18px;height:18px;margin-left:-9px;bottom:2px;background:var(--l);border:4px solid #fff;box-shadow:0 0 0 2px var(--l)}.ds-line a:focus-visible{outline:2px solid var(--l);outline-offset:2px}"
+    },
+    {
+      "name": "Line badge",
+      "kind": "chip",
+      "refersTo": "line-badge-delivery",
+      "description": "A section's short code on its line colour.",
+      "html": "<span class=\"ds-badge\">D</span> <span class=\"ds-badge ds-badge-f\">F</span>",
+      "css": ".ds-badge{display:inline-grid;place-items:center;min-width:26px;height:22px;padding:1px 6px 0;border-radius:11px;font:800 12px/1 Overpass,system-ui,sans-serif;letter-spacing:.02em;background:#1f5fad;color:#fff}.ds-badge-f{background:#f2b705;color:#1b2330}"
+    },
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary-delivery",
+      "description": "The page's main action, in its line colour.",
+      "html": "<button class=\"ds-btn\">New schedule</button>",
+      "css": ".ds-btn{background:#1f5fad;color:#fff;border:0;border-radius:8px;height:36px;padding:0 14px;font:650 13.5px Overpass,system-ui,sans-serif;cursor:pointer}.ds-btn:hover{background:#184a86}.ds-btn:focus-visible{outline:2px solid #1f5fad;outline-offset:2px}"
+    },
+    {
+      "name": "Header",
+      "kind": "custom",
+      "refersTo": "header",
+      "description": "Station-sign navy header with the line switcher.",
+      "html": "<header class=\"ds-head\"><b>Supply Chain App</b><button class=\"ds-switch\"><span class=\"ds-badge\">D</span> Delivery Management</button></header>",
+      "css": ".ds-head{display:flex;align-items:center;gap:14px;background:#1b2330;color:#f2f4f7;padding:8px 14px;font-family:Overpass,system-ui,sans-serif}.ds-head b{font-weight:750;font-size:15px}.ds-switch{display:flex;align-items:center;gap:9px;background:#263042;color:#f2f4f7;border:1px solid #36425a;padding:5px 10px 5px 6px;border-radius:8px;font:650 14px Overpass,system-ui,sans-serif}.ds-switch:hover{border-color:#4d5b77}.ds-badge{display:inline-grid;place-items:center;min-width:26px;height:22px;border-radius:11px;font:800 12px/1 Overpass,sans-serif;background:#1f5fad;color:#fff}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Rail Network",
+    "overview": "Home Cartel's order journey runs like Manila's rail lines: Procurement, the two supplier portals, Fulfillment and Delivery are each a line with its own flat colour, and every page is a station on it. The world lends only type, palette, density and that one signature move; layouts, tables and controls stay the ones staff already know from the Zoho app.",
+    "keyCharacteristics": ["Station-sign navy header over platform-concrete ground and white panels.", "One flat line colour per section, used for the line itself, the current station and the primary action.", "Overpass, a wayfinding face, with tabular figures in every table.", "One-pixel hairlines, no gradients, no decorative shadows.", "Status colours mean the same thing on every line."],
+    "rules": [
+      { "name": "The Active Path Rule", "body": "A line's colour appears only on its rail, the current station, the primary action, focus and selection. Never as decoration.", "section": "colors" },
+      { "name": "The Same Signal Rule", "body": "Status colours are global; a line colour never stands in for a status.", "section": "colors" },
+      { "name": "The Columns Never Move Rule", "body": "Tabular figures everywhere, so quantities, prices, dates and record numbers line up.", "section": "typography" },
+      { "name": "The Sentence Case Rule", "body": "Table headers and labels are in sentence case; tracked all-caps labels are removed.", "section": "typography" }
+    ],
+    "dos": ["Do give every new section a line: a flat colour, a short code, and text and on-fill variants that pass 4.5:1.", "Do put new pages on their section's line as stations, in menu order.", "Do restyle widgets only through theme.css tokens and adapters, never by editing widget files."],
+    "donts": ["Don't use a line colour for decoration, backgrounds of whole panels, or status.", "Don't add gradients, glows, or shadows that carry meaning.", "Don't make a page less dense than its Zoho original."]
+  }
+}

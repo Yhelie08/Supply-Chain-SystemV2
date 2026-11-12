@@ -19,6 +19,8 @@ label: Purchase Request
 - [[Procurement Dashboard]]
 - [[Purchase Request]]
 - [[Purchase Order]]
+- [[Shipments]]
+- [[Receiving]]
 - [[Forecast Setting]]
 - [[Tony Fan - Purchase Request]]
 - [[Tony Fan - Purchase Order]]

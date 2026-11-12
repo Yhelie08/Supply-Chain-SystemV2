@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in – Supply Chain App</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='8' fill='%231b2330' stroke='%231b2330' stroke-width='3'/%3E%3Ccircle cx='11' cy='11' r='8' fill='none' stroke='%23f2f4f7' stroke-width='2'/%3E%3Crect x='1' y='9' width='20' height='4' rx='1' fill='%23f2b705'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/theme/pages.css">
+</head>
+<body>
+<div class="topbar">
+  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="none" stroke="#f2f4f7" stroke-width="3"/><rect x="1" y="9" width="20" height="4" rx="1" fill="#f2b705"/></svg>
+  Supply Chain App
+</div>
+<div class="rail"></div>
+<main>
+  <form class="panel narrow" method="post" action="/login">
+    <h1>Sign in</h1>
+    <p class="lede">Home Cartel's supply chain: procurement, fulfillment and delivery.</p>
+    <p class="note bad" id="err" role="alert" hidden></p>
+    <input type="hidden" name="next" id="next">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="username" required autofocus>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button class="btn primary full" type="submit">Sign in</button>
+    <p class="help">Forgot your password? Ask an admin to reset it.</p>
+  </form>
+</main>
+<script>
+  var q = new URLSearchParams(location.search);
+  document.getElementById('next').value = q.get('next') || '/';
+  var e = q.get('e');
+  if (e) {
+    var el = document.getElementById('err');
+    el.textContent = e === 'locked' ? 'Too many wrong attempts. Wait 15 minutes, then try again.' : 'That email and password do not match an active account.';
+    el.hidden = false;
+  }
+</script>
+</body>
+</html>

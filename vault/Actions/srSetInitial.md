@@ -14,6 +14,7 @@ Sets or changes the initial delivery date, which anchors the scheduling engine's
 ## Offered on
 - [[Initial Scheduling]] (Delivery Management)
 - [[Service Request]] (Delivery Management)
+- [[Service Appointment]] (Delivery Management)
 
 ## Rules
 - [[GEN.STATE]]: That step is not available in the record's current status.

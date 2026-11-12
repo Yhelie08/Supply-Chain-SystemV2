@@ -4,16 +4,16 @@ tags: [page, delivery-management, built]
 module: Delivery Management
 route: "#/delivery/archived"
 status: partial
-source: src/pages/extras.jsx (Archived)
+source: src/pages/delivery/ (Archived)
 ---
 
 # Archived
 
 > Completed and failed deliveries with their installation outcome.
 
-**Section:** [[Delivery Management]] · **Route:** `#/delivery/archived` · **Source:** `src/pages/extras.jsx` (`Archived`) · **Status:** built, not yet at parity
+**Section:** [[Delivery Management]] · **Route:** `#/delivery/archived` · **Source:** `src/pages/delivery/` (`Archived`) · **Status:** built, not yet at parity
 
-**Shows:** [[serviceRequests]], [[teams]]
+**Shows:** [[serviceRequests]], [[salesReturns]], [[teams]]
 
 ## What the live page has
 

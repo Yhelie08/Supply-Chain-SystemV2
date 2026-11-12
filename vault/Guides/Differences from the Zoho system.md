@@ -5,6 +5,9 @@ tags: [guide, context]
 
 # Differences from the Zoho system
 
+> [!WARNING] This is the earlier prototype
+> These notes describe the React prototype in `src/`. The real system now runs the original Zoho widgets on our own server, with a database, sign-in and users, hosted on Railway. See `vault/Deluge Scripts (Obsidian)/00 - Current System.md` and `00 - Port Status.md`.
+
 The live system runs on Zoho Creator (Deluge scripts and widgets) with Zoho Books and Inventory behind it. This app is a standalone React model of the same flow. It is not connected to any of that.
 
 | Live system | This app |

@@ -1,0 +1,3 @@
+Overpass (variable, weights 300–800), latin and latin-ext subsets.
+Source: Google Fonts (https://fonts.google.com/specimen/Overpass), downloaded 2026-11-11.
+Upstream: https://github.com/RedHatOfficial/Overpass — SIL Open Font License 1.1.

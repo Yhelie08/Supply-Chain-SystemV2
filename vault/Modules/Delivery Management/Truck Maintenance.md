@@ -4,14 +4,16 @@ tags: [page, delivery-management, built]
 module: Delivery Management
 route: "#/delivery/trucks"
 status: partial
-source: src/pages/extras.jsx (TruckMaintenance)
+source: src/pages/delivery/ (TruckMaintenance)
 ---
 
 # Truck Maintenance
 
 > Daily vehicle checklist, fuel entries and service entries.
 
-**Section:** [[Delivery Management]] · **Route:** `#/delivery/trucks` · **Source:** `src/pages/extras.jsx` (`TruckMaintenance`) · **Status:** built, not yet at parity
+**Section:** [[Delivery Management]] · **Route:** `#/delivery/trucks` · **Source:** `src/pages/delivery/` (`TruckMaintenance`) · **Status:** built, not yet at parity
+
+**Shows:** [[truckChecks]], [[truckEntries]]
 
 ## What the live page has
 
@@ -23,6 +25,6 @@ source: src/pages/extras.jsx (TruckMaintenance)
 
 | Step | What it does | Rules |
 | --- | --- | --- |
+| [[truckEntryAdd]] | Truck Maintenance: adds a fuel or service entry. | [[TRUCK.ENTRY]] |
 | [[truckChecklistAdvance]] | Truck Maintenance: starts a checklist, then completes it with a signature. | [[TRUCK.SIGN]] |
-| [[truckChecklistCreate]] | Truck Maintenance: opens a daily vehicle checklist. | [[TRUCK.NEW]] |
 

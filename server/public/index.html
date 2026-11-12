@@ -3,89 +3,199 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Supply Chain App (Local)</title>
+<title>Supply Chain App</title>
+<link rel="preload" href="/theme/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='8' fill='%231b2330' stroke='%231b2330' stroke-width='3'/%3E%3Ccircle cx='11' cy='11' r='8' fill='none' stroke='%23f2f4f7' stroke-width='2'/%3E%3Crect x='1' y='9' width='20' height='4' rx='1' fill='%23f2b705'/%3E%3C/svg%3E">
 <style>
-  :root { --nav: #0f1240; --nav-2: #1b2063; --line: #2b3180; --accent: #1f9d55; --text: #e8eaff; }
+  @font-face { font-family: "Overpass"; src: url("/theme/fonts/overpass-latin.woff2") format("woff2"); font-weight: 300 800; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Overpass"; src: url("/theme/fonts/overpass-latin-ext.woff2") format("woff2"); font-weight: 300 800; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2C60-2C7F, U+A720-A7FF; }
+
+  :root {
+    --navy: #1b2330; --navy-2: #263042; --navy-line: #36425a; --navy-ink: #f2f4f7; --navy-ink-2: #aab4c4;
+    --ground: #eceff3; --panel: #ffffff; --ink: #1b2330; --ink-2: #4a5566; --hair: #d5dbe3;
+    --line-fill: #1b2330; --line-on: #ffffff;
+    --font: "Overpass", "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --ground: #12161d; --panel: #19202a; --ink: #e6eaf0; --ink-2: #a9b3c1; --hair: #2c3542; }
+  }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, sans-serif; background: #f4f5f9; }
-  body { display: flex; flex-direction: column; }
-  header { background: var(--nav); color: var(--text); display: flex; align-items: center; gap: 16px; padding: 8px 14px; position: relative; z-index: 2; }
-  .logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
-  .logo b { background: #e53e3e; color: #fff; font-size: 10px; padding: 4px 5px; border-radius: 5px; }
-  .space { position: relative; }
-  .space > button { background: var(--nav-2); color: var(--text); border: 0; padding: 6px 10px; border-radius: 6px; font: inherit; font-size: 12.5px; cursor: pointer; }
-  .space > button::after { content: " \25BE"; }
-  .space ul { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 190px; list-style: none; margin: 0; padding: 6px; background: #fff; border-radius: 8px; box-shadow: 0 8px 24px rgba(10, 12, 40, .25); }
-  .space.open ul { display: block; }
-  .space li a { display: block; padding: 7px 10px; border-radius: 6px; color: #222; text-decoration: none; font-size: 13px; }
-  .space li a:hover { background: #f0f2f8; }
-  .space li a.on { background: var(--accent); color: #fff; }
-  .local { margin-left: auto; font-size: 12px; display: flex; align-items: center; gap: 8px; }
-  .local .badge { background: #f6c343; color: #3b2f00; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
-  .local input { background: var(--nav-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px; width: 210px; font-size: 12px; }
-  nav { background: var(--nav); display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 10px 10px; }
-  nav a { color: var(--text); text-decoration: none; font-size: 12.5px; padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
-  nav a:hover { background: var(--nav-2); }
-  nav a.on { background: var(--accent); color: #fff; }
-  main { flex: 1; padding: 12px 16px 16px; min-height: 0; }
-  iframe { width: 100%; height: 100%; border: 0; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; flex-direction: column; background: var(--ground); color: var(--ink); font: 14px/1.4 var(--font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+  :focus-visible { outline: 2px solid var(--line-fill); outline-offset: 2px; }
+  ::selection { background: var(--line-fill); color: var(--line-on); }
+
+  /* Station-sign header */
+  header { background: var(--navy); color: var(--navy-ink); display: flex; align-items: center; gap: 14px; padding: 8px 14px; position: relative; z-index: 3; flex-wrap: wrap; }
+  .name { display: flex; align-items: center; gap: 9px; font-weight: 750; font-size: 15px; letter-spacing: -0.005em; white-space: nowrap; }
+  .badge { display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 1px 6px 0; border-radius: 11px; font-weight: 800; font-size: 12px; letter-spacing: 0.02em; background: var(--b-fill); color: var(--b-on); box-shadow: inset 0 0 0 var(--b-ring, 0) var(--b-ring-color, transparent); }
+
+  .lines { position: relative; }
+  .lines > button { display: flex; align-items: center; gap: 9px; background: var(--navy-2); color: var(--navy-ink); border: 1px solid var(--navy-line); padding: 5px 10px 5px 6px; border-radius: 8px; font: inherit; font-weight: 650; cursor: pointer; }
+  .lines > button:hover { border-color: #4d5b77; }
+  .caret { width: 10px; height: 10px; opacity: .75; transition: transform .16s cubic-bezier(.2, .7, .2, 1); }
+  .lines.open .caret { transform: rotate(180deg); }
+  .menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; width: 264px; margin: 0; padding: 6px; list-style: none; background: var(--panel); color: var(--ink); border: 1px solid var(--hair); border-radius: 10px; box-shadow: 0 16px 40px rgba(27, 35, 48, .22); }
+  .lines.open .menu { display: block; }
+  .menu a { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px; color: inherit; text-decoration: none; font-weight: 550; }
+  .menu a:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .menu a[aria-current="true"] { background: color-mix(in srgb, var(--ink) 9%, transparent); font-weight: 700; }
+  .menu .count { margin-left: auto; font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+
+  .tools { margin-left: auto; display: flex; align-items: center; }
+  .account { position: relative; }
+  .account > button { display: flex; align-items: center; gap: 8px; background: none; color: var(--navy-ink); border: 1px solid transparent; padding: 4px 8px 4px 4px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
+  .account > button:hover { border-color: var(--navy-line); }
+  .account.open .caret { transform: rotate(180deg); }
+  .avatar { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--navy-2); border: 1px solid var(--navy-line); font-size: 12px; font-weight: 750; }
+  .account-menu { left: auto; right: 0; width: 230px; }
+  .account.open .account-menu { display: block; }
+  .who-email { margin: 4px 8px 6px; font-size: 12.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+  .account-menu a, .account-menu form button { display: block; width: 100%; text-align: left; padding: 7px 8px; border-radius: 6px; color: inherit; text-decoration: none; font: inherit; font-weight: 550; background: none; border: 0; cursor: pointer; }
+  .account-menu a:hover, .account-menu form button:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .account-menu form { margin: 4px 0 0; padding-top: 4px; border-top: 1px solid var(--hair); }
+
+  /* The section's line: tabs are stations on it. */
+  nav { display: flex; background: var(--panel); border-bottom: 1px solid var(--hair); overflow-x: auto; scrollbar-width: none; padding: 0 4px; position: relative; z-index: 2; }
+  nav::-webkit-scrollbar { display: none; }
+  /* When the line runs past the edge, fade that edge so the hidden stations are implied. */
+  nav.more-right { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); }
+  nav.more-left { -webkit-mask-image: linear-gradient(90deg, transparent, #000 56px); mask-image: linear-gradient(90deg, transparent, #000 56px); }
+  nav.more-left.more-right { -webkit-mask-image: linear-gradient(90deg, transparent, #000 56px, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(90deg, transparent, #000 56px, #000 calc(100% - 56px), transparent); }
+  nav a { position: relative; flex: none; padding: 8px 10px 27px; color: var(--ink-2); text-decoration: none; font-size: 13px; font-weight: 550; white-space: nowrap; }
+  nav a:hover { color: var(--ink); }
+  nav a::before { content: ""; position: absolute; left: 0; right: 0; bottom: 9px; height: 4px; background: var(--line-fill); }
+  nav a:first-child::before { left: 50%; }
+  nav a:last-child::before { right: 50%; }
+  /* A one-station line (Analytic) runs straight through its station, edge to edge. */
+  nav.single { background: linear-gradient(var(--line-fill), var(--line-fill)) 0 calc(100% - 9px) / 100% 4px no-repeat, var(--panel); }
+  nav.single a::before { display: none; }
+  nav a::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--panel); border: 3px solid var(--line-fill); transition: transform .18s cubic-bezier(.2, .7, .2, 1); }
+  nav a:hover::after { transform: scale(1.15); }
+  nav a[aria-current="page"] { color: var(--ink); font-weight: 750; }
+  nav a[aria-current="page"]::after { width: 18px; height: 18px; margin-left: -9px; bottom: 2px; background: var(--line-fill); border: 4px solid var(--panel); box-shadow: 0 0 0 2px var(--line-fill); }
+
+  main { flex: 1; min-height: 0; }
+  iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--ground); }
+
+  @media (max-width: 760px) {
+    header { gap: 10px; }
+    .name span, .who-name { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .caret, nav a::after { transition: none; } }
 </style>
 </head>
 <body>
 <header>
-  <div class="logo"><b>SCA</b> Supply Chain App</div>
-  <div class="space" id="space"><button type="button" id="spaceBtn" aria-haspopup="true" aria-expanded="false"></button><ul id="spaceList"></ul></div>
-  <div class="local">
-    <span class="badge">LOCAL</span>
-    <label for="who">Logged in as</label>
-    <input id="who" type="email" spellcheck="false">
+  <div class="name">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="none" stroke="#f2f4f7" stroke-width="3"/><rect x="1" y="9" width="20" height="4" rx="1" fill="#f2b705"/></svg>
+    <span>Supply Chain App</span>
+  </div>
+  <div class="lines" id="lines">
+    <button type="button" id="linesBtn" aria-haspopup="true" aria-expanded="false" aria-controls="linesMenu">
+      <span class="badge" id="lineBadge"></span><span id="lineName"></span>
+      <svg class="caret" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+    </button>
+    <ul class="menu" id="linesMenu"></ul>
+  </div>
+  <div class="tools">
+    <div class="account" id="account">
+      <button type="button" id="accountBtn" aria-haspopup="true" aria-expanded="false" aria-controls="accountMenu">
+        <span class="avatar" id="avatar" aria-hidden="true"></span><span class="who-name" id="whoName"></span>
+        <svg class="caret" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+      <div class="menu account-menu" id="accountMenu">
+        <p class="who-email" id="whoEmail"></p>
+        <a href="/account">Change password</a>
+        <a href="/admin/users" id="usersLink" hidden>Manage users</a>
+        <form method="post" action="/logout"><button type="submit">Sign out</button></form>
+      </div>
+    </div>
   </div>
 </header>
-<nav id="tabs"></nav>
+<nav id="tabs" aria-label="Pages"></nav>
 <main><iframe id="view" title="Page"></iframe></main>
 <script>
+  // Each section is a line: a short code and its flat colour (fill, text on fill).
+  var LINES = {
+    'analytic':         { code: 'A',  fill: '#ffffff', on: '#1b2330', ring: '#1b2330', rail: '#1b2330' },
+    'procurement':      { code: 'P',  fill: '#6a3a9e', on: '#ffffff' },
+    'tony-fan':         { code: 'TF', fill: '#96367f', on: '#ffffff' },
+    'fenteng-lighting': { code: 'FL', fill: '#4744a6', on: '#ffffff' },
+    'fulfillment':      { code: 'F',  fill: '#f2b705', on: '#1b2330' },
+    'delivery':         { code: 'D',  fill: '#1f5fad', on: '#ffffff' },
+  };
   var sections = [];
-  var who = document.getElementById('who');
-  var space = document.getElementById('space');
-  var spaceBtn = document.getElementById('spaceBtn');
-  try { who.value = localStorage.getItem('local-app:user') || 'admin@local'; } catch (e) { who.value = 'admin@local'; }
-  who.addEventListener('change', function () {
-    try { localStorage.setItem('local-app:user', who.value.trim()); } catch (e) {}
-    route();
+  var $ = function (id) { return document.getElementById(id); };
+  var lines = $('lines'), linesBtn = $('linesBtn');
+  var lineOf = function (sec) { return LINES[sec.id] || LINES.analytic; };
+  function badgeStyle(l) { return '--b-fill:' + l.fill + ';--b-on:' + l.on + (l.ring ? ';--b-ring:2px;--b-ring-color:' + l.ring : ''); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // Signed-in user: name in the header, account menu with password, users (admins) and sign out.
+  fetch('/api/me').then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+    if (!me) { location.href = '/login'; return; }
+    var label = me.name || me.email;
+    $('whoName').textContent = label;
+    $('whoEmail').textContent = me.email;
+    $('avatar').textContent = label.trim().charAt(0).toUpperCase();
+    $('usersLink').hidden = me.role !== 'admin';
   });
-  spaceBtn.addEventListener('click', function () {
-    var open = !space.classList.contains('open');
-    space.classList.toggle('open', open);
-    spaceBtn.setAttribute('aria-expanded', String(open));
+  var account = $('account'), accountBtn = $('accountBtn');
+
+  function setOpen(open) { lines.classList.toggle('open', open); linesBtn.setAttribute('aria-expanded', String(open)); }
+  function setAccount(open) { account.classList.toggle('open', open); accountBtn.setAttribute('aria-expanded', String(open)); }
+  linesBtn.addEventListener('click', function () { setAccount(false); setOpen(!lines.classList.contains('open')); });
+  accountBtn.addEventListener('click', function () { setOpen(false); setAccount(!account.classList.contains('open')); });
+  document.addEventListener('click', function (e) {
+    if (!lines.contains(e.target)) setOpen(false);
+    if (!account.contains(e.target)) setAccount(false);
   });
-  document.addEventListener('click', function (e) { if (!space.contains(e.target)) space.classList.remove('open'); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { setOpen(false); setAccount(false); } });
 
   // Same URL shape as Zoho:  #Page:Link_Name?param=value
-  function parse(hash) {
-    var m = /#Page:([\w]+)(?:\?(.*))?/.exec(hash || '');
-    return m ? { page: m[1], query: m[2] || '' } : null;
-  }
+  function parse(hash) { var m = /#Page:([\w]+)(?:\?(.*))?/.exec(hash || ''); return m ? { page: m[1], query: m[2] || '' } : null; }
   function findTab(page) {
     for (var i = 0; i < sections.length; i++)
       for (var j = 0; j < sections[i].tabs.length; j++)
         if (sections[i].tabs[j].page === page) return { section: sections[i], tab: sections[i].tabs[j] };
     return null;
   }
+
   function route() {
     var r = parse(location.hash);
-    var hit = (r && findTab(r.page)) || { section: sections[sections.length - 1], tab: sections[sections.length - 1].tabs[0] };
-    var sec = hit.section, tab = hit.tab;
-    spaceBtn.textContent = sec.label;
-    document.getElementById('spaceList').innerHTML = sections.map(function (s) {
-      return '<li><a href="#Page:' + s.tabs[0].page + '"' + (s === sec ? ' class="on"' : '') + '>' + s.label + '</a></li>';
+    var last = sections[sections.length - 1];
+    var hit = (r && findTab(r.page)) || { section: last, tab: last.tabs[0] };
+    var sec = hit.section, tab = hit.tab, line = lineOf(sec);
+
+    document.documentElement.style.setProperty('--line-fill', line.rail || line.fill);
+    document.documentElement.style.setProperty('--line-on', line.on);
+    $('lineBadge').setAttribute('style', badgeStyle(line));
+    $('lineBadge').textContent = line.code;
+    $('lineName').textContent = sec.label;
+    $('linesMenu').innerHTML = sections.map(function (s) {
+      var l = lineOf(s), n = s.tabs.filter(function (t) { return !t.hidden; }).length;
+      return '<li><a href="#Page:' + s.tabs[0].page + '"' + (s === sec ? ' aria-current="true"' : '') + '><span class="badge" style="' + badgeStyle(l) + '">' + l.code + '</span>' + esc(s.label) + '<span class="count">' + n + ' ' + (n === 1 ? 'page' : 'pages') + '</span></a></li>';
     }).join('');
-    document.getElementById('tabs').innerHTML = sec.tabs.filter(function (t) { return !t.hidden || t === tab; }).map(function (t) {
-      return '<a href="#Page:' + t.page + '"' + (t === tab ? ' class="on"' : '') + '>' + t.label + '</a>';
+    var shown = sec.tabs.filter(function (t) { return !t.hidden || t === tab; });
+    $('tabs').innerHTML = shown.map(function (t) {
+      return '<a href="#Page:' + t.page + '"' + (t === tab ? ' aria-current="page"' : '') + '>' + esc(t.label) + '</a>';
     }).join('');
-    space.classList.remove('open');
-    document.title = tab.label + ' · ' + sec.label + ' · Supply Chain App (Local)';
-    document.getElementById('view').src = tab.src + (r && r.query ? '?' + r.query : '');
+    $('tabs').classList.toggle('single', shown.length === 1);
+    setOpen(false);
+    document.title = tab.label + ' – ' + sec.label;
+    $('view').src = tab.src + (r && r.query ? '?' + r.query : '');
+    var active = document.querySelector('nav a[aria-current="page"]');
+    if (active) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+    edges();
   }
+  function edges() {
+    var n = $('tabs');
+    n.classList.toggle('more-left', n.scrollLeft > 1);
+    n.classList.toggle('more-right', n.scrollLeft + n.clientWidth < n.scrollWidth - 1);
+  }
+  $('tabs').addEventListener('scroll', edges, { passive: true });
+  window.addEventListener('resize', edges);
   window.addEventListener('hashchange', route);
   window.addEventListener('message', function (e) {
     if (!e.data || e.data.type !== 'zoho-navigate') return;
