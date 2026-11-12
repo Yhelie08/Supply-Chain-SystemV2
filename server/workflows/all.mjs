@@ -1,4 +1,4 @@
-// Loads every ported workflow module (each one registers its forms) and exports the registry the server uses.
-import './inquiry.mjs';
-import './purchase-request.mjs';
+// Loads every module (server/modules/*), which registers each module's workflow hooks, and exports the registry the
+// server uses. Nothing here changes when a module grows.
+import '../modules/index.mjs';
 export { workflows } from './index.mjs';

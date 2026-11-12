@@ -4,6 +4,7 @@
 //   node tools/build-module-readmes.mjs        (run after tools/parse-ds.mjs and tools/import-widgets.mjs)
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const P = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'zoho-export', 'parsed', f), 'utf8'));
@@ -14,18 +15,17 @@ const functions = Object.fromEntries(P('functions.json').map((f) => [f.name, f])
 const workflows = P('workflows.json');
 const widgetMap = P('widget-map.json');
 
-// Custom API name (what widgets call) -> Deluge function, from server/custom-apis.mjs.
-const apiSrc = fs.readFileSync(path.join(ROOT, 'server', 'custom-apis.mjs'), 'utf8');
-const apiToFn = {
-  confirm_dms_schedule_request: 'confirmDmsScheduleRequest',
-  decline_dms_schedule_request: 'declineDmsScheduleRequest',
-  push_dms_message_to_cms: 'pushDmsMessageToCms',
-  add_item_by_id: 'addItemByIdBooks',
-  create_books_contact: 'createBooksContact',
-  create_estimate: 'createEstimateForInquiry',
-  ...Object.fromEntries([...apiSrc.matchAll(/(\w+): notPorted\('(\w+)'\)/g)].map((m) => [m[1], m[2]])),
-};
-const ported = new Set(['confirm_dms_schedule_request', 'decline_dms_schedule_request', 'push_dms_message_to_cms', 'add_item_by_id', 'create_books_contact', 'create_estimate']);
+// Custom API name (what widgets call) -> Deluge function, and which ones are ported, from the modules
+// (server/modules/<module>/apis.mjs): a handler made by notPorted() is a placeholder, any other is ported.
+const { modules } = await import(pathToFileURL(path.join(ROOT, 'server', 'modules', 'index.mjs')).href);
+const apiToFn = {};
+const ported = new Set();
+for (const m of modules) {
+  for (const [api, handler] of Object.entries(m.apis)) {
+    apiToFn[api] = m.functions[api];
+    if (!handler.notPorted) ported.add(api);
+  }
+}
 
 const link = (fromDir, target, text) => `[${text}](${encodeURI(path.relative(fromDir, path.join(ROOT, target)).replace(/\\/g, '/'))})`;
 const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
@@ -90,8 +90,12 @@ const statusOf = (fn) => {
 };
 const fnRows = Object.values(functions).sort((a, b) => a.name.localeCompare(b.name));
 const nPorted = fnRows.filter((r) => statusOf(r.name) === 'Ported').length;
-// Form workflows that are ported or need no port: server/workflows/ported.json
-const wfPorts = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'workflows', 'ported.json'), 'utf8'));
+// Form workflows that are ported or need no port: server/modules/<module>/ported.json, merged
+const wfPorts = {};
+for (const m of modules) {
+  const file = path.join(ROOT, 'server', 'modules', m.id, 'ported.json');
+  if (fs.existsSync(file)) Object.assign(wfPorts, JSON.parse(fs.readFileSync(file, 'utf8')));
+}
 const wfCount = (key) => Object.values(wfPorts).filter((v) => typeof v === 'object' && v[key]).reduce((n, v) => n + (Array.isArray(v[key]) ? v[key].length : Object.keys(v[key]).length), 0);
 const wfPorted = wfCount('ported'), wfNoPortNeeded = wfCount('nativeFormOnly') + wfCount('notNeeded');
 const wfByKind = workflows.reduce((a, w) => ((a[w.kind] = (a[w.kind] || 0) + 1), a), {});
@@ -108,7 +112,7 @@ const lines = [
   `| Scheduled workflows | ${wfByKind.schedule || 0} | 0 |`,
   `| Report-button functions | ${wfByKind.functions || 0} | 0 |`, '',
   '> [!INFO] What "Ported" means',
-  `> The function's logic runs in ${tick('server/custom-apis.mjs')} (Books ones in ${tick('server/books/apis.mjs')}) against the app's database. Zoho Books calls need the Books client configured (see ${tick('.env.example')}); CMS calls are not connected, so those parts are skipped.`, '',
+  `> The function's logic runs in its module, ${tick('server/modules/<module>/apis.mjs')}, against the app's database. Zoho Books calls need the Books client configured (see ${tick('.env.example')}); CMS calls are not connected, so those parts are skipped.`, '',
   '## Deluge functions', '',
   '| Function | Custom API | Used by | Status | Source |', '|---|---|---|---|---|',
   ...fnRows.map((r) => `| ${tick(r.name)} | ${apiOfFn[r.name] ? tick(apiOfFn[r.name]) : '—'} | ${(fnSections[r.name] || []).join(', ') || '—'} | ${statusOf(r.name)} | ${tick('zoho-export/parsed/' + r.file)} |`), '',
@@ -116,7 +120,7 @@ const lines = [
   '| Custom API | Deluge function | Status |', '|---|---|---|',
   ...Object.entries(apiToFn).sort().map(([api, fn]) => `| ${tick(api)} | ${tick(fn)} | ${ported.has(api) ? 'Ported' : 'Not ported yet'} |`), '',
   '## Workflows', '',
-  `${wfPorted} of the ${wfByKind.form || 0} form workflows run in the app (the ported ones are listed in ${tick('server/workflows/ported.json')}); another ${wfNoPortNeeded} need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in ${tick('zoho-export/parsed/workflows.json')} and per section in ${tick('modules/<Section>/README.md')}.`, '',
+  `${wfPorted} of the ${wfByKind.form || 0} form workflows run in the app (the ported ones are listed in ${tick('server/modules/<module>/ported.json')}); another ${wfNoPortNeeded} need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in ${tick('zoho-export/parsed/workflows.json')} and per section in ${tick('modules/<Section>/README.md')}.`, '',
 ];
 const obsidianDir = path.join(ROOT, 'vault', 'Deluge Scripts (Obsidian)');
 if (fs.existsSync(obsidianDir)) fs.writeFileSync(path.join(obsidianDir, '00 - Port Status.md'), lines.join('\n'));

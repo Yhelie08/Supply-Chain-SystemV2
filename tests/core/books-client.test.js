@@ -1,7 +1,7 @@
 // Zoho Books/Inventory client, with a fake fetch: no network, nothing is ever sent to Zoho.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createZohoApi, BooksError } from '../server/books/client.mjs';
+import { createZohoApi, BooksError } from '../../server/books/client.mjs';
 
 const ENV = { ZOHO_BOOKS_CLIENT_ID: 'cid', ZOHO_BOOKS_CLIENT_SECRET: 'secret', ZOHO_BOOKS_REFRESH_TOKEN: 'refresh', ZOHO_BOOKS_ORG_ID: '111' };
 const json = (status, body) => ({ status, ok: status >= 200 && status < 300, json: async () => body, text: async () => JSON.stringify(body) });

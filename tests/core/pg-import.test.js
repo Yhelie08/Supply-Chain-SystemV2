@@ -5,11 +5,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
-import { reports } from '../server/model.mjs';
-import { importBackup } from '../server/pg/import.mjs';
-import { createStore } from '../server/pg/store.mjs';
+import { reports } from '../../server/model.mjs';
+import { importBackup } from '../../server/pg/import.mjs';
+import { createStore } from '../../server/pg/store.mjs';
 
-const root = path.resolve(import.meta.dirname, '..', 'data', 'zoho-backup');
+const root = path.resolve(import.meta.dirname, '..', '..', 'data', 'zoho-backup');
 const dirs = fs.existsSync(root) ? fs.readdirSync(root).filter((d) => fs.existsSync(path.join(root, d, 'manifest.json'))).sort() : [];
 const backup = dirs.length ? path.join(root, dirs.at(-1)) : null;
 

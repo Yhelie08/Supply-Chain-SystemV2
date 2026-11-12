@@ -7,9 +7,9 @@
 //    would otherwise pull in every unrelated inquiry whose quote_group is also empty;
 //  - a stored estimate id is cleared only when Books says the estimate does not exist; if Books cannot be
 //    reached the call stops, instead of clearing the id and creating a duplicate estimate.
-import { ZohoError, today } from '../criteria.mjs';
-import { BooksError } from './client.mjs';
-import { idOf, truthy, blank, toNum } from '../workflows/deluge.mjs';
+import { ZohoError, today } from '../../criteria.mjs';
+import { BooksError } from '../../books/client.mjs';
+import { idOf, truthy, blank, toNum } from '../../workflows/deluge.mjs';
 
 const fail = (message) => ({ status: 'error', message });
 const text = (v) => (blank(v) ? '' : String(v));

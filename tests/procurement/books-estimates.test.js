@@ -1,12 +1,12 @@
-// create_estimate (server/books/estimates.mjs) on PGlite with a stand-in for Zoho Books: nothing reaches Books.
+// create_estimate (server/modules/procurement/estimates.mjs) on PGlite with a stand-in for Zoho Books: nothing reaches Books.
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema } from '../server/pg/schema.mjs';
-import { createStore } from '../server/pg/store.mjs';
-import { invokeCustomApi } from '../server/custom-apis.mjs';
-import { BooksError } from '../server/books/client.mjs';
-import { today } from '../server/criteria.mjs';
+import { ensureSchema } from '../../server/pg/schema.mjs';
+import { createStore } from '../../server/pg/store.mjs';
+import { invokeCustomApi } from '../../server/custom-apis.mjs';
+import { BooksError } from '../../server/books/client.mjs';
+import { today } from '../../server/criteria.mjs';
 
 let db, data, customer, project, item;
 const FORMS = ['Inquiry_Form', 'Projects', 'Customer', 'Items'];

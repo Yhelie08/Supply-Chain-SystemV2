@@ -3,8 +3,8 @@
 //   add_item_by_id        <- addItemByIdBooks.dg
 // Each handler is (payload, data, ctx): data is the data layer, ctx = { books, user, saveUpload }.
 // They answer like the Deluge functions did: { status: 'success' | 'error', message, ... }.
-import { ZohoError } from '../criteria.mjs';
-import { BooksError } from './client.mjs';
+import { ZohoError } from '../../criteria.mjs';
+import { BooksError } from '../../books/client.mjs';
 
 const ok = (message, extra = {}) => ({ status: 'success', message, ...extra });
 const fail = (message) => ({ status: 'error', message });

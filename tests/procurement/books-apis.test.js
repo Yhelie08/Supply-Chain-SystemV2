@@ -1,11 +1,11 @@
-// create_books_contact and add_item_by_id (server/books/apis.mjs) on PGlite, with a stand-in for Zoho Books.
+// create_books_contact and add_item_by_id (server/modules/procurement/books-apis.mjs) on PGlite, with a stand-in for Zoho Books.
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema } from '../server/pg/schema.mjs';
-import { createStore } from '../server/pg/store.mjs';
-import { invokeCustomApi } from '../server/custom-apis.mjs';
-import { BooksError } from '../server/books/client.mjs';
+import { ensureSchema } from '../../server/pg/schema.mjs';
+import { createStore } from '../../server/pg/store.mjs';
+import { invokeCustomApi } from '../../server/custom-apis.mjs';
+import { BooksError } from '../../server/books/client.mjs';
 
 let db, data;
 

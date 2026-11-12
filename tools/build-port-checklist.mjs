@@ -1,29 +1,31 @@
 // Writes vault/Deluge Scripts (Obsidian)/00 - Port Checklist.md: everything still to port, by app section.
 //   node tools/build-module-readmes.mjs && node tools/build-port-checklist.mjs
-// Reads zoho-export/parsed (workflows, functions), server/workflows/ported.json, and the generated 00 - Port Status.md
-// (for the custom API and function tables), so the checklist never disagrees with them.
+// Reads zoho-export/parsed (workflows, functions), the modules in server/modules (their forms, custom APIs and
+// ported.json), and the generated 00 - Port Status.md (for the custom API and function tables), so the checklist
+// never disagrees with them.
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PARSED = path.join(ROOT, 'zoho-export', 'parsed');
 const NOTES = path.join(ROOT, 'vault', 'Deluge Scripts (Obsidian)');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const workflows = JSON.parse(read(path.join(PARSED, 'workflows.json')));
-const ports = Object.fromEntries(Object.entries(JSON.parse(read(path.join(ROOT, 'server', 'workflows', 'ported.json')))).filter(([k]) => !k.startsWith('_')));
+const { modules } = await import(pathToFileURL(path.join(ROOT, 'server', 'modules', 'index.mjs')).href);
+const ports = {};
+for (const m of modules) {
+  const file = path.join(ROOT, 'server', 'modules', m.id, 'ported.json');
+  if (fs.existsSync(file)) Object.assign(ports, Object.fromEntries(Object.entries(JSON.parse(read(file))).filter(([k]) => !k.startsWith('_'))));
+}
 const statusFile = path.join(NOTES, '00 - Port Status.md');
 if (!fs.existsSync(statusFile)) throw new Error('Run node tools/build-module-readmes.mjs first: it writes 00 - Port Status.md.');
 const portStatus = read(statusFile);
 
-// ----- which app section a form belongs to (the sections of the app's dropdown) -----
+// ----- which app section a form, or a custom API, belongs to: the module that lists it (server/modules/*) -----
 const SECTIONS = ['Procurement', 'Tony Fan', 'Fenteng Lighting', 'Fulfillment', 'Delivery Management', 'Analytic'];
-const FORMS = {
-  Procurement: ['Inquiry_Form', 'Purchase_Request1', 'Purchase_Order', 'Shipments', 'Receiving', 'Replacement_Request', 'Exceptions', 'Supplier_1', 'Supplier_2', 'Projects'],
-  Fulfillment: ['Sales_Order_Fulfillment', 'Checker_Checklist', 'Crate_Checklist', 'Sales_Order_Readiness_Gate', 'Pre_Order_FF', 'Order_Aggregation1', 'Pick1', 'Pack', 'Warehouse_Request', 'Transfer_Warehouse'],
-  'Delivery Management': ['Service_Appointment_Form', 'Field_Work', 'Delivery_Scheduling', 'Service_Request1', 'DMS_Exception_Queue', 'DMS_Schedule_Request'],
-};
-const sectionOfForm = (form) => (/^Tony/.test(form) ? 'Tony Fan' : /^Fenteng/.test(form) ? 'Fenteng Lighting'
-  : Object.entries(FORMS).find(([, fs_]) => fs_.includes(form))?.[0] ?? 'Unassigned');
+const sectionOfForm = (form) => modules.find((m) => m.forms.includes(form))?.label ?? 'Unassigned';
+const ownerOfApi = Object.fromEntries(modules.flatMap((m) => Object.keys(m.apis).map((api) => [api, m.label])));
 
 const APIRUN = /^(on validate|on success)/;
 const dg = (rel) => { try { return read(path.join(PARSED, rel)); } catch { return ''; } };
@@ -57,13 +59,12 @@ for (const w of workflows.filter((x) => x.kind === 'form' && x.status === 'activ
 const stats = (sec) => { const r = rows.filter((x) => x.section === sec); return { total: r.length, done: r.filter((x) => x.done).length }; };
 
 // ----- custom APIs -----
-// An API several sections call is counted under the section that owns it.
-const OWNER = { dms_reschedule: 'Delivery Management' };
+// An API several sections call is counted under the module that owns it (the one whose folder holds it).
 const apiRows = apis.map((a) => {
   const f = fnByName[a.fn] || {};
   const src = dg(`functions/${a.fn}.dg`);
   const secs = (f.usedBy || '').split(',').map((s) => s.trim()).filter((s) => SECTIONS.includes(s));
-  return { ...a, sections: secs.length ? secs.join(', ') : '—', lines: lineCount(src), needs: needsOf(src), done: isDone(a.status), first: OWNER[a.api] ?? secs.find((x) => x !== 'Analytic') ?? secs[0] ?? 'zz' };
+  return { ...a, sections: secs.length ? secs.join(', ') : '—', lines: lineCount(src), needs: needsOf(src), done: isDone(a.status), first: ownerOfApi[a.api] ?? 'zz' };
 }).sort((a, b) => Number(a.done) - Number(b.done) || SECTIONS.indexOf(a.first) - SECTIONS.indexOf(b.first) || a.api.localeCompare(b.api));
 
 // ----- other functions (no custom API) that workflows call -----
