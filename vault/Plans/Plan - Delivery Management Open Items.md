@@ -104,3 +104,29 @@ Before starting: restart the server (the hooks load at start); open Daily Team A
 
 ## 7. To give privately (not GitHub): `.env` on the PC and Railway variables
 `GEOAPIFY_API_KEY`, `ZOHO_BOOKS_CLIENT_ID`, `ZOHO_BOOKS_CLIENT_SECRET`, `ZOHO_BOOKS_REFRESH_TOKEN`, `ZOHO_BOOKS_ORG_ID`, `CMS_STATUS_URL`, `CMS_MESSAGE_URL`, later `CMS_API_KEY`, and `TZ=Asia/Manila`. The names are in `.env.example`.
+
+## 8. UAT run 2026-11-12 (through the server's own API on `npm run dev:pg`)
+Run by Claude, not through the browser: the Chrome extension could not open `localhost`, so a script signed in with a throwaway account (created in the local SQLite and removed afterwards) and made the same calls the widgets make. Every record carried `ZZ-UAT` and was deleted (nothing left). **22 of 22 checks pass.** The owner's own click-through of the 13 tabs in the browser (section 6) is still to be done; this run does not replace looking at the screens.
+
+| Checklist item | Result |
+|---|---|
+| Sign in, availability for today and tomorrow (2 teams) | pass |
+| 2 Service Request makes a Queued appointment (site Pending, items, one package row, written back) | pass |
+| 3 Site confirmation refused without method and notes; with them a suggestion appears | pass |
+| 4 Approve: calendar entry, Scheduled, "(2.30 hrs)" in the summary | pass |
+| 5 Second job goes to the other team from 08:00; third job stacks to 10:18 AM | pass |
+| 6 Different slot refused without Override By; saves with it, reason in the summary | pass |
+| 7 A 4-hour job fits; a second 4-hour job on the same team and day is a Calendar Conflict (Flagged, not Scheduled, one exception) | pass |
+| 8 Re-Schedule: new suggestion on Queued; "tapos na" on Completed | pass |
+| 9 Field Work: reschedule refused without a reason, with one raises a Dispatch exception; Complete finishes the appointment with "Actual: ..." | pass |
+| 10 Exception Queue: Revert to System clears the dates and re-runs the engine; a Dispatch exception requeues a Priority copy once and fails the old appointment | pass |
+| 11 Shipment and Sales Return answer "Zoho Books is not configured" | pass (live check waits for the keys) |
+| 12 The 18 reports behind the tabs answer | pass |
+
+Two mistakes were in my first test script, not in the port (an 8-hour job is 9.2 hours with the buffer, so it conflicts on its own; the exception was looked up by a display value). Not covered: how the screens look, the Schedule Requests tab (needs the CMS route), geocoding and Inventory (need the keys).
+
+## 9. Go-live blockers raised in the review (not Delivery code)
+- **Forecast engine `fcStampBySoNo` and the daily schedule `Forecast_Stamp_Daily`:** no code; there is no schedule runner anywhere in `server/` (no cron or timer). Forecast milestone.
+- **CMS inbound route:** the two functions exist as module integrations, nothing calls them.
+- **The ported hooks only run with `BACKEND=pg`** (`createHookedStore` is attached only in `server/pg/api.mjs`); the default is `zoho`. On Railway there is no `BACKEND`, `DATABASE_URL` or `TZ`, and the Railway Postgres is empty. Going live means setting them and importing the data, for all modules at once.
+- **Check the Railway logs:** `server/zoho-credentials.json` is not in `.railwayignore`, so the cloud app may or may not be reaching Zoho; look for "[Zoho Auth] Access token successfully refreshed".
