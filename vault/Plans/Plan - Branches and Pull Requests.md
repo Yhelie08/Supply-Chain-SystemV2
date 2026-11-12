@@ -23,7 +23,7 @@ date: 2026-11-12
 |---|---:|---:|---|---|
 | `main` | - | - | - | Default branch. Untouched by this work (still at the commit "Make npm run dev start the app with login") |
 | `feature/zoho-backend-adapter` | 3 | 0 | #1, **merged** | Nothing to review. Delete the branch on GitHub to avoid confusion |
-| `feature/postgres-data-layer` | 0 | 16 before today's push | Draft PR (see section 4) | **The only pull request.** Review, then merge when Procurement is done |
+| `feature/postgres-data-layer` | 0 | 17 | [#2](https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/2), Draft | **The only pull request.** Review, then merge when Procurement is done |
 
 `feature/postgres-data-layer` is built directly on top of the current `main`, and `main` has not moved, so there can be no merge conflict.
 
@@ -33,14 +33,14 @@ date: 2026-11-12
 - To make it easy to review, the PR description lists what each group of commits does, and the commits are already grouped by topic.
 
 ## 4. The plan, in order
-1. **Push the branch** with all its commits (done together with this note).
-2. **Open a Draft pull request** from `feature/postgres-data-layer` into `main`. Link: filled in below once created.
+1. **Push the branch** with all its commits (done).
+2. **Open a Draft pull request** from `feature/postgres-data-layer` into `main` (done: #2).
 3. **Review**: Sir Yhel and Sir JV read the PR description and the notes in `vault/Plans/` and `vault/Deluge Scripts (Obsidian)/`; to try it, run `npm run dev:pg` (see [[00 - Current System]]).
 4. **Keep adding commits** to the same branch as Procurement is finished ([[Plan - Finish Procurement]]); the Draft PR updates itself.
 5. **Mark the PR ready and merge** when Procurement is done and the team has checked it (open questions in [[Plan - Finish Procurement]] answered, comparison with Zoho Development done).
 6. After the merge, delete `feature/postgres-data-layer` and start the next branch (for example `feature/fulfillment`) from the new `main`.
 
-**Pull request link:** _to be filled in_
+**Pull request link:** https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/2 (Draft, opened 2026-11-12)
 
 ## 5. Things to know
 - **Merging does not deploy.** The live site on Railway is updated by hand from a computer (`railway up`), not from GitHub. Nothing in the PR changes the live site by itself.
