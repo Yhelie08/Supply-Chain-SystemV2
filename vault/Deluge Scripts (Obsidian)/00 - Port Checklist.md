@@ -152,18 +152,18 @@ All ported.
 
 No workflows of its own: the page only reads data.
 
-## Schedules (6), none ported
+## Schedules (6), 2 ported
 
-| Schedule | Active in Zoho | Lines | Needs |
-|---|---|---|---|
-| `Daily_Check_Warehouse_Bin` | no (inactive) | 3 | Creator data only |
-| `DMS_Site_Confirmation_Fol` | no (inactive) | 81 | Email |
-| `Daily_Shipment_10_Day_Che` | yes | 24 | Creator data only |
-| `Shipment_Delay_Status_Dai` | yes | 47 | Creator data only |
-| `Forecast_Stamp_Daily` | yes | 1547 | Creator data only |
-| `Backfill_PreOrder_Forecas` | yes | 68 | Creator data only |
+| Schedule | Active in Zoho | Lines | Needs | Status |
+|---|---|---|---|---|
+| `Daily_Check_Warehouse_Bin` | no (inactive) | 3 | Creator data only | **To port** |
+| `DMS_Site_Confirmation_Fol` | no (inactive) | 81 | Email | **To port** |
+| `Daily_Shipment_10_Day_Che` | yes | 24 | Creator data only | **To port** |
+| `Shipment_Delay_Status_Dai` | yes | 47 | Creator data only | **To port** |
+| `Forecast_Stamp_Daily` | yes | 1547 | Creator data only | Ported |
+| `Backfill_PreOrder_Forecas` | yes | 68 | Creator data only | Ported |
 
-A scheduled job needs a runner in our server (a timer or a cron on Railway); none exists yet.
+The runner is `server/schedules.mjs`: a timer that runs each ported schedule once a day at its time in its time zone. It is off unless `SCHEDULES=on` is set on the server.
 
 ## Report-button functions (16), none ported
 

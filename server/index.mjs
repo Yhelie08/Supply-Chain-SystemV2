@@ -93,6 +93,10 @@ if (BACKEND === 'pg') {
   const pg = await startPg(invokeCustomApi);
   api = pg.api;
   tableCounts = () => pg.store.tableCounts();
+  // The scheduled workflows the modules list (off unless SCHEDULES=on): see server/schedules.mjs.
+  const { startSchedules } = await import('./schedules.mjs');
+  const { modules } = await import('./modules/index.mjs');
+  startSchedules({ pool: pg.pool, store: pg.store, schedules: modules.flatMap((m) => m.schedules || []) });
 } else {
   api = BACKEND === 'zoho' ? zohoAdapter : localApi;
 }
