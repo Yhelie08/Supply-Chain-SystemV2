@@ -7,7 +7,8 @@
       "SA_Scheduling_Engine",
       "SA_Geocode_Address",
       "SA_Sync_Sales_Order_Displ",
-      "SA_Sync_Sales_Order_Displ1"
+      "SA_Sync_Sales_Order_Displ1",
+      "SA_Instant_Forecast"
     ],
     "nativeFormOnly": [],
     "notNeeded": {
@@ -18,14 +19,16 @@
     "ported": [
       "FW_Validate_Reschedule_Re",
       "FW_Reschedule_To_Exceptio",
-      "FW_Completion_Schedule_Sy"
+      "FW_Completion_Schedule_Sy",
+      "FW_Instant_Forecast"
     ],
     "nativeFormOnly": [],
     "notNeeded": {}
   },
   "Service_Request1": {
     "ported": [
-      "SR_Created_Make_Appointme"
+      "SR_Created_Make_Appointme",
+      "SR_Instant_Forecast"
     ],
     "nativeFormOnly": [],
     "notNeeded": {}
@@ -39,7 +42,8 @@
   },
   "Delivery_Scheduling": {
     "ported": [
-      "DS_Validate_Team_Capacity1"
+      "DS_Validate_Team_Capacity1",
+      "ISCHED_Instant_Forecast"
     ],
     "nativeFormOnly": [],
     "notNeeded": {}
