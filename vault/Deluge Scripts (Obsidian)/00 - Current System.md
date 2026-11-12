@@ -10,7 +10,7 @@ tags:
 
 # Current system: the app outside Zoho
 
-Updated 2026-11-12. The supply chain app in Zoho Creator is no longer used (it stays untouched as a fallback). Our app, hosted on **Railway**, is becoming the only system: the widgets, the redesign, sign-in and users already live here, and the business data is moving to **Postgres**. Zoho Creator is only a bridge and the source of the data export; Zoho Books and Inventory stay and are called directly by our server. Direction and phases: [[Plan - Full Migration Off Zoho Creator]]. Port tracking: [[00 - Port Status]]. History: [[00 - Change Log]]. How to port the next piece: [[00 - Porting a Workflow]].
+Updated 2026-11-12. The supply chain app in Zoho Creator is no longer used (it stays untouched as a fallback). Our app, hosted on **Railway**, is becoming the only system: the widgets, the redesign, sign-in and users already live here, and the business data is moving to **Postgres**. Zoho Creator is only a bridge and the source of the data export; Zoho Books and Inventory stay and are called directly by our server. Direction and phases: [[Plan - Full Migration Off Zoho Creator]]. Port tracking: [[00 - Port Status]]. History: [[00 - Change Log]]. How to port the next piece: [[00 - Porting a Workflow]]. How a widget action reaches Zoho through the adapter: [[00 - Actions Execution & Zoho Adapter Routing]].
 
 ## Three backends, one switch
 

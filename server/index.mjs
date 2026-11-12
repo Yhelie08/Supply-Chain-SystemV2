@@ -1,6 +1,7 @@
-// Supply Chain App server: serves the original Zoho widgets with a local SDK stand-in, answers
-// their data calls from SQLite, and requires sign-in for everything.
-//   npm start  ->  http://localhost:4000   (env: PORT, DATA_DIR, ADMIN_EMAIL, ADMIN_PASSWORD)
+// Supply Chain App server: serves the original Zoho widgets with a local SDK stand-in, answers their
+// data calls from the backend chosen by BACKEND (pg = Postgres, zoho = the Creator API, local = SQLite),
+// and requires sign-in for everything. Users and sessions are always in SQLite.
+//   npm start  ->  http://localhost:4000   (env: PORT, DATA_DIR, ADMIN_EMAIL, ADMIN_PASSWORD, BACKEND, DATABASE_URL; see .env.example)
 import dns from 'node:dns';
 dns.setDefaultResultOrder('ipv4first');
 import http from 'node:http';
