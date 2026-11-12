@@ -7,6 +7,8 @@ import path from 'node:path';
 import * as store from './db.mjs';
 import * as auth from './auth.mjs';
 import { invokeCustomApi } from './custom-apis.mjs';
+import { zohoAdapter } from './zoho/adapter.mjs';
+import { metrics } from './zoho/limits.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const WIDGETS = path.join(ROOT, 'modules'); // one folder per section, see tools/import-widgets.mjs
@@ -49,8 +51,11 @@ function applyTheme(html, line) {
 }
 const inside = (base, p) => { const f = path.resolve(base, p); return f.startsWith(base + path.sep) ? f : null; };
 
+// Backend mode: 'zoho' (default, targets live Zoho Creator API) or 'local' (offline SQLite)
+const BACKEND = process.env.BACKEND || 'zoho';
+
 // ---------- the SDK operations ----------
-const api = {
+const localApi = {
   getRecords: (b, user) => ({ code: 3000, data: store.getRecords(b.report_name, { ...b, user }) }),
   getRecordById: (b) => ({ code: 3000, data: store.getRecordById(b.report_name, b.id) }),
   addRecords: (b, user) => {
@@ -74,6 +79,8 @@ const api = {
   deleteRecordById: (b) => ({ code: 3000, data: { ID: store.deleteRecord(b.report_name, b.id) }, message: 'Record Deleted Successfully!' }),
   invokeCustomApi: (b) => ({ code: 3000, result: invokeCustomApi(b.api_name, b.payload) }),
 };
+
+const api = BACKEND === 'zoho' ? zohoAdapter : localApi;
 
 // ---------- sign-in helpers ----------
 const cookies = (req) => Object.fromEntries(String(req.headers.cookie || '').split(/;\s*/).filter((c) => c.includes('='))
@@ -195,12 +202,14 @@ async function handle(req, res) {
     const op = api[p.slice(5)];
     if (!op) return send(res, 404, { code: 404, message: `Unknown operation ${p}` });
     try {
-      return send(res, 200, op(await readJson(req), user));
+      const result = await op(await readJson(req), user);
+      return send(res, 200, result);
     } catch (e) {
       if (!(e instanceof store.ZohoError)) console.error(`[${p}]`, e);
       return send(res, 200, { code: e.code || 500, message: e.message });
     }
   }
+  if (p === '/api/metrics') return send(res, 200, metrics);
   if (p === '/api/pages') return send(res, 200, SECTIONS);
   if (p === '/api/tables') return send(res, 200, store.tableCounts());
   if (p.startsWith('/uploads/')) { const f = inside(UPLOADS, p.slice(9)); return f ? serveFile(res, f) : send(res, 404, 'Not found', 'text/plain'); }
@@ -226,7 +235,11 @@ http.createServer((req, res) => handle(req, res).catch((e) => { console.error(e)
   .listen(PORT, () => {
     const note = auth.bootstrapAdmin();
     if (note) console.log(note);
-    console.log(`Supply Chain App running on port ${PORT}`);
-    console.log(`Database: ${path.join(store.DATA_DIR, 'app.db')}  (${Object.keys(store.columns).length} tables from the .ds)`);
+    console.log(`Supply Chain App running on port ${PORT} [BACKEND: ${BACKEND.toUpperCase()}]`);
+    if (BACKEND === 'zoho') {
+      console.log(`Zoho Target: Development Sandbox (REST v2.1 via Service Account)`);
+    } else {
+      console.log(`Database: ${path.join(store.DATA_DIR, 'app.db')}  (${Object.keys(store.columns).length} tables from the .ds)`);
+    }
     console.log(`Pages: ${SECTIONS.map((s) => `${s.label} ${s.tabs.length}`).join(', ')}`);
   });
