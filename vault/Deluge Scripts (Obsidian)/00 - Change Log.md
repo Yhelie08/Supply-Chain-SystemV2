@@ -11,6 +11,8 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-12
 
+**Delivery Management, UAT through the API (2026-11-12):** 22 of 22 checks of the Delivery checklist pass on `npm run dev:pg` (script with a throwaway account, all test records deleted). The owner's click-through in the browser is still to do, and the go-live blockers raised in the review are listed in [[Plan - Delivery Management Open Items]] section 9.
+
 **Delivery Management, comparison with Zoho Development and the decisions of the grilling (2026-11-12)**
 - Done on Zoho Creator **Development only**, with test records marked `ZZ-CMP` that were deleted afterwards (and checked: none left). Results, and what changed in the port:
   - **Clock.** In Zoho the engine fails and writes **nothing** when the chosen team already has hours that day, unless the total comes out as whole hours: the division `ctsTotalMin / 60` is decimal ("10.3:00 AM" is not a time). Seen with 08:00 + one 2-hour job (nothing written) against 07:42 + the same job (suggestion 10:00 AM). The port uses whole minutes (10:18 AM): **a deliberate difference, and Zoho's bug.**
