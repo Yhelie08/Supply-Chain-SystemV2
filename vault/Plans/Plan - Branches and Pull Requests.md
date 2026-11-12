@@ -8,7 +8,7 @@ date: 2026-11-12
 ---
 
 > [!INFO] Where this fits
-> How our work gets from the branch on GitHub into `main`. The migration plan: [[Plan - Full Migration Off Zoho Creator]]. The first module being finished: [[Plan - Finish Procurement]].
+> How our work gets from the branch on GitHub into `main`. How the team splits the code by module: [[Plan - Module Folders and Team Split]]. The migration plan: [[Plan - Full Migration Off Zoho Creator]]. The first module being finished: [[Plan - Finish Procurement]].
 
 # Branches and pull requests
 

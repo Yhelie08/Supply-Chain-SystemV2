@@ -56,7 +56,7 @@ Known gap: `invokeCustomApi` in `server/zoho/adapter.mjs` calls the local port i
 - [ ] Railway variables set: Zoho credentials, `ZOHO_ENV`, database URL, `BACKEND`.
 
 ## Phase 3 - Procurement (admin screens)
-What is left, by section: [[00 - Port Checklist]]. Detailed plan for the first module and the questions for the team: [[Plan - Finish Procurement]]. How the work reaches `main`: [[Plan - Branches and Pull Requests]]. Status 2026-11-12: workflow hooks, Books/Inventory client, the Inquiry stage and the Purchase Request stage are built and tested (mocks); the PR forecast stamp (`PR1_Forecast_Stamp`) waits for the forecast engine. Open: Books credentials from the owner, an oracle comparison against Zoho Development, then PO, Shipments, Receiving, Replacement, Exceptions.
+What is left, by section: [[00 - Port Checklist]]. Detailed plan for the first module and the questions for the team: [[Plan - Finish Procurement]]. How the work reaches `main`: [[Plan - Branches and Pull Requests]]. How the team splits the code by module: [[Plan - Module Folders and Team Split]]. Status 2026-11-12: workflow hooks, Books/Inventory client, the Inquiry stage and the Purchase Request stage are built and tested (mocks); the PR forecast stamp (`PR1_Forecast_Stamp`) waits for the forecast engine. Open: Books credentials from the owner, an oracle comparison against Zoho Development, then PO, Shipments, Receiving, Replacement, Exceptions.
 
 Port in pipeline order, because each stage creates the records the next one uses.
 
