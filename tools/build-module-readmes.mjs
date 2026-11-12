@@ -20,9 +20,12 @@ const apiToFn = {
   confirm_dms_schedule_request: 'confirmDmsScheduleRequest',
   decline_dms_schedule_request: 'declineDmsScheduleRequest',
   push_dms_message_to_cms: 'pushDmsMessageToCms',
+  add_item_by_id: 'addItemByIdBooks',
+  create_books_contact: 'createBooksContact',
+  create_estimate: 'createEstimateForInquiry',
   ...Object.fromEntries([...apiSrc.matchAll(/(\w+): notPorted\('(\w+)'\)/g)].map((m) => [m[1], m[2]])),
 };
-const ported = new Set(['confirm_dms_schedule_request', 'decline_dms_schedule_request', 'push_dms_message_to_cms']);
+const ported = new Set(['confirm_dms_schedule_request', 'decline_dms_schedule_request', 'push_dms_message_to_cms', 'add_item_by_id', 'create_books_contact', 'create_estimate']);
 
 const link = (fromDir, target, text) => `[${text}](${encodeURI(path.relative(fromDir, path.join(ROOT, target)).replace(/\\/g, '/'))})`;
 const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
@@ -87,6 +90,10 @@ const statusOf = (fn) => {
 };
 const fnRows = Object.values(functions).sort((a, b) => a.name.localeCompare(b.name));
 const nPorted = fnRows.filter((r) => statusOf(r.name) === 'Ported').length;
+// Form workflows that are ported or need no port: server/workflows/ported.json
+const wfPorts = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'workflows', 'ported.json'), 'utf8'));
+const wfCount = (key) => Object.values(wfPorts).filter((v) => typeof v === 'object' && v[key]).reduce((n, v) => n + (Array.isArray(v[key]) ? v[key].length : Object.keys(v[key]).length), 0);
+const wfPorted = wfCount('ported'), wfNoPortNeeded = wfCount('nativeFormOnly') + wfCount('notNeeded');
 const wfByKind = workflows.reduce((a, w) => ((a[w.kind] = (a[w.kind] || 0) + 1), a), {});
 const tick = (s) => '`' + s + '`';
 const lines = [
@@ -97,11 +104,11 @@ const lines = [
   '| Part | Total | Ported |', '|---|---:|---:|',
   `| Deluge functions | ${fnRows.length} | ${nPorted} |`,
   `| Custom APIs called by widgets | ${Object.keys(apiToFn).length} | ${ported.size} |`,
-  `| Form workflows (on validate, on success, field rules) | ${wfByKind.form || 0} | 0 |`,
+  `| Form workflows (on validate, on success, field rules) | ${wfByKind.form || 0} | ${wfPorted} |`,
   `| Scheduled workflows | ${wfByKind.schedule || 0} | 0 |`,
   `| Report-button functions | ${wfByKind.functions || 0} | 0 |`, '',
   '> [!INFO] What "Ported" means',
-  `> The function's logic runs in ${tick('server/custom-apis.mjs')} against the local database. Zoho Books and CMS calls are not connected, so those parts are skipped.`, '',
+  `> The function's logic runs in ${tick('server/custom-apis.mjs')} (Books ones in ${tick('server/books/apis.mjs')}) against the app's database. Zoho Books calls need the Books client configured (see ${tick('.env.example')}); CMS calls are not connected, so those parts are skipped.`, '',
   '## Deluge functions', '',
   '| Function | Custom API | Used by | Status | Source |', '|---|---|---|---|---|',
   ...fnRows.map((r) => `| ${tick(r.name)} | ${apiOfFn[r.name] ? tick(apiOfFn[r.name]) : '—'} | ${(fnSections[r.name] || []).join(', ') || '—'} | ${statusOf(r.name)} | ${tick('zoho-export/parsed/' + r.file)} |`), '',
@@ -109,7 +116,7 @@ const lines = [
   '| Custom API | Deluge function | Status |', '|---|---|---|',
   ...Object.entries(apiToFn).sort().map(([api, fn]) => `| ${tick(api)} | ${tick(fn)} | ${ported.has(api) ? 'Ported' : 'Not ported yet'} |`), '',
   '## Workflows', '',
-  `None of the ${workflows.length} workflows run locally yet. They are listed per form in ${tick('zoho-export/parsed/workflows.json')} and per section in ${tick('modules/<Section>/README.md')}.`, '',
+  `${wfPorted} of the ${wfByKind.form || 0} form workflows run in the app (the ported ones are listed in ${tick('server/workflows/ported.json')}); another ${wfNoPortNeeded} need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in ${tick('zoho-export/parsed/workflows.json')} and per section in ${tick('modules/<Section>/README.md')}.`, '',
 ];
 const obsidianDir = path.join(ROOT, 'vault', 'Deluge Scripts (Obsidian)');
 if (fs.existsSync(obsidianDir)) fs.writeFileSync(path.join(obsidianDir, '00 - Port Status.md'), lines.join('\n'));

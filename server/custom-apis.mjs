@@ -6,6 +6,8 @@
 // The data layer is the SQLite store by default; the Postgres backend passes its own store as `data`.
 // Both offer find / addRecord / updateRecord, and every call is awaited so either one works.
 import * as sqlite from './db.mjs';
+import { add_item_by_id, create_books_contact } from './books/apis.mjs';
+import { create_estimate } from './books/estimates.mjs';
 
 const ok = (message, extra = {}) => ({ status: 'success', message, ...extra });
 const fail = (message) => ({ status: 'error', message });
@@ -68,10 +70,10 @@ export const customApis = {
   create_rr_tony: notPorted('createRRTony'),
   create_rr_fenteng: notPorted('createRRFenteng'),
   check_payment_status: notPorted('checkPaymentStatus'),
-  // Zoho Books integrations
-  add_item_by_id: notPorted('addItemByIdBooks'),
-  create_books_contact: notPorted('createBooksContact'),
-  create_estimate: notPorted('createEstimateForInquiry'),
+  // Zoho Books integrations (need ctx.books, so they run on BACKEND=pg once Books is configured)
+  add_item_by_id,
+  create_books_contact,
+  create_estimate,
 };
 
 // ctx = { books } : the Zoho Books/Inventory client (server/books/client.mjs), when the backend has one.

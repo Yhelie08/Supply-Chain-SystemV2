@@ -1,6 +1,9 @@
 // The widget SDK operations (what zoho-shim.js posts to /api/*) on top of the Postgres store.
 // Same request and response shapes as localApi in index.mjs and zohoAdapter, so widgets cannot tell.
+import fs from 'node:fs';
+import path from 'node:path';
 import { ZohoError } from '../criteria.mjs';
+import { DATA_DIR } from '../db.mjs';
 import { createPool } from './pool.mjs';
 import { ensureSchema } from './schema.mjs';
 import { createStore } from './store.mjs';
@@ -35,7 +38,7 @@ export function createPgApi(store, invokeCustomApi, rawStore = store, ctx = {}) 
       return { code: 3000, result };
     },
     deleteRecordById: async (b, user) => ({ code: 3000, data: { ID: await store.deleteRecord(b.report_name, b.id, { user }) }, message: 'Record Deleted Successfully!' }),
-    invokeCustomApi: async (b) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload, rawStore, ctx) }),
+    invokeCustomApi: async (b, user) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload, rawStore, { ...ctx, user }) }),
   };
 }
 
@@ -48,5 +51,13 @@ export async function startPg(invokeCustomApi) {
   const books = createZohoApi();
   console.log(`[books] Zoho Books/Inventory ${books.isConfigured() ? 'configured' : 'not configured (workflows and APIs that call Books will report it)'}`);
   const hooked = createHookedStore(store, workflows, { books });
-  return { pool, store, api: createPgApi(hooked, invokeCustomApi, store, { books }) };
+  // Files a custom API downloads (an item's photo) go where widget uploads go: DATA_DIR/uploads, served at /uploads/.
+  const saveUpload = async (name, buffer) => {
+    const uploads = path.join(DATA_DIR, 'uploads');
+    fs.mkdirSync(uploads, { recursive: true });
+    const fileName = `${Date.now()}_${String(name).replace(/[^\w.-]+/g, '_')}`;
+    fs.writeFileSync(path.join(uploads, fileName), buffer);
+    return `/uploads/${fileName}`;
+  };
+  return { pool, store, api: createPgApi(hooked, invokeCustomApi, store, { books, saveUpload }) };
 }

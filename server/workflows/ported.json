@@ -1,0 +1,28 @@
+{
+  "_about": "Which Zoho form workflows (by name in zoho-export/parsed/workflows.json) are ported, and which need no port. tools/build-module-readmes.mjs reads this for Port Status; tests/workflow-ports.test.js checks every name exists.",
+  "Inquiry_Form": {
+    "ported": [
+      "INQ_Auto_Populate_Supplie1",
+      "Supplier_Populate_From_IN",
+      "Stage_Inquiry_Changed",
+      "Delete_Item_On_Supplier",
+      "Item_Image_Create_Update",
+      "INQ_Check_Readiness",
+      "INQ_AutoFill_Product_Imag",
+      "INQ_Generate_Number"
+    ],
+    "nativeFormOnly": [
+      "INQ_Load_Unit_Choices",
+      "INQ_Default_All_Suppliers",
+      "INQ_AutoFill_Customer_Typ",
+      "Selected_Uncheck_Others",
+      "INQ_AutoFill_Item_Details1",
+      "INQ_AutoFill_Project_Name",
+      "Disable_Supplier_Quotes_L"
+    ],
+    "notNeeded": {
+      "Notify_Suppliers_on_Inqui": "inactive in Zoho",
+      "Log_Updated_Itemm": "has no script"
+    }
+  }
+}

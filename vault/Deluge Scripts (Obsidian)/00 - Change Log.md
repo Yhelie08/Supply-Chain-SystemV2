@@ -11,6 +11,15 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-12
 
+**Procurement, Inquiry stage on the Postgres backend (Phase 3 of [[Plan - Full Migration Off Zoho Creator]])**
+- Branch `feature/postgres-data-layer`, committed locally in groups, not pushed.
+- `server/workflows/index.mjs`: workflow hooks (`beforeAdd`, `afterAdd`, `beforeUpdate`, `afterUpdate`, `beforeDelete`, `afterDelete`) around the Postgres store; widget writes through `/api/*` run them, writes made by a hook or a custom API do not. Only "on validate" (before) and "on success" (after) events are ported, because "on load", "field rules" and "on user input" only drive Zoho's own forms.
+- `server/workflows/inquiry.mjs`: 8 of the 19 `Inquiry_Form` workflows (numbering, quote rows, readiness checklist and margin, supplier copies and portal notifications, supplier sync, product image, delete cascade); 9 need no port (see `server/workflows/ported.json`). Quirks of the Deluge scripts are kept and marked "mirrors Zoho" in `tests/inquiry-workflows.test.js`.
+- `server/books/client.mjs`: Zoho Books v3 / Inventory v1 client with its own OAuth refresh token (`ZOHO_BOOKS_*`), token refresh, 429 backoff, injectable fetch (tests never touch Books).
+- Custom APIs ported (`server/books/apis.mjs`, `server/books/estimates.mjs`): `create_books_contact`, `add_item_by_id`, `create_estimate`. They need the Books client configured; until then they answer "Zoho Books is not configured". Two deliberate differences in `create_estimate`: an empty `quote_group` no longer matches unrelated inquiries, and a Books outage no longer clears the project's estimate id (only "not found" does).
+- Port Status now: 6 of 21 custom APIs, 5 of 43 functions, 8 of 165 form workflows.
+- Not verified against Zoho yet: that Zoho runs these workflows the same way (oracle comparison on Zoho Development), and any live Books call. `TONY_PORTAL_EMAIL`, `FENTENG_PORTAL_EMAIL` and `APP_BASE_URL` must be set for the supplier notifications to reach the portals.
+
 **Postgres data layer and Zoho data export/import (Phase 1-2 of [[Plan - Full Migration Off Zoho Creator]])**
 - Direction: the Creator app is no longer used (left in place), data moves to Postgres, module by module.
 - `tools/export-zoho-data.mjs`: read-only backup of every form to `data/zoho-backup/` (Development: 88 of 90 forms, 3,663 rows; `Pick_Up_Request_Form` and `Shipment_Order_Form` have no readable report; 34 forms may hide columns).

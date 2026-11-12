@@ -67,7 +67,7 @@ export function createZohoApi({
   async function acquire() { while (active >= MAX_CONCURRENT) await new Promise((resolve) => waiters.push(resolve)); active++; }
   function release() { active--; waiters.shift()?.(); }
 
-  async function request(service, method, path, { query = {}, body } = {}) {
+  async function request(service, method, path, { query = {}, body, binary = false } = {}) {
     if (!isConfigured()) {
       throw new BooksError('Zoho Books is not configured: set ZOHO_BOOKS_CLIENT_ID, ZOHO_BOOKS_CLIENT_SECRET, ZOHO_BOOKS_REFRESH_TOKEN and ZOHO_BOOKS_ORG_ID.', { code: 'not_configured' });
     }
@@ -87,6 +87,8 @@ export function createZohoApi({
         });
         if (res.status === 401 && !refreshedOnce) { refreshedOnce = true; await accessToken(true); continue; }
         if (res.status === 429 && tries429 < MAX_RETRIES_429) { await sleep(1000 * 2 ** tries429++); continue; }
+        // A file (an item's image): hand the bytes back as they are.
+        if (binary && res.ok) return { buffer: Buffer.from(await res.arrayBuffer()), contentType: res.headers?.get?.('content-type') || '' };
         const text = await res.text();
         let json = null;
         try { json = JSON.parse(text); } catch { /* not JSON */ }
@@ -101,6 +103,7 @@ export function createZohoApi({
 
   const service = (name) => ({
     get: (path, opts) => request(name, 'GET', path, opts),
+    download: (path, opts) => request(name, 'GET', path, { ...opts, binary: true }),
     post: (path, body, opts) => request(name, 'POST', path, { ...opts, body }),
     put: (path, body, opts) => request(name, 'PUT', path, { ...opts, body }),
     delete: (path, opts) => request(name, 'DELETE', path, opts),

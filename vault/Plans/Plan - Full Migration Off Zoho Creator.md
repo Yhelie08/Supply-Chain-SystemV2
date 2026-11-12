@@ -53,6 +53,8 @@ Known gap: `invokeCustomApi` in `server/zoho/adapter.mjs` calls the local port i
 - [ ] Railway variables set: Zoho credentials, `ZOHO_ENV`, database URL, `BACKEND`.
 
 ## Phase 3 - Procurement (admin screens)
+Status 2026-11-12: workflow hooks, Books/Inventory client and the Inquiry stage are built and tested (mocks); open: Books credentials from the owner, an oracle comparison against Zoho Development, then PR, PO, Shipments, Receiving.
+
 Port in pipeline order, because each stage creates the records the next one uses.
 
 | Stage | Workflows | To port |
