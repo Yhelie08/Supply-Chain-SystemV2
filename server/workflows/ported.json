@@ -1,0 +1,55 @@
+{
+  "_about": "Which Zoho form workflows (by name in zoho-export/parsed/workflows.json) are ported, and which need no port. tools/build-module-readmes.mjs reads this for Port Status; tests/workflow-ports.test.js checks every name exists.",
+  "Inquiry_Form": {
+    "ported": [
+      "INQ_Auto_Populate_Supplie1",
+      "Supplier_Populate_From_IN",
+      "Stage_Inquiry_Changed",
+      "Delete_Item_On_Supplier",
+      "Item_Image_Create_Update",
+      "INQ_Check_Readiness",
+      "INQ_AutoFill_Product_Imag",
+      "INQ_Generate_Number"
+    ],
+    "nativeFormOnly": [
+      "INQ_Load_Unit_Choices",
+      "INQ_Default_All_Suppliers",
+      "INQ_AutoFill_Customer_Typ",
+      "Selected_Uncheck_Others",
+      "INQ_AutoFill_Item_Details1",
+      "INQ_AutoFill_Project_Name",
+      "Disable_Supplier_Quotes_L"
+    ],
+    "notNeeded": {
+      "Notify_Suppliers_on_Inqui": "inactive in Zoho",
+      "Log_Updated_Itemm": "has no script"
+    }
+  },
+  "Purchase_Request1": {
+    "ported": [
+      "PR_Generate_Number",
+      "PR_Sync_Supplier_Load_Bal",
+      "PR_Sync_Supplier_Selected",
+      "PR_Check_Readiness",
+      "PR_Set_Default_Status",
+      "PR_Lock_After_PO1",
+      "PR_Populate_From_PR",
+      "PR_Changed",
+      "PR_Deleted",
+      "PR_Export_Selected_Suppli",
+      "PR_Compute_Shipment_Timel",
+      "PR_Set_Shipment_Mode",
+      "PR_Compute_Priority",
+      "PR1_Sync_Own_Image"
+    ],
+    "nativeFormOnly": [
+      "PR_AutoFill_Item_Details",
+      "autofill_customer_type",
+      "Select_Unselect_Supplier",
+      "PR_Lock_UI_Fields"
+    ],
+    "notNeeded": {
+      "Notify_on_Purchase_Reques1": "inactive in Zoho"
+    }
+  }
+}

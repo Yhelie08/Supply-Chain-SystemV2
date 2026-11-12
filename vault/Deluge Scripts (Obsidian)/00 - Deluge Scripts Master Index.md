@@ -18,7 +18,7 @@ Every Deluge script, workflow and form/report definition in the **Supply Chain A
 > A `_variants/` folder means two copies of that script DISAGREE and neither was auto-resolved. Get the live Deluge before trusting either.
 
 > [!SUCCESS] Current state (2026-11-12)
-> The widgets now run outside Zoho on our own server, behind a login, hosted on Railway. Start with [[00 - Current System]]; what is still Zoho-only is in [[00 - Port Status]]; history in [[00 - Change Log]]; the look in [[00 - Design System]].
+> The widgets now run outside Zoho on our own server, behind a login, hosted on Railway, with the business data moving to Postgres. Start with [[00 - Current System]]; what is still Zoho-only is in [[00 - Port Status]] and, by section with sizes, in [[00 - Port Checklist]]; how to port the next script in [[00 - Porting a Workflow]]; the plan in [[Plan - Full Migration Off Zoho Creator]] and, for Procurement, [[Plan - Finish Procurement]]; history in [[00 - Change Log]]; the look in [[00 - Design System]].
 > The widget source for every tab is in the repository under `modules/<Section>/<Tab>/`, and each section has a README there listing its forms, reports, functions and workflows.
 
 > [!WARNING] Old file links

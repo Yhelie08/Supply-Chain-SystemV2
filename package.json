@@ -4,7 +4,8 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node server/index.mjs",
+    "dev": "node --env-file-if-exists=.env server/index.mjs",
+    "dev:pg": "node --env-file-if-exists=.env tools/dev-pg.mjs",
     "dev:prototype": "vite",
     "build": "vite build",
     "preview": "vite preview",
@@ -12,15 +13,18 @@
     "test": "node --test \"tests/*.test.js\"",
     "test:ui": "vitest run",
     "test:all": "npm test && npm run test:ui",
-    "server": "node server/index.mjs",
+    "server": "node --env-file-if-exists=.env server/index.mjs",
     "parse-ds": "node tools/parse-ds.mjs",
-    "start": "node server/index.mjs"
+    "start": "node --env-file-if-exists=.env server/index.mjs"
   },
   "dependencies": {
+    "pg": "^8.23.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@electric-sql/pglite-socket": "^0.2.19",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.9",

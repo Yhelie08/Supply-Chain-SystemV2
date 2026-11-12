@@ -13,14 +13,14 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Part | Total | Ported |
 |---|---:|---:|
-| Deluge functions | 43 | 2 |
-| Custom APIs called by widgets | 21 | 3 |
-| Form workflows (on validate, on success, field rules) | 165 | 0 |
+| Deluge functions | 43 | 5 |
+| Custom APIs called by widgets | 21 | 6 |
+| Form workflows (on validate, on success, field rules) | 165 | 22 |
 | Scheduled workflows | 6 | 0 |
 | Report-button functions | 16 | 0 |
 
 > [!INFO] What "Ported" means
-> The function's logic runs in `server/custom-apis.mjs` against the local database. Zoho Books and CMS calls are not connected, so those parts are skipped.
+> The function's logic runs in `server/custom-apis.mjs` (Books ones in `server/books/apis.mjs`) against the app's database. Zoho Books calls need the Books client configured (see `.env.example`); CMS calls are not connected, so those parts are skipped.
 
 ## Deluge functions
 
@@ -30,7 +30,7 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `acknowledgePOTony` | `acknowledge_po_tony` | Tony Fan | Not ported yet | `zoho-export/parsed/functions/acknowledgePOTony.dg` |
 | `addCustomerByIdBooks` | — | — | Not ported yet | `zoho-export/parsed/functions/addCustomerByIdBooks.dg` |
 | `addDmsScheduleRequestMessage` | — | — | Not ported yet | `zoho-export/parsed/functions/addDmsScheduleRequestMessage.dg` |
-| `addItemByIdBooks` | `add_item_by_id` | Procurement, Fulfillment | Not ported yet | `zoho-export/parsed/functions/addItemByIdBooks.dg` |
+| `addItemByIdBooks` | `add_item_by_id` | Procurement, Fulfillment | Ported | `zoho-export/parsed/functions/addItemByIdBooks.dg` |
 | `Approve_Multiple_PRs` | — | — | Not ported yet | `zoho-export/parsed/functions/Approve_Multiple_PRs.dg` |
 | `approvePOFenteng` | — | — | Not ported yet | `zoho-export/parsed/functions/approvePOFenteng.dg` |
 | `approvePOHC` | — | — | Not ported yet | `zoho-export/parsed/functions/approvePOHC.dg` |
@@ -43,8 +43,8 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `confirmDmsScheduleRequest` | `confirm_dms_schedule_request` | Delivery Management | Ported | `zoho-export/parsed/functions/confirmDmsScheduleRequest.dg` |
 | `Create_Estimate_Inq_Fn` | — | — | Not ported yet | `zoho-export/parsed/functions/Create_Estimate_Inq_Fn.dg` |
 | `createBinReceivingWidget` | `create_bin_receiving` | Procurement | Not ported yet | `zoho-export/parsed/functions/createBinReceivingWidget.dg` |
-| `createBooksContact` | `create_books_contact` | Procurement | Not ported yet | `zoho-export/parsed/functions/createBooksContact.dg` |
-| `createEstimateForInquiry` | `create_estimate` | Procurement | Not ported yet | `zoho-export/parsed/functions/createEstimateForInquiry.dg` |
+| `createBooksContact` | `create_books_contact` | Procurement | Ported | `zoho-export/parsed/functions/createBooksContact.dg` |
+| `createEstimateForInquiry` | `create_estimate` | Procurement | Ported | `zoho-export/parsed/functions/createEstimateForInquiry.dg` |
 | `createExceptionControlFromComplaint` | — | — | Not ported yet | `zoho-export/parsed/functions/createExceptionControlFromComplaint.dg` |
 | `createNewCustomerBooks` | — | — | Not ported yet | `zoho-export/parsed/functions/createNewCustomerBooks.dg` |
 | `createPackageFF` | `create_package_ff` | Fulfillment | Not ported yet | `zoho-export/parsed/functions/createPackageFF.dg` |
@@ -76,15 +76,15 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 |---|---|---|
 | `acknowledge_po_fenteng` | `acknowledgePOFenteng` | Not ported yet |
 | `acknowledge_po_tony` | `acknowledgePOTony` | Not ported yet |
-| `add_item_by_id` | `addItemByIdBooks` | Not ported yet |
+| `add_item_by_id` | `addItemByIdBooks` | Ported |
 | `approve_rr_fenteng` | `approveRRFenteng` | Not ported yet |
 | `approve_rr_tony` | `approveRRTony` | Not ported yet |
 | `check_payment_status` | `checkPaymentStatus` | Not ported yet |
 | `clone_shipment_for_replacement` | `cloneShipmentForReplacement` | Not ported yet |
 | `confirm_dms_schedule_request` | `confirmDmsScheduleRequest` | Ported |
 | `create_bin_receiving` | `createBinReceivingWidget` | Not ported yet |
-| `create_books_contact` | `createBooksContact` | Not ported yet |
-| `create_estimate` | `createEstimateForInquiry` | Not ported yet |
+| `create_books_contact` | `createBooksContact` | Ported |
+| `create_estimate` | `createEstimateForInquiry` | Ported |
 | `create_package_ff` | `createPackageFF` | Not ported yet |
 | `create_receiving_from_shipment` | `createReceivingFromShipmentWidget` | Not ported yet |
 | `create_rr_fenteng` | `createRRFenteng` | Not ported yet |
@@ -98,4 +98,4 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 ## Workflows
 
-None of the 187 workflows run locally yet. They are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.
+22 of the 165 form workflows run in the app (the ported ones are listed in `server/workflows/ported.json`); another 14 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.

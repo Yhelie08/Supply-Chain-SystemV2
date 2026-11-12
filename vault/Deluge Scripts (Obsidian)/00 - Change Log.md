@@ -10,6 +10,52 @@ tags:
 Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - Port Status]].
 
 ## 2026-11-12
+
+**Procurement, Purchase Request stage (`server/workflows/purchase-request.mjs`)**
+- 14 of the 20 `Purchase_Request1` workflows ported; 5 need no port (native-form only or inactive); 1 not yet: `PR1_Forecast_Stamp`, which only calls the forecast engine `fcPrToPreOrder` -> `fcStampPurchaseRequest` (458 lines, shared by the Fulfillment forecast workflows).
+- The "on validate" scripts run as steps of one function in Zoho's order (number, supplier load balancing and recommended supplier, selected supplier, readiness, default status, lock after PO, shipment timeline, shipment mode, priority); "on success" hooks make the Tony and Fenteng copies, keep them in step on edit, stamp `Last_Update`, copy the item photo, and delete the copies with the PR.
+- Quirks kept and tested ("mirrors Zoho"): readiness is worked out before the shipment mode is set, so a new PR is ready one save later. Reading `input.Supplier_Target_Date` in the timeline script is taken as the field `supplier_target_date`; Zoho Development has to confirm it. `PR_Export_Selected_Supplier` assigns the final price to a variable it never uses, so that part is a no-op.
+- Shared code moved to `server/workflows/suppliers.mjs` (the two supplier portals, `supplierIndex`, `quoteBooksId`) and date helpers added to `deluge.mjs`. Subform numbers written by the workflows are text with two decimals, like the rows exported from Zoho.
+- Port Status now: 22 of 165 form workflows.
+
+**Procurement, Inquiry stage on the Postgres backend (Phase 3 of [[Plan - Full Migration Off Zoho Creator]])**
+- Branch `feature/postgres-data-layer`, committed locally in groups, not pushed.
+- `server/workflows/index.mjs`: workflow hooks (`beforeAdd`, `afterAdd`, `beforeUpdate`, `afterUpdate`, `beforeDelete`, `afterDelete`) around the Postgres store; widget writes through `/api/*` run them, writes made by a hook or a custom API do not. Only "on validate" (before) and "on success" (after) events are ported, because "on load", "field rules" and "on user input" only drive Zoho's own forms.
+- `server/workflows/inquiry.mjs`: 8 of the 19 `Inquiry_Form` workflows (numbering, quote rows, readiness checklist and margin, supplier copies and portal notifications, supplier sync, product image, delete cascade); 9 need no port (see `server/workflows/ported.json`). Quirks of the Deluge scripts are kept and marked "mirrors Zoho" in `tests/inquiry-workflows.test.js`.
+- `server/books/client.mjs`: Zoho Books v3 / Inventory v1 client with its own OAuth refresh token (`ZOHO_BOOKS_*`), token refresh, 429 backoff, injectable fetch (tests never touch Books).
+- Custom APIs ported (`server/books/apis.mjs`, `server/books/estimates.mjs`): `create_books_contact`, `add_item_by_id`, `create_estimate`. They need the Books client configured; until then they answer "Zoho Books is not configured". Two deliberate differences in `create_estimate`: an empty `quote_group` no longer matches unrelated inquiries, and a Books outage no longer clears the project's estimate id (only "not found" does).
+- Port Status now: 6 of 21 custom APIs, 5 of 43 functions, 8 of 165 form workflows.
+- Not verified against Zoho yet: that Zoho runs these workflows the same way (oracle comparison on Zoho Development), and any live Books call. `TONY_PORTAL_EMAIL`, `FENTENG_PORTAL_EMAIL` and `APP_BASE_URL` must be set for the supplier notifications to reach the portals.
+
+**Postgres data layer and Zoho data export/import (Phase 1-2 of [[Plan - Full Migration Off Zoho Creator]])**
+- Direction: the Creator app is no longer used (left in place), data moves to Postgres, module by module.
+- `tools/export-zoho-data.mjs`: read-only backup of every form to `data/zoho-backup/` (Development: 88 of 90 forms, 3,663 rows; `Pick_Up_Request_Form` and `Shipment_Order_Form` have no readable report; 34 forms may hide columns).
+- `server/model.mjs` and `server/criteria.mjs`: the form/column model and the Zoho criteria compiler, moved out of `db.mjs` so SQLite and Postgres share them (`db.mjs` re-exports them).
+- `server/pg/`: `schema.mjs` (tables from the export, `ID` is BIGINT and always a string in JavaScript because Zoho IDs have 19 digits), `store.mjs` (async store: SQL filtering, paging, batched lookups), `criteria-sql.mjs` (Zoho criteria to SQL, falls back to the JS filter), `import.mjs`, `api.mjs`, `pool.mjs`. `BACKEND=pg` selects it; needs `DATABASE_URL`.
+- `tools/import-zoho-backup.mjs <backup-dir> [--dry-run] [--replace] [--only=...]`: loads a backup keeping Zoho IDs, checks row counts per form, skips tables that already have rows unless `--replace`.
+- `server/custom-apis.mjs` handlers are async and take the data layer as an argument; `server/index.mjs` no longer touches SQLite for file download/upload or table counts.
+- Tests: `tests/pg-store.test.js` and `tests/pg-import.test.js` run on PGlite (Postgres in WebAssembly). End to end on a local Postgres through the real `pg` driver: Development backup imported, `tools/smoke-zoho-reports.mjs` 65 reports / 29 tabs with 0 failing, add/update/delete over HTTP, a 1,000-row `Items` page in about 13 ms.
+- `npm run dev:pg` (`tools/dev-pg.mjs`) runs the whole app locally on PGlite kept in `data/pglite`, loading the newest `data/zoho-backup` the first time. Checked: 65 reports, 0 failing.
+- Not done yet: file and image fields still hold Zoho API paths (`/api/v2.1/...`) and must be downloaded into our storage; the Railway Postgres service exists but is empty and `supply-chain-app` has no Zoho or `DATABASE_URL` variables yet.
+
+**Zoho Backend Hybrid Integration (Option B - Cloud Front Door)**
+- Generated and saved permanent OAuth Refresh Token for dedicated Zoho Service Account in `server/zoho-credentials.json` (secured via `.gitignore`).
+- **Step 0 Verification PASSED:** Executed full verification in Zoho Development Sandbox:
+  - `READ`: Verified reports API (`GET /creator/v2.1/data/homecartel/supply-chain-app/report/All_Suppliers`) returning sandbox data for Tony Fan and Fenteng Lighting.
+  - `WRITE`: Created test record in `App_Notifications` form (`POST .../form/App_Notifications`, ID `4662244000017203019`).
+  - `READ BY ID`: Retrieved newly inserted record.
+  - `DELETE`: Cleaned up and deleted test record.
+- **Built Zoho Adapter layer (`server/zoho/`):**
+  - `auth.mjs`: Automatic OAuth access token refresh management with IPv4-first DNS configuration.
+  - `limits.mjs`: 15s short-TTL cache, in-flight request deduplication, queue enforcing ≤45 req/min and ≤5 concurrent calls, and admin metrics tracker.
+  - `adapter.mjs`: Standardized REST v2.1 adapter implementing `getRecords`, `getRecordById`, `addRecords`, `updateRecordById`, `updateRecords`, `deleteRecordById`, and `invokeCustomApi`.
+- **Integrated with `server/index.mjs`:**
+  - Added backend selector (`BACKEND=zoho` by default, `BACKEND=local` for offline SQLite fallback).
+  - Added async dispatching and live `/api/metrics` endpoint.
+  - Comprehensive tests in `tests/test-zoho-adapter.mjs` passing with 0ms cached retrieval time.
+- **Obsidian Vault Updates:**
+  - Added `vault/Actions/00 - Actions Execution & Zoho Adapter Routing.md` documenting how all 80 workflow actions route through the Zoho adapter.
+  - Updated `vault/Plans/Plan - Cloud Front Door (Zoho Backend).md` with decisions on Railway users, Development environment targeting, supplier portals inclusion, and verified tests.
 - Updated these Obsidian notes: added [[00 - Current System]], [[00 - Design System]], [[00 - Port Status]] (generated) and this log; the two index notes now point to them.
 
 ## 2026-11-11

@@ -1,6 +1,9 @@
-// Supply Chain App server: serves the original Zoho widgets with a local SDK stand-in, answers
-// their data calls from SQLite, and requires sign-in for everything.
-//   npm start  ->  http://localhost:4000   (env: PORT, DATA_DIR, ADMIN_EMAIL, ADMIN_PASSWORD)
+// Supply Chain App server: serves the original Zoho widgets with a local SDK stand-in, answers their
+// data calls from the backend chosen by BACKEND (pg = Postgres, zoho = the Creator API, local = SQLite),
+// and requires sign-in for everything. Users and sessions are always in SQLite.
+//   npm start  ->  http://localhost:4000   (env: PORT, DATA_DIR, ADMIN_EMAIL, ADMIN_PASSWORD, BACKEND, DATABASE_URL; see .env.example)
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -51,7 +54,7 @@ function applyTheme(html, line) {
 }
 const inside = (base, p) => { const f = path.resolve(base, p); return f.startsWith(base + path.sep) ? f : null; };
 
-// Backend mode: 'zoho' (default, targets live Zoho Creator API) or 'local' (offline SQLite)
+// Backend mode: 'zoho' (default, targets live Zoho Creator API), 'local' (offline SQLite) or 'pg' (Postgres)
 const BACKEND = process.env.BACKEND || 'zoho';
 
 // ---------- the SDK operations ----------
@@ -77,10 +80,22 @@ const localApi = {
     return { code: 3000, result };
   },
   deleteRecordById: (b) => ({ code: 3000, data: { ID: store.deleteRecord(b.report_name, b.id) }, message: 'Record Deleted Successfully!' }),
-  invokeCustomApi: (b) => ({ code: 3000, result: invokeCustomApi(b.api_name, b.payload) }),
+  invokeCustomApi: async (b) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload) }),
 };
 
-const api = BACKEND === 'zoho' ? zohoAdapter : localApi;
+const DATA_SOURCE = BACKEND === 'pg' ? 'Postgres' : BACKEND === 'zoho' ? `Zoho Creator (${process.env.ZOHO_ENV || 'development'})` : 'Local SQLite';
+
+// 'pg' keeps the business data in Postgres (DATABASE_URL); users and sessions stay in SQLite for now.
+let api;
+let tableCounts = () => store.tableCounts();
+if (BACKEND === 'pg') {
+  const { startPg } = await import('./pg/api.mjs');
+  const pg = await startPg(invokeCustomApi);
+  api = pg.api;
+  tableCounts = () => pg.store.tableCounts();
+} else {
+  api = BACKEND === 'zoho' ? zohoAdapter : localApi;
+}
 
 // ---------- sign-in helpers ----------
 const cookies = (req) => Object.fromEntries(String(req.headers.cookie || '').split(/;\s*/).filter((c) => c.includes('='))
@@ -99,7 +114,8 @@ const jsonForScript = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
 // Account and user-management endpoints (signed-in users; /api/admin/* admins only).
 async function accountApi(req, res, p, me) {
   try {
-    if (p === '/api/me') return send(res, 200, me);
+    // Admins also see where the data comes from (shown in the account menu).
+    if (p === '/api/me') return send(res, 200, me.role === 'admin' ? { ...me, dataSource: DATA_SOURCE } : me);
     if (p === '/api/account/password' && req.method === 'POST') {
       const b = await readJson(req);
       auth.changeOwnPassword(me.id, b.current, b.next);
@@ -185,13 +201,13 @@ async function handle(req, res) {
     const fileName = `${Date.now()}_${String(name).replace(/[^\w.-]+/g, '_')}`;
     fs.writeFileSync(path.join(UPLOADS, fileName), await readBody(req));
     const fileUrl = `/uploads/${fileName}`;
-    try { store.updateRecord(report, id, { [field]: fileUrl }); } catch (e) { return send(res, 200, { code: e.code || 3000, message: e.message }); }
+    try { await api.updateRecordById({ report_name: report, id, payload: { data: { [field]: fileUrl } } }); } catch (e) { return send(res, 200, { code: e.code || 3000, message: e.message }); }
     return send(res, 200, { code: 3000, data: { filepath: fileUrl, ID: id }, message: 'File uploaded' });
   }
   if (req.method === 'POST' && p === '/api/readFile') {
     const b = await readJson(req);
     try {
-      const rec = store.getRecordById(b.report_name, b.id);
+      const rec = (await api.getRecordById({ report_name: b.report_name, id: b.id })).data;
       const v = String(rec[b.field_name] || '');
       const f = v.startsWith('/uploads/') ? inside(UPLOADS, v.slice(9)) : null;
       if (!f || !fs.existsSync(f)) return send(res, 404, { code: 9280, message: 'File not found' });
@@ -211,7 +227,7 @@ async function handle(req, res) {
   }
   if (p === '/api/metrics') return send(res, 200, metrics);
   if (p === '/api/pages') return send(res, 200, SECTIONS);
-  if (p === '/api/tables') return send(res, 200, store.tableCounts());
+  if (p === '/api/tables') return send(res, 200, await tableCounts());
   if (p.startsWith('/uploads/')) { const f = inside(UPLOADS, p.slice(9)); return f ? serveFile(res, f) : send(res, 404, 'Not found', 'text/plain'); }
   if (p.startsWith('/w/')) {
     // /w/<Section>/<Tab>/<file>  ->  modules/<Section>/<Tab>/app/<file>

@@ -18,11 +18,11 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 
 | Custom API | Deluge function | Local app |
 |---|---|---|
-| `add_item_by_id` | [addItemByIdBooks](../../zoho-export/parsed/functions/addItemByIdBooks.dg) | Not ported yet |
+| `add_item_by_id` | [addItemByIdBooks](../../zoho-export/parsed/functions/addItemByIdBooks.dg) | Ported |
 | `clone_shipment_for_replacement` | [cloneShipmentForReplacement](../../zoho-export/parsed/functions/cloneShipmentForReplacement.dg) | Not ported yet |
 | `create_bin_receiving` | [createBinReceivingWidget](../../zoho-export/parsed/functions/createBinReceivingWidget.dg) | Not ported yet |
-| `create_books_contact` | [createBooksContact](../../zoho-export/parsed/functions/createBooksContact.dg) | Not ported yet |
-| `create_estimate` | [createEstimateForInquiry](../../zoho-export/parsed/functions/createEstimateForInquiry.dg) | Not ported yet |
+| `create_books_contact` | [createBooksContact](../../zoho-export/parsed/functions/createBooksContact.dg) | Ported |
+| `create_estimate` | [createEstimateForInquiry](../../zoho-export/parsed/functions/createEstimateForInquiry.dg) | Ported |
 | `create_receiving_from_shipment` | [createReceivingFromShipmentWidget](../../zoho-export/parsed/functions/createReceivingFromShipmentWidget.dg) | Not ported yet |
 | `create_rr_fenteng` | [createRRFenteng](../../zoho-export/parsed/functions/createRRFenteng.dg) | Not ported yet |
 | `create_rr_main` | [createRRMain](../../zoho-export/parsed/functions/createRRMain.dg) | Not ported yet |

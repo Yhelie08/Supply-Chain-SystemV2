@@ -21,7 +21,7 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 
 | Custom API | Deluge function | Local app |
 |---|---|---|
-| `add_item_by_id` | [addItemByIdBooks](../../zoho-export/parsed/functions/addItemByIdBooks.dg) | Not ported yet |
+| `add_item_by_id` | [addItemByIdBooks](../../zoho-export/parsed/functions/addItemByIdBooks.dg) | Ported |
 | `check_payment_status` | [checkPaymentStatus](../../zoho-export/parsed/functions/checkPaymentStatus.dg) | Not ported yet |
 | `create_package_ff` | [createPackageFF](../../zoho-export/parsed/functions/createPackageFF.dg) | Not ported yet |
 

@@ -45,13 +45,6 @@ export async function getAccessToken() {
 
   const creds = loadCredentials();
 
-  // If credentials already have an access token with unknown expiry, try it once if we haven't refreshed yet
-  if (!cachedToken && creds.access_token) {
-    cachedToken = creds.access_token;
-    tokenExpiresAt = now + 50 * 60 * 1000; // assume 50 mins default
-    return cachedToken;
-  }
-
   console.log('[Zoho Auth] Refreshing access token via Zoho Accounts...');
   const params = new URLSearchParams();
   params.append('grant_type', 'refresh_token');
@@ -82,6 +75,12 @@ export async function getAccessToken() {
 
   console.log('[Zoho Auth] Access token successfully refreshed. Expires in', data.expires_in, 'seconds.');
   return cachedToken;
+}
+
+// Forget the cached token so the next getAccessToken() refreshes (used when Zoho answers 1030).
+export function invalidateToken() {
+  cachedToken = null;
+  tokenExpiresAt = 0;
 }
 
 export function getConfig() {

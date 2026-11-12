@@ -3,7 +3,11 @@
 //
 // Calls to Zoho Books and the CMS app are external integrations; they are skipped locally and the
 // response says so, instead of pretending they ran.
-import { addRecord, find, updateRecord } from './db.mjs';
+// The data layer is the SQLite store by default; the Postgres backend passes its own store as `data`.
+// Both offer find / addRecord / updateRecord, and every call is awaited so either one works.
+import * as sqlite from './db.mjs';
+import { add_item_by_id, create_books_contact } from './books/apis.mjs';
+import { create_estimate } from './books/estimates.mjs';
 
 const ok = (message, extra = {}) => ({ status: 'success', message, ...extra });
 const fail = (message) => ({ status: 'error', message });
@@ -14,23 +18,23 @@ const cmsSkipped = () => ({ status: 'skipped', message: 'CMS sync is off in the 
 
 export const customApis = {
   // functions/confirmDmsScheduleRequest.dg
-  confirm_dms_schedule_request({ dmsRecordId }) {
+  async confirm_dms_schedule_request({ dmsRecordId }, data = sqlite) {
     const recId = String(dmsRecordId || '').trim();
     if (!recId) return fail('dmsRecordId is required.');
-    const [rec] = find('DMS_Schedule_Request', (r) => r.ID === recId);
+    const [rec] = await data.find('DMS_Schedule_Request', (r) => r.ID === recId);
     if (!rec) return fail('DMS Schedule Request not found.');
     // Zoho also pulls the shipping address and line items from the Books sales order
     // (Books_Sales_Order_ID). Books is not connected locally, so those stay blank.
-    const data = {
+    const sa = {
       Sales_Order: rec.Sales_Order_Number,
       Customer_Name: { last_name: rec.Customer_Name },
       Customer_Address: '', City: '', Contact: '', Email: '',
       Type_of_Delivery: rec.Type_of_Delivery || '',
     };
-    if (rec.Requested_Date) data.Requested_Delivery_Date = String(rec.Requested_Date).slice(0, 10);
-    if (rec.Requested_Time) data.Requested_Delivery_Time = String(rec.Requested_Time);
-    const newSaId = addRecord('Service_Appointment_Form', data);
-    updateRecord('DMS_Schedule_Request', recId, { Status: 'Confirmed', Service_Appointment_Record_ID: newSaId }, { byForm: true });
+    if (rec.Requested_Date) sa.Requested_Delivery_Date = String(rec.Requested_Date).slice(0, 10);
+    if (rec.Requested_Time) sa.Requested_Delivery_Time = String(rec.Requested_Time);
+    const newSaId = await data.addRecord('Service_Appointment_Form', sa);
+    await data.updateRecord('DMS_Schedule_Request', recId, { Status: 'Confirmed', Service_Appointment_Record_ID: newSaId }, { byForm: true });
     return ok('Confirmed — Service Appointment created.', {
       serviceAppointmentId: newSaId, cmsPushStatus: cmsSkipped().status,
       itemPatchStatus: rec.Books_Sales_Order_ID ? 'skipped_books_offline' : 'skipped', dateFormatError: '',
@@ -38,12 +42,12 @@ export const customApis = {
   },
 
   // functions/declineDmsScheduleRequest.dg
-  decline_dms_schedule_request({ dmsRecordId }) {
+  async decline_dms_schedule_request({ dmsRecordId }, data = sqlite) {
     const recId = String(dmsRecordId || '').trim();
     if (!recId) return fail('dmsRecordId is required.');
-    const [rec] = find('DMS_Schedule_Request', (r) => r.ID === recId);
+    const [rec] = await data.find('DMS_Schedule_Request', (r) => r.ID === recId);
     if (!rec) return fail('DMS Schedule Request not found.');
-    updateRecord('DMS_Schedule_Request', recId, { Status: 'Declined' }, { byForm: true });
+    await data.updateRecord('DMS_Schedule_Request', recId, { Status: 'Declined' }, { byForm: true });
     return ok('Declined.', { cmsPushStatus: cmsSkipped().status });
   },
 
@@ -66,16 +70,17 @@ export const customApis = {
   create_rr_tony: notPorted('createRRTony'),
   create_rr_fenteng: notPorted('createRRFenteng'),
   check_payment_status: notPorted('checkPaymentStatus'),
-  // Zoho Books integrations
-  add_item_by_id: notPorted('addItemByIdBooks'),
-  create_books_contact: notPorted('createBooksContact'),
-  create_estimate: notPorted('createEstimateForInquiry'),
+  // Zoho Books integrations (need ctx.books, so they run on BACKEND=pg once Books is configured)
+  add_item_by_id,
+  create_books_contact,
+  create_estimate,
 };
 
-export function invokeCustomApi(name, payload) {
+// ctx = { books } : the Zoho Books/Inventory client (server/books/client.mjs), when the backend has one.
+export async function invokeCustomApi(name, payload, data = sqlite, ctx = {}) {
   const fn = customApis[name];
   if (!fn) return fail(`Unknown custom API "${name}".`);
-  return fn(payload || {});
+  return fn(payload || {}, data, ctx);
 }
 
 
