@@ -3,7 +3,7 @@ title: "Plan - Delivery Management"
 tags:
   - plan
   - delivery-management
-status: D1 and D2 done 2026-11-12 on branch feature/delivery-management (D1, D2a, D2b pushed; D2c committed locally); D3 next
+status: D1 and D2 done 2026-11-12 on branch feature/delivery-management (D1, D2a, D2b pushed; D2c committed locally); D3 to D6 approved as one plan, in progress
 date: 2026-11-12
 ---
 
@@ -53,14 +53,19 @@ No schedule belongs to Delivery Management except the forecast jobs; `DMS_Site_C
 - To check on Zoho Development with the owner's OK: whole-number division in the clock, the printed decimals, and whether `insert into` fires the form's workflows.
 - This is where Zoho's quirks matter most: keep them, mark them "mirrors Zoho", and compare with Zoho Development (needs the owner's OK for any write).
 
-**D3. Requests coming in**
-- `SR_Created_Make_Appointme` (185), `FW_Completion_Schedule_Sy` (191), `FW_Reschedule_To_Exceptio` (58), and `SA_Geocode_Address` (159, after the key is rotated).
+**The rest, approved 2026-11-12 as one plan** (each piece: one file in `server/modules/delivery-management/`, tests in `tests/delivery-management/`, one commit; pushes and PRs wait for the owner's OK):
 
-**D4. Inventory APIs**
-- `create_shipment_order` and `create_sales_return_books` need the Books/Inventory client (`server/books/client.mjs`, already there) and a **live check** against Books, which needs a Books OAuth client and the owner's OK. Tests use a stand-in Books, like the Procurement ones.
+**D3a. `SR_Created_Make_Appointme` (185)**, `service-request.mjs`: the bridge from Fulfillment (the "To Ship" widget is the only writer of Service Requests). Only when `Service_Appointment_ID` is blank: creates the Service Appointment (Queued, site Pending), keeps `Delivery_Type` only if it is one of the 8 valid types, copies the items with PAC, one `Package_Shipments` row per package, writes the appointment id and `SR_Status = "Scheduling"` back (a retry never doubles it). Agree the fields with the Fulfillment owner.
+**D3b. `FW_Reschedule_To_Exceptio` (58)**, `field-work.mjs`: Reschedule Requested raises a Dispatch exception for the first appointment with that sales order and sets `Reschedule_Processed`.
+**D3c. `FW_Completion_Schedule_Sy` (191)**, `field-work.mjs`: Installation Complete marks the appointment Completed, appends the actual times, re-times the team's pending suggestions that day, flags later jobs as "Schedule Drift" and an SO mismatch as an exception.
+**D3d. `SA_Geocode_Address` (159)**, `geocode.mjs`: Geoapify. The old key is public in git and is **not copied**; the key is `GEOAPIFY_API_KEY` in `.env`; unset means no call and no write. Live check waits for the rotated key.
+**D4. Inventory APIs**, `inventory-apis.mjs`: `create_shipment_order` (198) and `create_sales_return_books` (261) through `ctx.books.inventory`; "Zoho Books is not configured" when it is off; tests use a stand-in Books; the live check needs the Books OAuth client and the owner's OK.
+**D5. Forecast stamps (the delivery half)**, `forecast-stamp.mjs`: `fcStampDelivery` (192) and the 4 `*_Instant_Forecast` hooks. The engine `fcStampBySoNo` (864, shared) belongs to the forecast milestone and is an injected dependency, skipped and logged until it exists.
+**D6. The CMS link (module side)**, `cms-sync.mjs`: `upsertDmsScheduleRequest` (55) and `addDmsScheduleRequestMessage` (28) as functions and custom APIs, `pushDmsStatusToCms` (13) as an outbound call to `CMS_STATUS_URL` (skipped when unset). An inbound route with an API key for the external CMS is a core PR, started only if the team decides the CMS stays.
 
-**D5. Wait for the forecast milestone**
-- The 5 `*_Instant_Forecast` hooks and `fcStampDelivery` (191).
+PRs: PR 1 for D1 to D2c, PR 2 after D3, PR 3 after D4 to D6.
+
+**Click-through checklist (on `npm run dev:pg`, with Daily Team Availability rows for the coming days):** site confirmation; the suggestion appears; approve it; override with a different slot; a conflict on a full day; Re-Schedule; complete a Field Work; resolve an exception with Revert to System; Sales Returns; Schedule Requests.
 
 After each step: names into `server/modules/delivery-management/ported.json`, a line in [[00 - Change Log]], run `node tools/build-module-readmes.mjs && node tools/build-port-checklist.mjs`.
 
@@ -84,4 +89,7 @@ After each step: names into `server/modules/delivery-management/ported.json`, a 
 | 3 | OK to make test writes on Zoho Development for the engine comparison | repo owner |
 | 4 | Production data for the Delivery forms (the Development rows are mostly test data) | repo owner |
 | 5 | `Shipment_Order_Form` and `Pick_Up_Request_Form` have no readable report, so no backup | team |
-| 6 | The CMS push is skipped; decide later whether it is needed | team |
+| 6 | The CMS push is skipped; does the CMS stay, and how does it reach the new app (inbound route with an API key, a core PR)? | team |
+| 7 | Files: photos, signatures and video in 9 Delivery forms (Field_Work, Service_Appointment_Form, Field_Service_Site_Visit_Form, Sales_Returns_Form, Daily_Checklist_for_Vehicle, Dispatch_Checklist, Evidence_Photos, Site_Visit_Photos, Exception_Control1) still hold Zoho paths | core owner |
+| 8 | `TZ=Asia/Manila` on the server; the Custom API public key hard-coded in the Service Appointment and Service Request widgets; `CODEOWNERS` lines (needs a GitHub username) | repo owner |
+| 9 | Zoho Development comparison pass (clock division, decimals, the D1 override difference, blank reason, capacity alert, `insert into` firing workflows, whole-record `input` on edit) | repo owner's OK |

@@ -6,3 +6,4 @@ import './service-appointment.mjs';
 import './field-work.mjs';
 import './delivery-scheduling.mjs';
 import './exception-queue.mjs';
+import './service-request.mjs';
