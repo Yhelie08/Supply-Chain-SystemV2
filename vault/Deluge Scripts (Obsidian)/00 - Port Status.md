@@ -13,9 +13,9 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Part | Total | Ported |
 |---|---:|---:|
-| Deluge functions | 43 | 5 |
-| Custom APIs called by widgets | 25 | 6 |
-| Form workflows (on validate, on success, field rules) | 165 | 22 |
+| Deluge functions | 43 | 14 |
+| Custom APIs called by widgets | 25 | 9 |
+| Form workflows (on validate, on success, field rules) | 165 | 38 |
 | Scheduled workflows | 6 | 0 |
 | Report-button functions | 16 | 0 |
 
@@ -29,7 +29,7 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `acknowledgePOFenteng` | `acknowledge_po_fenteng` | Fenteng Lighting | Not ported yet | `zoho-export/parsed/functions/acknowledgePOFenteng.dg` |
 | `acknowledgePOTony` | `acknowledge_po_tony` | Tony Fan | Not ported yet | `zoho-export/parsed/functions/acknowledgePOTony.dg` |
 | `addCustomerByIdBooks` | — | — | Not ported yet | `zoho-export/parsed/functions/addCustomerByIdBooks.dg` |
-| `addDmsScheduleRequestMessage` | — | — | Not ported yet | `zoho-export/parsed/functions/addDmsScheduleRequestMessage.dg` |
+| `addDmsScheduleRequestMessage` | — | — | Ported (module integration, no inbound route yet) | `zoho-export/parsed/functions/addDmsScheduleRequestMessage.dg` |
 | `addItemByIdBooks` | `add_item_by_id` | Procurement, Fulfillment | Ported | `zoho-export/parsed/functions/addItemByIdBooks.dg` |
 | `Approve_Multiple_PRs` | — | — | Not ported yet | `zoho-export/parsed/functions/Approve_Multiple_PRs.dg` |
 | `approvePOFenteng` | `approve_po_fenteng` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOFenteng.dg` |
@@ -52,23 +52,23 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `createRRFenteng` | `create_rr_fenteng` | Procurement | Not ported yet | `zoho-export/parsed/functions/createRRFenteng.dg` |
 | `createRRMain` | `create_rr_main` | Procurement | Not ported yet | `zoho-export/parsed/functions/createRRMain.dg` |
 | `createRRTony` | `create_rr_tony` | Procurement | Not ported yet | `zoho-export/parsed/functions/createRRTony.dg` |
-| `createSalesReturnBooks` | `create_sales_return_books` | Delivery Management | Not ported yet | `zoho-export/parsed/functions/createSalesReturnBooks.dg` |
-| `createShipmentOrder` | `create_shipment_order` | Delivery Management | Not ported yet | `zoho-export/parsed/functions/createShipmentOrder.dg` |
+| `createSalesReturnBooks` | `create_sales_return_books` | Delivery Management | Ported | `zoho-export/parsed/functions/createSalesReturnBooks.dg` |
+| `createShipmentOrder` | `create_shipment_order` | Delivery Management | Ported | `zoho-export/parsed/functions/createShipmentOrder.dg` |
 | `declineDmsScheduleRequest` | `decline_dms_schedule_request` | Delivery Management | Ported | `zoho-export/parsed/functions/declineDmsScheduleRequest.dg` |
 | `diagInsertThenPatch` | — | — | Not ported yet | `zoho-export/parsed/functions/diagInsertThenPatch.dg` |
-| `dmsScheduleSlot` | `dms_reschedule` | Analytic, Fulfillment, Delivery Management | Not ported yet | `zoho-export/parsed/functions/dmsScheduleSlot.dg` |
+| `dmsScheduleSlot` | `dms_reschedule` | Analytic, Fulfillment, Delivery Management | Ported | `zoho-export/parsed/functions/dmsScheduleSlot.dg` |
 | `fcPrToPreOrder` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Not ported yet | `zoho-export/parsed/functions/fcPrToPreOrder.dg` |
 | `fcStampBySoNo` | — | Analytic, Procurement, Fulfillment, Delivery Management | Not ported yet | `zoho-export/parsed/functions/fcStampBySoNo.dg` |
-| `fcStampDelivery` | — | Analytic, Fulfillment, Delivery Management | Not ported yet | `zoho-export/parsed/functions/fcStampDelivery.dg` |
+| `fcStampDelivery` | — | Analytic, Fulfillment, Delivery Management | Ported (copies the forecast; the engine fcStampBySoNo is not ported) | `zoho-export/parsed/functions/fcStampDelivery.dg` |
 | `fcStampPurchaseRequest` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Not ported yet | `zoho-export/parsed/functions/fcStampPurchaseRequest.dg` |
 | `getItemBinLocations` | — | — | Not ported yet | `zoho-export/parsed/functions/getItemBinLocations.dg` |
 | `getReceivingBinChoices` | — | — | Not ported yet | `zoho-export/parsed/functions/getReceivingBinChoices.dg` |
 | `patchItemDetailsRetry` | — | — | Not ported yet | `zoho-export/parsed/functions/patchItemDetailsRetry.dg` |
-| `pushDmsMessageToCms` | `push_dms_message_to_cms` | Delivery Management | Skipped locally (CMS sync is off) | `zoho-export/parsed/functions/pushDmsMessageToCms.dg` |
-| `pushDmsStatusToCms` | — | Delivery Management | Not ported yet | `zoho-export/parsed/functions/pushDmsStatusToCms.dg` |
-| `reScheduleDelivery` | — | — | Not ported yet | `zoho-export/parsed/functions/reScheduleDelivery.dg` |
+| `pushDmsMessageToCms` | `push_dms_message_to_cms` | Delivery Management | Ported (skipped until CMS_MESSAGE_URL is set) | `zoho-export/parsed/functions/pushDmsMessageToCms.dg` |
+| `pushDmsStatusToCms` | — | Delivery Management | Ported (skipped until CMS_STATUS_URL is set) | `zoho-export/parsed/functions/pushDmsStatusToCms.dg` |
+| `reScheduleDelivery` | — | — | Ported (the dms_reschedule API runs it) | `zoho-export/parsed/functions/reScheduleDelivery.dg` |
 | `syncWarehouseBins` | — | — | Not ported yet | `zoho-export/parsed/functions/syncWarehouseBins.dg` |
-| `upsertDmsScheduleRequest` | — | — | Not ported yet | `zoho-export/parsed/functions/upsertDmsScheduleRequest.dg` |
+| `upsertDmsScheduleRequest` | — | — | Ported (module integration, no inbound route yet) | `zoho-export/parsed/functions/upsertDmsScheduleRequest.dg` |
 
 ## Custom APIs the widgets call
 
@@ -94,12 +94,12 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `create_rr_fenteng` | `createRRFenteng` | Not ported yet |
 | `create_rr_main` | `createRRMain` | Not ported yet |
 | `create_rr_tony` | `createRRTony` | Not ported yet |
-| `create_sales_return_books` | `createSalesReturnBooks` | Not ported yet |
-| `create_shipment_order` | `createShipmentOrder` | Not ported yet |
+| `create_sales_return_books` | `createSalesReturnBooks` | Ported |
+| `create_shipment_order` | `createShipmentOrder` | Ported |
 | `decline_dms_schedule_request` | `declineDmsScheduleRequest` | Ported |
-| `dms_reschedule` | `dmsScheduleSlot` | Not ported yet |
+| `dms_reschedule` | `dmsScheduleSlot` | Ported |
 | `push_dms_message_to_cms` | `pushDmsMessageToCms` | Ported |
 
 ## Workflows
 
-22 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 14 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.
+38 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 15 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.

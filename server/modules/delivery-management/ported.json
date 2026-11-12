@@ -1,3 +1,51 @@
 {
-  "_about": "Which Zoho form workflows of this module (by name in zoho-export/parsed/workflows.json) are ported, and which need no port. Read by tools/build-module-readmes.mjs and tools/build-port-checklist.mjs; tests/core/workflow-ports.test.js checks every name exists."
+  "_about": "Which Zoho form workflows of this module (by name in zoho-export/parsed/workflows.json) are ported, and which need no port. Read by tools/build-module-readmes.mjs and tools/build-port-checklist.mjs; tests/core/workflow-ports.test.js checks every name exists.",
+  "Service_Appointment_Form": {
+    "ported": [
+      "SA_Site_Confirmation_Vali",
+      "SA_Scheduling_Override_Va",
+      "SA_Scheduling_Engine",
+      "SA_Geocode_Address",
+      "SA_Sync_Sales_Order_Displ",
+      "SA_Sync_Sales_Order_Displ1",
+      "SA_Instant_Forecast"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {
+      "SA_Site_Confirmation_Init": "inactive in Zoho"
+    }
+  },
+  "Field_Work": {
+    "ported": [
+      "FW_Validate_Reschedule_Re",
+      "FW_Reschedule_To_Exceptio",
+      "FW_Completion_Schedule_Sy",
+      "FW_Instant_Forecast"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  },
+  "Service_Request1": {
+    "ported": [
+      "SR_Created_Make_Appointme",
+      "SR_Instant_Forecast"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  },
+  "DMS_Exception_Queue": {
+    "ported": [
+      "EXC_Resolve_Sync"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  },
+  "Delivery_Scheduling": {
+    "ported": [
+      "DS_Validate_Team_Capacity1",
+      "ISCHED_Instant_Forecast"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  }
 }
