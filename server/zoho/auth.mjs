@@ -1,4 +1,6 @@
 // Zoho Service Account authentication and automatic token refresh manager
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
 import fs from 'node:fs';
 import path from 'node:path';
 

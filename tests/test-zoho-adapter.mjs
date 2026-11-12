@@ -1,3 +1,5 @@
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
 import { zohoAdapter } from '../server/zoho/adapter.mjs';
 
 async function test() {

@@ -4,7 +4,8 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node server/index.mjs",
+    "dev:prototype": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "vault": "node tools/build-vault.mjs",
