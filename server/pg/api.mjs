@@ -4,8 +4,11 @@ import { ZohoError } from '../criteria.mjs';
 import { createPool } from './pool.mjs';
 import { ensureSchema } from './schema.mjs';
 import { createStore } from './store.mjs';
+import { createHookedStore, workflows } from '../workflows/index.mjs';
 
-export function createPgApi(store, invokeCustomApi) {
+// `store` is the hooked store: widget writes run the form workflows (server/workflows). Custom APIs get
+// `rawStore`, whose writes do not fire them again.
+export function createPgApi(store, invokeCustomApi, rawStore = store) {
   return {
     getRecords: async (b, user) => ({ code: 3000, data: await store.getRecords(b.report_name, { ...b, user }) }),
     getRecordById: async (b) => ({ code: 3000, data: await store.getRecordById(b.report_name, b.id) }),
@@ -18,7 +21,7 @@ export function createPgApi(store, invokeCustomApi) {
       }
       return { code: 3000, data: { ID: await store.addRecord(b.form_name, data, user) }, message: 'Data Added Successfully!' };
     },
-    updateRecordById: async (b) => ({ code: 3000, data: { ID: await store.updateRecord(b.report_name, b.id, b.payload?.data ?? b.data ?? {}) }, message: 'Data Updated Successfully!' }),
+    updateRecordById: async (b, user) => ({ code: 3000, data: { ID: await store.updateRecord(b.report_name, b.id, b.payload?.data ?? b.data ?? {}, { user }) }, message: 'Data Updated Successfully!' }),
     // Bulk update: every record of the report matching payload.criteria
     updateRecords: async (b, user) => {
       const crit = b.payload?.criteria ?? b.criteria;
@@ -26,11 +29,11 @@ export function createPgApi(store, invokeCustomApi) {
       if (!recs.length) throw new ZohoError(9280, 'No records found for the given criteria.');
       const data = b.payload?.data ?? b.data ?? {};
       const result = [];
-      for (const r of recs) result.push({ code: 3000, data: { ID: await store.updateRecord(b.report_name, r.ID, data) }, message: 'Data Updated Successfully!' });
+      for (const r of recs) result.push({ code: 3000, data: { ID: await store.updateRecord(b.report_name, r.ID, data, { user }) }, message: 'Data Updated Successfully!' });
       return { code: 3000, result };
     },
-    deleteRecordById: async (b) => ({ code: 3000, data: { ID: await store.deleteRecord(b.report_name, b.id) }, message: 'Record Deleted Successfully!' }),
-    invokeCustomApi: async (b) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload, store) }),
+    deleteRecordById: async (b, user) => ({ code: 3000, data: { ID: await store.deleteRecord(b.report_name, b.id, { user }) }, message: 'Record Deleted Successfully!' }),
+    invokeCustomApi: async (b) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload, rawStore) }),
   };
 }
 
@@ -40,5 +43,6 @@ export async function startPg(invokeCustomApi) {
   const changes = await ensureSchema(pool);
   console.log(`[pg] connected; schema ready (${changes} change${changes === 1 ? '' : 's'})`);
   const store = createStore(pool);
-  return { pool, store, api: createPgApi(store, invokeCustomApi) };
+  const hooked = createHookedStore(store, workflows);
+  return { pool, store, api: createPgApi(hooked, invokeCustomApi, store) };
 }

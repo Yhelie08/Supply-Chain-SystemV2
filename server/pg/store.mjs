@@ -141,12 +141,13 @@ export function createStore(db) {
       return all.slice(offset, offset + size);
     },
 
-    async getRecordById(reportName, id) {
+    // raw: lookup fields stay plain IDs instead of { ID, display_value } (what Deluge's input.Field gives).
+    async getRecordById(reportName, id, { raw = false } = {}) {
       const { form } = formOfReport(reportName);
       if (!isId(id)) throw notFound();
       const { rows } = await db.query(`SELECT ${selectList(form)} FROM ${q(form)} t WHERE t."ID" = $1::bigint`, [String(id)]);
       if (!rows.length) throw notFound();
-      return (await records(form, rows))[0];
+      return (await records(form, rows, { raw }))[0];
     },
 
     async addRecord(formName, data, user = '') {
