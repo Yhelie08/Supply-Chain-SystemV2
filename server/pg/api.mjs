@@ -4,7 +4,8 @@ import { ZohoError } from '../criteria.mjs';
 import { createPool } from './pool.mjs';
 import { ensureSchema } from './schema.mjs';
 import { createStore } from './store.mjs';
-import { createHookedStore, workflows } from '../workflows/index.mjs';
+import { createHookedStore } from '../workflows/index.mjs';
+import { workflows } from '../workflows/all.mjs';
 import { createZohoApi } from '../books/client.mjs';
 
 // `store` is the hooked store: widget writes run the form workflows (server/workflows). Custom APIs get
