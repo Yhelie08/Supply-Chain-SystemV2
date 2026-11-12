@@ -1,5 +1,6 @@
 // Delivery Management custom APIs: the ported ones, and a "not ported yet" placeholder for the rest.
 import { ok, fail, withPlaceholders } from '../../custom-api-helpers.mjs';
+import { scheduleSlot } from './scheduling.mjs';
 
 // functions/pushDmsStatusToCms.dg / pushDmsMessageToCms.dg: CMS is a separate Zoho app, so it is skipped here.
 const cmsSkipped = () => ({ status: 'skipped', message: 'CMS sync is off in the local app.' });
@@ -47,6 +48,11 @@ const implemented = {
     if (!rec) return fail('DMS Schedule Request not found.');
     await data.updateRecord('DMS_Schedule_Request', recId, { Status: 'Declined' }, { byForm: true });
     return ok('Declined.', { cmsPushStatus: cmsSkipped().status });
+  },
+
+  // functions/dmsScheduleSlot.dg: the Re-Schedule button of the widgets (reScheduleDelivery runs it with isRerun = true).
+  async dms_reschedule({ recordId }, data, ctx = {}) {
+    return scheduleSlot(data, recordId, true, { user: ctx.user });
   },
 
   // functions/addDmsScheduleRequestMessage.dg is the CMS -> DMS direction; this is DMS -> CMS.

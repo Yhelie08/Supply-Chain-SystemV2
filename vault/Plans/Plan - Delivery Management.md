@@ -47,8 +47,10 @@ No schedule belongs to Delivery Management except the forecast jobs; `DMS_Site_C
 - Tests: `tests/delivery-management/d1-workflows.test.js` (13). Result: Delivery Management 6 of 16 workflows.
 
 **D2. The scheduling engine**
-- Port `dmsScheduleSlot` as one plain function (`scheduleSlot(...)`) in `scheduling.mjs`, then expose it as the `dms_reschedule` API.
-- Then the two workflows that call it: `SA_Scheduling_Engine` (287, two scripts) and `EXC_Resolve_Sync` (69).
+- **D2a DONE 2026-11-12:** `dmsScheduleSlot` is `scheduleSlot(...)` in `scheduling.mjs`, exposed as the `dms_reschedule` API (20 tests). The quirks it keeps are listed in the Change Log and in the header of the file.
+- **D2b next:** `SA_Scheduling_Engine`, four scripts in one workflow, on success of Service_Appointment_Form: (1) site confirmed and no dates yet: run the engine; (2) a confirmed date without a calendar entry: Pick Up and 3rd Party confirm at once, otherwise override flag, capacity check against the team's other confirmed jobs, Calendar Conflict exception or the calendar write; (3) tag the summary `[Completed]` / `[Failed]`; (4) a Pick Up with an installer is converted. It reads the saved `input`, so Action 2 does not run in the same save as Action 1 (the script says so).
+- **D2c:** `EXC_Resolve_Sync` (69): resolve or dismiss syncs the appointment, "Revert to System" clears the dates and re-runs the engine, a Dispatch-stage exception requeues a copy of the appointment (with `Item_Details`) and marks the old one Failed.
+- To check on Zoho Development with the owner's OK: whole-number division in the clock, the printed decimals, and whether `insert into` fires the form's workflows.
 - This is where Zoho's quirks matter most: keep them, mark them "mirrors Zoho", and compare with Zoho Development (needs the owner's OK for any write).
 
 **D3. Requests coming in**

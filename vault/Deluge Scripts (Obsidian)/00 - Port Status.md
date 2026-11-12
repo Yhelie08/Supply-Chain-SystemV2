@@ -13,8 +13,8 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Part | Total | Ported |
 |---|---:|---:|
-| Deluge functions | 43 | 5 |
-| Custom APIs called by widgets | 25 | 6 |
+| Deluge functions | 43 | 6 |
+| Custom APIs called by widgets | 25 | 7 |
 | Form workflows (on validate, on success, field rules) | 165 | 28 |
 | Scheduled workflows | 6 | 0 |
 | Report-button functions | 16 | 0 |
@@ -56,7 +56,7 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `createShipmentOrder` | `create_shipment_order` | Delivery Management | Not ported yet | `zoho-export/parsed/functions/createShipmentOrder.dg` |
 | `declineDmsScheduleRequest` | `decline_dms_schedule_request` | Delivery Management | Ported | `zoho-export/parsed/functions/declineDmsScheduleRequest.dg` |
 | `diagInsertThenPatch` | — | — | Not ported yet | `zoho-export/parsed/functions/diagInsertThenPatch.dg` |
-| `dmsScheduleSlot` | `dms_reschedule` | Analytic, Fulfillment, Delivery Management | Not ported yet | `zoho-export/parsed/functions/dmsScheduleSlot.dg` |
+| `dmsScheduleSlot` | `dms_reschedule` | Analytic, Fulfillment, Delivery Management | Ported | `zoho-export/parsed/functions/dmsScheduleSlot.dg` |
 | `fcPrToPreOrder` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Not ported yet | `zoho-export/parsed/functions/fcPrToPreOrder.dg` |
 | `fcStampBySoNo` | — | Analytic, Procurement, Fulfillment, Delivery Management | Not ported yet | `zoho-export/parsed/functions/fcStampBySoNo.dg` |
 | `fcStampDelivery` | — | Analytic, Fulfillment, Delivery Management | Not ported yet | `zoho-export/parsed/functions/fcStampDelivery.dg` |
@@ -97,7 +97,7 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `create_sales_return_books` | `createSalesReturnBooks` | Not ported yet |
 | `create_shipment_order` | `createShipmentOrder` | Not ported yet |
 | `decline_dms_schedule_request` | `declineDmsScheduleRequest` | Ported |
-| `dms_reschedule` | `dmsScheduleSlot` | Not ported yet |
+| `dms_reschedule` | `dmsScheduleSlot` | Ported |
 | `push_dms_message_to_cms` | `pushDmsMessageToCms` | Ported |
 
 ## Workflows
