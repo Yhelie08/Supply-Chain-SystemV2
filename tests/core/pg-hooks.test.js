@@ -2,10 +2,10 @@
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
-import { ZohoError } from '../server/criteria.mjs';
-import { ensureSchema } from '../server/pg/schema.mjs';
-import { createStore } from '../server/pg/store.mjs';
-import { createHookedStore, register } from '../server/workflows/index.mjs';
+import { ZohoError } from '../../server/criteria.mjs';
+import { ensureSchema } from '../../server/pg/schema.mjs';
+import { createStore } from '../../server/pg/store.mjs';
+import { createHookedStore, register } from '../../server/workflows/index.mjs';
 
 let db, raw, queries;
 const count = async (form) => Number((await db.query(`SELECT count(*)::int AS n FROM "${form}"`)).rows[0].n);

@@ -5,10 +5,10 @@
 // Selected_Uncheck_Others (on user input), Notify_Suppliers_on_Inquiry (inactive), Log_Updated_Item (no script).
 //
 // Order of the hooks follows the order of the workflows in the Zoho app.
-import { register } from './index.mjs';
-import { zohoNow } from '../criteria.mjs';
-import { idOf, idsOf, unbracket, truthy, blank, toNum, hasValue, sameValue, lower, inquiryNumber, round2, lit, stamp } from './deluge.mjs';
-import { SUPPLIERS, supplierIndex, quoteBooksId } from './suppliers.mjs';
+import { register } from '../../workflows/index.mjs';
+import { zohoNow } from '../../criteria.mjs';
+import { idOf, idsOf, unbracket, truthy, blank, toNum, hasValue, sameValue, lower, inquiryNumber, round2, lit, stamp } from '../../workflows/deluge.mjs';
+import { SUPPLIERS, supplierIndex, quoteBooksId } from '../../workflows/suppliers.mjs';
 
 export { SUPPLIERS };
 

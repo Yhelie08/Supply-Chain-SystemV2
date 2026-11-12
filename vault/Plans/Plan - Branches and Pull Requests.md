@@ -8,14 +8,17 @@ date: 2026-11-12
 ---
 
 > [!INFO] Where this fits
-> How our work gets from the branch on GitHub into `main`. The migration plan: [[Plan - Full Migration Off Zoho Creator]]. The first module being finished: [[Plan - Finish Procurement]].
+> How our work gets from the branch on GitHub into `main`. How the team splits the code by module: [[Plan - Module Folders and Team Split]]. The migration plan: [[Plan - Full Migration Off Zoho Creator]]. The first module being finished: [[Plan - Finish Procurement]].
 
 # Branches and pull requests
+
+> [!SUCCESS] Status update 2026-11-12
+> **PR #2 was merged into `main` at 04:33 UTC**, one minute after it was opened, so `main` now has the Postgres layer, the hooks, the Books client and the Inquiry and Purchase Request ports. The module restructure and the team-split plan were added to the branch afterwards and are **not in `main` yet**: they are in **[PR #3](https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/3)**. **Teammates should wait until PR #3 is merged before they clone and start a module branch**, so that everyone starts from the same layout. The sections below describe the plan as it was written, before PR #2 was merged.
 
 ## 1. Buod (Tagalog)
 - **Isang pull request lang ang kailangan**: mula sa `feature/postgres-data-layer` papunta sa `main`.
 - Ang `feature/zoho-backend-adapter` ay **naka-merge na** (PR #1). Walang gagawin dito; pwede na itong burahin sa GitHub.
-- Ang PR ay **Draft** muna, para makita nina Sir Yhel at Sir JV ang kabuuan habang nagdadagdag pa tayo. **I-merge lang kapag tapos na at nasuri na ang Procurement.**
+- Ang PR ay **Draft** muna, para makita nina Sir Yhel at Sir JV ang kabuuan habang nagdadagdag pa tayo. **I-merge pagkatapos ma-review ang restructure ng mga module**, para makapagsimula ang buong team mula sa `main`. Ang Procurement ay itutuloy sa sarili nitong branch.
 - Ang pag-merge sa `main` ay **hindi nagde-deploy** sa Railway. Mano-mano ang deploy mula sa PC (`railway up`).
 
 ## 2. State on GitHub (checked 2026-11-12)
@@ -23,7 +26,7 @@ date: 2026-11-12
 |---|---:|---:|---|---|
 | `main` | - | - | - | Default branch. Untouched by this work (still at the commit "Make npm run dev start the app with login") |
 | `feature/zoho-backend-adapter` | 3 | 0 | #1, **merged** | Nothing to review. Delete the branch on GitHub to avoid confusion |
-| `feature/postgres-data-layer` | 0 | 17 | [#2](https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/2), Draft | **The only pull request.** Review, then merge when Procurement is done |
+| `feature/postgres-data-layer` | 0 | 17 | [#2](https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/2), Draft | **The only pull request.** Review, then merge after the module restructure so the team can branch from `main` |
 
 `feature/postgres-data-layer` is built directly on top of the current `main`, and `main` has not moved, so there can be no merge conflict.
 
@@ -36,9 +39,9 @@ date: 2026-11-12
 1. **Push the branch** with all its commits (done).
 2. **Open a Draft pull request** from `feature/postgres-data-layer` into `main` (done: #2).
 3. **Review**: Sir Yhel and Sir JV read the PR description and the notes in `vault/Plans/` and `vault/Deluge Scripts (Obsidian)/`; to try it, run `npm run dev:pg` (see [[00 - Current System]]).
-4. **Keep adding commits** to the same branch as Procurement is finished ([[Plan - Finish Procurement]]); the Draft PR updates itself.
-5. **Mark the PR ready and merge** when Procurement is done and the team has checked it (open questions in [[Plan - Finish Procurement]] answered, comparison with Zoho Development done).
-6. After the merge, delete `feature/postgres-data-layer` and start the next branch (for example `feature/fulfillment`) from the new `main`.
+4. **The module restructure** ([[Plan - Module Folders and Team Split]]) is the last commit of this PR. Updated 2026-11-12: the team starts from `main`, so this PR is merged after that review instead of waiting for Procurement.
+5. **Mark the PR ready and merge** once Sir Yhel or Sir JV have reviewed it. Procurement continues on its own branch ([[Plan - Finish Procurement]]); the comparison with Zoho Development and the open questions are needed before go-live, not before this merge. Merging does not deploy.
+6. After the merge, delete `feature/postgres-data-layer`; each owner starts a branch from the new `main` (`feature/delivery-management`, `feature/fulfillment`, `feature/procurement`, ...).
 
 **Pull request link:** https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/2 (Draft, opened 2026-11-12)
 

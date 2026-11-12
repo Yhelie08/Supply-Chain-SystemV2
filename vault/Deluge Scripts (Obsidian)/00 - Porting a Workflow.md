@@ -22,11 +22,11 @@ The Deluge for every workflow is in `zoho-export/parsed/workflows/form/<Form>/*.
 | on load, field rules, on user input | no, they only drive Zoho's own forms | no (list it under `nativeFormOnly`) |
 | inactive, or no script | no | no (list it under `notNeeded`) |
 
-A custom API is not a workflow: it is a handler in `server/custom-apis.mjs` (Books ones in `server/books/`).
+A custom API is not a workflow: it is a handler in your module's `server/modules/<module>/apis.mjs`, listed in the `functions` map there (custom API name to Deluge function). The map is also what makes a not-yet-ported API answer "not ported yet" instead of "Unknown custom API".
 
 ## 2. Write the hooks
 
-In `server/workflows/<module>.mjs`, register hooks for the form and load the module from `server/workflows/all.mjs`:
+In your module's folder (`server/modules/<module>/`), write a file for the stage, register its hooks, and import it from the module's `workflows.mjs`. Nothing outside your folder needs editing:
 
 ```js
 register('Purchase_Request1', {
@@ -69,7 +69,7 @@ Tests run on PGlite (Postgres in WebAssembly), no database to start. Follow `tes
 
 ## 6. Record it
 
-- Add the workflow names to `server/workflows/ported.json` (`ported`, `nativeFormOnly` or `notNeeded`); `tests/workflow-ports.test.js` checks every name exists.
+- Add the workflow names to your module's `server/modules/<module>/ported.json` (`ported`, `nativeFormOnly` or `notNeeded`); `tests/core/workflow-ports.test.js` checks every name exists.
 - Custom APIs: add the name to `apiToFn` and `ported` in `tools/build-module-readmes.mjs`, then run `node tools/build-module-readmes.mjs` to refresh [[00 - Port Status]].
 - Add a line to [[00 - Change Log]] and tick the stage in [[Plan - Full Migration Off Zoho Creator]].
 

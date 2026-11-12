@@ -1,0 +1,3 @@
+{
+  "_about": "Which Zoho form workflows of this module (by name in zoho-export/parsed/workflows.json) are ported, and which need no port. Read by tools/build-module-readmes.mjs and tools/build-port-checklist.mjs; tests/core/workflow-ports.test.js checks every name exists."
+}

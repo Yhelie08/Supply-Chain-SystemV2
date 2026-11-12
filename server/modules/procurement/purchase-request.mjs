@@ -7,10 +7,10 @@
 // All the "on validate" scripts share Zoho's one `input`, and each reads what the one before it wrote, so they run as
 // steps of one function in the order of the workflows in Zoho. Quirks are kept: for example the readiness check runs
 // before the default status and the shipment mode are set, so it sees them as they were before this save.
-import { register } from './index.mjs';
-import { ZohoError, zohoNow } from '../criteria.mjs';
-import { idOf, truthy, blank, toNum, sameValue, lower, round2, lit, parseDate, ymd, addDays, dayDiff, todayDate } from './deluge.mjs';
-import { SUPPLIERS, supplierIndex, quoteBooksId } from './suppliers.mjs';
+import { register } from '../../workflows/index.mjs';
+import { ZohoError, zohoNow } from '../../criteria.mjs';
+import { idOf, truthy, blank, toNum, sameValue, lower, round2, lit, parseDate, ymd, addDays, dayDiff, todayDate } from '../../workflows/deluge.mjs';
+import { SUPPLIERS, supplierIndex, quoteBooksId } from '../../workflows/suppliers.mjs';
 
 const text = (v) => (blank(v) ? '' : String(v));
 const num = (v) => (blank(v) ? null : Number(v));

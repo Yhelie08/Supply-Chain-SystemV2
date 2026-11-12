@@ -3,11 +3,11 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
-import { columns } from '../server/model.mjs';
-import { compileCriteria } from '../server/criteria.mjs';
-import { ensureSchema, syncSequence } from '../server/pg/schema.mjs';
-import { createStore } from '../server/pg/store.mjs';
-import { criteriaToSql } from '../server/pg/criteria-sql.mjs';
+import { columns } from '../../server/model.mjs';
+import { compileCriteria } from '../../server/criteria.mjs';
+import { ensureSchema, syncSequence } from '../../server/pg/schema.mjs';
+import { createStore } from '../../server/pg/store.mjs';
+import { criteriaToSql } from '../../server/pg/criteria-sql.mjs';
 
 const BIG = '4662244000012319507';
 const NEXT = '4662244000012319508';
@@ -126,7 +126,7 @@ test('lookup display values follow the format Zoho defines for each form', async
 });
 
 test('display formats: fields, dotted fields, quoted text and +; anything else gives nothing', async () => {
-  const { displayFromFormat } = await import('../server/model.mjs');
+  const { displayFromFormat } = await import('../../server/model.mjs');
   const row = { customer_name: 'ACME', Supplier_Name: { first_name: 'Tony' }, empty: null };
   assert.equal(displayFromFormat('[customer_name]', row), 'ACME');
   assert.equal(displayFromFormat('[" " + Supplier_Name.first_name]', row), ' Tony');

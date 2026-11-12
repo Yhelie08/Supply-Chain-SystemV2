@@ -1,15 +1,15 @@
-// Purchase_Request1 workflows ported from Zoho (server/workflows/purchase-request.mjs), run on PGlite.
+// Purchase_Request1 workflows ported from Zoho (server/modules/procurement/purchase-request.mjs), run on PGlite.
 // Tests marked "mirrors Zoho" follow the Deluge script literally, quirks included; they are to be confirmed
 // against Zoho Development.
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema } from '../server/pg/schema.mjs';
-import { createStore } from '../server/pg/store.mjs';
-import { createHookedStore } from '../server/workflows/index.mjs';
-import { workflows } from '../server/workflows/all.mjs';
-import { SUPPLIERS } from '../server/workflows/suppliers.mjs';
-import { ymd, addDays, todayDate } from '../server/workflows/deluge.mjs';
+import { ensureSchema } from '../../server/pg/schema.mjs';
+import { createStore } from '../../server/pg/store.mjs';
+import { createHookedStore } from '../../server/workflows/index.mjs';
+import { workflows } from '../../server/workflows/all.mjs';
+import { SUPPLIERS } from '../../server/workflows/suppliers.mjs';
+import { ymd, addDays, todayDate } from '../../server/workflows/deluge.mjs';
 
 const FORMS = ['Purchase_Request1', 'Tony_Fan_Purchase_Request', 'Fenteng_Lighting_Purchase_Request', 'Suppliers', 'Items', 'Inquiry_Form', 'Purchase_Order'];
 const [TONY, FENTENG] = SUPPLIERS;

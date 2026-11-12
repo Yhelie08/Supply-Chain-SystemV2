@@ -195,7 +195,7 @@ export const zohoAdapter = {
   invokeCustomApi: async (b) => {
     const apiName = b.api_name;
     // If public key is available, we can call Zoho custom API endpoint directly,
-    // otherwise fallback to our ported custom API implementation in server/custom-apis.mjs
+    // otherwise fallback to our ported custom API implementation (server/custom-apis.mjs, which collects the handlers of server/modules/*)
     try {
       return { code: 3000, result: await fallbackCustomApi(apiName, b.payload) };
     } catch (e) {

@@ -1,13 +1,18 @@
-// server/workflows/ported.json must only name workflows that exist, once each, and every ported form must have hooks.
+// Every server/modules/<module>/ported.json must only name workflows that exist, once each (across all modules),
+// and every ported form must have hooks.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { workflows } from '../server/workflows/all.mjs';
+import { workflows } from '../../server/workflows/all.mjs';
+import { modules } from '../../server/modules/index.mjs';
 
-const ROOT = path.resolve(import.meta.dirname, '..');
+const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const zoho = JSON.parse(fs.readFileSync(path.join(ROOT, 'zoho-export', 'parsed', 'workflows.json'), 'utf8'));
-const ports = Object.entries(JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'workflows', 'ported.json'), 'utf8'))).filter(([k]) => !k.startsWith('_'));
+const ports = modules.flatMap((m) => {
+  const file = path.join(ROOT, 'server', 'modules', m.id, 'ported.json');
+  return fs.existsSync(file) ? Object.entries(JSON.parse(fs.readFileSync(file, 'utf8'))).filter(([k]) => !k.startsWith('_')) : [];
+});
 
 test('every workflow named in ported.json exists for that form, and is listed only once', () => {
   const seen = new Set();

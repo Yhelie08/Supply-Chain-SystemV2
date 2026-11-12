@@ -1,14 +1,14 @@
-// Inquiry_Form workflows ported from Zoho (server/workflows/inquiry.mjs), run on PGlite.
+// Inquiry_Form workflows ported from Zoho (server/modules/procurement/inquiry.mjs), run on PGlite.
 // Tests marked "mirrors Zoho" follow the Deluge script literally, including its quirks; they are to be
 // confirmed against Zoho Development (see the oracle comparison in the migration plan).
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema } from '../server/pg/schema.mjs';
-import { createStore } from '../server/pg/store.mjs';
-import { createHookedStore } from '../server/workflows/index.mjs';
-import { workflows } from '../server/workflows/all.mjs';
-import { SUPPLIERS } from '../server/workflows/inquiry.mjs';
+import { ensureSchema } from '../../server/pg/schema.mjs';
+import { createStore } from '../../server/pg/store.mjs';
+import { createHookedStore } from '../../server/workflows/index.mjs';
+import { workflows } from '../../server/workflows/all.mjs';
+import { SUPPLIERS } from '../../server/workflows/suppliers.mjs';
 
 const TONY_BOOKS = SUPPLIERS[0].booksId;
 const FENTENG_BOOKS = SUPPLIERS[1].booksId;
