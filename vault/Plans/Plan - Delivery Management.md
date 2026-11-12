@@ -3,7 +3,7 @@ title: "Plan - Delivery Management"
 tags:
   - plan
   - delivery-management
-status: draft 2026-11-12, nothing started; waits for PR #3 to be merged
+status: D1 done 2026-11-12 on branch feature/delivery-management (not pushed); D2 next
 date: 2026-11-12
 ---
 
@@ -40,10 +40,11 @@ No schedule belongs to Delivery Management except the forecast jobs; `DMS_Site_C
 - PR #3 merged, then `git checkout main && git pull && git checkout -b feature/delivery-management`.
 - Read the Deluge in `zoho-export/parsed/workflows/form/<Form>/` and `zoho-export/parsed/functions/dmsScheduleSlot.dg`.
 
-**D1. Small validations (about 100 lines in all)**, one hook file `validations.mjs`:
-- `Delivery_Scheduling`: `DS_Validate_Team_Capacity1` (30)
-- `Field_Work`: `FW_Validate_Reschedule_Re` (7)
-- `Service_Appointment_Form`: `SA_Scheduling_Override_Va` (24), `SA_Site_Confirmation_Vali` (15), `SA_Sync_Sales_Order_Displ` and `SA_Sync_Sales_Order_Displ1` (7 each)
+**D1. Small validations (about 100 lines in all): DONE 2026-11-12**, one hook file per form (later pieces attach to the same forms):
+- `delivery-scheduling.mjs`: `DS_Validate_Team_Capacity1` (30). Only an alert in Zoho, so it is a log-only warning.
+- `field-work.mjs`: `FW_Validate_Reschedule_Re` (7). The real rule only; the empty-string part of the Deluge condition never fires in Zoho (blank is null there) and would refuse almost every save here.
+- `service-appointment.mjs`: `SA_Site_Confirmation_Vali` (15), `SA_Scheduling_Override_Va` (24) in that order, and `SA_Sync_Sales_Order_Displ` / `SA_Sync_Sales_Order_Displ1` (7 each, identical, one hook).
+- Tests: `tests/delivery-management/d1-workflows.test.js` (13). Result: Delivery Management 6 of 16 workflows.
 
 **D2. The scheduling engine**
 - Port `dmsScheduleSlot` as one plain function (`scheduleSlot(...)`) in `scheduling.mjs`, then expose it as the `dms_reschedule` API.

@@ -11,6 +11,13 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-12
 
+**Delivery Management, D1: the six small workflows (`server/modules/delivery-management/`, branch `feature/delivery-management`)**
+- Ported 6 of the 16 Delivery Management workflows, one file per form: `service-appointment.mjs` (site confirmation check, schedule override check in Zoho's order, sales order display sync; the two `SA_Sync_Sales_Order_Displ` scripts are identical, so one hook covers both), `field-work.mjs` (reschedule reason), `delivery-scheduling.mjs` (installer availability warning). `SA_Site_Confirmation_Init` is inactive in Zoho (listed under `notNeeded`).
+- Deliberate difference: `FW_Validate_Reschedule_Re` has `Status == RR && reason == null || reason == ""`; by precedence the second part refuses any empty reason, but in Zoho a blank is null so it never fires. Here a blank is `""`, so a literal port would refuse almost every Field_Work save; only the real rule (Reschedule Requested needs a reason) is ported. The Development backup has Field_Work rows with status Started and reason `""`.
+- `DS_Validate_Team_Capacity1` only shows an `alert` and never cancels the save, so it cannot change an API write; it is ported as a warning in the server log. To confirm on Zoho Development that API writes ignore the alert.
+- `tests/delivery-management/d1-workflows.test.js`: 13 tests on PGlite. Port Status now: 28 of 109 workflows (Delivery Management 6 of 16).
+- Not done yet: the scheduling engine `dmsScheduleSlot` / `SA_Scheduling_Engine` (D2), the requests coming in (D3), the two Inventory APIs (D4), the forecast stamps (D5); not compared with Zoho Development.
+
 **One folder per module (`server/modules/<module>/`), so the team can work without shared-file conflicts**
 - `server/modules/` has a folder for each section of the app (Procurement, Tony Fan, Fenteng Lighting, Fulfillment, Delivery Management, Analytic) with `index.mjs` (label, forms, custom API map, APIs), `apis.mjs`, `ported.json` and, for Procurement, `workflows.mjs` plus the Inquiry and Purchase Request ports and the three Books APIs. `server/modules/index.mjs` finds the modules by itself and merges their APIs (a duplicate API name stops the server at start-up).
 - `server/custom-apis.mjs` and `server/workflows/all.mjs` became thin; `server/custom-api-helpers.mjs` has `ok`, `fail`, `notPorted` and `withPlaceholders`. The three Delivery APIs moved to `delivery-management/apis.mjs`. `server/workflows/ported.json` is now one `ported.json` per module.

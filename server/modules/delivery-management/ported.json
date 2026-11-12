@@ -1,3 +1,29 @@
 {
-  "_about": "Which Zoho form workflows of this module (by name in zoho-export/parsed/workflows.json) are ported, and which need no port. Read by tools/build-module-readmes.mjs and tools/build-port-checklist.mjs; tests/core/workflow-ports.test.js checks every name exists."
+  "_about": "Which Zoho form workflows of this module (by name in zoho-export/parsed/workflows.json) are ported, and which need no port. Read by tools/build-module-readmes.mjs and tools/build-port-checklist.mjs; tests/core/workflow-ports.test.js checks every name exists.",
+  "Service_Appointment_Form": {
+    "ported": [
+      "SA_Site_Confirmation_Vali",
+      "SA_Scheduling_Override_Va",
+      "SA_Sync_Sales_Order_Displ",
+      "SA_Sync_Sales_Order_Displ1"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {
+      "SA_Site_Confirmation_Init": "inactive in Zoho"
+    }
+  },
+  "Field_Work": {
+    "ported": [
+      "FW_Validate_Reschedule_Re"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  },
+  "Delivery_Scheduling": {
+    "ported": [
+      "DS_Validate_Team_Capacity1"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  }
 }
