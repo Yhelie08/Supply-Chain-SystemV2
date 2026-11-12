@@ -15,7 +15,7 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 |---|---:|---:|
 | Deluge functions | 43 | 6 |
 | Custom APIs called by widgets | 25 | 7 |
-| Form workflows (on validate, on success, field rules) | 165 | 28 |
+| Form workflows (on validate, on success, field rules) | 165 | 29 |
 | Scheduled workflows | 6 | 0 |
 | Report-button functions | 16 | 0 |
 
@@ -102,4 +102,4 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 ## Workflows
 
-28 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 15 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.
+29 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 15 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.

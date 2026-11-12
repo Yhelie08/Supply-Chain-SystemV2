@@ -62,6 +62,12 @@ test('override: no mismatch when the confirmed values equal the suggestion, or b
   await store.addRecord(SA, { Sales_Order: 'SO-3' });
 });
 
+test('override: an appointment that only has a suggestion (nothing confirmed) can be saved and edited freely', async () => {
+  const id = await store.addRecord(SA, { Sales_Order: 'SO-9', Suggested_Schedule_Date: '2026-09-17', Suggested_Time_Slot: '08:00:00 AM' });
+  await store.updateRecord(SA, id, { Estimated_Duration: 3 }, { byForm: true });
+  await refused(store.updateRecord(SA, id, { Confirmed_Time_Slot: '09:00:00 AM' }, { byForm: true }), /Override By is required/);
+});
+
 test('override: a confirmed date with no suggestion is a mismatch', async () => {
   await refused(store.addRecord(SA, { Sales_Order: 'SO-4', Confirmed_Schedule_Date: '2026-09-18' }), /Override By is required/);
 });
@@ -75,7 +81,9 @@ test('override: exempt for Pick Up and for 3rd Party fleet, and once a calendar 
 });
 
 test('an edit sends only the changed fields: the rules see the saved record plus the change', async () => {
-  const id = await store.addRecord(SA, sa({ Site_Confirmation_Status: 'Confirmed', Confirmation_Method: 'Call', Site_Confirmation_Notes: 'ok' }));
+  // saved without the hooks: through the hooks the scheduling engine would already have written the calendar entry
+  // (see scheduling-engine.test.js), and with a calendar entry the override check no longer applies
+  const id = await raw.addRecord(SA, sa({ Site_Confirmation_Status: 'Confirmed', Confirmation_Method: 'Call', Site_Confirmation_Notes: 'ok' }));
   await refused(store.updateRecord(SA, id, { Confirmed_Time_Slot: '09:00:00 AM' }, { byForm: true }), /Override By is required/);
   await store.updateRecord(SA, id, { Confirmed_Time_Slot: '09:00:00 AM', Override_By: 'Maria', Override_Reason: 'Truck delay' }, { byForm: true });
   assert.equal((await read(SA, id)).Confirmed_Time_Slot, '09:00:00 AM');

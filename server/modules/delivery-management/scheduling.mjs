@@ -23,10 +23,10 @@ export const SA = 'Service_Appointment_Form';
 const EXC = 'DMS_Exception_Queue';
 
 // Hours are decimals in Deluge; round away binary noise so 4 * 1.15 * 60 is 276, not 275.99999999999994.
-const r6 = (x) => Math.round(x * 1e6) / 1e6;
-const hrs = (x) => x.toFixed(2);
-const nullText = (v) => (blank(v) ? 'null' : String(v));
-const day = (v) => String(v ?? '').slice(0, 10);
+export const r6 = (x) => Math.round(x * 1e6) / 1e6;
+export const hrs = (x) => x.toFixed(2);
+export const nullText = (v) => (blank(v) ? 'null' : String(v));
+export const day = (v) => String(v ?? '').slice(0, 10);
 
 export function customerName(rec) {
   const c = rec.Customer_Name;
@@ -72,7 +72,7 @@ export async function policyReader(store) {
   const rows = await store.find('Policy_Settings');
   return (key) => { const r = rows.find((p) => p.Policy_Key === key); return r && !blank(r.Value) ? String(r.Value) : null; };
 }
-const toLong = (v, fallback) => { if (blank(v)) return fallback; const n = Math.trunc(Number(v)); return Number.isNaN(n) ? fallback : n; };
+export const toLong = (v, fallback) => { if (blank(v)) return fallback; const n = Math.trunc(Number(v)); return Number.isNaN(n) ? fallback : n; };
 
 // Hours in the working day from the two clock policies (default 9, as in the script).
 function workdayLength(policy) {
