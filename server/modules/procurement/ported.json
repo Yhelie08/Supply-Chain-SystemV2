@@ -40,7 +40,8 @@
       "PR_Compute_Shipment_Timel",
       "PR_Set_Shipment_Mode",
       "PR_Compute_Priority",
-      "PR1_Sync_Own_Image"
+      "PR1_Sync_Own_Image",
+      "PR1_Forecast_Stamp"
     ],
     "nativeFormOnly": [
       "PR_AutoFill_Item_Details",

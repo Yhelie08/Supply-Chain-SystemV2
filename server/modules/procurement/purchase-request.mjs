@@ -2,7 +2,7 @@
 // Only the events that run on API writes are here (on validate = before, on success = after).
 // Skipped on purpose: PR_AutoFill_Item_Details, autofill_customer_type, Select_Unselect_Supplier (on user input),
 // PR_Lock_UI_Fields (on load), Notify_on_Purchase_Request (inactive).
-// NOT ported yet: PR1_Forecast_Stamp, which only calls the forecast engine fcPrToPreOrder -> fcStampPurchaseRequest.
+// PR1_Forecast_Stamp (the forecast of a PR) lives in server/forecast/pr-hooks.mjs, imported by this module's workflows.mjs.
 //
 // All the "on validate" scripts share Zoho's one `input`, and each reads what the one before it wrote, so they run as
 // steps of one function in the order of the workflows in Zoho. Quirks are kept: for example the readiness check runs

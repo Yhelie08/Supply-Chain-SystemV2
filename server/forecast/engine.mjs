@@ -55,6 +55,17 @@ const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDat
 // Deluge daysBetween as the script uses it: always the size of the gap.
 const gap = (a, b) => Math.abs(dayDiff(b, a));
 
+// The transit and customs days to use: Local sourcing first, then the shipment mode (Air, FCL), else sea (LCL, with "LCL?" when
+// the mode is not exactly LCL). Shared with the purchase-request version of the ladder (purchase-request.mjs).
+export function bucketOf(s, sourcing, modeVal) {
+  const modeKey = String(modeVal ?? '').toUpperCase();
+  const srcKey = String(sourcing ?? '').toUpperCase();
+  if (srcKey === 'LOCAL') return { tMin: s.locTMin, tMax: s.locTMax, cMin: s.locCMin, cMax: s.locCMax, bucket: 'Local' };
+  if (modeKey.includes('AIR')) return { tMin: s.airTMin, tMax: s.airTMax, cMin: s.airCMin, cMax: s.airCMax, bucket: 'Air' };
+  if (modeKey === 'FCL') return { tMin: s.fclTMin, tMax: s.fclTMax, cMin: s.fclCMin, cMax: s.fclCMax, bucket: 'FCL' };
+  return { tMin: s.lclTMin, tMax: s.lclTMax, cMin: s.lclCMin, cMax: s.lclCMax, bucket: modeKey === 'LCL' ? 'LCL' : 'LCL?' };
+}
+
 export const PREP_STAGES = ['Order Readiness', 'Picking', 'Pack', 'Quality Checking', 'Crate'];
 
 /**
@@ -71,13 +82,7 @@ export const PREP_STAGES = ['Order Readiness', 'Picking', 'Pack', 'Quality Check
  */
 export function computeForecast(i) {
   const { today, settings: s } = i;
-  const modeKey = String(i.modeVal ?? '').toUpperCase();
-  const srcKey = String(i.sourcing ?? '').toUpperCase();
-  let tMin; let tMax; let cMin; let cMax; let bucket;
-  if (srcKey === 'LOCAL') { [tMin, tMax, cMin, cMax, bucket] = [s.locTMin, s.locTMax, s.locCMin, s.locCMax, 'Local']; }
-  else if (modeKey.includes('AIR')) { [tMin, tMax, cMin, cMax, bucket] = [s.airTMin, s.airTMax, s.airCMin, s.airCMax, 'Air']; }
-  else if (modeKey === 'FCL') { [tMin, tMax, cMin, cMax, bucket] = [s.fclTMin, s.fclTMax, s.fclCMin, s.fclCMax, 'FCL']; }
-  else { [tMin, tMax, cMin, cMax] = [s.lclTMin, s.lclTMax, s.lclCMin, s.lclCMax]; bucket = modeKey === 'LCL' ? 'LCL' : 'LCL?'; }
+  const { tMin, tMax, cMin, cMax, bucket } = bucketOf(s, i.sourcing, i.modeVal);
 
   let anchor = today; let anchorFound = false; let sumMin = 0; let sumMax = 0; let position = '';
   const stage = i.stage ?? '';
@@ -105,6 +110,12 @@ export function computeForecast(i) {
   // Better a blank than a null that wipes a date already stamped.
   if (!anchorFound) return { skip: true };
 
+  return finish({ today, anchor, sumMin, sumMax, bucket, position, clientTarget: i.clientTarget ?? null, variance: true });
+}
+
+// From the anchor and the day counts to the answer: the clamped window, the middle date, the text and the status. Shared with
+// the purchase-request version, which has no "vs client" text (variance: false).
+export function finish({ today, anchor, sumMin, sumMax, bucket, position, clientTarget, variance }) {
   let earliest = addDays(anchor, sumMin);
   let latest = addDays(anchor, sumMax);
   const pastIts = latest < today;
@@ -115,14 +126,14 @@ export function computeForecast(i) {
   let window = `${mmmDd(earliest)} - ${mmmDd(latest)}, ${latest.getFullYear()} | ${bucket} | ${position}`;
   if (pastIts) window += ' | lampas na sa tantiya';
 
-  const target = i.clientTarget ?? null;
+  const target = clientTarget ?? null;
   let status;
   if (!target) status = 'No Client Date';
   else if (today > target) status = 'Overdue';
   else if (latest <= target) status = 'On Track';
   else if (earliest <= target) status = 'At Risk';
   else status = 'Will Miss';
-  if (target) {
+  if (target && variance) {
     let varDays = gap(target, fcDate);
     if (fcDate < target) varDays = -varDays;
     window += varDays > 0 ? ` | +${varDays}d vs client` : varDays < 0 ? ` | ${-varDays}d early` : ' | sakto sa client';

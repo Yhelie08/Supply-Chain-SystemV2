@@ -25,7 +25,7 @@ import { todayDate, parseDate } from '../workflows/deluge.mjs';
 export const NULL_TEXT = true;
 const blank = (v) => v == null || v === '';
 // Deluge `field + ""`
-const txt = (v) => (blank(v) ? (NULL_TEXT ? 'null' : '') : String(v));
+export const txt = (v) => (blank(v) ? (NULL_TEXT ? 'null' : '') : String(v));
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 // "2026-11-12", "2026-11-12 09:00:00 AM" or "12-Nov-2026" -> a local Date, null when it is not a date.
