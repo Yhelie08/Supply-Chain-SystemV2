@@ -15,7 +15,9 @@
   },
   "Field_Work": {
     "ported": [
-      "FW_Validate_Reschedule_Re"
+      "FW_Validate_Reschedule_Re",
+      "FW_Reschedule_To_Exceptio",
+      "FW_Completion_Schedule_Sy"
     ],
     "nativeFormOnly": [],
     "notNeeded": {}
