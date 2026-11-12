@@ -1,6 +1,6 @@
 // Zoho Creator REST API v2.1 Adapter
 // Translates widget SDK shim requests from server/public/zoho-shim.js into Zoho Creator v2.1 calls
-import { getAccessToken, getConfig } from './auth.mjs';
+import { getAccessToken, getConfig, invalidateToken } from './auth.mjs';
 import { cachedFetch, schedule, invalidateReport } from './limits.mjs';
 import { invokeCustomApi as fallbackCustomApi } from '../custom-apis.mjs';
 
@@ -17,8 +17,10 @@ async function request(path, options = {}) {
   };
 
   if (options.body && typeof options.body === 'object' && !(options.body instanceof Buffer)) {
+    options = { ...options, body: JSON.stringify(options.body) };
     headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify(options.body);
+  } else if (typeof options.body === 'string' && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json'; // retry path: body is already JSON text
   }
 
   const res = await fetch(url, {
@@ -32,6 +34,16 @@ async function request(path, options = {}) {
     json = JSON.parse(text);
   } catch {
     json = { code: res.status, message: text };
+  }
+
+  // Next-block cursor for paged reads (header, not body).
+  const cursorHeader = res.headers.get('record_cursor');
+  if (cursorHeader) json.record_cursor = cursorHeader;
+
+  // Expired/invalid token: refresh once and retry the same call.
+  if (json.code === 1030 && !options.retried) {
+    invalidateToken();
+    return request(path, { ...options, retried: true });
   }
 
   // Handle Zoho's "No records found" gracefully as empty array
@@ -56,27 +68,27 @@ export const zohoAdapter = {
     const reportName = b.report_name;
     if (!reportName) throw new Error('report_name is required');
 
-    const params = new URLSearchParams();
+    // Zoho v2.1 ignores limit/from: it returns blocks of 200 and a record_cursor header for the next block.
+    // So walk the cursor chain up to the rows the widget asked for (page x pageSize) and slice.
+    const size = Number(b.pageSize || b.page_size || b.limit || b.max_records || 200);
+    const start = (Number(b.page || 1) - 1) * size;
+    const end = start + size;
+    const params = new URLSearchParams({ max_records: '200' });
     if (b.criteria) params.append('criteria', b.criteria);
-    const limit = b.pageSize || b.page_size || b.limit || 200;
-    params.append('limit', String(limit));
+    const path = `/report/${reportName}?${params}`;
 
-    const page = Number(b.page || 1);
-    if (page > 1) {
-      const from = ((page - 1) * limit) + 1;
-      params.append('from', String(from));
+    let rows = [];
+    let cursor = null;
+    while (rows.length < end) {
+      const cur = cursor;
+      const res = await cachedFetch(`GET:${path}:${cur || 'first'}`, () => request(path, { method: 'GET', headers: cur ? { record_cursor: cur } : {} }));
+      const block = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
+      rows = rows.concat(block);
+      cursor = res.record_cursor;
+      if (!cursor || block.length < 200) break;
     }
 
-    const qs = params.toString() ? `?${params.toString()}` : '';
-    const path = `/report/${reportName}${qs}`;
-
-    const cacheKey = `GET:${path}`;
-    const res = await cachedFetch(cacheKey, () => request(path, { method: 'GET' }));
-
-    return {
-      code: 3000,
-      data: Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []),
-    };
+    return { code: 3000, data: rows.slice(start, end) };
   },
 
   // 2. Get single record by ID
