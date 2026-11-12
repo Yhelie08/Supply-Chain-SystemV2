@@ -10,3 +10,7 @@ self_client.json
 .env
 .env.*
 !.env.example
+
+# graphify output (regenerable): graph, report, cache; and the Obsidian notes it writes
+graphify-out/
+vault/Graph/
