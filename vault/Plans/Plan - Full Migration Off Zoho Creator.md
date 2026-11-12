@@ -10,7 +10,7 @@ date: 2026-11-12
 ---
 
 > [!INFO] Where this fits
-> This is the current plan. It replaces the end state of [[Plan - Cloud Front Door (Zoho Backend)]] (Zoho as backend was only a bridge). Current state: [[00 - Current System]]. What is still only in Zoho: [[00 - Port Status]]. History: [[00 - Change Log]].
+> This is the current plan. It replaces the end state of [[Plan - Cloud Front Door (Zoho Backend)]] (Zoho as backend was only a bridge). Current state: [[00 - Current System]]. What is still only in Zoho: [[00 - Port Status]]. How to port a script: [[00 - Porting a Workflow]]. History: [[00 - Change Log]].
 
 # Goal
 The supply chain app in Zoho Creator stops being used. Our cloud app (Railway) becomes the only system where staff and suppliers work, and the system of record for all new data. Zoho Books and Zoho Inventory stay; our server talks to them directly instead of through Deluge. The old Creator app is left untouched as a fallback (whether it is ever deleted is not decided).
