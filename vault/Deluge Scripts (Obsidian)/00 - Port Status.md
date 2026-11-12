@@ -13,8 +13,8 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Part | Total | Ported |
 |---|---:|---:|
-| Deluge functions | 43 | 6 |
-| Custom APIs called by widgets | 25 | 7 |
+| Deluge functions | 43 | 8 |
+| Custom APIs called by widgets | 25 | 9 |
 | Form workflows (on validate, on success, field rules) | 165 | 34 |
 | Scheduled workflows | 6 | 0 |
 | Report-button functions | 16 | 0 |
@@ -52,8 +52,8 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `createRRFenteng` | `create_rr_fenteng` | Procurement | Not ported yet | `zoho-export/parsed/functions/createRRFenteng.dg` |
 | `createRRMain` | `create_rr_main` | Procurement | Not ported yet | `zoho-export/parsed/functions/createRRMain.dg` |
 | `createRRTony` | `create_rr_tony` | Procurement | Not ported yet | `zoho-export/parsed/functions/createRRTony.dg` |
-| `createSalesReturnBooks` | `create_sales_return_books` | Delivery Management | Not ported yet | `zoho-export/parsed/functions/createSalesReturnBooks.dg` |
-| `createShipmentOrder` | `create_shipment_order` | Delivery Management | Not ported yet | `zoho-export/parsed/functions/createShipmentOrder.dg` |
+| `createSalesReturnBooks` | `create_sales_return_books` | Delivery Management | Ported | `zoho-export/parsed/functions/createSalesReturnBooks.dg` |
+| `createShipmentOrder` | `create_shipment_order` | Delivery Management | Ported | `zoho-export/parsed/functions/createShipmentOrder.dg` |
 | `declineDmsScheduleRequest` | `decline_dms_schedule_request` | Delivery Management | Ported | `zoho-export/parsed/functions/declineDmsScheduleRequest.dg` |
 | `diagInsertThenPatch` | — | — | Not ported yet | `zoho-export/parsed/functions/diagInsertThenPatch.dg` |
 | `dmsScheduleSlot` | `dms_reschedule` | Analytic, Fulfillment, Delivery Management | Ported | `zoho-export/parsed/functions/dmsScheduleSlot.dg` |
@@ -94,8 +94,8 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `create_rr_fenteng` | `createRRFenteng` | Not ported yet |
 | `create_rr_main` | `createRRMain` | Not ported yet |
 | `create_rr_tony` | `createRRTony` | Not ported yet |
-| `create_sales_return_books` | `createSalesReturnBooks` | Not ported yet |
-| `create_shipment_order` | `createShipmentOrder` | Not ported yet |
+| `create_sales_return_books` | `createSalesReturnBooks` | Ported |
+| `create_shipment_order` | `createShipmentOrder` | Ported |
 | `decline_dms_schedule_request` | `declineDmsScheduleRequest` | Ported |
 | `dms_reschedule` | `dmsScheduleSlot` | Ported |
 | `push_dms_message_to_cms` | `pushDmsMessageToCms` | Ported |

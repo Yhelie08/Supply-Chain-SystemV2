@@ -23,8 +23,8 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Custom API | Deluge function | Local app |
 |---|---|---|
 | `confirm_dms_schedule_request` | [confirmDmsScheduleRequest](../../zoho-export/parsed/functions/confirmDmsScheduleRequest.dg) | Ported |
-| `create_sales_return_books` | [createSalesReturnBooks](../../zoho-export/parsed/functions/createSalesReturnBooks.dg) | Not ported yet |
-| `create_shipment_order` | [createShipmentOrder](../../zoho-export/parsed/functions/createShipmentOrder.dg) | Not ported yet |
+| `create_sales_return_books` | [createSalesReturnBooks](../../zoho-export/parsed/functions/createSalesReturnBooks.dg) | Ported |
+| `create_shipment_order` | [createShipmentOrder](../../zoho-export/parsed/functions/createShipmentOrder.dg) | Ported |
 | `decline_dms_schedule_request` | [declineDmsScheduleRequest](../../zoho-export/parsed/functions/declineDmsScheduleRequest.dg) | Ported |
 | `dms_reschedule` | [dmsScheduleSlot](../../zoho-export/parsed/functions/dmsScheduleSlot.dg) | Ported |
 | `push_dms_message_to_cms` | [pushDmsMessageToCms](../../zoho-export/parsed/functions/pushDmsMessageToCms.dg) | Ported |

@@ -1,6 +1,7 @@
 // Delivery Management custom APIs: the ported ones, and a "not ported yet" placeholder for the rest.
 import { ok, fail, withPlaceholders } from '../../custom-api-helpers.mjs';
 import { scheduleSlot } from './scheduling.mjs';
+import { create_shipment_order, create_sales_return_books } from './inventory-apis.mjs';
 
 // functions/pushDmsStatusToCms.dg / pushDmsMessageToCms.dg: CMS is a separate Zoho app, so it is skipped here.
 const cmsSkipped = () => ({ status: 'skipped', message: 'CMS sync is off in the local app.' });
@@ -54,6 +55,10 @@ const implemented = {
   async dms_reschedule({ recordId }, data, ctx = {}) {
     return scheduleSlot(data, recordId, true, { user: ctx.user });
   },
+
+  // functions/createShipmentOrder.dg and createSalesReturnBooks.dg: Zoho Inventory, in inventory-apis.mjs.
+  create_shipment_order,
+  create_sales_return_books,
 
   // functions/addDmsScheduleRequestMessage.dg is the CMS -> DMS direction; this is DMS -> CMS.
   push_dms_message_to_cms: cmsSkipped,
