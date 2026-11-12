@@ -1,7 +1,7 @@
 // Delivery Management, D3a: SR_Created_Make_Appointme (server/modules/delivery-management/service-request.mjs), run on
 // PGlite with the hooked store. Tests marked "mirrors Zoho" follow the Deluge script literally; they are to be confirmed
 // against Zoho Development.
-import { test, before, beforeEach } from 'node:test';
+import { test, before, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
 import { ensureSchema } from '../../server/pg/schema.mjs';
@@ -111,9 +111,16 @@ test('a retry after an aborted run is safe: the run only counts as finished once
   assert.equal((await appointments()).length, 1);
 });
 
-test('the new appointment runs the appointment\'s own "after add" hooks (Zoho runs the form\'s workflows for a scripted insert)', async () => {
+test('checked on Zoho Development: the new appointment does not run its own workflows (no geocoding when it is created)', async (t) => {
+  const key = process.env.GEOAPIFY_API_KEY;
+  process.env.GEOAPIFY_API_KEY = 'test-key';
+  const asked = [];
+  mock.method(globalThis, 'fetch', async (url) => { asked.push(url); return { json: async () => ({ results: [] }) }; });
+  t.after(() => { mock.restoreAll(); if (key === undefined) delete process.env.GEOAPIFY_API_KEY; else process.env.GEOAPIFY_API_KEY = key; });
   await store.addRecord(SR, request());
   const [sa] = await appointments();
-  assert.equal(sa.Sales_Order_Display, 'SO-100');
-  assert.equal(sa.Appointment_Status, 'Queued'); // the engine waits for a confirmed site
+  assert.equal(asked.length, 0);
+  assert.equal(sa.Geocode_Status, '');
+  assert.equal(sa.Sales_Order_Display, 'SO-100'); // set by the insert itself
+  assert.equal(sa.Appointment_Status, 'Queued');
 });

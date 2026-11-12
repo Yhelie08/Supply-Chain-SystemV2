@@ -13,12 +13,12 @@
 // picklist; the customer name goes whole into `last_name` (there is no reliable split); the contact is the phone number
 // as it is; the packages come from the distinct PAC of the item rows, and only when no row has a PAC from the header
 // Package_Number split on commas.
-// The appointment is created with the raw store and then its "after add" hooks are run by hand (hooks.mjs), because Zoho
-// runs the form's workflows for a record inserted by a script: for example the address geocoding.
+// The appointment is created with the raw store, which runs no hooks. Checked on Zoho Development: a record inserted by a
+// script does NOT run its form's workflows there either (a Service Request's new appointment got no Geocode_Status), so
+// the appointment is geocoded at its next save, not when it is created.
 import { register } from '../../workflows/index.mjs';
 import { blank, ymd, todayDate } from '../../workflows/deluge.mjs';
 import { SA, day } from './scheduling.mjs';
-import { fireAfterAdd } from './hooks.mjs';
 
 const VALID_TYPES = ['Delivery Only', 'With Installation', 'Full-Day Install', 'Multi-Day Install', 'Replacement', 'Site Visit', 'Pullout', 'Pick Up'];
 const text = (v) => (blank(v) ? '' : String(v));
@@ -78,8 +78,6 @@ async function makeAppointment({ id, record: input, store, user }) {
   for (const pac of pacs) {
     await store.addRecord('Package_Shipments', { Service_Appointment_ID: String(saId), Sales_Order: text(input.Sales_Order), Package_Number: pac, Shipment_Created: false }, user);
   }
-
-  await fireAfterAdd(store, SA, saId, user);
 
   // 6. Last: the write-back. While the appointment id is blank, the guard above knows the run did not finish.
   await store.updateRecord('Service_Request1', id, { Service_Appointment_ID: String(saId), SR_Status: 'Scheduling' }, { byForm: true });

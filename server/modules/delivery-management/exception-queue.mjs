@@ -10,13 +10,12 @@
 //     appointment with its items goes back to the queue as a Priority order, and the failed one is marked Failed.
 // The condition is `Status == "Resolved" || Status == "Dismissed" && ref != null`: a Resolved exception is handled
 // even with no appointment attached (it only gets the stamp), a Dismissed one needs the appointment ("mirrors Zoho").
-// Writes made here do not run the workflows again; in Zoho the `insert into Service_Appointment_Form` of the requeue
-// may run that form's workflows, which would change nothing here (the copy has no confirmed site and no dates).
+// Writes made here do not run the workflows again; checked on Zoho Development: a scripted `insert into` does not run the
+// form's workflows there either.
 import { register } from '../../workflows/index.mjs';
 import { zohoNow } from '../../criteria.mjs';
 import { idOf, truthy, blank } from '../../workflows/deluge.mjs';
 import { SA, scheduleSlot } from './scheduling.mjs';
-import { fireAfterAdd } from './hooks.mjs';
 
 const EXC = 'DMS_Exception_Queue';
 
@@ -50,8 +49,7 @@ async function resolveSync({ id, record: input, store, user }) {
       };
       if (failed.Customer_Name != null && failed.Customer_Name !== '') copy.Customer_Name = failed.Customer_Name;
       copy.Item_Details = (failed.Item_Details || []).map((it) => ({ Item_Name: it.Item_Name, SKU: it.SKU, Quantity: it.Quantity, PAC: it.PAC }));
-      const copyId = await store.addRecord(SA, copy, user);
-      await fireAfterAdd(store, SA, copyId, user); // Zoho runs the form's workflows for a scripted insert (hooks.mjs)
+      await store.addRecord(SA, copy, user);
       // The original attempt is marked Failed so it is archived properly.
       await store.updateRecord(SA, ref, { Appointment_Status: 'Failed' }, { byForm: true });
     }

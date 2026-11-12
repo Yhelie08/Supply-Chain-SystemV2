@@ -101,10 +101,12 @@ test('without the engine the missing order is skipped (and said once), the other
 
 test('the four workflows stamp the row that was just saved', async () => {
   await forecast('SO-1', '2026-12-04');
-  const sr = await store.addRecord('Service_Request1', { Sales_Order: 'SO-1' }); // also creates the appointment, which is stamped too
+  const sr = await store.addRecord('Service_Request1', { Sales_Order: 'SO-1' }); // also creates the appointment
   assert.equal((await row('Service_Request1', sr)).Forecast_Delivery, '2026-12-04');
   const [appointment] = await raw.find('Service_Appointment_Form');
-  assert.equal(appointment.Forecast_Delivery, '2026-12-04');
+  assert.equal(appointment.Forecast_Delivery, ''); // inserted by a script: its own workflows do not run (checked on Zoho Development)
+  await store.updateRecord('Service_Appointment_Form', appointment.ID, { Contact: '09170000000' }, { byForm: true });
+  assert.equal((await row('Service_Appointment_Form', appointment.ID)).Forecast_Delivery, '2026-12-04'); // at its next save
   const fw = await store.addRecord('Field_Work', { Sales_Order: 'SO-1', Status: 'Started' });
   assert.equal((await row('Field_Work', fw)).Forecast_Window, 'Dec 1-3');
   const ds = await store.addRecord('Delivery_Scheduling', { SO: 'SO-1' });

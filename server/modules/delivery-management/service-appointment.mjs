@@ -26,10 +26,10 @@ function siteConfirmation(rec) {
 // reason, unless a calendar entry was already created. Pick Up and 3rd Party fleet are exempt.
 // Blank is "" here and null in Zoho, so two blanks count as equal (the script's first clause, "confirmed date set and
 // suggested date empty", is already covered by "the dates differ").
-// Deliberate difference: nothing to check while nothing is confirmed. Read literally, `Confirmed != Suggested` is also
+// Rule: nothing to check while nothing is confirmed (it differs from a literal reading of the Deluge). Read literally, `Confirmed != Suggested` is also
 // true for an appointment that only has a suggestion (confirmed date empty), so every ordinary edit of a queued
 // appointment would be refused for Override By. The script's own intent ("when confirming a schedule that differs")
-// is only about a confirmation. To be confirmed on Zoho Development.
+// is only about a confirmation. Confirmed by the owner: Zoho does not refuse such an edit, so this is the rule.
 function schedulingOverride(rec) {
   if (rec.Type_of_Delivery === 'Pick Up') return;
   if (rec.Fleet_Decision === '3rd Party') return;

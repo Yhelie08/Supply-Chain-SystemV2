@@ -3,19 +3,26 @@
 // room, and confirms a Priority order by itself. Callers: the custom API `dms_reschedule` (isRerun = true), the
 // SA_Scheduling_Engine workflow (isRerun = false) and EXC_Resolve_Sync (isRerun = true).
 //
-// The script is ported as written, quirks included ("mirrors Zoho"), until it is compared with Zoho Development:
-//  1. Hours already used by a team: the criteria is `Installer == team && Confirmed == day || Suggested == day &&
-//     Status != "Failed" && ID != this`. By precedence the Suggested branch is NOT limited to the team (and the
-//     Confirmed branch does not skip this record or Failed ones), so every team is charged for every suggested job of
-//     that day. Days fill up sooner than the team's own load says.
+// Compared with Zoho Development (results in vault/Plans/Plan - Delivery Management Open Items.md): the script is ported as
+// written, quirks included ("mirrors Zoho"), with ONE deliberate difference, the clock (3).
+//  1. Hours already used by a team. The Deluge text is `Installer == team && Confirmed == day || Suggested == day &&
+//     Status != "Failed" && ID != this`, which read with the usual precedence would charge every team for every suggested
+//     job of the day. Zoho does not do that (a team with an empty day was preferred over a team that has a suggested job,
+//     in both orders of creation), so a team is charged for its OWN jobs of the day that are Confirmed or Suggested, not
+//     Failed, not this record. An earlier version of this port copied the Deluge text and was wrong.
 //  2. The winner test is `fits && remaining > best || (remaining == best && fewer jobs)`: the tie clause does not
 //     re-check the SO cap or that the job fits.
-//  3. `ctsTotalMin / 60` is taken as a whole-number division (a decimal one would give times like "12.6:00 PM").
-//  4. Hours are printed with two decimals ("2.30 hrs"), as in the rows Zoho wrote; a blank driver prints "null",
-//     the way Deluge joins a null into text.
+//  3. DELIBERATE DIFFERENCE, a Zoho bug: `ctsTotalMin / 60` is a decimal division in Zoho. When a team already has hours that
+//     day the total is rarely a whole number of hours (08:00 + 2.30 hours = 618 minutes = "10.3:00 AM"), that is not a
+//     valid time and the whole script fails: nothing is written and the officer sees no suggestion (seen on Zoho
+//     Development; it only worked when the total came out whole, 07:42 + 138 minutes = 10:00 AM). Here it is whole minutes
+//     (10:18 AM).
+//  4. Hours are printed with two decimals ("2.30 hrs"), and a blank driver or fleet prints "null", the way Deluge joins a
+//     null into text (confirmed on Zoho Development).
 //  5. "today" is the server's date, so the server must run with TZ=Asia/Manila.
-// Differences on purpose: none in the rules. Times are stored as "08:00:00 AM" (what Zoho's time field keeps and
-// what the widgets send back) while the text of the summaries keeps the engine's "8:00 AM".
+// Teams and records are looped in ID order, like Zoho (its ids are not in creation order). Times are stored as
+// "08:00:00 AM" (what Zoho's time field keeps and what the widgets send back) while the text of the summaries keeps the
+// engine's "8:00 AM".
 import { zohoNow } from '../../criteria.mjs';
 import { idOf, truthy, blank, toNum, parseDate, ymd, addDays, todayDate } from '../../workflows/deluge.mjs';
 
@@ -161,9 +168,10 @@ export async function scheduleSlot(store, recordId, isRerun, { user = '' } = {})
     for (const t of teams) {
       let cap = toNum(t.Max_Capacity_Hours);
       if (cap <= 0) cap = workdayHours; // FIX 4: an empty cap is not invisible
-      // FIX 3: Suggested and Confirmed jobs both count; the criteria keeps Zoho's precedence (quirk 1).
-      const usedRecs = everything.filter((r) => (r.Installer === t.Installer && day(r.Confirmed_Schedule_Date) === candidate)
-        || (day(r.Suggested_Schedule_Date) === candidate && r.Appointment_Status !== 'Failed' && r.ID !== saId));
+      // FIX 3: Suggested and Confirmed jobs of this team both count (quirk 1 is fixed here, see the header).
+      const usedRecs = everything.filter((r) => r.Installer === t.Installer
+        && (day(r.Confirmed_Schedule_Date) === candidate || day(r.Suggested_Schedule_Date) === candidate)
+        && r.Appointment_Status !== 'Failed' && r.ID !== saId);
       let used = 0;
       for (const u of usedRecs) used = r6(used + (u.Type_of_Delivery === 'Full-Day Install' ? 8 : r6(toNum(u.Estimated_Duration) * factor)));
       const soCountToday = usedRecs.length;

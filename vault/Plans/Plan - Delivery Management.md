@@ -3,12 +3,12 @@ title: "Plan - Delivery Management"
 tags:
   - plan
   - delivery-management
-status: D1 to D6 built 2026-11-12 on branch feature/delivery-management (16 of 16 workflows, 6 of 6 APIs, 357 tests; D1 to D2b pushed, the rest committed locally); open: PRs, the Zoho Development comparison, the live checks, the click-through, the CMS decision
+status: D1 to D6 built and compared with Zoho Development 2026-11-12 on branch feature/delivery-management (16 of 16 workflows, 6 of 6 APIs); one PR to open; open items in Plan - Delivery Management Open Items
 date: 2026-11-12
 ---
 
 > [!INFO] Where this fits
-> The Delivery Management part of [[Plan - Module Folders and Team Split]]. Code goes in `server/modules/delivery-management/`, tests in `tests/delivery-management/`. How to port one script: [[00 - Porting a Workflow]]. Counts come from [[00 - Port Checklist]].
+> The Delivery Management part of [[Plan - Module Folders and Team Split]]. **What is still missing or unsure, decisions and the Zoho Development comparison: [[Plan - Delivery Management Open Items]].** Code goes in `server/modules/delivery-management/`, tests in `tests/delivery-management/`. How to port one script: [[00 - Porting a Workflow]]. Counts come from [[00 - Port Checklist]].
 
 # Plan: Delivery Management
 

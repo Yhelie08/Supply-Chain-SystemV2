@@ -113,20 +113,30 @@ test('the team with the most hours left wins, and a tie goes to the team with fe
   await team('B', { Max_Capacity_Hours: 8 });
   assert.equal((await scheduleSlot(store, await sa(), true)).installer, 'B');
   await db.query('DELETE FROM "Daily_Team_Availability"');
+  await db.query('DELETE FROM "Service_Appointment_Form"'); // the first run left B's own suggestion behind
   await team('A');
   await team('B');
   await job('A', 0); // A has a job of no length: same hours left as B, but one more job
   assert.equal((await scheduleSlot(store, await sa(), true)).installer, 'B');
 });
 
-test('mirrors Zoho: every team is charged for every suggested job of the day (the Suggested branch of the criteria ignores the team)', async () => {
+test('fixed (the owner confirmed it was a bug): a team is charged only for its own suggested jobs, so the team with an empty day is preferred', async () => {
   await team('A');
   await team('B');
   await sa({ Sales_Order: 'SO-other', Installer: 'A', Suggested_Schedule_Date: inDays(0), Estimated_Duration: 2 });
   const out = await scheduleSlot(store, await sa(), true);
-  // B has no jobs of its own, but is charged 2.30 hours like A, so the tie goes to A (first) and the slot is after 2.30 hours.
-  assert.equal(out.installer, 'A');
-  assert.equal(out.time, '10:18 AM');
+  // In Zoho both teams were charged 2.30 hours and the tie went to A. Here B, with nothing on Monday, is picked from 8:00 AM.
+  assert.equal(out.installer, 'B');
+  assert.equal(out.time, '8:00 AM');
+});
+
+test('the own suggested jobs of a team count against it; a Failed one and the record itself do not', async () => {
+  await team('A');
+  await sa({ Sales_Order: 'SO-own', Installer: 'A', Suggested_Schedule_Date: inDays(0), Estimated_Duration: 2 });
+  await sa({ Sales_Order: 'SO-failed', Installer: 'A', Suggested_Schedule_Date: inDays(0), Estimated_Duration: 5, Appointment_Status: 'Failed' });
+  const me = await sa({ Installer: 'A', Suggested_Schedule_Date: inDays(0), Estimated_Duration: 2 });
+  const out = await scheduleSlot(store, me, true);
+  assert.equal(out.time, '10:18 AM'); // only SO-own (2.30 hours) is charged
 });
 
 test('a team at its SO count limit is skipped even with time left', async () => {
