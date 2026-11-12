@@ -2,9 +2,10 @@
 import { ok, fail, withPlaceholders } from '../../custom-api-helpers.mjs';
 import { scheduleSlot } from './scheduling.mjs';
 import { create_shipment_order, create_sales_return_books } from './inventory-apis.mjs';
+import { pushDmsStatusToCms, pushDmsMessageToCms } from './cms-sync.mjs';
 
-// functions/pushDmsStatusToCms.dg / pushDmsMessageToCms.dg: CMS is a separate Zoho app, so it is skipped here.
-const cmsSkipped = () => ({ status: 'skipped', message: 'CMS sync is off in the local app.' });
+// functions/pushDmsStatusToCms.dg / pushDmsMessageToCms.dg: the CMS is a separate Zoho app; the push is in cms-sync.mjs and
+// is skipped ("CMS sync is off") until CMS_STATUS_URL / CMS_MESSAGE_URL are set.
 
 // Custom API name -> the Deluge function it runs (zoho-export/parsed/functions/).
 export const functions = {
@@ -35,8 +36,9 @@ const implemented = {
     if (rec.Requested_Time) sa.Requested_Delivery_Time = String(rec.Requested_Time);
     const newSaId = await data.addRecord('Service_Appointment_Form', sa);
     await data.updateRecord('DMS_Schedule_Request', recId, { Status: 'Confirmed', Service_Appointment_Record_ID: newSaId }, { byForm: true });
+    const push = await pushDmsStatusToCms(rec.CMS_Schedule_Request_ID, 'Confirmed');
     return ok('Confirmed — Service Appointment created.', {
-      serviceAppointmentId: newSaId, cmsPushStatus: cmsSkipped().status,
+      serviceAppointmentId: newSaId, cmsPushStatus: push.status,
       itemPatchStatus: rec.Books_Sales_Order_ID ? 'skipped_books_offline' : 'skipped', dateFormatError: '',
     });
   },
@@ -48,7 +50,8 @@ const implemented = {
     const [rec] = await data.find('DMS_Schedule_Request', (r) => r.ID === recId);
     if (!rec) return fail('DMS Schedule Request not found.');
     await data.updateRecord('DMS_Schedule_Request', recId, { Status: 'Declined' }, { byForm: true });
-    return ok('Declined.', { cmsPushStatus: cmsSkipped().status });
+    const push = await pushDmsStatusToCms(rec.CMS_Schedule_Request_ID, 'Declined');
+    return ok('Declined.', { cmsPushStatus: push.status });
   },
 
   // functions/dmsScheduleSlot.dg: the Re-Schedule button of the widgets (reScheduleDelivery runs it with isRerun = true).
@@ -61,7 +64,7 @@ const implemented = {
   create_sales_return_books,
 
   // functions/addDmsScheduleRequestMessage.dg is the CMS -> DMS direction; this is DMS -> CMS.
-  push_dms_message_to_cms: cmsSkipped,
+  push_dms_message_to_cms: (p) => pushDmsMessageToCms(p),
 };
 
 export const apis = withPlaceholders(functions, implemented);

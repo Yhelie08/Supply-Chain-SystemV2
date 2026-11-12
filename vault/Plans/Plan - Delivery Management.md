@@ -3,7 +3,7 @@ title: "Plan - Delivery Management"
 tags:
   - plan
   - delivery-management
-status: D1 and D2 done 2026-11-12 on branch feature/delivery-management (D1, D2a, D2b pushed; D2c committed locally); D3 to D6 approved as one plan, in progress
+status: D1 to D6 built 2026-11-12 on branch feature/delivery-management (16 of 16 workflows, 6 of 6 APIs, 357 tests; D1 to D2b pushed, the rest committed locally); open: PRs, the Zoho Development comparison, the live checks, the click-through, the CMS decision
 date: 2026-11-12
 ---
 
