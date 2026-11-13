@@ -69,10 +69,10 @@ A deeper pass over the 13 tabs, the widget code and the parsed Zoho export found
 | 2 | **Books/Inventory** (Shipment and Sales Return) | No OAuth client, so the answer is "Zoho Books is not configured" | Archived → **Create Shipment**; Sales Returns → **Send to Books** | repo owner | [ ] |
 | 3 | **Books during Confirm** (address and items) | Confirming a Schedule Request leaves **address, contact, email and items blank**, because they should come from Books | Schedule Request with `Books_Sales_Order_ID` → Confirm → check the new appointment | repo owner | [ ] |
 | 4 | **CMS push** (status and chat) | No `CMS_STATUS_URL` / `CMS_MESSAGE_URL`, so "CMS sync is off" | Confirm/Decline → `cmsPushStatus: skipped`; chat → nothing arrives | repo owner + CMS owner | [ ] |
-| 5 | **Forecast engine** (`fcStampBySoNo`) | On this branch `forecastEngine.stampBySoNo = null`; the 4 Instant Forecast workflows only **copy an existing forecast** | An order with no forecast → `Forecast_Delivery` stays blank | forecast milestone | [ ] |
+| 5 | **Forecast engine** (`fcStampBySoNo`) | **Merged 2026-11-13.** `forecastEngine.stampBySoNo` now calls `fcStampBySoNo`; new orders get a real forecast instead of staying blank | Save a Delivery row for an SO with no forecast → `Forecast_Delivery` / `Forecast_Window` / `Forecast_Status` are filled | — | [x] |
 
 > [!NOTE] About the forecast
-> The engine already exists on `feature/forecast-engine` (F0–F4, with `server/forecast/*` and `server/schedules.mjs`). It is not merged into `main` or `Johncel-Dev`. Once merged, new orders get a real forecast.
+> `feature/forecast-engine` (F0–F4, `server/forecast/*` and `server/schedules.mjs`) is merged into `Johncel-Dev` as `b09d605`. Forecast tests pass **88/88**, Delivery **118/118**, full suite **434/434**. `SCHEDULES` stays off by default, so the daily `Forecast_Stamp_Daily` runner only starts with `SCHEDULES=on`.
 
 > [!NOTE] Geoapify key status on 2026-11-13
 > The duplicate prefix was removed and a real key was added. Tested live: `Ayala Avenue, Makati` → `14.5575225, 121.0198889` (`Success`). The key stays in `.env` only; it is not committed or written into this note.
@@ -96,7 +96,7 @@ A deeper pass over the 13 tabs, the widget code and the parsed Zoho export found
 | 13 | **Railway** | The deployed branch (`main`) defaults to `BACKEND=zoho`; `Johncel-Dev` defaults to `local`. Railway has no `DATABASE_URL`, `TZ` or `SCHEDULES`, so **the live site is still a bridge to Zoho**, not Postgres | Admin account menu → does it say "Data: Postgres"? If not, it is still the bridge | repo owner | [ ] |
 | 14 | **`Pick_Up_Request_Form` / `Shipment_Order_Form`** | Not a Delivery gap: no Delivery widget reads or writes these forms. They belong to another module or are unused | Search the Delivery widgets for the names — zero hits | — | [x] |
 | 15 | **App-wide column check** | The "34 forms may have missing columns" gap is app-wide, not Delivery-specific; every report and form name used by the Delivery tabs resolves in the parsed model | A spot-check is still useful before the Production import | core owner | [ ] |
-| 16 | **Upstream Fulfillment** | `SO_to_Readiness` and `Release_Records_to_Pick1` are active and not ported; `GATE_Instant_Forecast` and `SOF_Instant_Forecast` are on `feature/forecast-engine`; `create_package_ff` and `check_payment_status` are still placeholders. Delivery reads `Sales_Order_Fulfillment_Report`, `Sales_Order_Readiness_Gate_Report` and `Exception_Control_Report` | Real SO → To Ship → Service Request; if the readiness gate or forecast data is stale, the Delivery tabs read stale rows | Fulfillment owner | [ ] |
+| 16 | **Upstream Fulfillment** | `SO_to_Readiness` and `Release_Records_to_Pick1` are active and not ported; `create_package_ff` and `check_payment_status` are still placeholders. The forecast workflows (`GATE_Instant_Forecast`, `SOF_Instant_Forecast`) came with the engine merge. Delivery reads `Sales_Order_Fulfillment_Report`, `Sales_Order_Readiness_Gate_Report` and `Exception_Control_Report` | Real SO → To Ship → Service Request; if the readiness gate data is stale, the Delivery tabs read stale rows | Fulfillment owner | [ ] |
 
 ### 2.4 Data gaps in the Development backup
 
@@ -150,7 +150,7 @@ These Delivery forms have **0 rows** in `data/zoho-backup/development-2026-11-12
 
 | # | Do this | Why | Done |
 |---|---|---|---|
-| 1 | **Merge `feature/forecast-engine`** | So new orders do not silently get a blank forecast | [ ] |
+| 1 | **Merge `feature/forecast-engine`** | So new orders do not silently get a blank forecast | [x] `b09d605` |
 | 2 | **Books OAuth** (Geoapify is done) | Makes shipments, returns, and address/items during Confirm work | [ ] |
 | 3 | **CMS decision:** inbound route (core PR) or read-only + banner first | Gives the Schedule Requests tab a purpose | [ ] |
 | 4 | **Files migration:** one-time download from Zoho to the volume | Old photos and signatures become readable | [ ] |
