@@ -85,12 +85,14 @@
       <header id="topHeader" class="flex flex-nowrap items-baseline justify-between gap-3 mb-5">
         <div class="flex items-baseline gap-2 min-w-0">
           <h1 class="text-xl font-bold text-slate-900 leading-tight shrink-0">Sales Order Report</h1>
-          <p class="text-xs text-slate-500 truncate">
+          <!-- subtitle + Live indicator hidden for now:
+<p class="text-xs text-slate-500 truncate">
             Grouped by Sales Order · Latest Added First ·
             <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
               <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
             </span>
           </p>
+-->
         </div>
         <div class="flex items-center gap-2 text-xs shrink-0">
           <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
@@ -206,20 +208,12 @@
   </div>
 
   <!-- Sales Order Detail view -->
-  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+  <div id="detailView" class="hidden w-full">
 
-    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
-      <div class="flex items-center gap-2 font-semibold text-slate-600">
-        <span>HC Systems</span><span class="text-slate-300">/</span><span>Sales Order Detail</span>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 shadow-sm transition">
-        ← Back to Sales Order Dashboard
-      </button>
-      <span class="text-slate-300">|</span>
-      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    <!-- One flush bar like the Inquiry / Purchase Request details: back button + the order (the "HC Systems / Sales Order Detail" crumb row is gone) -->
+    <div class="header-strip flex items-center gap-3">
+      <button id="backToListBtn" class="so-back">&#8592; SO List</button>
+      <span id="detailBreadcrumb" class="so-bar-title"></span>
     </div>
 
     <!-- Next Step banner (ADDED 2026-09-30, display only) -->

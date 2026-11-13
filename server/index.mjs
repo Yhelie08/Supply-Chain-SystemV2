@@ -43,6 +43,7 @@ const THEME_HEAD = '<script src="/theme/theme-init.js"></script>'
   + '<link rel="preload" href="/theme/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>'
   + '<link rel="stylesheet" href="/theme/theme.css">'
   + '<link rel="stylesheet" href="/theme/views.css">'
+  + '<link rel="stylesheet" href="/theme/liquid.css">'
   + '<script src="/theme/views.js" defer></script>';
 function applyTheme(html, line) {
   const kit = /dms-tokens\.css/.test(html) ? 'dms' : /cdn\.tailwindcss\.com/.test(html) ? 'tw' : 'legacy';
@@ -224,7 +225,7 @@ async function handle(req, res) {
     // Swap Zoho's SDK for the local stand-in (told who is signed in) and add the theme layer.
     // Everything else in the widget is untouched.
     return serveFile(res, f, f.endsWith('.html') ? (html) => {
-      const who = `<script>window.HC_USER=${jsonForScript({ email: me.email, name: me.name })}</script>`;
+      const who = `<script>window.HC_USER=${jsonForScript({ email: me.email, name: me.name, role: me.role })}</script>`;
       html = html.replace(/<script[^>]*src="[^"]*widgetsdk[^"]*"[^>]*><\/script>/i, `${who}<script src="/zoho-shim.js"></script>`);
       html = plainWords(html);
       const section = SECTIONS.find((s) => s.label === p.slice(3).split('/')[0]);

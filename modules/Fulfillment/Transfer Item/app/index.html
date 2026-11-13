@@ -167,12 +167,14 @@
     <header class="shrink-0 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-4">
       <div>
         <h1 class="text-xl font-bold text-slate-900 leading-tight">Warehouse Request</h1>
-        <p class="text-xs text-slate-500 mt-0.5">
+        <!-- subtitle + Live indicator hidden for now:
+<p class="text-xs text-slate-500 mt-0.5">
           Pending → Done ·
           <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
           </span>
         </p>
+-->
       </div>
       <div class="flex items-center gap-2">
         <div class="relative">
@@ -190,11 +192,11 @@
   </div>
 
   <!-- DETAIL VIEW -->
-  <div id="wrDetailView" class="hidden w-full px-4 sm:px-6 py-5">
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <button id="wrDetailBackBtn" class="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Back to Board</button>
-      <span class="text-slate-300">|</span>
-      <span id="wrDetailBreadcrumb" class="text-slate-500"></span>
+  <div id="wrDetailView" class="hidden w-full">
+    <!-- One flush bar like the Inquiry / Purchase Request details: back button + the record (the "HC Systems / ... Detail" crumb row is gone) -->
+    <div class="header-strip flex items-center gap-3">
+      <button id="wrDetailBackBtn" class="so-back">&#8592; Back to Board</button>
+      <span id="wrDetailBreadcrumb" class="so-bar-title"></span>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div class="lg:col-span-2 space-y-4">
@@ -360,12 +362,14 @@
     <header class="shrink-0 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-4">
       <div>
         <h1 class="text-xl font-bold text-slate-900 leading-tight">Transfer Warehouse</h1>
-        <p class="text-xs text-slate-500 mt-0.5">
+        <!-- subtitle + Live indicator hidden for now:
+<p class="text-xs text-slate-500 mt-0.5">
           Pending Dispatch → Dispatched ·
           <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
           </span>
         </p>
+-->
       </div>
       <div class="flex items-center gap-2">
         <div class="relative">
@@ -383,11 +387,11 @@
   </div>
 
   <!-- DETAIL VIEW -->
-  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <button id="detailBackBtn" class="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">← Back to Board</button>
-      <span class="text-slate-300">|</span>
-      <span id="detailBreadcrumb" class="text-slate-500"></span>
+  <div id="detailView" class="hidden w-full">
+    <!-- One flush bar like the Inquiry / Purchase Request details: back button + the record (the "HC Systems / ... Detail" crumb row is gone) -->
+    <div class="header-strip flex items-center gap-3">
+      <button id="detailBackBtn" class="so-back">&#8592; Back to Board</button>
+      <span id="detailBreadcrumb" class="so-bar-title"></span>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div class="lg:col-span-2 space-y-4">

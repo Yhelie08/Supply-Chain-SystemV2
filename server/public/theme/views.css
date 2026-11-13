@@ -193,6 +193,65 @@
 :root[data-hc-kit="dms"] .kv div span { font-size: 12px; font-weight: 600; color: var(--hc-ink-3); margin-bottom: 2px; }
 :root[data-hc-kit="dms"] .dr-foot { padding: 14px 26px; background: var(--hc-panel-2); }
 @media (max-width: 700px) { :root[data-hc-kit="dms"] .kv { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* ---------- Delivery: a record and its forms open as a full page, not a side panel or a small dialog ----------
+   The widgets keep their drawer/modal markup (and their code); only the look changes. The list underneath is hidden
+   while a record or a form is open. Small yes/no dialogs stay dialogs. */
+:root[data-hc-kit="dms"] body:has(.drawer.on, .modal.on.hc-page) > :is(.app, main, .main-in, .page) { display: none; }
+:root[data-hc-kit="dms"] body:has(.drawer.on, .modal.on.hc-page) .scrim { opacity: 0; pointer-events: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* the record (in the page flow, so the shell scrolls it, like every other page) */
+:root[data-hc-kit="dms"] .drawer.on { position: relative; inset: auto; width: 100%; min-height: 100vh; background: transparent; border: 0; box-shadow: none; }
+:root[data-hc-kit="dms"] .drawer.on .dr-head { align-items: center; gap: 14px; padding: 12px 24px; background: var(--hc-glass); border-bottom: 1px solid var(--hc-hair); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+:root[data-hc-kit="dms"] .drawer.on .dr-head h3 { font-size: 18px; color: var(--hc-line-ink); }
+:root[data-hc-kit="dms"] .drawer.on .dr-head [data-close] { order: -1; width: auto; height: 32px; padding: 0 12px; border: 1.5px solid var(--hc-hair-strong); background: var(--hc-panel); color: var(--hc-ink-2); border-radius: var(--hc-radius-sm); font-size: 13px; font-weight: 500; }
+:root[data-hc-kit="dms"] .drawer.on .dr-head [data-close]:hover { border-color: var(--hc-line-fill); color: var(--hc-line-ink); }
+:root[data-hc-kit="dms"] .drawer.on .dr-head [data-close] svg { display: none; }
+:root[data-hc-kit="dms"] .drawer.on .dr-head [data-close]::before { content: "\2190\a0 Back"; }
+:root[data-hc-kit="dms"] .drawer.on .dr-head { position: sticky; top: 0; z-index: 3; flex: none; }
+:root[data-hc-kit="dms"] .drawer.on .dr-body { flex: none; overflow: visible; width: 100%; max-width: none; margin: 0; padding: 20px 24px 32px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; align-items: stretch; align-content: start; }
+:root[data-hc-kit="dms"] .drawer.on .dr-sec { margin: 0; padding: 0 0 20px; border: 1px solid var(--hc-glass-edge); border-radius: var(--hc-radius); background: var(--hc-glass); box-shadow: var(--hc-shadow); min-width: 0; overflow: hidden; }
+/* the card title is a header band with a hairline under it, like the Purchase Request cards */
+:root[data-hc-kit="dms"] .drawer.on .dr-sec > h4 { margin: 0 0 16px; padding: 14px 20px 12px; border-bottom: 1px solid var(--hc-hair); font-size: 15px; font-weight: 700; letter-spacing: -.005em; text-transform: none; color: var(--hc-ink); }
+:root[data-hc-kit="dms"] .drawer.on .dr-sec > :not(h4) { margin-left: 20px; margin-right: 20px; }
+:root[data-hc-kit="dms"] .drawer.on .dr-sec > :not(h4):last-child { margin-bottom: 0; }
+:root[data-hc-kit="dms"] .drawer.on .dr-sec > .muted { margin-top: 14px; }
+:root[data-hc-kit="dms"] .drawer.on .dr-sec:last-child { border-bottom: 1px solid var(--hc-hair); }
+:root[data-hc-kit="dms"] .drawer.on .dr-sec:has(table, .tbl-wrap, .log) { grid-column: 1 / -1; order: 10; }
+/* the line-item table sits last, so the small cards above it pair up without gaps */
+:root[data-hc-kit="dms"] .drawer.on .dr-sec table th { background: var(--hc-tint-1); }
+:root[data-hc-kit="dms"] .drawer.on .dr-sec table td { background: transparent; }
+:root[data-hc-kit="dms"] .drawer.on .dr-body > :not(.dr-sec) { grid-column: 1 / -1; }
+:root[data-hc-kit="dms"] .drawer.on .kv-grid { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px 20px; }
+:root[data-hc-kit="dms"] .drawer.on .kv-grid .k { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; color: var(--hc-ink-3); }
+:root[data-hc-kit="dms"] .drawer.on .kv-grid .full { grid-column: 1 / -1; }
+:root[data-hc-kit="dms"] .drawer.on .dr-foot { background: var(--hc-glass); border-top: 1px solid var(--hc-hair); padding: 12px 24px; }
+@media (max-width: 900px) { :root[data-hc-kit="dms"] .drawer.on .dr-body { grid-template-columns: minmax(0, 1fr); padding: 16px; } }
+
+/* the forms (New / Edit / Reschedule / Hand off ...) */
+:root[data-hc-kit="dms"] .modal.on.hc-page { position: relative; left: auto; top: auto; right: auto; bottom: auto; width: 100%; max-width: none; max-height: none; min-height: 100vh; transform: none; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+:root[data-hc-kit="dms"] .modal.on.hc-page > header { position: sticky; top: 0; z-index: 3; display: flex; align-items: baseline; gap: 12px; padding: 14px 24px; background: var(--hc-glass); border-bottom: 1px solid var(--hc-hair); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+:root[data-hc-kit="dms"] .modal.on.hc-page > header h3 { font-size: 18px; color: var(--hc-line-ink); }
+:root[data-hc-kit="dms"] .modal.on.hc-page > header p { margin: 0; }
+:root[data-hc-kit="dms"] .modal.on.hc-page > form { width: 100%; max-width: 920px; margin: 0 auto; padding: 20px 24px 28px; gap: 16px; }
+:root[data-hc-kit="dms"] .modal.on.hc-page .form-sec { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; padding: 18px 20px; border: 1px solid var(--hc-glass-edge); border-radius: var(--hc-radius); background: var(--hc-glass); box-shadow: var(--hc-shadow); }
+:root[data-hc-kit="dms"] .modal.on.hc-page .form-sec:first-child { padding-top: 18px; }
+:root[data-hc-kit="dms"] .modal.on.hc-page .form-sec > :not(.field), :root[data-hc-kit="dms"] .modal.on.hc-page .form-sec .field:has(textarea:not([rows="1"])) { grid-column: 1 / -1; }
+:root[data-hc-kit="dms"] .modal.on.hc-page textarea[rows="1"] { min-height: 38px; }
+:root[data-hc-kit="dms"] .modal.on.hc-page .form-sec h4 { text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 700; color: var(--hc-ink); }
+:root[data-hc-kit="dms"] .modal.on.hc-page .m-foot { position: sticky; bottom: 16px; z-index: 2; margin: 4px 0 0; padding: 12px 16px; border: 1px solid var(--hc-hair-strong); border-radius: var(--hc-radius); background: var(--hc-glass); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: var(--hc-shadow); }
+:root[data-hc-kit="dms"] .modal.on.hc-page > header .hc-form-back { flex: none; align-self: center; height: 32px; padding: 0 12px; border: 1.5px solid var(--hc-hair-strong); background: var(--hc-panel); color: var(--hc-ink-2); border-radius: var(--hc-radius-sm); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+:root[data-hc-kit="dms"] .modal.on.hc-page > header .hc-form-back:hover { border-color: var(--hc-line-fill); color: var(--hc-line-ink); }
+/* read-only record shown in a pop-out (Archived): a wider dialog whose fields are grouped in cards */
+:root[data-hc-kit="dms"] .modal.on:has(> .body) { width: min(820px, calc(100% - 32px)); }
+:root[data-hc-kit="dms"] .modal.on:has(> .body) > .body { padding: 6px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+:root[data-hc-kit="dms"] .modal.on:has(> .body) .hc-secs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+:root[data-hc-kit="dms"] .modal.on:has(> .body) .hc-secs > .dr-sec { margin: 0; padding: 0 0 16px; border: 1px solid var(--hc-hair); border-radius: var(--hc-radius-sm); background: var(--hc-panel-2); overflow: hidden; min-width: 0; }
+:root[data-hc-kit="dms"] .modal.on:has(> .body) .hc-secs > .dr-sec > h4 { margin: 0 0 12px; padding: 10px 16px; border-bottom: 1px solid var(--hc-hair); font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--hc-ink); }
+:root[data-hc-kit="dms"] .modal.on:has(> .body) .hc-secs > .dr-sec > .kv { margin: 0 16px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px 16px; }
+:root[data-hc-kit="dms"] .modal.on:has(> .body) .m-foot { margin-top: 0; }
+@media (max-width: 700px) { :root[data-hc-kit="dms"] .modal.on:has(> .body) .hc-secs { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 700px) { :root[data-hc-kit="dms"] .modal.on.hc-page .form-sec { grid-template-columns: minmax(0, 1fr); } :root[data-hc-kit="dms"] .modal.on.hc-page > form { padding: 16px; } }
+
 /* Tailwind pages paint a slate wash on the page itself; let the glass show instead. */
 [data-hc-kit="tw"] :is(body, body > div, .min-h-screen):is(.bg-slate-50, .bg-slate-100) { background-color: transparent; }
 /* Receiving: the line-items table needs the full width, so the info cards go underneath in two columns */
@@ -268,11 +327,19 @@ select[aria-expanded="true"] { background-image: var(--hc-chev) !important; }
 
 /* ---------- Shipments, Receiving, Replacement Request: header like the Inquiry detail ----------
    a flush bar instead of a floating card, the next-step strip lined up with the cards below it */
-#detailView { padding: 0 0 32px !important; }
-#detailView > .header-strip { border-radius: 0; border-width: 0 0 1px; box-shadow: none; padding: 12px 24px; }
+#detailView, #wrDetailView { padding: 0 0 32px !important; }
+#detailView > .header-strip, #wrDetailView > .header-strip { border-radius: 0; border-width: 0 0 1px; box-shadow: none; padding: 12px 24px; }
 #detailView > #nsBanner { padding: 16px 24px 0 !important; }
-#detailView > :not(.header-strip):not(#nsBanner) { margin-left: 24px; margin-right: 24px; }
+#detailView > :not(.header-strip):not(#nsBanner), #wrDetailView > :not(.header-strip) { margin-left: 24px; margin-right: 24px; }
 #detailView > #nsBanner + * { margin-top: 16px; }
+#detailView > .header-strip + :not(#nsBanner), #wrDetailView > .header-strip + * { margin-top: 16px; }
+
+/* ---------- Sales Order detail: the Inquiry detail's bar (outlined back button + title) ---------- */
+#detailView .so-back, #wrDetailView .so-back { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; flex: none; white-space: nowrap; cursor: pointer;
+  border-radius: var(--hc-radius-sm, 10px); border: 1.5px solid var(--hc-hair-strong); background: var(--hc-panel); color: var(--hc-ink-2);
+  font: inherit; font-size: 13px; font-weight: 500; box-shadow: none; transition: border-color .15s ease, color .15s ease, background-color .15s ease; }
+#detailView .so-back:hover, #wrDetailView .so-back:hover { border-color: var(--hc-line-fill); color: var(--hc-line-ink); }
+#detailView .so-bar-title, #wrDetailView .so-bar-title { font-size: 17px; font-weight: 700; color: var(--hc-line-ink); letter-spacing: -.01em; }
 
 /* ---------- Exceptions: the same single bar as the other detail pages ---------- */
 .rr-detail-page { display: flex; flex-direction: column; }
@@ -283,16 +350,53 @@ select[aria-expanded="true"] { background-image: var(--hc-chev) !important; }
 
 /* ---------- List pages: hidden "Next step" column, added "Added Time" column (see views.js) ---------- */
 .hc-hide { display: none !important; }
-th.hc-added, td.hc-added { white-space: nowrap; text-align: left; color: var(--hc-ink-2); font-size: inherit; font-weight: 400; }
-td.hc-added { font-variant-numeric: tabular-nums; }
+th.hc-added, td.hc-added, th.hc-mod, td.hc-mod, th.hc-dt, td.hc-dt { white-space: nowrap; text-align: left; color: var(--hc-ink-2); font-size: inherit; font-weight: 400; }
+td.hc-added, td.hc-mod, td.hc-dt { font-variant-numeric: tabular-nums; }
+
+/* ---------- Sticky page header (Sales Order Report): no coloured band ----------
+   the widget paints it with the page's grey (bg-slate-100), which the theme turns into a panel tint, so a different-coloured strip
+   showed behind the title and tiles; it is fully clear now (no blur either, which left a visible edge) so the background shows through like on the Procurement pages */
+[data-hc-kit="tw"] .sticky.bg-slate-100 { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ---------- To Ship: Board / List switch and list filter pills use the room's fill like the other tab pills ---------- */
+[data-hc-kit="tw"] .view-tab.is-active, [data-hc-kit="tw"] .list-filter-btn.is-active { background: var(--hc-line-fill); border-color: var(--hc-line-fill); color: var(--hc-line-on); box-shadow: 0 1px 3px color-mix(in srgb, var(--hc-line-fill) 35%, transparent); }
+[data-hc-kit="tw"] .view-tab:not(.is-active):hover { color: var(--hc-line-ink); }
+[data-hc-kit="tw"] .list-filter-btn.is-active .lf-count { background: rgba(255, 255, 255, .28); color: inherit; }
+
+/* ---------- Page titles: Fulfillment lists use the Procurement title size (24px, the widgets set 20px) ---------- */
+[data-hc-kit="tw"] header h1.text-xl { font-size: 24px; line-height: 1.2; }
+
+/* ---------- Sticky table headers (To Ship list): clear like the other lists' headers (and not stuck, so no band with hard edges and no rows cut off under it) ---------- */
+[data-hc-kit="tw"] thead.sticky.bg-slate-50 { position: static; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ---------- Delivery lists: the header row is the same faint tint as the Purchase Request lists, not a solid pale bar ---------- */
+:root[data-hc-kit="dms"] .q th { background: var(--hc-tint-1); }
+
+/* ---------- Fulfillment header pills and the EN / TL switch ---------- */
+[data-hc-kit="tw"] header .inline-flex.rounded-full:not([class*="gap-"]) { gap: 5px; }
+[data-hc-kit="tw"] header .inline-flex.rounded-full { flex: none; }
+[data-hc-kit="tw"] .lang-switch { flex: none; border-color: var(--hc-hair-strong); background: var(--hc-panel); }
+[data-hc-kit="tw"] .lang-seg { color: var(--hc-ink-2); }
+[data-hc-kit="tw"] .lang-seg:hover { color: var(--hc-line-ink); }
+[data-hc-kit="tw"] .lang-seg.lang-seg-on { background: var(--hc-line-fill); color: var(--hc-line-on); }
+
+/* ---------- Forecast chips: every list paints them with pale inline colours, which glare as white pills on the dark glass ---------- */
+:root span[style*="background:#eaf2fc"] { background: var(--hc-info-soft) !important; color: var(--hc-info) !important; }
+:root span[style*="background:#fdf4e3"] { background: var(--hc-warn-soft) !important; color: var(--hc-warn) !important; }
+:root span[style*="background:#fdecec"] { background: var(--hc-bad-soft) !important; color: var(--hc-bad) !important; }
+:root span[style*="background:#f1f5f9"][style*="border-radius:999px"] { background: var(--hc-tint-2) !important; color: var(--hc-ink-3) !important; }
+
+/* ---------- Stat tiles (Fulfillment): one even 1px outline like the Procurement tiles ----------
+   the widgets draw a 4px coloured top bar and a darker outline on the first tile; the theme greyed the colour but kept the thick bar */
+[data-hc-kit="tw"] .border-t-4.rounded-xl { border-width: 1px; border-color: var(--hc-hair); }
 
 /* ---------- List typography: headers and badges were 10-11px, which read as fine print ---------- */
-.hc-list thead th, .hc-list th.hc-added { font-size: 12px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.hc-list thead th, .hc-list th.hc-added, .hc-list th.hc-mod, .hc-list th.hc-dt { font-size: 12px; font-weight: 650; letter-spacing: 0; text-transform: none; }
 .hc-list.hc-grow tbody td { font-size: 13px; }
 .hc-list td.hc-nw { white-space: nowrap; }
-.hc-list td.hc-added .hc-added-t { font-size: 12px; color: var(--hc-ink-3); }
+.hc-list td.hc-added .hc-added-t, .hc-list td.hc-mod .hc-added-t, .hc-list td.hc-dt .hc-added-t { font-size: 12px; color: var(--hc-ink-3); }
 .hc-list.hc-grow tbody td :is(.badge, .pill, .chip, [class^="badge-"], [class*=" badge-"], [class^="status-"], [class*=" status-"], [class*="-badge"], [class*="-chip"], [class*="-pill"]) { font-size: 12px; }
-.hc-list td.hc-added { font-size: 13px; line-height: 1.3; }
+.hc-list td.hc-added, .hc-list td.hc-mod, .hc-list td.hc-dt { font-size: 13px; line-height: 1.3; }
 
 /* ---------- Colour coding: blue stays blue ----------
    The legacy widgets use --blue both for "the room's accent" (primary buttons, focus, tabs) and for "informational" status
@@ -350,3 +454,38 @@ table .col-sticky, td.col-sticky, th.col-sticky { position: static !important; l
 #detailView .detail-grid:has(#evidenceCard) > :nth-child(2) > :is(#tlhcMount, #incMount) { grid-column: 1 / -1; }
 #detailView .detail-grid:has(#evidenceCard) > :nth-child(2) > #incMount:empty, #detailView .detail-grid:has(#evidenceCard) > :nth-child(2) > #incMount:not(:has(*)) { display: none; }
 @media (max-width: 900px) { #detailView .detail-grid:has(#evidenceCard) > :nth-child(2) { grid-template-columns: minmax(0, 1fr) !important; } }
+
+/* Dark mode: text the widget painted dark on a dark surface (tagged by views.js) is lifted so it can be read. */
+:root:not([data-theme="light"]) [data-hc-lt] { color: var(--hc-ink-2) !important; }
+
+/* ---------- Dark mode, edit forms: every field is dark glass with light text, as in the Purchase Request edit mode ----------
+   Several widgets give their fields a solid white fill and dark text of their own; on the dark glass that is a bright hole with the labels around it unreadable. */
+:root:not([data-theme="light"]) :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="button"], [type="submit"], [type="image"]), select, textarea) {
+  background-color: rgba(8, 12, 20, .55) !important; color: var(--hc-ink) !important; border-color: var(--hc-hair-strong) !important;
+}
+:root:not([data-theme="light"]) :is(input, textarea)::placeholder { color: var(--hc-ink-3) !important; }
+:root:not([data-theme="light"]) :is(input, select, textarea):disabled, :root:not([data-theme="light"]) :is(input, textarea)[readonly] { background-color: rgba(255, 255, 255, .04) !important; color: var(--hc-ink-2) !important; }
+:root:not([data-theme="light"]) :is(input, select, textarea):focus { border-color: var(--hc-line-fill) !important; box-shadow: 0 0 0 3px var(--hc-line-soft) !important; outline: none; }
+/* labels the widgets painted with a fixed dark colour (the JS lift in views.js also covers the rest) */
+:root:not([data-theme="light"]) :is(.checkbox-row, .check-row, .check-label, .field-label, .form-label) { color: var(--hc-ink-2) !important; }
+
+/* the file pickers too (the browser draws their button itself, so only the box and its own button are styled) */
+:root:not([data-theme="light"]) input[type="file"] { background-color: rgba(8, 12, 20, .55) !important; color: var(--hc-ink-2) !important; border-color: var(--hc-hair-strong) !important; }
+:root:not([data-theme="light"]) input[type="file"]::file-selector-button { background: rgba(255, 255, 255, .14); color: var(--hc-ink); border: 1px solid var(--hc-hair-strong); border-radius: 8px; padding: 4px 10px; margin-right: 10px; cursor: pointer; }
+
+/* Dark mode: the row under the mouse gets a faint lift, not the widget's own pale hover fill (a near-white row with light text is unreadable) */
+:root:not([data-theme="light"]) :is(tbody tr, .list-row, .record-row, .data-row, .row-hover):hover { background-color: var(--hc-tint-2) !important; }
+:root:not([data-theme="light"]) :is(tbody tr, .list-row, .record-row, .data-row, .row-hover):hover > td { background-color: transparent; }
+
+/* the other pale hover fills the widgets use (Tailwind hover utilities, the selected row in the PO grouping grid) */
+:root:not([data-theme="light"])[data-hc-kit="tw"] :is(.hover\:bg-slate-200:hover, .hover\:bg-white:hover, .hover\:bg-purple-50:hover, .hover\:bg-teal-50:hover, .hover\:bg-teal-100:hover, .hover\:bg-amber-200:hover, .hover\:bg-slate-50\/70:hover) { background-color: var(--hc-tint-2) !important; }
+:root:not([data-theme="light"]) .group-grid-row.gr-checked:hover { background-color: var(--hc-info-soft) !important; }
+
+/* ---------- Hidden for now: the Refresh (and Debug) buttons, and the grey sentence under each Delivery page title (Procurement has none) ---------- */
+:root[data-hc-kit="dms"] :is(#btnRefresh, #btnDebug, #refreshListBtn, [data-tip="Reload from Creator"], button[onclick="location.reload()"]) { display: none !important; }
+:root button[onclick^="refreshSupplierLoadView"] { display: none !important; }
+:root[data-hc-kit="dms"] h1 + :is(p, .muted, .subtitle, .dms-sub, #pageSubtitle) { display: none !important; }
+
+/* ---------- Sticky action bars painted white with a little see-through (bg-white/95): frosted enough that the rows scrolling under them do not show through the buttons ---------- */
+[data-hc-kit="tw"] :is(.bg-white\/95, .bg-white\/90, .bg-white\/80) { background: color-mix(in srgb, var(--hc-panel) 86%, transparent) !important; -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%); }
+:root[data-theme="light"] [data-glass-fg="dark"] { color: var(--hc-ink-2) !important; }

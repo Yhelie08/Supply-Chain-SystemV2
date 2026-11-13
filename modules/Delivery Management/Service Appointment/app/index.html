@@ -212,7 +212,7 @@
               <th>System suggestion</th>
               <th>Team</th>
               <th>State</th>
-              <th style="text-align:right">Action</th>
+              <!-- Action column hidden for now (the row itself opens the review): <th style="text-align:right">Action</th> -->
             </tr>
           </thead>
           <tbody id="pendBody"></tbody>
@@ -1603,7 +1603,7 @@ function to12Hour(t){
 }
 
 function pendMessage(title, hint){
-  return '<tr class="static"><td colspan="6"><div class="empty"><b>' + esc(title) + '</b>' +
+  return '<tr class="static"><td colspan="5"><div class="empty"><b>' + esc(title) + '</b>' +
     (hint ? '<span>' + esc(hint) + '</span>' : '') + '</div></td></tr>';
 }
 
@@ -1649,9 +1649,10 @@ function renderPending(){
       '<td data-label="System suggestion">' + suggestionText(r) + '</td>' +
       '<td data-label="Team">' + esc(team) + '</td>' +
       '<td data-label="State">' + statePill(r) + '</td>' +
+      /* Action column hidden for now: the row itself opens the review.
       '<td class="c-act" onclick="event.stopPropagation()"><div class="acts">' +
         '<button class="btn sm" onclick="openApprove(\'' + r.ID + '\')">Review</button>' +
-      '</div></td>' +
+      '</div></td>' */
     '</tr>';
   }).join('');
 }

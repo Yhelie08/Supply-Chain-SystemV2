@@ -3,6 +3,9 @@
    run in iframes on the same origin, so they hear about a change through the "storage" event, and the shell also
    posts it to them in case storage is blocked. Dark is the default. */
 (function () {
+  // Skin: the liquid glass look by default; localStorage 'hc-skin' = 'classic' brings back ember and signal (see theme/liquid.css).
+  var skin = 'liquid'; try { if (localStorage.getItem('hc-skin') === 'classic') skin = 'classic'; } catch (e) { /* default */ }
+  document.documentElement.setAttribute('data-hc-skin', skin);
   var KEY = 'hc-theme', root = document.documentElement, memory = null;
   function read() {
     try { var v = localStorage.getItem(KEY); if (v) return v === 'light' ? 'light' : 'dark'; } catch (e) { /* blocked storage: use memory */ }

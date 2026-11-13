@@ -66,12 +66,14 @@
     <header id="topHeader" class="shrink-0 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5">
       <div>
         <h1 class="text-xl font-bold text-slate-900 leading-tight">Pick Report</h1>
-        <p class="text-xs text-slate-500 mt-0.5">
+        <!-- subtitle + Live indicator hidden for now:
+<p class="text-xs text-slate-500 mt-0.5">
           Latest Activity First ·
           <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
           </span>
         </p>
+-->
       </div>
       <div class="flex items-center gap-2 text-xs">
         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
@@ -136,20 +138,11 @@
   </div>
 
   <!-- Pick Detail view -->
-  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
-
-    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
-      <div class="flex items-center gap-2 font-semibold text-slate-600">
-        <span>HC Systems</span><span class="text-slate-300">/</span><span>Pick Detail</span>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
-        ← Back to Pick Dashboard
-      </button>
-      <span class="text-slate-300">|</span>
-      <span id="detailBreadcrumb" class="text-slate-500"></span>
+  <div id="detailView" class="hidden w-full">
+    <!-- One flush bar like the Inquiry / Purchase Request details: back button + the record (the "HC Systems / ... Detail" crumb row is gone) -->
+    <div class="header-strip flex items-center gap-3">
+      <button id="backToListBtn" class="so-back">&#8592; Pick List</button>
+      <span id="detailBreadcrumb" class="so-bar-title"></span>
     </div>
 
     <!-- Next Step banner (ADDED 2026-09-30, display only) -->

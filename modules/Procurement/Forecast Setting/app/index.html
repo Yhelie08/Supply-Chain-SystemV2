@@ -633,7 +633,7 @@ function VolumeChart({weeks}){
   var total = data.reduce(function(a,w){ return a + w.total; }, 0);
   if (!total){
     return <div className="rounded-xl bg-white ring-1 ring-slate-200/80 p-10 text-center text-[13px] text-slate-500">
-      Walang order na pumapasok sa horizon na ito.
+      No orders fall within this horizon.
     </div>;
   }
   function TT({active, payload, label}){
@@ -692,7 +692,7 @@ function ForecastTable({rows, today}){
   var [open, setOpen] = useState(null);
   if (!rows.length){
     return <div className="rounded-xl bg-white ring-1 ring-slate-200/80 p-10 text-center text-[13px] text-slate-500">
-      Walang tumugmang order sa filter na ito.
+      No orders match this filter.
     </div>;
   }
   return (
@@ -752,7 +752,7 @@ function ForecastTable({rows, today}){
                     <td className="px-3 py-2.5 align-top tabular text-slate-700">{fmtDate(r.f.latest)}</td>
                     <td className="px-3 py-2.5 align-top tabular border-l border-slate-200 text-slate-700">
                       {r.o.target ? fmtDate(r.o.target)
-                                  : <span className="text-amber-700 font-semibold">walang petsa</span>}
+                                  : <span className="text-amber-700 font-semibold">no date</span>}
                     </td>
                     <td className="px-3 py-2.5 align-top tabular">
                       {r.variance === null ? <span className="text-slate-400">—</span> : (
@@ -853,7 +853,7 @@ function ForecastTable({rows, today}){
 
    The editor is built from the FORM's 19 fields (FS_EDIT_GROUPS), not from
    SETTING_DEFS, so every box on screen is a field that can actually be stored. */
-function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}){
+function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved, onPreview}){
   /* Draft is keyed by FORM FIELD NAME — the same keys the payload uses — so
      what you see, what is compared for "dirty", and what is sent are one thing. */
   function draftFrom(src){
@@ -880,6 +880,21 @@ function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}
 
   var saved = useMemo(function(){ return draftFrom(settings); }, [settingsSig]);
   var dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+
+  /* Live preview: every valid edit is handed to the App, which recalculates the
+     whole forecast from it straight away (before Save). Invalid or unchanged
+     drafts clear the preview so the saved numbers are used. */
+  useEffect(function(){
+    if (!onPreview) return;
+    if (!dirty || badCount > 0){ onPreview(null); return; }
+    var next = Object.assign({}, settings);
+    FS_EDIT_GROUPS.forEach(function(g){
+      g.fields.forEach(function(f){ f.keys.forEach(function(k){ next[k] = Number(draft[f.field]); }); });
+    });
+    next[HORIZON_DEF.key] = Number(draft[FS_HORIZON_FIELD]);
+    FS_TOGGLE_FIELDS.forEach(function(t){ next[t.key] = draft[t.field] ? 1 : 0; });
+    onPreview(next);
+  }, [draft, dirty, badCount, settingsSig]);
 
   function setField(field, raw){
     /* Kept as the raw string while typing so clearing a box does not jump to 0
@@ -917,7 +932,7 @@ function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}
         var maxField = f.field.replace(/_Min$/, "_Max");
         if (!(maxField in draft)) return;
         var a = Number(draft[f.field]), b = Number(draft[maxField]);
-        if (!isNaN(a) && !isNaN(b) && a > b) out.push(g.name + " — " + f.label + " mas malaki sa max");
+        if (!isNaN(a) && !isNaN(b) && a > b) out.push(g.name + " — " + f.label + " is greater than max");
       });
     });
     return out;
@@ -929,9 +944,9 @@ function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}
     try { text = JSON.parse(resp && resp.responseText).message || ""; } catch(e){}
     if (!text) text = (resp && (resp.message || resp.error)) || "";
     if (String(code) === "2945" || /permission|unauthor|forbidden/i.test(String(text))) {
-      return "Walang write access ang widget sa Forecast_Settings. Kailangang nasa plugin-manifest.json ang Creator.forms.CREATE at Creator.forms.UPDATE, at i-upload ulit ang widget. Hindi nag-save.";
+      return "The widget has no write access to Forecast_Settings. Nothing was saved.";
     }
-    return "Hindi nag-save" + (text ? " — " + text : "") + (code ? " (code " + code + ")" : "") + ".";
+    return "Could not save" + (text ? " — " + text : "") + (code ? " (code " + code + ")" : "") + ".";
   }
 
   function onSave(){
@@ -969,8 +984,8 @@ function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}
         return;
       }
       setMsg({ tone:"good", text:
-        (fsRecId ? "Na-save ang mga setting." : "Nagawa ang Forecast Settings record.") +
-        " Agad nang sumusunod ang dashboard; ang mga petsang nakatatak sa record ay mag-aayos sa susunod na takbo ng Forecast_Stamp_Daily (o pindutin ang Run Now doon)." });
+        (fsRecId ? "Settings saved." : "Forecast Settings record created.") +
+        " The forecast now follows these values." });
       setSaving(false);
       if (onSaved) onSaved();
     }).catch(function(e){
@@ -1010,13 +1025,13 @@ function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}
                                : "bg-amber-50 ring-amber-200 text-amber-900")}>
         <div className="font-bold">
           {fsFound
-            ? "Ito ang mga numerong ginagamit ng forecast ngayon — pwede mo nang i-edit dito."
-            : "Wala pang record sa Forecast Settings — default ang ginagamit."}
+            ? "These are the numbers the forecast uses right now. Edit them here."
+            : "No Forecast Settings record yet — the built-in defaults are in use."}
         </div>
         <p className="mt-1 leading-relaxed">
           {fsFound
-            ? "Ang mismong Forecast Settings record ang sinusulatan nito — pareho ng binubuksan mo sa form at pareho ng binabasa ng araw-araw na Forecast_Stamp_Daily. Isang record lang, kaya walang pagkakataong mag-iba ang dalawa."
-            : "Punuin ang mga numero sa ibaba at pindutin ang Save — gagawa ito ng Forecast Settings record para sa inyo. Hangga't wala pa, ang orihinal mong spec ang ginagamit: Air 5–7 + 2–3 customs, LCL/FCL 35–60 + 7–10 customs, 7 araw na prep hanggang QC, 0 sa delivery."}
+            ? "As you type, the Volume and Forecast tabs recalculate right away. Press Save to keep the new values for everyone."
+            : "Fill in the numbers below and press Save to create the Forecast Settings record. Until then the original spec is used: Air 5–7 days + 2–3 customs, LCL/FCL 35–60 + 7–10 customs, 7 days preparation through QC, 0 for delivery."}
         </p>
       </div>
 
@@ -1030,30 +1045,27 @@ function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}
               </div>
               {g.name === "Local (HC System)" ? (
                 <p className="mt-3 border-t border-slate-100 pt-2 text-[11.5px] text-slate-500">
-                  Isang numero lang ang hawak ng form para sa dalawang ito, kaya pareho ang
-                  min at max na ipinapakain sa engine. Walang nawawala — pareho rin naman
-                  sila sa orihinal na spec (0/0).
+                  The form stores one number for each of these two, so the same value is
+                  used as both min and max. Nothing is lost — they are 0/0 in the original spec.
                 </p>
               ) : null}
               {g.name === "Warehouse" ? (
                 <p className="mt-3 border-t border-slate-100 pt-2 text-[11.5px] text-slate-500">
-                  Isang numero rin ang hawak ng form sa dalawang ito (min = max).
+                  The form also stores one number for each of these two (min = max).
                   {measured.prepMedian != null ? (
-                    <span>{" "}<b>Measured:</b> sa {measured.prepCount} order{measured.prepCount===1?"":"s"} na
-                    may stage records, ang median mula simula ng prep hanggang Crate/For Delivery ay{" "}
-                    <b className="tabular">{measured.prepMedian} araw</b>. Yan ang totoong bilang —
-                    ikumpara sa nakalagay sa itaas.</span>
+                    <span>{" "}<b>Measured:</b> across {measured.prepCount} order{measured.prepCount===1?"":"s"} with
+                    stage records, the median from the start of prep to Crate / For Delivery is{" "}
+                    <b className="tabular">{measured.prepMedian} days</b>. Compare it with the value above.</span>
                   ) : null}
                 </p>
               ) : null}
               {g.name === "LCL" ? (
                 <p className="mt-3 border-t border-slate-100 pt-2 text-[11.5px] text-amber-800">
-                  Tandaan: dalawang ibang numero ang ginagamit ng mga live script ngayon —
-                  <b> PR_Compute_Shipment_Timeline</b> ay 30 araw para sa LCL/FCL, pero
-                  <b> supplier_shipment_sync</b> ay 67 (LCL) / 47 (FCL). Hindi binabago ng
-                  widget na ito ang kahit alin sa dalawa, kaya kung baguhin mo ang numero
-                  dito ay ang forecast lang ang susunod — hindi ang
-                  <b> Estimated_Warehouse_Arrival</b> ng Shipments.
+                  Note: the live scripts use different numbers today —
+                  <b> PR_Compute_Shipment_Timeline</b> uses 30 days for LCL/FCL, while
+                  <b> supplier_shipment_sync</b> uses 67 (LCL) / 47 (FCL). This widget changes
+                  neither, so editing the numbers here only moves the forecast — not the
+                  Shipments' <b>Estimated_Warehouse_Arrival</b>.
                 </p>
               ) : null}
             </div>
@@ -1101,8 +1113,8 @@ function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}
 
       {rangeWarnings.length ? (
         <div className="rounded-xl bg-amber-50 p-3 text-[12px] text-amber-900 ring-1 ring-amber-200">
-          <b>Baliktad ang window:</b> {rangeWarnings.join(" · ")}. Pwede pa ring i-save, pero
-          mas maaga ang Latest kaysa Earliest kapag ganyan.
+          <b>Reversed window:</b> {rangeWarnings.join(" · ")}. You can still save, but Latest
+          will land earlier than Earliest.
         </div>
       ) : null}
 
@@ -1115,22 +1127,22 @@ function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}
                        (saving || !dirty || badCount > 0
                           ? "bg-slate-300 cursor-not-allowed"
                           : "bg-accent-500 hover:bg-accent-600")}>
-            {saving ? "Sinusave…" : (fsRecId ? "I-save ang mga setting" : "Gumawa ng Forecast Settings record")}
+            {saving ? "Saving…" : (fsRecId ? "Save settings" : "Create Forecast Settings record")}
           </button>
           <button
             onClick={onRevert} disabled={saving || !dirty}
             className="rounded-lg px-3 py-2 text-[12.5px] font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40">
-            Ibalik sa naka-save
+            Revert to saved
           </button>
           <button
             onClick={onDefaults} disabled={saving}
             className="rounded-lg px-3 py-2 text-[12.5px] font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40">
-            Balik sa orihinal na spec
+            Reset to original spec
           </button>
           <span className="text-[12px] text-slate-500">
             {badCount
-              ? badCount + " kahon ang hindi balidong numero"
-              : (dirty ? "May hindi pa naka-save na pagbabago" : "Walang pagbabago")}
+              ? badCount + " box" + (badCount===1?"":"es") + " not a valid number"
+              : (dirty ? "Unsaved changes — the forecast already reflects them" : "No changes")}
           </span>
         </div>
         {msg ? (
@@ -1140,10 +1152,9 @@ function SettingsPanel({settings, fsFound, fsReport, fsRecId, measured, onSaved}
       </div>
 
       <p className="text-[11.5px] leading-relaxed text-slate-500">
-        Iisang <b>Forecast Settings</b> record ang sinusulatan nito — kaya pareho ang makikita
-        mo rito, sa form, at sa mga petsang itinatatak ng araw-araw na
-        <b> Forecast_Stamp_Daily</b> na schedule. Agad na nagbabago ang dashboard pagka-save;
-        ang mga petsang nakasulat na sa mga record ay mag-aayos sa susunod na takbo ng schedule.
+        Saving writes to the single <b>Forecast Settings</b> record, so this page, the form and
+        the daily <b>Forecast_Stamp_Daily</b> schedule all see the same numbers. Dates already
+        stamped on records update on the schedule's next run.
       </p>
     </div>
   );
@@ -1159,6 +1170,8 @@ function App(){
   var [fsRecId, setFsRecId]   = useState(null);
   var [fsReport, setFsReport] = useState(null);
   var [settings, setSettings] = useState(DEFAULTS);
+  var [preview, setPreview]   = useState(null);   // unsaved edits from the Settings tab
+  var [savedNote, setSavedNote] = useState(false);  // shown briefly after a successful Save
   var [tab, setTab]           = useState("volume");
   var [q, setQ]               = useState("");
   var [sevFilter, setSevFilter] = useState("all");
@@ -1166,6 +1179,8 @@ function App(){
   var [sort, setSort] = useState("soonest");
 
   var today = useMemo(function(){ return startOfDay(new Date()); }, []);
+  /* The forecast always runs on the numbers being edited, saved or not. */
+  var liveSettings = preview || settings;
 
   var load = useCallback(function(){
     setLoading(true); setErr(null);
@@ -1205,7 +1220,7 @@ function App(){
       setLoading(false);
     }).catch(function(e){
       console.error("[Forecast] load failed:", e);
-      setErr((e && (e.message || e.responseText)) || "Hindi makuha ang data.");
+      setErr((e && (e.message || e.responseText)) || "Could not load the data.");
       setLoading(false);
     });
   }, []);
@@ -1222,7 +1237,7 @@ function App(){
      in a terminal state has nothing left to forecast. */
   var rows = useMemo(function(){
     return orders.map(function(o){
-      var f = buildForecast(o, settings, today);
+      var f = buildForecast(o, liveSettings, today);
       /* Positive = that many days LATER than what the client expects. The
          "worst case" figure is the same comparison against the Latest date, so
          a row that only just fits shows how much slack it is actually running on. */
@@ -1236,7 +1251,7 @@ function App(){
       if (!b.f.likely) return -1;
       return a.f.likely - b.f.likely;
     });
-  }, [orders, settings, today]);
+  }, [orders, liveSettings, today]);
 
   var modes = useMemo(function(){
     var s = {};
@@ -1272,7 +1287,7 @@ function App(){
   }, [rows, q, sevFilter, modeFilter, sort]);
 
   var weeks = useMemo(function(){
-    var n = Math.max(1, Math.min(52, Number(settings.fc_horizon_weeks) || 12));
+    var n = Math.max(1, Math.min(52, Number(liveSettings.fc_horizon_weeks) || 12));
     var w0 = startOfWeek(today), out = [];
     for (var i = 0; i < n; i++){
       var s = addDays(w0, i*7);
@@ -1288,7 +1303,7 @@ function App(){
       out[idx].total += 1;
     });
     return out;
-  }, [filtered, settings.fc_horizon_weeks, today]);
+  }, [filtered, liveSettings.fc_horizon_weeks, today]);
 
   /* The one leg we can actually MEASURE from existing records: how long prep
      really takes, from the earliest stage record to Crate / For Delivery. */
@@ -1324,7 +1339,7 @@ function App(){
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-accent-500"></div>
-          <p className="mt-3 text-[13px] text-slate-500">Binubuo ang forecast…</p>
+          <p className="mt-3 text-[13px] text-slate-500">Building the forecast…</p>
         </div>
       </div>
     );
@@ -1335,7 +1350,7 @@ function App(){
         <div className="max-w-sm text-center">
           <IcoAlert size={26} className="mx-auto text-critical"/>
           <p className="mt-3 text-[13px] text-slate-600">{err}</p>
-          <button onClick={load} className="mt-4 rounded-lg bg-accent-500 px-4 py-2 text-[13px] font-bold text-white">Subukan muli</button>
+          <button onClick={load} className="mt-4 rounded-lg bg-accent-500 px-4 py-2 text-[13px] font-bold text-white">Try again</button>
         </div>
       </div>
     );
@@ -1352,26 +1367,38 @@ function App(){
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <h1 className="text-[19px] font-extrabold leading-tight text-slate-900">Procurement to Delivery Forecast</h1>
-          <p className="text-[12px] text-slate-500">Procurement hanggang delivery · {rows.length} open order{rows.length===1?"":"s"} · ngayon {fmtDate(today)}</p>
+          <p className="text-[12px] text-slate-500">Procurement through delivery · {rows.length} open order{rows.length===1?"":"s"} · today {fmtDate(today)}</p>
         </div>
-        <button onClick={load} className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12.5px] font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-white">
+        <button onClick={load} style={{display:"none"}} className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12.5px] font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-white">
           <IcoRefresh size={14}/> Refresh
         </button>
       </div>
 
+      {savedNote ? (
+        <div className="mt-4 rounded-xl bg-green-50 ring-1 ring-green-200 p-3 text-[12.5px] font-semibold text-good">
+          Settings saved. The forecast now follows the new values.
+        </div>
+      ) : null}
+
+      {preview ? (
+        <div className="mt-4 rounded-xl bg-accent-50 ring-1 ring-accent-100 p-3 text-[12.5px] text-accent-900">
+          <b>Preview:</b> the forecast below uses your unsaved settings. Open the Forecast Settings tab and press Save to keep them, or Revert to go back.
+        </div>
+      ) : null}
+
       {failed.length ? (
         <div className="mt-4 rounded-xl bg-amber-50 ring-1 ring-amber-200 p-3 text-[12.5px] text-amber-900">
-          <b>Hindi nabuksan:</b> {failed.join(", ")}. Tuloy pa rin ang forecast pero kulang ang ilang
-          hakbang — pakicheck kung tama ang pangalan ng report at may access ang widget dito.
+          <b>Could not open:</b> {failed.join(", ")}. The forecast still runs but some steps are
+          missing — check the report name and that the widget has access to it.
         </div>
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <Tile label="Open orders"   value={tiles.open}   tone="slate"    icon={<IcoTruck size={14}/>} sub="hindi pa delivered" />
-        <Tile label="Ngayong linggo" value={tiles.week}  tone="accent"   icon={<IcoCal size={14}/>}   sub="likely date hanggang Linggo" />
-        <Tile label="At risk"        value={tiles.atrisk} tone="warning" icon={<IcoAlert size={14}/>} sub="kasya lang sa hinihintay ng client" />
-        <Tile label="Will miss"      value={tiles.miss}   tone="critical" icon={<IcoAlert size={14}/>} sub="lalampas sa hinihintay ng client" />
-        <Tile label="Walang client date" value={tiles.notarget} tone="slate" icon={<IcoCal size={14}/>} sub="wala pang cf_target_delivery_date" />
+        <Tile label="Open orders"   value={tiles.open}   tone="slate"    icon={<IcoTruck size={14}/>} sub="not yet delivered" />
+        <Tile label="This week" value={tiles.week}  tone="accent"   icon={<IcoCal size={14}/>}   sub="likely date through Sunday" />
+        <Tile label="At risk"        value={tiles.atrisk} tone="warning" icon={<IcoAlert size={14}/>} sub="fits the client date only in the best case" />
+        <Tile label="Will miss"      value={tiles.miss}   tone="critical" icon={<IcoAlert size={14}/>} sub="lands after the client date" />
+        <Tile label="No client date" value={tiles.notarget} tone="slate" icon={<IcoCal size={14}/>} sub="no target delivery date yet" />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -1388,28 +1415,28 @@ function App(){
         </div>
         {tab !== "settings" ? (
           <React.Fragment>
-            <input value={q} onChange={function(e){ setQ(e.target.value); }} placeholder="Hanapin ang SO, PR, customer, supplier…"
+            <input value={q} onChange={function(e){ setQ(e.target.value); }} placeholder="Search SO, PR, customer, supplier…"
                    className="w-56 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[12.5px] focus:border-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-100" />
             <select value={sevFilter} onChange={function(e){ setSevFilter(e.target.value); }}
                     className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[12.5px]">
-              <option value="all">Lahat ng status</option>
+              <option value="all">All statuses</option>
               <option value="ontrack">On track</option>
               <option value="atrisk">At risk</option>
               <option value="miss">Will miss / overdue</option>
-              <option value="notarget">Walang client date</option>
+              <option value="notarget">No client date</option>
             </select>
             <select value={sort} onChange={function(e){ setSort(e.target.value); }}
                     className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[12.5px]">
-              <option value="soonest">Pinakamalapit na darating</option>
-              <option value="latest">Pinaka-late sa client</option>
-              <option value="target">Ayon sa client date</option>
+              <option value="soonest">Arriving soonest</option>
+              <option value="latest">Latest vs client date</option>
+              <option value="target">By client date</option>
             </select>
             <select value={modeFilter} onChange={function(e){ setModeFilter(e.target.value); }}
                     className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[12.5px]">
-              <option value="all">Lahat ng mode</option>
+              <option value="all">All modes</option>
               {modes.map(function(m){ return <option key={m} value={m}>{m}</option>; })}
             </select>
-            <span className="text-[11.5px] text-slate-500">{filtered.length} ipinapakita</span>
+            <span className="text-[11.5px] text-slate-500">{filtered.length} shown</span>
           </React.Fragment>
         ) : null}
       </div>
@@ -1417,20 +1444,19 @@ function App(){
       <div className="mt-4">
         {tab === "volume"   ? <VolumeChart weeks={weeks} /> : null}
         {tab === "forecast" ? <ForecastTable rows={filtered} today={today} /> : null}
-        {tab === "settings" ? (
+        {/* Always mounted (just hidden) so unsaved edits survive switching tabs. */}
+        <div className={tab === "settings" ? "" : "hidden"}>
           <SettingsPanel settings={settings} fsFound={fsFound} fsReport={fsReport}
-                         fsRecId={fsRecId} measured={measured} onSaved={load} />
-        ) : null}
+                         fsRecId={fsRecId} measured={measured} onSaved={function(){ setSavedNote(true); setTimeout(function(){ setSavedNote(false); }, 5000); load(); }} onPreview={setPreview} />
+        </div>
       </div>
 
       <p className="mt-6 text-[11px] leading-relaxed text-slate-400">
-        Ang forecast ay isang <b>window</b> (Earliest – Latest), hindi eksaktong petsa. Ang
-        “Client expects” ay ang <b>target delivery date</b> ng Sales Order — galing sa Zoho Books
-        (<b>cf_target_delivery_date</b>) at kinopya sa Fulfillment ng <b>so_fulfillment_sync</b>.
-        Kung wala itong laman, hindi ituturing na on-time ang order — ibubukod ito. Isang
-        bagay lang ang sinusulatan ng widget na ito: ang <b>Forecast Settings</b> na record,
-        sa <b>Forecast Settings</b> na tab. Walang order, PR, shipment o stage record ang
-        ginagalaw nito.
+        The forecast is a <b>window</b> (Earliest – Latest), not an exact date. “Client expects” is
+        the Sales Order's <b>target delivery date</b>. If it is empty the order is not treated as
+        on time — it is counted separately. The only thing this widget writes is the
+        <b>Forecast Settings</b> record, from the <b>Forecast Settings</b> tab. It never touches an
+        order, PR, shipment or stage record.
       </p>
     </div>
   );
@@ -1442,7 +1468,7 @@ function SdkMissing(){
     <div className="flex h-screen items-center justify-center bg-slate-50">
       <div className="max-w-sm text-center">
         <IcoAlert size={28} className="mx-auto text-critical mb-3" />
-        <p className="text-[13.5px] text-slate-600">Kailangang buksan ang widget na ito sa loob ng Zoho Creator para makabasa ng live data.</p>
+        <p className="text-[13.5px] text-slate-600">This widget needs the app to load live data.</p>
       </div>
     </div>
   );

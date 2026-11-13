@@ -79,13 +79,15 @@
   <div id="listView" class="w-full px-4 sm:px-6 py-5 min-h-screen flex flex-col">
     <header class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5 shrink-0">
       <div>
-        <h1 class="text-xl font-bold text-slate-900 leading-tight">Damaged Items — Exception Module <span style="background:#dc2626;color:#fff;font-size:11px;padding:2px 8px;border-radius:5px;vertical-align:middle;">BUILD 2026-09-04-C</span></h1>
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Damaged Items — Exception Module <!-- build badge hidden for now: <span style="background:#dc2626;color:#fff;font-size:11px;padding:2px 8px;border-radius:5px;vertical-align:middle;">BUILD 2026-09-04-C</span> --></h1>
+        <!-- subtitle + Live indicator hidden for now:
         <p class="text-xs text-slate-500 mt-0.5">
           Items rejected during QC · Assess, rework, and resolve before re-dispatch ·
           <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
           </span>
         </p>
+        -->
       </div>
     </header>
 
@@ -142,13 +144,11 @@
   </div>
 
   <!-- Detail view — Documentation & Repair only (image/video/remarks/checker/signature/status) -->
-  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
-        ← Back
-      </button>
-      <span class="text-slate-300">|</span>
-      <span id="detailBreadcrumb" class="text-slate-500"></span>
+  <div id="detailView" class="hidden w-full">
+    <!-- One flush bar like the Inquiry / Purchase Request details: back button + the record (the "HC Systems / ... Detail" crumb row is gone) -->
+    <div class="header-strip flex items-center gap-3">
+      <button id="backToListBtn" class="so-back">&#8592; Exception List</button>
+      <span id="detailBreadcrumb" class="so-bar-title"></span>
     </div>
 
     <!-- Next Step banner (ADDED 2026-09-30, display only) -->

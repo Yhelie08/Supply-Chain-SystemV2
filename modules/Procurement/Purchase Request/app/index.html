@@ -107,10 +107,6 @@
     /* All PRs tab pills — color-coded to match each status's own badge color elsewhere in the
        app (In Progress/For Sourcing = blue), so the pill communicates status at a glance
        instead of every filter looking like the same generic blue toggle. */
-    #allPills .pill[data-filter="all"].active{background:var(--gray-700);border-color:var(--gray-700);color:var(--white)}
-    #allPills .pill[data-filter="other"]{border-color:var(--blue-mid);color:var(--blue)}
-    #allPills .pill[data-filter="other"]:hover{border-color:var(--blue);color:var(--blue)}
-    #allPills .pill[data-filter="other"].active{background:var(--blue);border-color:var(--blue);color:var(--white)}
     /* Ready for PO Queue tab pills — same idea: color matches what each filter represents
        elsewhere (Ready for PO = amber, High Priority/At Risk = red, Overrides = purple). */
     #queuePills .pill[data-filter="all"].active{background:var(--amber);border-color:var(--amber);color:var(--white)}
@@ -819,8 +815,8 @@
     <div id="panel-all">
       <div class="filter-row">
         <div class="filter-pills" id="allPills">
-          <button class="pill" data-filter="all">All <span class="pill-count" id="allCount"></span></button>
-          <button class="pill active" data-filter="other">In Progress <span class="pill-count">(3)</span></button>
+          <button class="pill active" data-filter="all">All <span class="pill-count" id="allCount"></span></button>
+          <button class="pill" data-filter="other">In Progress <span class="pill-count">(3)</span></button>
         </div>
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -1337,7 +1333,7 @@
         <button class="btn btn-ghost btn-sm" id="dBtnHold" onclick="openHoldModal('hold')">Put On Hold</button>
         <button class="btn btn-ghost btn-sm" id="dBtnCancelPR" onclick="openHoldModal('cancel')">Cancel PR</button>
         <button class="btn btn-ghost btn-sm" id="dBtnEdit" onclick="enterEditMode()">Edit</button>
-        <button class="btn btn-ghost btn-sm" id="dBtnSave" onclick="saveEdits()">Save</button>
+        <button class="btn btn-ghost btn-sm" id="dBtnSave" onclick="saveEdits()" style="display:none">Save</button>
         <button class="btn btn-ghost btn-sm" id="dBtnViewPO" onclick="showToast('No PO created yet')">View PO</button>
         <button class="btn btn-sm btn-create-po" id="dBtnCreatePO" onclick="createPOFromDetail()">Create PO &#8594;</button>
       </div>
@@ -1761,7 +1757,7 @@ let creatorLoaded = false;
 ════════════════════════════════ */
 let activeTab = 'all';
 let queueFilter = 'all';
-let allFilter = 'other'; /* All PRs opens on the In Progress pill (2026-10-01, per user) */
+let allFilter = 'all'; /* All PRs opens on the All pill (changed from In Progress, per user) */
 
 /* ── Per-PR extended info (Sales Owner, Customer Type, Similar Item, Attachments) ── */
 const PR_INFO = {
@@ -2370,6 +2366,10 @@ function holdBadge(r){
   if(st==='Cancelled') return ' <span class="badge-pill hold-cancelled">CANCELLED</span>';
   return '';
 }
+/* PR Status column: a Cancelled / On Hold PR shows only that status, not the workflow status next to it. */
+function prStatusCell(r){
+  return isPrInactive(r) ? holdBadge(r).trim() : statusBadge(r.status);
+}
 function holdParseDate(v){
   if(!v) return null;
   var s = String(v).trim().split(' ')[0];
@@ -2449,7 +2449,7 @@ function renderHoldPanels(){
         <td style="font-variant-numeric:tabular-nums">${r.qty.toLocaleString()}</td>
         <td class="cell-customer" title="${escapeHtml(r.customer)}">${r.customer}</td>
         <td><span class="cell-supplier">${r.selectedSupplier||'—'}</span></td>
-        <td>${statusBadge(r.status)}</td>
+        <td>${prStatusCell(r)}</td>
         <td>${r.poNumber||'—'}</td>
         <td${notes}>${reason}</td>
         <td style="white-space:nowrap">${holdDateCell(r.holdDateRaw)}</td>`;
@@ -2647,6 +2647,8 @@ function saveHoldFields(r, payload, timelineTitle, changes, done){
     renderQueue(); renderAllPRs(); renderConverted(); renderPrGroups(); updateStats();
     if(_currentMappedPR && String(_currentMappedPR.id)===id && $('view-detail').style.display!=='none'){
       _editMode = false;
+      var _eb=$('dBtnEdit'); if(_eb){ _eb.textContent='Edit'; _eb.onclick=enterEditMode; }
+      var _sb=$('dBtnSave'); if(_sb){ _sb.style.display='none'; _sb.style.background=''; _sb.style.color=''; _sb.style.borderColor=''; }
       openDetailView(id);
     }
     if(done) done(true);
@@ -2714,7 +2716,7 @@ function renderQueue(){
       <td style="white-space:nowrap">${targetCell(r)}</td>
       <td>${priorityHtml(r.priority)}</td>
       <td>${delayBadge(r.delay)}</td>
-      <td>${statusBadge(r.status)}</td>
+      <td>${prStatusCell(r)}</td>
       <td>${prDateCell(r.prDate)}</td>
       <td>${actionBtns(r)}</td>
     </tr>`).join('');
@@ -2794,7 +2796,7 @@ function renderAllPRs(){
       <td class="cell-price"${r.priceSource==='srp'?' title="SO reference price — no supplier quote yet"':r.priceSource==='catalog'?' title="Catalog rate — auto-approved, no supplier quote yet"':r.priceSource==='srp_approved'?' title="Manually approved SRP — final, same value sent to Books"':''}>${fmtPrice(r.finalPrice, r.priceSource)}${r.priceSource==='srp'?' <span style="font-size:10px;color:var(--gray-400);font-weight:500">(SRP)</span>':r.priceSource==='catalog'?' <span style="font-size:10px;color:var(--gray-400);font-weight:500">(Catalog)</span>':r.priceSource==='srp_approved'?' <span style="font-size:10px;color:var(--gray-400);font-weight:500">(SRP Approved)</span>':''}</td>
       <td style="white-space:nowrap">${targetCell(r)}</td>
       <td>${priorityHtml(r.priority)}</td>
-      <td>${statusBadge(r.status)}${holdBadge(r)}</td>
+      <td>${prStatusCell(r)}</td>
       <td>${prDateCell(r.prDate)}</td>
       <td>${forecastCell(r._raw || {})}</td>
       <td>${actionBtns(r)}</td>
@@ -5312,6 +5314,7 @@ function enterEditMode(){
   eb.textContent = 'Cancel';
   eb.onclick = cancelEditMode;
   const sb = $('dBtnSave');
+  sb.style.display='';
   sb.style.background='var(--blue)';
   sb.style.color='#fff';
   sb.style.borderColor='var(--blue)';
@@ -5515,7 +5518,7 @@ function syncFollowedRecFromSupplier(sup){
 function cancelEditMode(){
   _editMode = false;
   const eb=$('dBtnEdit'); eb.textContent='Edit'; eb.onclick=enterEditMode;
-  const sb=$('dBtnSave'); sb.style.background=''; sb.style.color=''; sb.style.borderColor='';
+  const sb=$('dBtnSave'); sb.style.display='none'; sb.style.background=''; sb.style.color=''; sb.style.borderColor='';
   /* Re-render from stored mapped record */
   if(_currentMappedPR){
     const d=buildDetailFromPR(_currentMappedPR);
@@ -5646,7 +5649,7 @@ function saveEdits(){
       if(tlChanges.length) prTimeline.log(_currentMappedPR.prNo, TimelineHistory.titleFor(tlChanges, 'Updated PR'), 'Updated', tlChanges);
       _editMode=false;
       const eb=$('dBtnEdit'); eb.textContent='Edit'; eb.onclick=enterEditMode;
-      sb.style.background=''; sb.style.color=''; sb.style.borderColor='';
+      sb.style.display='none'; sb.style.background=''; sb.style.color=''; sb.style.borderColor='';
       /* Re-fetch full record and re-render */
       const gbr=ZOHO.CREATOR.DATA.getRecordById.bind(ZOHO.CREATOR.DATA);
       gbr({ report_name:REPORT_NAME, id:String(_currentMappedPR.id), field_config:'all' })

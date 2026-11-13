@@ -108,12 +108,14 @@
     <header id="topHeader" class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5 shrink-0">
       <div>
         <h1 class="text-xl font-bold text-slate-900 leading-tight">Sales Order Readiness Gate</h1>
-        <p class="text-xs text-slate-500 mt-0.5">
+        <!-- subtitle + Live indicator hidden for now:
+<p class="text-xs text-slate-500 mt-0.5">
           Grouped by Sales Order Number · Latest Activity First ·
           <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
           </span>
         </p>
+-->
       </div>
       <div class="flex items-center gap-2 text-xs">
         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
@@ -233,26 +235,17 @@
   </div>
 
   <!-- Readiness Gate Detail view -->
-  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
-
-    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
-      <div class="flex items-center gap-2 font-semibold text-slate-600">
-        <span>HC Systems</span><span class="text-slate-300">/</span><span>Readiness Gate Detail</span>
-      </div>
-      <button id="checkPaymentBtn" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 hover:border-slate-300 transition">
+  <div id="detailView" class="hidden w-full">
+    <!-- One flush bar like the Inquiry / Purchase Request details: back button + the record (the "HC Systems / ... Detail" crumb row is gone) -->
+    <div class="header-strip flex items-center gap-3">
+      <button id="backToListBtn" class="so-back">&#8592; Readiness List</button>
+      <span id="detailBreadcrumb" class="so-bar-title"></span>
+      <button id="checkPaymentBtn" class="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 hover:border-slate-300 transition">
         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
         Check Payment Status
       </button>
-    </div>
-
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
-        ← Back to Readiness Gate Dashboard
-      </button>
-      <span class="text-slate-300">|</span>
-      <span id="detailBreadcrumb" class="text-slate-500"></span>
     </div>
 
     <!-- Next Step banner (ADDED 2026-09-30, display only) -->
@@ -1420,7 +1413,9 @@ function forecastCell(r) {
   function renderTabVisibility() {
     const btn = document.getElementById("approveDispatchTabBtn");
     if (!btn) return;
-    const allowed = CURRENT_USER_EMAIL && CURRENT_USER_EMAIL === CONFIG.APPROVE_DISPATCH_ALLOWED_EMAIL.toLowerCase();
+    // The Zoho-era rule named one email. In this app the signed-in admin can approve too (the server writes the role into window.HC_USER).
+    const isAdmin = !!(window.HC_USER && window.HC_USER.role === "admin");
+    const allowed = isAdmin || (CURRENT_USER_EMAIL && CURRENT_USER_EMAIL === CONFIG.APPROVE_DISPATCH_ALLOWED_EMAIL.toLowerCase());
     btn.classList.toggle("hidden", !allowed);
   }
 

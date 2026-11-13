@@ -328,12 +328,6 @@
         "entry": "index.html"
       },
       {
-        "page": "Schedule_Requests",
-        "label": "Schedule Requests",
-        "widget": "Delivery Management/Schedule Requests",
-        "entry": "dms-schedule-request.html"
-      },
-      {
         "page": "Policy_Setting",
         "label": "Policy Settings",
         "widget": "Delivery Management/Policy Settings",
