@@ -2,7 +2,7 @@
 // Only the events that run on API writes are here (on validate = before, on success = after).
 //
 // Ported here: DS_Validate_Team_Capacity1.
-// NOT ported yet: ISCHED_Instant_Forecast (forecast engine).
+// Ported elsewhere: ISCHED_Instant_Forecast (forecast-stamp.mjs; the engine fcStampBySoNo lives on feature/forecast-engine).
 import { register } from '../../workflows/index.mjs';
 import { blank } from '../../workflows/deluge.mjs';
 

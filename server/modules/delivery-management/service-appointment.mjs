@@ -3,7 +3,8 @@
 //
 // Ported here: SA_Site_Confirmation_Vali, SA_Scheduling_Override_Va, SA_Sync_Sales_Order_Displ (and its twin ...Displ1).
 // Skipped on purpose: SA_Site_Confirmation_Init (inactive in Zoho).
-// NOT ported yet: SA_Scheduling_Engine and SA_Geocode_Address (D2/D3 of the plan), SA_Instant_Forecast (forecast engine).
+// Ported in other files: SA_Scheduling_Engine (scheduling-engine.mjs), SA_Geocode_Address (geocode.mjs),
+// SA_Instant_Forecast (forecast-stamp.mjs; the forecast engine fcStampBySoNo lives on feature/forecast-engine).
 //
 // The two "on validate" scripts run in the order of the workflows in Zoho's export (.ds lines 41467 and 41813): the site
 // confirmation check first, then the schedule override check, so the same message wins when both would refuse.

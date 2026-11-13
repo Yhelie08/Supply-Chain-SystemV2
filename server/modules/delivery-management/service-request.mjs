@@ -2,7 +2,7 @@
 // Only the events that run on API writes are here (on success).
 //
 // Ported here: SR_Created_Make_Appointme.
-// NOT ported yet: SR_Instant_Forecast (forecast engine, D5).
+// Ported elsewhere: SR_Instant_Forecast (forecast-stamp.mjs; the engine fcStampBySoNo lives on feature/forecast-engine).
 //
 // SR_Created_Make_Appointment is the bridge from Fulfillment: the "To Ship" widget writes a Service Request, and this turns
 // it into a Service Appointment in the delivery queue, with its items and one Package_Shipments row per package.

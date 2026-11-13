@@ -2,7 +2,7 @@
 // Only the events that run on API writes are here (on validate = before, on success = after).
 //
 // Ported here: FW_Validate_Reschedule_Re, FW_Reschedule_To_Exceptio, FW_Completion_Schedule_Sy.
-// NOT ported yet: FW_Instant_Forecast (forecast engine, D5).
+// Ported elsewhere: FW_Instant_Forecast (forecast-stamp.mjs; the engine fcStampBySoNo lives on feature/forecast-engine).
 import { register } from '../../workflows/index.mjs';
 import { ZohoError, zohoNow } from '../../criteria.mjs';
 import { blank, truthy } from '../../workflows/deluge.mjs';
