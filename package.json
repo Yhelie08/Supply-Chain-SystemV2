@@ -14,6 +14,7 @@
     "test:ui": "vitest run",
     "test:all": "npm test && npm run test:ui",
     "server": "node --env-file-if-exists=.env server/index.mjs",
+    "seed": "node --env-file-if-exists=.env server/seed.mjs",
     "parse-ds": "node tools/parse-ds.mjs",
     "start": "node --env-file-if-exists=.env server/index.mjs"
   },
@@ -29,7 +30,10 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.9",
     "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.6.2",
     "jsdom": "^25.0.1",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^3.4.19",
     "vite": "^5.4.11",
     "vitest": "^2.1.9"
   },

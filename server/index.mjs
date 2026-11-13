@@ -10,8 +10,6 @@ import path from 'node:path';
 import * as store from './db.mjs';
 import * as auth from './auth.mjs';
 import { invokeCustomApi } from './custom-apis.mjs';
-import { zohoAdapter } from './zoho/adapter.mjs';
-import { metrics } from './zoho/limits.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const WIDGETS = path.join(ROOT, 'modules'); // one folder per section, see tools/import-widgets.mjs
@@ -55,21 +53,21 @@ function applyTheme(html, line) {
   html = /<html\b/i.test(html) ? html.replace(/<html\b/i, `<html ${attrs}`) : `<html ${attrs}>${html}`;
   return /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${THEME_HEAD}</head>`) : THEME_HEAD + html;
 }
-// The widgets still say "Zoho Creator" in a few messages people read; the data can come from Postgres, SQLite or Zoho, so say it neutrally.
+// The widgets still say "Zoho Creator" in a few messages people read. There is no Zoho any more, so say what is true.
 const plainWords = (html) => html
   .replace(/Loading from Zoho Creator(…|\.\.\.)/g, 'Loading$1')
   .replace(/正在从 Zoho Creator 加载…/g, '正在加载…')
-  .replace(/Loaded from Zoho Creator:/g, 'Loaded from the database:')
+  .replace(/Loaded from Zoho Creator:/g, 'Loaded from the local database:')
   .replace(/Failed to load records from Zoho Creator\./g, 'Failed to load records.')
   // The scoreboards read dates as MM-dd-yyyy only; the local database stores yyyy-MM-dd. Let them read both.
   .replace(/var mm=parseInt\(parts\[0\],10\), dd=parseInt\(parts\[1\],10\), yyyy=parseInt\(parts\[2\],10\);/g,
     'if (parts[0].length === 4) parts = [parts[1], parts[2], parts[0]]; var mm=parseInt(parts[0],10), dd=parseInt(parts[1],10), yyyy=parseInt(parts[2],10);');
 const inside = (base, p) => { const f = path.resolve(base, p); return f.startsWith(base + path.sep) ? f : null; };
 
-// Backend mode: 'zoho' (default, targets live Zoho Creator API), 'local' (offline SQLite) or 'pg' (Postgres)
-const BACKEND = process.env.BACKEND || 'zoho';
+// Backend mode: 'local' (offline SQLite, default) or 'pg' (Postgres). Zoho Creator is no longer used.
+const BACKEND = process.env.BACKEND || 'local';
 
-// ---------- the SDK operations ----------
+// ---------- the SDK operations (answered from SQLite; there is no Zoho Creator connection) ----------
 const localApi = {
   getRecords: (b, user) => ({ code: 3000, data: store.getRecords(b.report_name, { ...b, user }) }),
   getRecordById: (b) => ({ code: 3000, data: store.getRecordById(b.report_name, b.id) }),
@@ -95,7 +93,7 @@ const localApi = {
   invokeCustomApi: async (b) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload) }),
 };
 
-const DATA_SOURCE =BACKEND === 'pg' ? 'Postgres' : BACKEND === 'zoho' ? `Zoho Creator (${process.env.ZOHO_ENV || 'development'})` : 'Local SQLite';
+const DATA_SOURCE = BACKEND === 'pg' ? 'Postgres' : 'Local SQLite';
 
 // 'pg' keeps the business data in Postgres (DATABASE_URL); users and sessions stay in SQLite for now.
 let api;
@@ -106,7 +104,7 @@ if (BACKEND === 'pg') {
   api = pg.api;
   tableCounts = () => pg.store.tableCounts();
 } else {
-  api = BACKEND === 'zoho' ? zohoAdapter : localApi;
+  api = localApi;
 }
 
 // ---------- sign-in helpers ----------
@@ -130,9 +128,9 @@ async function accountApi(req, res, p, me) {
     if (p === '/api/me') return send(res, 200, me.role === 'admin' ? { ...me, dataSource: DATA_SOURCE } : me);
     if (p === '/api/account/password' && req.method === 'POST') {
       const b = await readJson(req);
-      auth.changeOwnPassword(me.id, b.current, b.next);
+      await auth.changeOwnPassword(me.id, b.current, b.next);
       // Changing the password ends every session, this one included: sign in again with the new one.
-      const { token } = auth.signIn(me.email, b.next, clientIp(req));
+      const { token } = await auth.signIn(me.email, b.next, clientIp(req));
       res.setHeader('Set-Cookie', sessionCookie(req, token, auth.cookieMaxAge));
       return send(res, 200, { ok: true });
     }
@@ -141,29 +139,29 @@ async function accountApi(req, res, p, me) {
     const m = /^\/api\/admin\/users(?:\/(\d+)(\/reset)?)?$/.exec(p);
     if (!m) return send(res, 404, { message: 'Not found' });
     const [, id, reset] = m;
-    if (!id && req.method === 'GET') return send(res, 200, auth.listUsers());
+    if (!id && req.method === 'GET') return send(res, 200, await auth.listUsers());
     if (!id && req.method === 'POST') {
       const b = await readJson(req);
       const password = auth.newPassword();
-      const user = auth.createUser({ email: b.email, name: b.name, role: b.role, password, mustChange: true });
+      const user = await auth.createUser({ email: b.email, name: b.name, role: b.role, password, mustChange: true });
       return send(res, 200, { user, password });
     }
     if (id && reset && req.method === 'POST') {
       const password = auth.newPassword();
-      auth.setPassword(id, password, { mustChange: true });
-      return send(res, 200, { user: auth.getUser(id), password });
+      await auth.setPassword(id, password, { mustChange: true });
+      return send(res, 200, { user: await auth.getUser(id), password });
     }
     if (id && req.method === 'POST') {
       if (Number(id) === me.id) {
         const b = await readJson(req);
         if (b.role === 'user' || b.active === false) return send(res, 400, { message: 'You cannot remove your own admin access.' });
-        return send(res, 200, auth.updateUser(id, b));
+        return send(res, 200, await auth.updateUser(id, b));
       }
-      return send(res, 200, auth.updateUser(id, await readJson(req)));
+      return send(res, 200, await auth.updateUser(id, await readJson(req)));
     }
     if (id && req.method === 'DELETE') {
       if (Number(id) === me.id) return send(res, 400, { message: 'You cannot delete your own account.' });
-      auth.deleteUser(id);
+      await auth.deleteUser(id);
       return send(res, 200, { ok: true });
     }
     return send(res, 405, { message: 'Method not allowed' });
@@ -180,19 +178,19 @@ async function handle(req, res) {
   if (p === '/healthz') return send(res, 200, { ok: true });
   if (p.startsWith('/theme/')) { const f = inside(path.join(PUBLIC, 'theme'), p.slice(7)); return f ? serveFile(res, f) : send(res, 404, 'Not found', 'text/plain'); }
   const token = cookies(req)[auth.COOKIE];
-  const me = auth.userForToken(token);
+  const me = await auth.userForToken(token);
   if (p === '/login' && req.method === 'POST') {
     const ip = clientIp(req);
     const b = await readForm(req);
     const next = safeNext(b.next);
     if (auth.tooManyAttempts(ip)) return redirect(res, `/login?e=locked&next=${encodeURIComponent(next)}`);
-    const s = auth.signIn(b.email, b.password, ip);
+    const s = await auth.signIn(b.email, b.password, ip);
     if (!s) return redirect(res, `/login?e=1&next=${encodeURIComponent(next)}`);
     return redirect(res, s.user.mustChangePassword ? '/account?first=1' : next, { 'Set-Cookie': sessionCookie(req, s.token, auth.cookieMaxAge) });
   }
   if (p === '/login') return me ? redirect(res, '/') : serveFile(res, path.join(PUBLIC, 'login.html'));
   if (p === '/logout' && req.method === 'POST') {
-    auth.signOut(token);
+    await auth.signOut(token);
     return redirect(res, '/login', { 'Set-Cookie': sessionCookie(req, '', 0) });
   }
 
@@ -237,7 +235,6 @@ async function handle(req, res) {
       return send(res, 200, { code: e.code || 500, message: e.message });
     }
   }
-  if (p === '/api/metrics') return send(res, 200, metrics);
   if (p === '/api/pages') return send(res, 200, SECTIONS);
   if (p === '/api/tables') return send(res, 200, await tableCounts());
   if (p.startsWith('/uploads/')) { const f = inside(UPLOADS, p.slice(9)); return f ? serveFile(res, f) : send(res, 404, 'Not found', 'text/plain'); }
@@ -261,14 +258,12 @@ async function handle(req, res) {
 }
 
 http.createServer((req, res) => handle(req, res).catch((e) => { console.error(e); send(res, 500, { code: 500, message: e.message }); }))
-  .listen(PORT, () => {
-    const note = auth.bootstrapAdmin();
+  .listen(PORT, async () => {
+    const note = await auth.bootstrapAdmin();
     if (note) console.log(note);
-    console.log(`Supply Chain App running on port ${PORT} [BACKEND: ${BACKEND.toUpperCase()}]`);
-    if (BACKEND === 'zoho') {
-      console.log(`Zoho Target: Development Sandbox (REST v2.1 via Service Account)`);
-    } else {
-      console.log(`Database: ${path.join(store.DATA_DIR, 'app.db')}  (${Object.keys(store.columns).length} tables from the .ds)`);
-    }
+    console.log(`Supply Chain App running on port ${PORT}`);
+    console.log(`Database: ${path.join(store.DATA_DIR, 'app.db')}  (${Object.keys(store.columns).length} tables from the .ds)`);
+    const filled = (await tableCounts()).reduce((n, t) => n + t.rows, 0);
+    if (!filled) console.log('Database is empty. Load mock data with: npm run seed');
     console.log(`Pages: ${SECTIONS.map((s) => `${s.label} ${s.tabs.length}`).join(', ')}`);
   });
