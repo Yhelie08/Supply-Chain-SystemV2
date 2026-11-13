@@ -240,14 +240,6 @@
         "zip": "Fulfillment/Transfer Item/Widget/TransferWarehouse.zip"
       },
       {
-        "page": "Pack1",
-        "label": "Pack",
-        "widget": "Fulfillment/Pack",
-        "entry": "index.html",
-        "zip": "Fulfillment/Pack/Widget/Pack.zip",
-        "hidden": true
-      },
-      {
         "page": "KANBAN",
         "label": "Kanban",
         "widget": "Fulfillment/Kanban",

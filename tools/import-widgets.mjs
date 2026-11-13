@@ -53,7 +53,6 @@ const SECTIONS = [
     ['Order_Aggregation2', 'To Ship', 'Fulfillment/Order Aggregation/Widget/OrderAggregation.zip'],
     ['Exception_Control2', 'Exception Control', 'Fulfillment/Exception Control/Widget/ExceptionControl.zip'],
     ['Transfer_Item', 'Transfer Item', 'Fulfillment/Transfer Item/Widget/TransferWarehouse.zip'],
-    ['Pack1', 'Pack', 'Fulfillment/Pack/Widget/Pack.zip', { hidden: true }],
     ['KANBAN', 'Kanban', 'Fulfillment/KANBAN/Widget/FulfillmentKanban.zip', { hidden: true }],
   ] },
   // Delivery widgets were unpacked earlier into modules/Delivery Management/<tab label>.

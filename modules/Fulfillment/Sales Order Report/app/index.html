@@ -106,7 +106,7 @@
       </header>
 
       <!-- Stat cards -->
-      <div id="statCards" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3"></div>
+      <div id="statCards" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3"></div>
     </div>
 
     <!-- Tabs (List / Groupings) + shared search/sort — sits above BOTH views so
@@ -395,7 +395,8 @@
 
   // Matches the Fulfillment_Stage picklist values exactly, as defined on the
   // Sales_Order_Fulfillment form: {"Waiting For Package","Order Readiness",
-  // "Picking","Pack","Quality Checking","Crate","For Delivery"}. Two changes
+  // "Picking","Pack & QC","Crate","For Delivery"}. (Pack and Quality Checking were
+  // merged into one "Pack & QC" stage.) Two changes
   // from the form's previous version: "Waiting For Package" added as the new
   // first stage, and "To Ship" renamed to "Crate". Keep this list (and
   // FULFILLMENT_COLOR below) in exact sync with the form's picklist values —
@@ -407,8 +408,7 @@
     { key: "Waiting For Package", label: "Waiting For Package", caption: "awaiting package",        color: "slate"   },
     { key: "Order Readiness",     label: "Order Readiness",     caption: "not yet released",         color: "amber"   },
     { key: "Picking",             label: "Picking",             caption: "being picked",             color: "orange"  },
-    { key: "Pack",                label: "Pack",                caption: "being packed",             color: "blue"    },
-    { key: "Quality Checking",    label: "Quality Checking",    caption: "under quality check",      color: "indigo"  },
+    { key: "Pack & QC",           label: "Pack & QC",           caption: "being packed & checked",   color: "blue"    },
     { key: "Crate",               label: "Crate",               caption: "being crated",             color: "violet"  },
     { key: "For Delivery",        label: "For Delivery",        caption: "shipped out",              color: "emerald" },
   ];
@@ -417,8 +417,7 @@
     "Waiting For Package": "slate",
     "Order Readiness": "amber",
     "Picking": "orange",
-    "Pack": "blue",
-    "Quality Checking": "indigo",
+    "Pack & QC": "blue",
     "Crate": "violet",
     "For Delivery": "emerald",
   };
@@ -697,8 +696,7 @@
     "Waiting For Package": "Pre_Order2",
     "Order Readiness":     "Order_Readiness1",
     "Picking":              "Pick2",
-    "Pack":                 "Pack1",
-    "Quality Checking":     "Quality_Check",
+    "Pack & QC":            "Quality_Check",   // Pack and QC are one stage / one tab now
     "Crate":                "Crate_Checklist",
     "For Delivery":         "Order_Aggregation2",
     "__exceptions__":       "Exception_Control2",
@@ -844,8 +842,7 @@
     "Waiting For Package": { action: "Create the package in Zoho Inventory", who: "Sales / Inventory", tone: "next" },
     "Order Readiness":     { action: "Assign a picker, then Release to Pick", who: "Readiness Gate", tone: "next" },
     "Picking":             { action: "Pick the items", who: "Picker", tone: "next" },
-    "Pack":                { action: "Pack, then Send to QC", who: "Packer", tone: "next" },
-    "Quality Checking":    { action: "Approve or Reject in QC", who: "Checker", tone: "next" },
+    "Pack & QC":           { action: "Pack the item, then Approve or Reject in QC", who: "Packer / Checker", tone: "next" },
     "Crate":               { action: "Crate the item", who: "Crater", tone: "next" },
     "Order Aggregation":   { action: "Dispatch (payment must be cleared)", who: "Dispatcher", tone: "next" },
     "For Delivery":        { action: "Handed to Delivery (DMS)", who: "Scheduler", tone: "done" },

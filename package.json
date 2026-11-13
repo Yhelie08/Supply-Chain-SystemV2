@@ -15,6 +15,7 @@
     "test:all": "npm test && npm run test:ui",
     "server": "node --env-file-if-exists=.env server/index.mjs",
     "seed": "node --env-file-if-exists=.env server/seed.mjs",
+    "fulfillment:sync": "node --env-file-if-exists=.env tools/fulfillment-sync.mjs",
     "parse-ds": "node tools/parse-ds.mjs",
     "start": "node --env-file-if-exists=.env server/index.mjs"
   },

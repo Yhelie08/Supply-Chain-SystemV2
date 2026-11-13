@@ -91,13 +91,12 @@ const CONFIG = {
   SOF_REPORT: "Sales_Order_Fulfillment_Report",
   QC_REPORT: "All_Qc_Reports1",
   PICK_REPORT: "Pick1_Report",
-  PACK_REPORT: "Pack_Report",
   MAX_RECORDS: 1000,
 };
 
-const STAGE_KEYS = ["Waiting For Package","Order Readiness","Picking","Pack","Quality Checking","Crate","For Delivery"];
-const STAGE_SHORT = { "Waiting For Package":"Waiting", "Order Readiness":"Readiness", "Picking":"Picking", "Pack":"Pack", "Quality Checking":"QC", "Crate":"Crate", "For Delivery":"Delivered" };
-const STAGE_COLOR = { "Waiting For Package":"#94a3b8", "Order Readiness":"#9ec5f4", "Picking":"#6da7ec", "Pack":"#3987e5", "Quality Checking":"#2a78d6", "Crate":"#184f95", "For Delivery":"#0ca30c" };
+const STAGE_KEYS = ["Waiting For Package","Order Readiness","Picking","Pack & QC","Crate","For Delivery"];
+const STAGE_SHORT = { "Waiting For Package":"Waiting", "Order Readiness":"Readiness", "Picking":"Picking", "Pack & QC":"Pack & QC", "Crate":"Crate", "For Delivery":"Delivered" };
+const STAGE_COLOR = { "Waiting For Package":"#94a3b8", "Order Readiness":"#9ec5f4", "Picking":"#6da7ec", "Pack & QC":"#3987e5", "Crate":"#184f95", "For Delivery":"#0ca30c" };
 const WEEKDAY_LABELS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 /* Confirmed live 2026-08-27 (Widget/Fulfillment/Scoreboard's own original
@@ -384,7 +383,7 @@ function App(){
   useEffect(function(){
     Promise.all([
       fetchReport(CONFIG.SOF_REPORT), fetchReport(CONFIG.QC_REPORT),
-      fetchReport(CONFIG.PICK_REPORT), fetchReport(CONFIG.PACK_REPORT),
+      fetchReport(CONFIG.PICK_REPORT), Promise.resolve([]), // Pack form retired: Pack and QC are one tab now, so there are no Pack rows
     ]).then(function(results){
       setRaw({ sof: results[0], qc: results[1], pick: results[2], pack: results[3] });
       setLoading(false);
@@ -407,7 +406,7 @@ function App(){
       if (str(r,"Status") === "Partial") partialIdx.push(i);
     });
     var notStarted = stageCounts["Waiting For Package"]||0;
-    var inProgress = (stageCounts["Order Readiness"]||0)+(stageCounts["Picking"]||0)+(stageCounts["Pack"]||0)+(stageCounts["Quality Checking"]||0)+(stageCounts["Crate"]||0);
+    var inProgress = (stageCounts["Order Readiness"]||0)+(stageCounts["Picking"]||0)+(stageCounts["Pack & QC"]||0)+(stageCounts["Crate"]||0);
     var delivered = stageCounts["For Delivery"]||0;
     var pipelineTotal = notStarted + inProgress + delivered;
 

@@ -173,9 +173,10 @@
               <th class="px-3 py-2.5 font-bold text-right">Qty</th>
               <th class="px-3 py-2.5 font-bold">Order Type</th>
               <th class="px-3 py-2.5 font-bold">Forecast</th>
-              <th class="px-3 py-2.5 font-bold">Added Time</th>
               <th class="px-3 py-2.5 font-bold">Assign Picker</th>
-              <th class="px-5 py-2.5 font-bold">Release</th>
+              <th class="px-3 py-2.5 font-bold">Release</th>
+              <th class="px-3 py-2.5 font-bold">Added Time</th>
+              <th class="px-5 py-2.5 font-bold">Last Modified</th>
             </tr>
           </thead>
           <tbody id="tableBody" class="divide-y divide-slate-50"></tbody>
@@ -330,7 +331,7 @@
   <!-- Release confirm modal — replaces the native confirm() so it doesn't show the
        raw embedded-iframe origin (zappsusercontent.com) in the dialog chrome. -->
   <div id="releaseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" style="background: var(--hc-panel, #fff);">
       <h3 class="text-sm font-bold text-slate-900 mb-1">Release this order?</h3>
       <p class="text-xs text-slate-500 mb-4">This marks the item as cleared for fulfillment.</p>
       <div class="flex items-center justify-end gap-2">
@@ -343,7 +344,7 @@
   <!-- Check Payment Status confirm modal — same replaces-native-confirm() rationale
        as releaseModal above. -->
   <div id="paymentCheckModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" style="background: var(--hc-panel, #fff);">
       <h3 class="text-sm font-bold text-slate-900 mb-1">Check payment status?</h3>
       <p class="text-xs text-slate-500 mb-4">Looks up the linked invoice(s) for this order in Zoho Books and updates Payment Status here to match.</p>
       <div class="flex items-center justify-end gap-2">
@@ -509,6 +510,25 @@
     return `${datePart} ${timePart}`;
   }
 
+  // Last Modified, in the same two-line "date / 12-hour time" look the other date columns get from the theme.
+  function modifiedCellHtml(r) {
+    const d = parseZohoDateTime(r.Modified_Time);
+    if (!d) return "—";
+    const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${escapeHtml(datePart)}<div class="hc-added-t">${escapeHtml(timePart)}</div>`;
+  }
+
+  // A save changes the record's Modified_Time on the server; show that new time at once instead of waiting for a reload.
+  // Same text the server writes: "YYYY-MM-DD hh:mm:ss AM/PM".
+  function stampModified(r) {
+    const d = new Date(), p = (n) => String(n).padStart(2, "0");
+    r.Modified_Time = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours() % 12 || 12)}:${p(d.getMinutes())}:${p(d.getSeconds())} ${d.getHours() < 12 ? "AM" : "PM"}`;
+    const row = Array.from(tableBody.querySelectorAll(".record-row")).find((tr) => tr.dataset.id === String(r.ID));
+    const cell = row && row.querySelector('[data-col="modified"]');
+    if (cell) cell.innerHTML = modifiedCellHtml(r);
+  }
+
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
   }
@@ -621,6 +641,7 @@
     updateRecordField(r, { Assign_Picker: newValue }).then((response) => {
       if (response && response.code === 3000) {
         r.Assign_Picker = newValue;
+        stampModified(r);
         refreshNextStep(r.ID, nextStepFor(r));
         toast(newValue ? `Assigned to ${newValue}.` : "Picker cleared.", "success");
       } else {
@@ -742,9 +763,11 @@
   function refreshReleaseGating(r) {
     const row = Array.from(tableBody.querySelectorAll(".record-row")).find(tr => tr.dataset.id === String(r.ID));
     if (row) {
-      const releaseTd = row.children[row.children.length - 1];
-      releaseTd.innerHTML = releaseCellHtml(r);
-      wireReleaseBtn(releaseTd.querySelector(".release-btn"));
+      const releaseTd = row.querySelector('[data-col="release"]');
+      if (releaseTd) {
+        releaseTd.innerHTML = releaseCellHtml(r);
+        wireReleaseBtn(releaseTd.querySelector(".release-btn"));
+      }
     }
     if (currentDetailRecord && String(currentDetailRecord.ID) === String(r.ID)) {
       renderReleaseGate(r);
@@ -879,7 +902,7 @@
   }
 
   function groupHeaderRow(r) {
-    return `<tr><td colspan="15" class="px-5 pt-4 pb-1 text-xs font-bold text-slate-900">${escapeHtml(displayVal(r.sales_order_number))}</td></tr>`;
+    return `<tr><td colspan="16" class="px-5 pt-4 pb-1 text-xs font-bold text-slate-900">${escapeHtml(displayVal(r.sales_order_number))}</td></tr>`;
   }
 
   // Release is gated on a picker being assigned first — same pattern as
@@ -1068,9 +1091,10 @@ function forecastCell(r) {
         <td class="px-3 py-2.5 text-slate-700 text-right">${escapeHtml(displayVal(r.Quantity))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Order_Type))}</td>
         <td class="px-3 py-2.5">${forecastCell(r)}</td>
-        <td class="px-3 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
         <td class="px-3 py-2.5">${pickerCellHtml(r)}</td>
-        <td class="px-5 py-2.5">${releaseCellHtml(r)}</td>
+        <td class="px-3 py-2.5" data-col="release">${releaseCellHtml(r)}</td>
+        <td class="px-3 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
+        <td class="px-5 py-2.5 text-slate-400 hc-dt" data-col="modified">${modifiedCellHtml(r)}</td>
       </tr>`;
   }
 
@@ -1081,7 +1105,7 @@ function forecastCell(r) {
     let html = "";
     let lastSoNumber = null;
     if (!filtered.length) {
-      html = `<tr><td colspan="15" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+      html = `<tr><td colspan="16" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
     } else {
       filtered.forEach((r) => {
         if (r.sales_order_number !== lastSoNumber) { html += groupHeaderRow(r); lastSoNumber = r.sales_order_number; }
@@ -1236,6 +1260,7 @@ function forecastCell(r) {
       ZOHO.CREATOR.DATA.updateRecords(config).then((response) => {
         if (response && response.code === 3000) {
           r.Release = true;
+          stampModified(r);
           refreshNextStep(r.ID, nextStepFor(r));
           toast("Order marked as released.", "success");
           if (onSuccess) onSuccess();
@@ -1300,6 +1325,7 @@ function forecastCell(r) {
       ["Delivery Type", displayVal(r.Delivery_Type)],
       ["For Crate", isTrue(r.For_Crate) ? badgePill("Yes", "blue") : "—", true],
       ["Added Time", escapeHtml(formatDateTime(r.Added_Time))],
+      ["Last Modified", escapeHtml(formatDateTime(r.Modified_Time))],
     ];
 
     document.getElementById("detailFields").innerHTML = fieldsHtml.map(([label, val, isHtml]) => `

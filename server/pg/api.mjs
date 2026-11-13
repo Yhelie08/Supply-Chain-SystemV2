@@ -9,6 +9,8 @@ import { ensureSchema } from './schema.mjs';
 import { createStore } from './store.mjs';
 import { createHookedStore } from '../workflows/index.mjs';
 import { workflows } from '../workflows/all.mjs';
+import { reconcileFulfillment } from '../modules/fulfillment/pipeline.mjs';
+import { functions as fulfillmentApis } from '../modules/fulfillment/apis.mjs';
 import { createZohoApi } from '../books/client.mjs';
 import { createAkeneoApi } from '../akeneo/client.mjs';
 import { createShopifyApi } from '../shopify/client.mjs';
@@ -40,7 +42,12 @@ export function createPgApi(store, invokeCustomApi, rawStore = store, ctx = {}) 
       return { code: 3000, result };
     },
     deleteRecordById: async (b, user) => ({ code: 3000, data: { ID: await store.deleteRecord(b.report_name, b.id, { user }) }, message: 'Record Deleted Successfully!' }),
-    invokeCustomApi: async (b, user) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload, rawStore, { ...ctx, user }) }),
+    invokeCustomApi: async (b, user) => {
+      const result = await invokeCustomApi(b.api_name, b.payload, rawStore, { ...ctx, user });
+      // A custom API's writes do not fire the workflow hooks, so what a Fulfillment one wrote is carried on here (Readiness, Pick, QC).
+      if (b.api_name in fulfillmentApis) await reconcileFulfillment(rawStore, { user }).catch((e) => console.error('[fulfillment] catch-up failed:', e));
+      return { code: 3000, result };
+    },
   };
 }
 

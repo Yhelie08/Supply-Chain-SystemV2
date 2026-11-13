@@ -11,6 +11,16 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-13
 
+**Fulfillment, Sales Order -> Order Readiness -> Pick -> Pack & QC (full note: [[Fulfillment Pipeline - Readiness to Pack and QC]])**
+- **Pack and Quality Checking are one stage, "Pack & QC".** The `Pack` form and `Pack_Notifications` are removed (code, model, Railway; both were empty). The Sales Order Report, the Fulfillment Dashboard and the Pack & QC page use the single stage.
+- **Paid + package -> Order Readiness.** `server/modules/fulfillment/workflows.mjs` and `pipeline.mjs`: a package that is paid (`Status = Yes`) and has a package number gets one Readiness Gate record per item. Not paid or no package: it waits in Waiting For Package.
+- **Release -> Pick, Mark as Picked -> Pack & QC.** Ported `SO_to_Readiness`, `Release_Records_to_Pick1`, `Pick1_Marked_to_QC_Sync`. Values are copied as they are (SO, PR, RR, Demo, package, item, quantity, customer, address, forecast), stages only move forward, nothing is duplicated.
+- **Catch-up.** `reconcileFulfillment` and `npm run fulfillment:sync` carry on data that arrived with no hook (custom API, import, saved before a restart). Run after a Fulfillment custom API call.
+- **Restart the server** after changing this code: hooks load at startup and only on `BACKEND=pg`.
+- Order Readiness and Pick pages: Release button stays in its column, Added Time and Last Modified side by side at the end (Last Modified updates on assign and Release), solid confirm dialogs.
+- Checked on Railway through the widgets' own API with a throwaway order (deleted afterwards). 17 Fulfillment tests; the whole suite 384 tests, 383 pass, 0 fail, 1 skipped.
+- Not ported yet: QC approve, Crating done, Dispatch, the Fulfillment custom APIs, the forecast engine. Analytic and Procurement Forecast Setting still use the old stage names (outside Fulfillment, left alone).
+
 **Delivery Management, two safety rules (branch `feature/delivery-safety`; answers in [[Clarifications - Delivery Management]])**
 - **Confirm once.** `confirm_dms_schedule_request` now refuses a request that is already Confirmed or already has its appointment ("Already confirmed — Service Appointment <id> was already created."), and calls for the same request are queued, so a double click, or three clicks at the same moment, make exactly one appointment. In Zoho a double click made two. A deliberate difference, decided by the owner.
 - **No two people on the same slot.** The scheduling work (the suggestion, `dms_reschedule`, and the calendar write with its capacity check) is queued one at a time (`server/modules/delivery-management/locks.mjs`), so two dispatchers confirming at the same moment no longer both take the room: the second sees the first and gets a Calendar Conflict. Proved by two tests that fail without the queue and pass with it. The queue works inside one server process, which is enough while the app runs as one instance; several instances would need a database lock (as the schedule runner has).

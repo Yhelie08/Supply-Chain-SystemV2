@@ -2048,8 +2048,8 @@
   function nextStepFor(r) {
     if (r.QC_Status === "Approved") return { here: "QC Approved", action: "Moved to Crate / Order Aggregation", who: "Crater / Dispatcher", tone: "done" };
     if (r.QC_Status === "Rejected") return { here: "QC Rejected", action: "Sent to Exception Control", who: "Warehouse", tone: "done" };
-    if (isBlank(r.Quality_Checker)) return { here: "Quality Checking", action: "Assign a packer", who: "Warehouse", tone: "next" };
-    return { here: "Quality Checking", action: "Pack the item, then open QC and Approve or Reject", who: "Packer / Checker", tone: "next" };
+    if (isBlank(r.Quality_Checker)) return { here: "Pack & QC", action: "Assign a packer", who: "Warehouse", tone: "next" };
+    return { here: "Pack & QC", action: "Pack the item, then open QC and Approve or Reject", who: "Packer / Checker", tone: "next" };
   }
 
   // ---------------------------------------------------------------------
