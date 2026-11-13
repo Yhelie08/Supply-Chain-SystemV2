@@ -115,6 +115,20 @@ These Delivery forms have **0 rows** in `data/zoho-backup/development-2026-11-12
 
 > The Production export should replace these empty tables. Until then, create a few test rows before clicking through those tabs.
 
+## 2.5 Found after merging jv's UI (2026-11-13)
+
+Checked in the code of `Johncel-Dev`, not in the Zoho export. These are not Zoho features; they are things that stop the ported Delivery logic from running or being proven.
+
+| # | Item | Today | How to check | Owner | Done |
+|---|---|---|---|---|---|
+| 17 | **Workflows only run with `BACKEND=pg`** | `createHookedStore` is attached only in `server/pg/api.mjs:53`. `server/index.mjs:68` defaults to `local` (SQLite, no hooks), so the 16 workflows (scheduling engine, field work, exception queue) do not run on a plain `npm run dev` | Start with `npm run dev`, confirm a site on a Service Appointment → no suggestion appears. Same step on `npm run dev:pg` → it appears | repo owner | [x] 2026-11-13: not changed on purpose (`local` stays the default); the server now prints a warning on any non-`pg` start, README and `.env.example` say so, and `dev:pg` is the way to test Delivery |
+| 18 | **`.env` says `BACKEND=zoho`** | There is no Zoho branch any more, so the value silently falls back to local SQLite (item 17). Admin menu says "Data: Local SQLite" | Change to `BACKEND=pg` (or use `npm run dev:pg`) and check the menu says "Data: Postgres" | repo owner | [x] 2026-11-13: `.env` and `.env.example` now say `BACKEND=local`; any other value (like `zoho`) prints "not supported, running on local SQLite". `.env` was **not** pointed at `pg` because it holds a `DATABASE_URL` that may be the shared Railway Postgres |
+| 19 | **`tools/export-zoho-data.mjs` is broken** | It still imports `server/zoho/adapter.mjs`, which jv's branch removed. The Production export (item 12) cannot run until the tool is fixed. The adapter code is in `main` (`eea7cac`) and `feature/zoho-backend-adapter` | Run `node tools/export-zoho-data.mjs` → import error | repo owner | [x] 2026-11-13: the tool now uses `tools/zoho/` (token refresh, throttle, and a **GET-only** reader; no write methods exist). `--dry-run` lists 90 forms; a real read of `Service_Appointment_Form` on Development returned the 5 known rows. The Production export itself is **not** run yet (item 12) |
+| 20 | **Delivery forms under the new UI** | `views.js` replaces the native `<select>` popup. Tests pass (367 node, 5 UI files), but nobody has opened the Delivery tabs in a browser since the merge | Pick and submit a value in Schedule Requests, Service Request, Service Appointment and Truck Maintenance | repo owner | [ ] |
+| 21 | **6 npm audit vulnerabilities** | Reported by `npm install` after the merge, not investigated | `npm audit` | repo owner | [ ] |
+| 22 | **Keys public in git** | Old Geoapify key (Deluge + `.ds`), Custom API public keys in the Service Appointment, Service Request, Archived, Sales Returns and Schedule Requests widgets, and two CMS public keys in the Deluge. Plan: make the repo Private and rotate (Clarifications C7). Listed in [[Plan - Delivery Management Open Items]] item 9, not here until now | Search the widgets and `zoho-export/` for the keys | repo owner | [ ] |
+| 23 | **`npm run dev:pg` crashed at start** | jv's `server/auth.mjs` opens its own Postgres pool next to the data layer's pool. `dev:pg` serves PGlite through a socket that takes **one** connection, so the second pool was reset: `Error: read ECONNRESET` at `ensureSchema`. Found on 2026-11-13 and reproduced three times (fresh and already-imported database) | `npm run dev:pg` starts and `/healthz` answers | repo owner | [x] 2026-11-13: `server/pg/pool.mjs` now keeps one pool per URL, shared by sign-in and the data layer. Checked on loopback only. Not yet clicked through in the browser |
+
 ---
 
 # 3. Checklist per tab (13)
