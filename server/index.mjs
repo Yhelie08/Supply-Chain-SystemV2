@@ -7,8 +7,6 @@ import path from 'node:path';
 import * as store from './db.mjs';
 import * as auth from './auth.mjs';
 import { invokeCustomApi } from './custom-apis.mjs';
-import { zohoAdapter } from './zoho/adapter.mjs';
-import { metrics } from './zoho/limits.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const WIDGETS = path.join(ROOT, 'modules'); // one folder per section, see tools/import-widgets.mjs
@@ -41,21 +39,30 @@ function serveFile(res, file, transform) {
 }
 // Theme layer (server/public/theme): tag which style system the widget uses and which section's
 // line it belongs to, then load theme.css last in <head> so it wins over the widget's own styles.
-const THEME_HEAD = '<link rel="preload" href="/theme/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>'
-  + '<link rel="stylesheet" href="/theme/theme.css">';
+const THEME_HEAD = '<script src="/theme/theme-init.js"></script>'
+  + '<link rel="preload" href="/theme/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>'
+  + '<link rel="stylesheet" href="/theme/theme.css">'
+  + '<link rel="stylesheet" href="/theme/views.css">'
+  + '<script src="/theme/views.js" defer></script>';
 function applyTheme(html, line) {
   const kit = /dms-tokens\.css/.test(html) ? 'dms' : /cdn\.tailwindcss\.com/.test(html) ? 'tw' : 'legacy';
   const attrs = `data-hc-kit="${kit}" data-hc-line="${line}"`;
   html = /<html\b/i.test(html) ? html.replace(/<html\b/i, `<html ${attrs}`) : `<html ${attrs}>${html}`;
   return /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${THEME_HEAD}</head>`) : THEME_HEAD + html;
 }
+// The widgets still say "Zoho Creator" in a few messages people read. There is no Zoho any more, so say what is true.
+const plainWords = (html) => html
+  .replace(/Loading from Zoho Creator(…|\.\.\.)/g, 'Loading$1')
+  .replace(/正在从 Zoho Creator 加载…/g, '正在加载…')
+  .replace(/Loaded from Zoho Creator:/g, 'Loaded from the local database:')
+  .replace(/Failed to load records from Zoho Creator\./g, 'Failed to load records.')
+  // The scoreboards read dates as MM-dd-yyyy only; the local database stores yyyy-MM-dd. Let them read both.
+  .replace(/var mm=parseInt\(parts\[0\],10\), dd=parseInt\(parts\[1\],10\), yyyy=parseInt\(parts\[2\],10\);/g,
+    'if (parts[0].length === 4) parts = [parts[1], parts[2], parts[0]]; var mm=parseInt(parts[0],10), dd=parseInt(parts[1],10), yyyy=parseInt(parts[2],10);');
 const inside = (base, p) => { const f = path.resolve(base, p); return f.startsWith(base + path.sep) ? f : null; };
 
-// Backend mode: 'zoho' (default, targets live Zoho Creator API) or 'local' (offline SQLite)
-const BACKEND = process.env.BACKEND || 'zoho';
-
-// ---------- the SDK operations ----------
-const localApi = {
+// ---------- the SDK operations (answered from SQLite; there is no Zoho Creator connection) ----------
+const api = {
   getRecords: (b, user) => ({ code: 3000, data: store.getRecords(b.report_name, { ...b, user }) }),
   getRecordById: (b) => ({ code: 3000, data: store.getRecordById(b.report_name, b.id) }),
   addRecords: (b, user) => {
@@ -79,8 +86,6 @@ const localApi = {
   deleteRecordById: (b) => ({ code: 3000, data: { ID: store.deleteRecord(b.report_name, b.id) }, message: 'Record Deleted Successfully!' }),
   invokeCustomApi: (b) => ({ code: 3000, result: invokeCustomApi(b.api_name, b.payload) }),
 };
-
-const api = BACKEND === 'zoho' ? zohoAdapter : localApi;
 
 // ---------- sign-in helpers ----------
 const cookies = (req) => Object.fromEntries(String(req.headers.cookie || '').split(/;\s*/).filter((c) => c.includes('='))
@@ -209,7 +214,6 @@ async function handle(req, res) {
       return send(res, 200, { code: e.code || 500, message: e.message });
     }
   }
-  if (p === '/api/metrics') return send(res, 200, metrics);
   if (p === '/api/pages') return send(res, 200, SECTIONS);
   if (p === '/api/tables') return send(res, 200, store.tableCounts());
   if (p.startsWith('/uploads/')) { const f = inside(UPLOADS, p.slice(9)); return f ? serveFile(res, f) : send(res, 404, 'Not found', 'text/plain'); }
@@ -222,6 +226,7 @@ async function handle(req, res) {
     return serveFile(res, f, f.endsWith('.html') ? (html) => {
       const who = `<script>window.HC_USER=${jsonForScript({ email: me.email, name: me.name })}</script>`;
       html = html.replace(/<script[^>]*src="[^"]*widgetsdk[^"]*"[^>]*><\/script>/i, `${who}<script src="/zoho-shim.js"></script>`);
+      html = plainWords(html);
       const section = SECTIONS.find((s) => s.label === p.slice(3).split('/')[0]);
       return applyTheme(html, section ? section.id : 'analytic');
     } : undefined);
@@ -235,11 +240,9 @@ http.createServer((req, res) => handle(req, res).catch((e) => { console.error(e)
   .listen(PORT, () => {
     const note = auth.bootstrapAdmin();
     if (note) console.log(note);
-    console.log(`Supply Chain App running on port ${PORT} [BACKEND: ${BACKEND.toUpperCase()}]`);
-    if (BACKEND === 'zoho') {
-      console.log(`Zoho Target: Development Sandbox (REST v2.1 via Service Account)`);
-    } else {
-      console.log(`Database: ${path.join(store.DATA_DIR, 'app.db')}  (${Object.keys(store.columns).length} tables from the .ds)`);
-    }
+    console.log(`Supply Chain App running on port ${PORT}`);
+    console.log(`Database: ${path.join(store.DATA_DIR, 'app.db')}  (${Object.keys(store.columns).length} tables from the .ds)`);
+    const filled = store.tableCounts().reduce((n, t) => n + t.rows, 0);
+    if (!filled) console.log('Database is empty. Load mock data with: npm run seed');
     console.log(`Pages: ${SECTIONS.map((s) => `${s.label} ${s.tabs.length}`).join(', ')}`);
   });

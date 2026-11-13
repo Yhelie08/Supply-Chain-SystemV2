@@ -4,6 +4,7 @@ import App from './App.jsx';
 import './styles.css';
 import './inquiry.css';
 import './shell.css';
+import './theme.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
