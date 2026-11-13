@@ -14,3 +14,4 @@ self_client.json
 # graphify output (regenerable): graph, report, cache; and the Obsidian notes it writes
 graphify-out/
 vault/Graph/
+gitToken
