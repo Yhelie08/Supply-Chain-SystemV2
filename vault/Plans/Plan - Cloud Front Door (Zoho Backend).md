@@ -8,6 +8,15 @@ status: draft - open questions to clarify with the owner and the boss
 date: 2026-11-12
 ---
 
+> [!WARNING] Direction changed 2026-11-12
+> The owner confirmed the supply chain app will be **removed from Zoho Creator**. Zoho as backend (option B, below) is now only a **bridge** and a tool to export the data; the end state is path C: everything runs on our app.
+> - Database: **Postgres on Railway** for business data (users and sessions stay as they are for now).
+> - Cutover: **module by module**, Procurement chain first, then Fulfillment, then Delivery. Zoho stays the backend of a module until that module is ported.
+> - Zoho Books and Inventory: **stay** (confirmed by the owner); only the Creator supply chain app is removed. Our server calls the Books and Inventory APIs directly instead of through Deluge.
+> - Known gap: `invokeCustomApi` in `server/zoho/adapter.mjs` does not call Zoho; 18 of 21 custom APIs return "not ported yet". See [[00 - Port Status]].
+> - Still to ask: whether the Creator app is ever deleted or just left unused, and the cutover date.
+> - The full roadmap is now in [[Plan - Full Migration Off Zoho Creator]].
+
 > [!INFO] Where this fits
 > Current state: [[00 - Current System]]. What still only runs in Zoho: [[00 - Port Status]]. History: [[00 - Change Log]]. The table "Open questions" near the end is the agenda for the next conversation.
 
@@ -101,7 +110,7 @@ Status: **answered** = decided; **open** = still to clarify; each open item has 
 | 9 | **How do staff switch over?** | **answered** | **Pilot group muna (1 linggo)**. Mag-uumpisa sa 2-3 trusted staff at 1 supplier para mag-test ng live operations sa Railway app. Kapag 100% verified na walang issues sa data at workflows, ililipat na ang lahat ng staff at suppliers habang nananatiling backup ang Zoho Creator UI sa loob ng ilang linggo. |
 | 10 | **Do staff use Zoho screens outside the 42 menu pages?** (Zoho's own gray forms and report lists, mobile app, customer portal) | **answered** | **Hindi, sapat na ang 42 tabs/widgets**. Sakop na ng 42 custom tabs (Analytic, Procurement, Delivery, Fulfillment, Tony Fan, Fenteng) ang lahat ng ginagamit ng staff at suppliers. Walang karagdagang native Zoho screens na kailangang buuin o i-port. |
 | 11 | **Suppliers at launch?** Tony Fan and Fenteng portals | **answered** | **Kasama lahat sa unang launch**. Sabay na ilulunsad ang internal staff screens at ang external supplier portals (Tony Fan at Fenteng). Dahil sa Railway na ang user management, madaling i-setup ang role-based routing (hal. `supplier_tonyfan` at `supplier_fenteng` ay diretsong magla-land sa kani-kanilang portal views). |
-| 12 | **Will the boss later want Zoho Creator switched off completely?** | **open** | B keeps the Zoho Creator subscription. If yes, plan path C afterwards (move modules off Zoho one by one). Ask the boss now so expectations match. |
+| 12 | **Will the boss later want Zoho Creator switched off completely?** | **answered 2026-11-12** | Yes: the supply chain app is being removed from Zoho Creator. Path C (port everything, migrate data to Postgres, module by module) is now the goal. Open follow-up: the removal date. |
 | 13 | **Who can create the Zoho API client** (Zoho admin) and give the Production API access? | **answered** | **Naka-log in si user/owner at iga-guide step-by-step**. Sabay nating bubuksan ang Zoho API Console para i-click at i-generate ang Client ID, Client Secret, at permanent offline Refresh Token para sa Service Account. |
 | 14 | **Custom API list** (21 names, functions, public keys) | **open** | One screen in Zoho (Developer Space → API → Custom APIs); I can't read it from the export. |
 | 15 | **Native-code leftovers**: Geoapify key hardcoded in the Zoho script `SA_Geocode_Address` | **open** | Rotate it and move it into a Zoho connection or variable. |

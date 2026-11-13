@@ -1,0 +1,17 @@
+# Who reviews what. Core code (database, hooks, Books client, tools) needs the admin; each module folder is
+# reviewed by its owner. Add a line per module once the GitHub usernames are known (see
+# vault/Plans/Plan - Module Folders and Team Split.md), for example:
+#   /server/modules/delivery-management/  @username
+#   /tests/delivery-management/           @username
+
+/server/pg/ @Yhelie08
+/server/workflows/ @Yhelie08
+/server/books/ @Yhelie08
+/server/modules/index.mjs @Yhelie08
+/server/custom-api-helpers.mjs @Yhelie08
+/server/custom-apis.mjs @Yhelie08
+/server/model.mjs @Yhelie08
+/server/criteria.mjs @Yhelie08
+/tools/ @Yhelie08
+/tests/core/ @Yhelie08
+/package.json @Yhelie08

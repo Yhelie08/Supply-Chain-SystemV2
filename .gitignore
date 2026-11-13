@@ -7,3 +7,14 @@ data/
 .impeccable/questions/
 server/zoho-credentials.json
 self_client.json
+.env
+.env.*
+!.env.example
+
+# graphify output (regenerable): graph, report, cache; and the Obsidian notes it writes
+graphify-out/
+vault/Graph/
+gitToken
+
+# old pre-migration Zoho Creator codebase, kept locally for reference only
+ZohoCreatorVersionOLD/

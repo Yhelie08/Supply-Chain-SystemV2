@@ -5,7 +5,7 @@ One folder per section of the app's section dropdown, in the same order as the a
 | Section | Tabs | Forms | Deluge functions | Workflows |
 |---|---|---|---|---|
 | [Analytic](Analytic/README.md) | 1 | 8 | 5 | 47 |
-| [Procurement](Procurement/README.md) | 9 | 44 | 12 | 142 |
+| [Procurement](Procurement/README.md) | 9 | 44 | 16 | 142 |
 | [Tony Fan](Tony%20Fan/README.md) | 5 | 19 | 4 | 96 |
 | [Fenteng Lighting](Fenteng%20Lighting/README.md) | 5 | 19 | 4 | 100 |
 | [Fulfillment](Fulfillment/README.md) | 10 | 36 | 8 | 111 |

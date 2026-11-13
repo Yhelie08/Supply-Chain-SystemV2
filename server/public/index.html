@@ -204,6 +204,7 @@
           </button>
           <div class="menu" id="accountMenu">
             <p class="who-email" id="whoEmail"></p>
+            <p class="who-email" id="whoData" hidden></p>
             <a href="/account">Change password</a>
             <a href="/admin/users" id="usersLink" hidden>Manage users</a>
             <form method="post" action="/logout"><button type="submit">Sign out</button></form>
@@ -255,6 +256,7 @@
     $('whoEmail').textContent = me.email;
     $('avatar').textContent = label.trim().charAt(0).toUpperCase();
     $('usersLink').hidden = me.role !== 'admin';
+    if (me.dataSource) { $('whoData').textContent = 'Data: ' + me.dataSource; $('whoData').hidden = false; }
   });
   var account = $('account'), accountBtn = $('accountBtn');
   function setAccount(open) { account.classList.toggle('open', open); accountBtn.setAttribute('aria-expanded', String(open)); }

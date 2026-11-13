@@ -63,6 +63,24 @@
       "personalData": "true"
     },
     {
+      "name": "Design_Company",
+      "label": "Design Company",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Design_Partner",
+      "label": "Design Partner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Designer_Architect",
+      "label": "Designer/Architect",
+      "type": "text",
+      "required": false
+    },
+    {
       "name": "Billing_Address",
       "label": "Billing Address",
       "type": "address",

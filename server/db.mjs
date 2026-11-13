@@ -4,35 +4,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-const ROOT = path.resolve(import.meta.dirname, '..');
-const PARSED = path.join(ROOT, 'zoho-export', 'parsed');
+import { ROOT, forms, reports, columns, formOfReport, formByName } from './model.mjs';
+import { ZohoError, zohoNow, today, compileCriteria } from './criteria.mjs';
+
+// The data model and the Zoho helpers live in model.mjs / criteria.mjs (shared with the Postgres store).
+export { forms, reports, columns, formOfReport, formByName, ZohoError, zohoNow, today, compileCriteria };
+
 // DATA_DIR holds the database and uploads; on Railway it points at a persistent volume.
 export const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
-
-export const forms = Object.fromEntries(
-  fs.readdirSync(path.join(PARSED, 'forms')).map((f) => {
-    const form = JSON.parse(fs.readFileSync(path.join(PARSED, 'forms', f), 'utf8'));
-    return [form.name, form];
-  }),
-);
-export const reports = Object.fromEntries(JSON.parse(fs.readFileSync(path.join(PARSED, 'reports.json'), 'utf8')).map((r) => [r.name, r]));
-
-const NO_VALUE = new Set(['section', 'help_text', 'plaintext', 'submit', 'cancel', 'tooltip']);
-const NUMBER = new Set(['number', 'decimal', 'percentage', 'CNY', 'PHP', 'currency', 'autonumber']);
-const JSONISH = new Set(['grid', 'name', 'address', 'checkboxes', 'list']);
-
-// Per form: { colName: { type, kind: 'num'|'bool'|'json'|'text', lookup } }
-export const columns = {};
-for (const form of Object.values(forms)) {
-  const cols = {};
-  for (const f of form.fields) {
-    if (NO_VALUE.has(f.type) || !f.type) continue;
-    const kind = f.type === 'checkbox' ? 'bool' : NUMBER.has(f.type) ? 'num' : JSONISH.has(f.type) ? 'json' : 'text';
-    cols[f.name] = { type: f.type, kind, lookup: typeof f.lookup === 'object' ? f.lookup.form : null };
-  }
-  columns[form.name] = cols;
-}
 
 export const db = new DatabaseSync(path.join(DATA_DIR, 'app.db'));
 db.exec('PRAGMA journal_mode = WAL');
@@ -47,28 +27,6 @@ for (const [form, cols] of Object.entries(columns)) {
 }
 // Zoho record IDs are long numbers; start ours high so they look and sort the same way.
 db.exec(`INSERT OR IGNORE INTO sqlite_sequence(name, seq) SELECT name, 4900000000000 FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN (SELECT name FROM sqlite_sequence)`);
-
-export class ZohoError extends Error {
-  constructor(code, message) { super(message); this.code = code; }
-}
-
-export function formOfReport(reportName) {
-  const r = reports[reportName];
-  if (r?.form && columns[r.form]) return { form: r.form, criteria: r.criteria, report: r };
-  if (columns[reportName]) return { form: reportName, criteria: null, report: null };
-  throw new ZohoError(9230, `Report '${reportName}' not found in the parsed .ds`);
-}
-export function formByName(formName) {
-  if (!columns[formName]) throw new ZohoError(9220, `Form '${formName}' not found in the parsed .ds`);
-  return formName;
-}
-
-const pad = (n) => String(n).padStart(2, '0');
-export function zohoNow(d = new Date()) {
-  const h = d.getHours() % 12 || 12;
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(h)}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${d.getHours() < 12 ? 'AM' : 'PM'}`;
-}
-export const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 
 // ---------- rows <-> Zoho records ----------
 // What a lookup shows for its target form, taken from the .ds "displayformat" of the fields that
@@ -138,39 +96,6 @@ function encode(form, data, existingExtra) {
     else out[k] = v == null ? null : typeof v === 'object' ? JSON.stringify(v) : String(v);
   }
   return { out, extra: Object.keys(extra).length ? JSON.stringify(extra) : null };
-}
-
-// ---------- Zoho criteria -> JS predicate ----------
-const TOKEN = /\s+|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\d+(?:\.\d+)?|&&|\|\||==|!=|>=|<=|>|<|\(|\)|!|,|\.(?:contains|startsWith|endsWith)\s*\(|[A-Za-z_]\w*(?:\.(?!contains\b|startsWith\b|endsWith\b)\w+)*/y;
-export function compileCriteria(src, ctx = {}) {
-  if (!src || !String(src).trim()) return () => true;
-  let js = '', m; TOKEN.lastIndex = 0;
-  const s = String(src);
-  while (TOKEN.lastIndex < s.length) {
-    const at = TOKEN.lastIndex;
-    if (!(m = TOKEN.exec(s))) throw new ZohoError(3330, `Unsupported criteria near: ${s.slice(at, at + 30)}`);
-    const t = m[0];
-    if (/^\s+$/.test(t)) js += ' ';
-    else if (/^["']/.test(t)) js += JSON.stringify(t.slice(1, -1).replace(/\\(.)/g, '$1'));
-    else if (/^(true|false|null)$/.test(t)) js += t;
-    else if (t === 'zoho.currentdate') js += JSON.stringify(today());
-    else if (t === 'zoho.loginuser' || t === 'zoho.loginuserid') js += JSON.stringify(ctx.user || '');
-    else if (/^\.(contains|startsWith|endsWith)/.test(t)) js += t.startsWith('.contains') ? '.includes(' : t.replace(/\s*\($/, '') + '(';
-    else if (/^[A-Za-z_]/.test(t)) js += `v(${JSON.stringify(t)})`;
-    else js += t;
-  }
-  // eslint-disable-next-line no-new-func
-  const fn = new Function('v', `return (${js});`);
-  return (rec) => {
-    const v = (name) => {
-      let x = rec[name.split('.')[0]];
-      if (x && typeof x === 'object' && !Array.isArray(x) && 'ID' in x) x = x.ID;
-      if (x === '' || x === undefined) return null;
-      if (name === 'ID' || (typeof x === 'string' && /^-?\d+(\.\d+)?$/.test(x) && x.length < 16)) return Number(x);
-      return x;
-    };
-    try { return !!fn(v); } catch { return false; }
-  };
 }
 
 // ---------- operations used by the widget SDK ----------
