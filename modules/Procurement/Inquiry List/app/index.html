@@ -1712,6 +1712,17 @@ var CUSTOM_API_CREATE_BOOKS_CONTACT_KEY = 'BeeatkJFbfzQvSNPMaCTPbFyQ';
    placeholder until the Custom Function/API is created live in Creator. */
 var CUSTOM_API_ADD_ITEM = 'add_item_by_id';
 var CUSTOM_API_ADD_ITEM_KEY = 'yjWf2kbeuBRHJpEDzKy8RuQyR';
+/* Fetches live Books data (address/email/phone/Customer Type) for a picked customer, by its ID1
+   (Books contact_id). Fired on pick only, not bulk, so a 10k+ customer list never burns API quota
+   loading rows nobody is using. Key is a placeholder until the Custom Function/API is created live in Creator. */
+var CUSTOM_API_FETCH_CUSTOMER = 'fetch_customer_from_books';
+var CUSTOM_API_FETCH_CUSTOMER_KEY = 'hF3mQdxWtRe7zKpL9bYsNcVgT';
+/* Items picker: live Akeneo search (debounced) + pick-time full fetch (Akeneo fields + Shopify
+   price). Keys are placeholders until the Custom Functions/APIs are created live in Creator. */
+var CUSTOM_API_SEARCH_ITEMS = 'search_items_akeneo';
+var CUSTOM_API_SEARCH_ITEMS_KEY = 'nQ8vXpLw3TcKfRjM5sYbGhDzA';
+var CUSTOM_API_FETCH_ITEM = 'fetch_item_from_akeneo';
+var CUSTOM_API_FETCH_ITEM_KEY = 'wB4mKpTxQ9VsLcN7yFgRjHdZu';
 var REAL_APP_NAME = ZC_APP;
 var ACCOUNT_OWNER = 'homecartel';
 var ZC_ENV        = '';
@@ -3239,6 +3250,35 @@ function applyItemMatch(){
     $('fProductImageWrap').style.display = 'none';
     $('fProductImage').src = '';
   }
+  /* A bare Akeneo search hit (_akeneo: true) has only identifier/name — the real fields (SKU,
+     Description/Rate/spec fields) come from one pick-time fetch, not from search. Also re-fetch
+     for an already-synced local item (match.ID1 set, _akeneo false) so a stale stored value
+     (e.g. Description saved before a later fix to the Akeneo transform) self-heals on next pick
+     instead of silently serving old Postgres data forever — still one fetch per pick, not per
+     keystroke/search result, so this stays within the "least API calls" constraint. */
+  if(match && match.ID1){
+    var pickedItemId = selectedItemId;
+    fetchItemFromAkeneo(match.ID1, function(r){
+      if(selectedItemId !== pickedItemId || $('fItems').value.trim().toLowerCase() !== typed.toLowerCase()) return;
+      var idx = itemsCache.findIndex(function(it){ return it.ID1 === r.identifier; });
+      if(idx > -1) itemsCache[idx] = Object.assign({}, itemsCache[idx], { item_name: r.item_name, SKU: r.SKU, Description: r.Description, category: r.category, Rate: r.Rate, Image: r.Image, _akeneo: false });
+      $('fSku').value = r.SKU || $('fSku').value;
+      $('fDescription').value = r.Description || '';
+      if(r.Rate) $('fSrp').value = r.Rate;
+      if(r.Dimension) $('fDimension').value = r.Dimension;
+      if(r.ColorBody) $('fColorBody').value = r.ColorBody;
+      if(r.Voltage) $('fVoltage').value = r.Voltage;
+      if(r.ColorTemp) setSpecSelectValue('fColorTemp', r.ColorTemp);
+      /* Image is cached server-side on first fetch (server/modules/procurement/akeneo-apis.mjs) --
+         never re-downloaded from Akeneo on later picks, just re-applied from r.Image here. */
+      if(r.Image){
+        $('fProductImageWrap').style.display = '';
+        $('fProductImage').src = '';
+        applyCreatorImage($('fProductImage'), r.Image);
+      }
+      checkReadiness();
+    });
+  }
   checkReadiness();
 }
 
@@ -3253,6 +3293,98 @@ async function loadCustomersFromCreator(){
     if(errCode(err) !== 9220) console.warn('[Customers] load failed:', err);
     customersCache = [];
   }
+}
+/* Customer table has 10,000+ rows, far past the 1000-record bulk load above, so a name typed
+   beyond that first page would never match. This searches Postgres directly for the typed text
+   and merges hits into customersCache (by ID) so applyCustomerMatch's exact-match lookup and both
+   dropdown renderers keep working unmodified against the same cache array. */
+var customerSearchTimer = null, customerSearchSeq = 0;
+function mergeIntoCustomersCache(rows){
+  var byId = {};
+  customersCache.forEach(function(c){ byId[val(c.ID || c.id)] = c; });
+  rows.forEach(function(c){ byId[val(c.ID || c.id)] = c; });
+  customersCache = Object.keys(byId).map(function(k){ return byId[k]; });
+}
+function searchCustomersLive(text, onDone){
+  clearTimeout(customerSearchTimer);
+  var q = text.trim();
+  if(!q || isStandalone() || typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
+  var mySeq = ++customerSearchSeq;
+  customerSearchTimer = setTimeout(async function(){
+    try{
+      var crit = 'customer_name.contains("' + q.replace(/\\/g,'\\\\').replace(/"/g,'\\"') + '")';
+      var resp = await ZOHO.CREATOR.DATA.getRecords({ app_name: REAL_APP_NAME, report_name: CUSTOMERS_REPORT, criteria: crit, max_records: 25 });
+      if(mySeq !== customerSearchSeq) return; /* a newer keystroke already started a fresher search */
+      if(resp && resp.code === 3000 && Array.isArray(resp.data)){
+        mergeIntoCustomersCache(resp.data);
+        if(onDone) onDone();
+      }
+    } catch(err){ if(errCode(err) !== 9220) console.warn('[Customers] search failed:', err); }
+  }, 300);
+}
+/* On-demand Books refresh for the picked customer (not bulk — see CUSTOM_API_FETCH_CUSTOMER comment).
+   onDone(result) only fires on a successful, linked lookup; result.customerId lets the caller ignore
+   a stale response if the user already moved on to a different customer. */
+async function fetchCustomerFromBooks(customerId, onDone){
+  if(!customerId || typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  try{
+    var resp = await ZOHO.CREATOR.DATA.invokeCustomApi({
+      api_name: CUSTOM_API_FETCH_CUSTOMER, http_method: 'POST', content_type: 'application/json',
+      payload: { customerId: customerId }, public_key: CUSTOM_API_FETCH_CUSTOMER_KEY
+    });
+    var result = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+    if(result && result.status === 'success' && result.linked && onDone) onDone(Object.assign({ customerId: customerId }, result));
+  } catch(err){ console.warn('[Customers] Books refresh failed:', err); }
+}
+/* Items dropdown also searches Akeneo live (74k+ products, nowhere near bulk-loadable) and
+   merges hits into itemsCache by SKU/ID1 so applyItemMatch's exact-match lookup and
+   renderItemsDropdown keep working unmodified. 500ms debounce (slower than Customer's 300ms) and
+   a single capped search call per pause in typing — "least API calls as possible". */
+var itemSearchTimer = null, itemSearchSeq = 0;
+function mergeIntoItemsCache(rows){
+  var byKey = {};
+  itemsCache.forEach(function(it){ byKey[val(it.ID1 || it.SKU)] = it; });
+  rows.forEach(function(r){
+    var key = r.identifier;
+    if(byKey[key]) return; /* a fuller local record (already synced) wins over a bare search hit */
+    byKey[key] = { ID: '', ID1: r.identifier, SKU: r.identifier, item_name: r.name, _akeneo: true };
+  });
+  itemsCache = Object.keys(byKey).map(function(k){ return byKey[k]; });
+  itemsCache.sort(function(a,b){ return itemLabel(a).toLowerCase().localeCompare(itemLabel(b).toLowerCase()); });
+}
+function searchItemsLive(text, onDone){
+  clearTimeout(itemSearchTimer);
+  var q = text.trim();
+  if(!q || typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  var mySeq = ++itemSearchSeq;
+  itemSearchTimer = setTimeout(async function(){
+    try{
+      var resp = await ZOHO.CREATOR.DATA.invokeCustomApi({
+        api_name: CUSTOM_API_SEARCH_ITEMS, http_method: 'POST', content_type: 'application/json',
+        payload: { q: q }, public_key: CUSTOM_API_SEARCH_ITEMS_KEY
+      });
+      if(mySeq !== itemSearchSeq) return;
+      var result = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+      if(result && result.status === 'success' && Array.isArray(result.items)){
+        mergeIntoItemsCache(result.items);
+        if(onDone) onDone();
+      }
+    } catch(err){ console.warn('[Items] Akeneo search failed:', err); }
+  }, 500);
+}
+/* On-demand full fetch for a picked Akeneo item (fills Rate from Shopify, Description, and the
+   Inquiry form's spec fields Dimension/Color/Voltage/Lumens, which have no home on Items itself).
+   Fired on pick only, never per keystroke or per dropdown row. */
+async function fetchItemFromAkeneo(identifier, onDone){
+  if(!identifier || typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  try{
+    var resp = await ZOHO.CREATOR.DATA.invokeCustomApi({
+      api_name: CUSTOM_API_FETCH_ITEM, http_method: 'POST', content_type: 'application/json',
+      payload: { identifier: identifier }, public_key: CUSTOM_API_FETCH_ITEM_KEY
+    });
+    var result = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+    if(result && result.status === 'success' && onDone) onDone(Object.assign({ identifier: identifier }, result));
+  } catch(err){ console.warn('[Items] Akeneo fetch failed:', err); }
 }
 async function loadProjectsFromCreator(){
   if(isStandalone() || typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
@@ -3501,9 +3633,14 @@ async function createBooksContactFor(newId, name, payload, billing, shipping, co
 /* Valid options for the fixed Customer Type picklist — Customer.Customer_Type is freetext, so map loosely.
    Real data uses spacing/casing variants (e.g. "End User" vs "Enduser"), so compare with spaces stripped. */
 var CUSTOMER_TYPE_OPTIONS = ['Designer','Enduser','Corporate','Business Partner'];
+/* Zoho's own Customer Type labels (seen in Books contacts and the "All Customers" export) don't
+   match this picklist's option strings 1:1 -- "Design Partner"/"End User" are Zoho's wording for
+   what this form calls "Designer"/"Enduser". Mapped before the normalized-equality check. */
+var CUSTOMER_TYPE_ALIASES = { 'designpartner':'Designer', 'enduser':'Enduser', 'corporate':'Corporate', 'businesspartner':'Business Partner' };
 function normalizeTypeKey(s){ return s.trim().toLowerCase().replace(/\s+/g,''); }
 function matchCustomerTypeOption(rawType){
   var s = normalizeTypeKey(val(rawType));
+  if(CUSTOMER_TYPE_ALIASES[s]) return CUSTOMER_TYPE_ALIASES[s];
   var hit = CUSTOMER_TYPE_OPTIONS.filter(function(t){ return normalizeTypeKey(t)===s; })[0];
   return hit || null;
 }
@@ -3516,6 +3653,14 @@ function applyCustomerMatch(){
     selectedCustomerId = val(match.ID || match.id);
     var typeOpt = matchCustomerTypeOption(match.Customer_Type);
     if(typeOpt) $('fCustomerType').value = typeOpt;
+    if(val(match.Design_Company)) $('fDesignCompany').value = val(match.Design_Company);
+    if(val(match.Design_Partner)) $('fDesignPartner').value = val(match.Design_Partner);
+    if(val(match.Designer_Architect)) $('fDesignerArchitect').value = val(match.Designer_Architect);
+    if(!typeOpt) fetchCustomerFromBooks(selectedCustomerId, function(r){
+      if(selectedCustomerId !== r.customerId) return; /* the user moved on to a different customer before this returned */
+      var liveType = matchCustomerTypeOption(r.Customer_Type);
+      if(liveType && !$('fCustomerType').value) $('fCustomerType').value = liveType;
+    });
   }
   /* Project is dependent on Customer — clear it whenever the customer changes. Project Type
      and Quote Group are plain view-only display fields (no auto-fill/guessing on our end —
@@ -3730,10 +3875,16 @@ function applyProjectMatch(){
 /* ── Event handlers: New Inquiry ── */
 $('fItems').addEventListener('input', applyItemMatch);
 $('fItems').addEventListener('input', renderItemsDropdown);
+$('fItems').addEventListener('input', function(){
+  searchItemsLive($('fItems').value, function(){ applyItemMatch(); renderItemsDropdown(); });
+});
 $('fItems').addEventListener('focus', renderItemsDropdown);
 $('fItems').addEventListener('blur', function(){ setTimeout(function(){ $('fItemsDropdown').classList.remove('show'); }, 120); });
 $('fCustomer').addEventListener('input', applyCustomerMatch);
 $('fCustomer').addEventListener('input', renderCustomersDropdown);
+$('fCustomer').addEventListener('input', function(){
+  searchCustomersLive($('fCustomer').value, function(){ applyCustomerMatch(); renderCustomersDropdown(); });
+});
 $('fCustomer').addEventListener('focus', renderCustomersDropdown);
 $('fCustomer').addEventListener('blur', function(){ setTimeout(function(){ $('fCustomerDropdown').classList.remove('show'); }, 120); });
 $('fProject').addEventListener('input', applyProjectMatch);
@@ -3889,6 +4040,10 @@ $('btnSubmit').addEventListener('click', async function(){
     /* Items/Customer are lookups keyed by ID — validated above to be a real matched record, never raw text. */
     Items:                  selectedItemId,
     Customer:               selectedCustomerId,
+    /* Copied from the matched Item's own Image (already cached in itemsCache from the pick-time
+       fetch) so the INQ List thumbnail has something to show — no extra Akeneo/upload call here,
+       just reusing what's already in memory. */
+    Product_Image:          (itemsCache.filter(function(it){ return val(it.ID||it.id)===selectedItemId; })[0] || {}).Image || '',
     description:            $('fDescription').value,
     sku:                    skuText,
     quantity:               parseInt($('fQuantity').value,10)||0,
@@ -4925,6 +5080,14 @@ function applyDetailCustomerMatch(){
     dSelectedCustomerId = val(match.ID || match.id);
     var typeOpt = matchCustomerTypeOption(match.Customer_Type);
     if(typeOpt) $('dEditCustomerType').value = typeOpt;
+    if(val(match.Design_Company)) $('dEditDesignCompany').value = val(match.Design_Company);
+    if(val(match.Design_Partner)) $('dEditDesignPartner').value = val(match.Design_Partner);
+    if(val(match.Designer_Architect)) $('dEditDesignerArchitect').value = val(match.Designer_Architect);
+    if(!typeOpt) fetchCustomerFromBooks(dSelectedCustomerId, function(r){
+      if(dSelectedCustomerId !== r.customerId) return;
+      var liveType = matchCustomerTypeOption(r.Customer_Type);
+      if(liveType && !$('dEditCustomerType').value) $('dEditCustomerType').value = liveType;
+    });
   }
   /* Project is dependent on Customer — clear it whenever the customer changes */
   if(dSelectedCustomerId !== prevCustomerId){
@@ -4933,6 +5096,9 @@ function applyDetailCustomerMatch(){
   }
 }
 $('dEditCustomer').addEventListener('input', function(){ applyDetailCustomerMatch(); renderDetailCustomerDropdown(); });
+$('dEditCustomer').addEventListener('input', function(){
+  searchCustomersLive($('dEditCustomer').value, function(){ applyDetailCustomerMatch(); renderDetailCustomerDropdown(); });
+});
 $('dEditCustomer').addEventListener('focus', renderDetailCustomerDropdown);
 $('dEditCustomer').addEventListener('blur', function(){ setTimeout(function(){ $('dEditCustomerDropdown').classList.remove('show'); }, 120); });
 
@@ -5218,6 +5384,17 @@ document.addEventListener('click', function(e){
   if(e.target.closest && e.target.closest('.spec-combo, .spec-combo-panel')) return;
   closeSpecCombos();
 });
+/* Sets a spec <select> (e.g. fColorTemp) to an exact option when the value matches one, otherwise
+   routes it through the existing "Other" mechanism so a value Akeneo returns that isn't on the
+   fixed picklist (e.g. an unusual color temperature) still reaches the field instead of being
+   silently dropped by a plain .value= that matches no <option>. */
+function setSpecSelectValue(id, value){
+  var sel = $(id);
+  if(!sel) return;
+  var hasOption = Array.prototype.some.call(sel.options, function(o){ return o.value === value; });
+  if(hasOption){ sel.value = value; syncSpecOther(id); }
+  else { sel.value = SPEC_OTHER; syncSpecOther(id); var other = $(id + 'Other'); if(other) other.value = value; }
+}
 function syncSpecOther(id){
   var sel = $(id), other = $(id + 'Other');
   if(!sel || !other) return;

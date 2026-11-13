@@ -54,7 +54,7 @@ if (BACKEND === 'pg') {
   store = {
     get: async (sql, params) => (await pool.query(toPg(sql), params)).rows[0],
     all: async (sql, params) => (await pool.query(toPg(sql), params)).rows,
-    run: async (sql, params) => { const r = await pool.query(toPg(sql) + (/^INSERT/i.test(sql) ? ' RETURNING id' : ''), params); return { lastInsertRowid: r.rows[0]?.id }; },
+    run: async (sql, params) => { const r = await pool.query(toPg(sql) + (/^INSERT INTO _users/i.test(sql) ? ' RETURNING id' : ''), params); return { lastInsertRowid: r.rows[0]?.id }; },
   };
 } else {
   const { db } = await import('./db.mjs');

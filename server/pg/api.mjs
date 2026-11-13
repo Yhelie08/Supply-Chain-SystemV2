@@ -10,6 +10,8 @@ import { createStore } from './store.mjs';
 import { createHookedStore } from '../workflows/index.mjs';
 import { workflows } from '../workflows/all.mjs';
 import { createZohoApi } from '../books/client.mjs';
+import { createAkeneoApi } from '../akeneo/client.mjs';
+import { createShopifyApi } from '../shopify/client.mjs';
 
 // `store` is the hooked store: widget writes run the form workflows (server/workflows). Custom APIs get
 // `rawStore`, whose writes do not fire them again.
@@ -50,6 +52,10 @@ export async function startPg(invokeCustomApi) {
   const store = createStore(pool);
   const books = createZohoApi();
   console.log(`[books] Zoho Books/Inventory ${books.isConfigured() ? 'configured' : 'not configured (workflows and APIs that call Books will report it)'}`);
+  const akeneo = createAkeneoApi();
+  console.log(`[akeneo] ${akeneo.isConfigured() ? 'configured' : 'not configured (Items picker search will report it)'}`);
+  const shopify = createShopifyApi();
+  console.log(`[shopify] ${shopify.isConfigured() ? 'configured' : 'not configured (Akeneo item pick will skip the price lookup)'}`);
   const hooked = createHookedStore(store, workflows, { books });
   // Files a custom API downloads (an item's photo) go where widget uploads go: DATA_DIR/uploads, served at /uploads/.
   const saveUpload = async (name, buffer) => {
@@ -59,5 +65,5 @@ export async function startPg(invokeCustomApi) {
     fs.writeFileSync(path.join(uploads, fileName), buffer);
     return `/uploads/${fileName}`;
   };
-  return { pool, store, api: createPgApi(hooked, invokeCustomApi, store, { books, saveUpload }) };
+  return { pool, store, api: createPgApi(hooked, invokeCustomApi, store, { books, akeneo, shopify, saveUpload }) };
 }

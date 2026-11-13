@@ -52,6 +52,24 @@ widened: 3-32 chars, letters/digits/dot/underscore/hyphen — real emails still 
 First run with `ADMIN_EMAIL`/`ADMIN_PASSWORD` set creates the admin account automatically.
 Forces a password change on first login.
 
+### "No account" / login fails even though the admin account definitely exists
+
+This means your `localhost` is reading from your own **local SQLite** database, not the shared
+Postgres — a completely separate, usually-empty `_users` table. Happens when `BACKEND` isn't set
+to `pg`, or the tunnel from step 1 above isn't running. Check your `.env` has:
+
+```
+BACKEND=pg
+DATABASE_URL=postgresql://postgres:...@127.0.0.1:<port>/railway   (current tunnel session's port/password)
+```
+
+If `BACKEND=local` or missing, or `DATABASE_URL` is stale/not set, the app silently falls back to
+SQLite (`data/app.db`) instead of erroring — so the server still starts fine, it's just reading
+the wrong account list. Re-run `railway connect Postgres --tunnel-only`, copy its fresh `URL:`
+line into `DATABASE_URL`, confirm `BACKEND=pg`, and restart `npm run dev`. The startup log line
+`[pg] connected; schema ready (...)` only appears when it's actually using Postgres — if you don't
+see that line, you're on local SQLite.
+
 ## Notes
 
 - Railway's tunnel password and port are session-specific — don't hardcode them anywhere shared, re-copy each session.
