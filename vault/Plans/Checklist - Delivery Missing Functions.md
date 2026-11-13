@@ -35,7 +35,7 @@ date: 2026-11-13
 | 6 custom APIs | Confirm, Decline, Reschedule, Push message, Shipment, Sales Return |
 | Confirm once + scheduling queue | On `feature/delivery-safety` (9 tests) |
 | Tabs | 12 visible + 1 hidden (Policy Settings) in `server/pages.json` |
-| Reports | 19 reports are read by the tabs; all exist in the parsed model (22/22 API UAT) |
+| Reports | 20 reports are read by the tabs; all exist in the parsed model (22/22 API UAT) |
 | Tests | 118 delivery tests |
 
 ## Verified on 2026-11-13: what is not missing
@@ -45,8 +45,8 @@ A deeper pass over the 13 tabs, the widget code and the parsed Zoho export found
 | Check | Result |
 |---|---|
 | Form workflows | 16/16 registered and covered in `ported.json` |
-| Reports read by the tabs | 19/19 exist in `zoho-export/parsed/reports.json` and resolve to a form |
-| Forms written by the tabs | every form name used by the widgets exists in the parsed model |
+| Reports read by the tabs | 20/20 exist in `zoho-export/parsed/reports.json` and resolve to a form |
+| Forms written by the tabs | 13/13 exist in the parsed model |
 | Custom APIs called by the tabs | 6/6 implemented in `server/modules/delivery-management/apis.mjs` |
 | Zoho SDK calls used by the widgets | every method used is in `server/public/zoho-shim.js` |
 | Criteria strings | all simple criteria used by the widgets compile with `server/criteria.mjs` |
