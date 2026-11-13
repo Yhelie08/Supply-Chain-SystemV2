@@ -35,8 +35,27 @@ date: 2026-11-13
 | 6 custom APIs | Confirm, Decline, Reschedule, Push message, Shipment, Sales Return |
 | Confirm once + scheduling queue | On `feature/delivery-safety` (9 tests) |
 | Tabs | 12 visible + 1 hidden (Policy Settings) in `server/pages.json` |
-| Reports | 18 reports answer (22/22 API UAT) |
+| Reports | 19 reports are read by the tabs; all exist in the parsed model (22/22 API UAT) |
 | Tests | 118 delivery tests |
+
+## Verified on 2026-11-13: what is not missing
+
+A deeper pass over the 13 tabs, the widget code and the parsed Zoho export found **no missing Delivery-owned workflow, custom API or report**:
+
+| Check | Result |
+|---|---|
+| Form workflows | 16/16 registered and covered in `ported.json` |
+| Reports read by the tabs | 19/19 exist in `zoho-export/parsed/reports.json` and resolve to a form |
+| Forms written by the tabs | every form name used by the widgets exists in the parsed model |
+| Custom APIs called by the tabs | 6/6 implemented in `server/modules/delivery-management/apis.mjs` |
+| Zoho SDK calls used by the widgets | every method used is in `server/public/zoho-shim.js` |
+| Criteria strings | all simple criteria used by the widgets compile with `server/criteria.mjs` |
+| Report button `Re_Schedule` | 2-line wrapper of `dmsScheduleSlot`; the widget's Re-Schedule button already calls `dms_reschedule`, so no separate port is needed |
+| Schedule `DMS_Site_Confirmation_Fol` | inactive in Zoho and skipped by decision A3; only needed if the follow-up is turned back on (needs email + a schedule runner) |
+| Schedules `Shipment_Delay_Status_Daily`, `Daily_Shipment_10_Day_Check` | update `Shipments`, not Delivery |
+| Forms `Pick_Up_Request_Form`, `Shipment_Order_Form` | not read or written by any Delivery widget — not a Delivery gap |
+
+> The remaining gaps are therefore the cross-module, credential, data and platform items below — not missing Delivery logic.
 
 ---
 
@@ -46,7 +65,7 @@ date: 2026-11-13
 
 | # | Item | Today | How to check | Owner | Done |
 |---|---|---|---|---|---|
-| 1 | **Geoapify** (address coordinates) | `GEOAPIFY_API_KEY` is set in `.env`, but the value is still the **example placeholder** `a1b2...c5d6`; Geoapify answers `401 Invalid apiKey`. No latitude, longitude or `Geocode_Status` is written | Put a real key from `myprojects.geoapify.com` in `.env`, restart, save an appointment with an address, then look for lat/long | repo owner | [ ] |
+| 1 | **Geoapify** (address coordinates) | **Working since 2026-11-13.** A live call returns `200`; the geocode hook writes `Delivery_Latitude`, `Delivery_Longitude` and `Geocode_Status: Success` for a Makati address | Save one appointment with an address in the browser and confirm the three fields (the last click-through) | repo owner | [x] |
 | 2 | **Books/Inventory** (Shipment and Sales Return) | No OAuth client, so the answer is "Zoho Books is not configured" | Archived → **Create Shipment**; Sales Returns → **Send to Books** | repo owner | [ ] |
 | 3 | **Books during Confirm** (address and items) | Confirming a Schedule Request leaves **address, contact, email and items blank**, because they should come from Books | Schedule Request with `Books_Sales_Order_ID` → Confirm → check the new appointment | repo owner | [ ] |
 | 4 | **CMS push** (status and chat) | No `CMS_STATUS_URL` / `CMS_MESSAGE_URL`, so "CMS sync is off" | Confirm/Decline → `cmsPushStatus: skipped`; chat → nothing arrives | repo owner + CMS owner | [ ] |
@@ -55,8 +74,8 @@ date: 2026-11-13
 > [!NOTE] About the forecast
 > The engine already exists on `feature/forecast-engine` (F0–F4, with `server/forecast/*` and `server/schedules.mjs`). It is not merged into `main` or `Johncel-Dev`. Once merged, new orders get a real forecast.
 
-> [!WARNING] Geoapify key status on 2026-11-13
-> The line in `.env` had been pasted twice (`GEOAPIFY_API_KEY=GEOAPIFY_API_KEY=...`); the duplicate prefix was removed, but the remaining 32-character value is only the example from the setup guide, not a real key. A live call returns `401 Invalid apiKey`. Create a real key at `https://myprojects.geoapify.com/` → project → **API Keys**, then paste only the key after `GEOAPIFY_API_KEY=`.
+> [!NOTE] Geoapify key status on 2026-11-13
+> The duplicate prefix was removed and a real key was added. Tested live: `Ayala Avenue, Makati` → `14.5575225, 121.0198889` (`Success`). The key stays in `.env` only; it is not committed or written into this note.
 
 ## 2.2 No code yet
 
@@ -75,9 +94,26 @@ date: 2026-11-13
 |---|---|---|---|---|---|
 | 12 | **Production export** | Development backup only (test data: 5 appointments, 3 field work) | Compare row counts with Production | repo owner | [ ] |
 | 13 | **Railway** | The deployed branch (`main`) defaults to `BACKEND=zoho`; `Johncel-Dev` defaults to `local`. Railway has no `DATABASE_URL`, `TZ` or `SCHEDULES`, so **the live site is still a bridge to Zoho**, not Postgres | Admin account menu → does it say "Data: Postgres"? If not, it is still the bridge | repo owner | [ ] |
-| 14 | **2 forms with no data** | `Pick_Up_Request_Form` and `Shipment_Order_Form` have no readable report | Check row counts and whether they contain data | repo owner | [ ] |
-| 15 | **34 forms** | Columns may be missing if the report does not expose them | Spot-check fields against the widgets | core owner | [ ] |
-| 16 | **Upstream Fulfillment** | `server/modules/fulfillment/ported.json` is empty; `check_payment_status` and `create_package_ff` are placeholders. The To Ship widget writes a Service Request directly, but the gates before it are not ported | Real SO → To Ship → Service Request; if no SR appears, do it manually for now | Fulfillment owner | [ ] |
+| 14 | **`Pick_Up_Request_Form` / `Shipment_Order_Form`** | Not a Delivery gap: no Delivery widget reads or writes these forms. They belong to another module or are unused | Search the Delivery widgets for the names — zero hits | — | [x] |
+| 15 | **App-wide column check** | The "34 forms may have missing columns" gap is app-wide, not Delivery-specific; every report and form name used by the Delivery tabs resolves in the parsed model | A spot-check is still useful before the Production import | core owner | [ ] |
+| 16 | **Upstream Fulfillment** | `SO_to_Readiness` and `Release_Records_to_Pick1` are active and not ported; `GATE_Instant_Forecast` and `SOF_Instant_Forecast` are on `feature/forecast-engine`; `create_package_ff` and `check_payment_status` are still placeholders. Delivery reads `Sales_Order_Fulfillment_Report`, `Sales_Order_Readiness_Gate_Report` and `Exception_Control_Report` | Real SO → To Ship → Service Request; if the readiness gate or forecast data is stale, the Delivery tabs read stale rows | Fulfillment owner | [ ] |
+
+### 2.4 Data gaps in the Development backup
+
+These Delivery forms have **0 rows** in `data/zoho-backup/development-2026-11-12T02-40-55-902Z`, so their tabs open but show an empty list. This is data, not missing code:
+
+| Form | Tab |
+|---|---|
+| `Daily_Checklist_for_Vehicle` | Truck Maintenance |
+| `Fuel_Entries` | Truck Maintenance |
+| `Service_Entries` | Truck Maintenance |
+| `Dispatch_Checklist` | Service Appointment |
+| `Sales_Returns_Form` | Sales Returns |
+| `Field_Service_Site_Visit_Form` | Field Service Site Visits |
+| `Site_Visit_Photos` | Field Service Site Visits |
+| `DMS_Schedule_Request_Messages` | Schedule Requests (chat) |
+
+> The Production export should replace these empty tables. Until then, create a few test rows before clicking through those tabs.
 
 ---
 
@@ -115,7 +151,7 @@ date: 2026-11-13
 | # | Do this | Why | Done |
 |---|---|---|---|
 | 1 | **Merge `feature/forecast-engine`** | So new orders do not silently get a blank forecast | [ ] |
-| 2 | **Keys:** Geoapify and Books OAuth | Makes geocoding, shipments, returns, and address/items during Confirm work | [ ] |
+| 2 | **Books OAuth** (Geoapify is done) | Makes shipments, returns, and address/items during Confirm work | [ ] |
 | 3 | **CMS decision:** inbound route (core PR) or read-only + banner first | Gives the Schedule Requests tab a purpose | [ ] |
 | 4 | **Files migration:** one-time download from Zoho to the volume | Old photos and signatures become readable | [ ] |
 | 5 | **Roles:** per-role access (core work) | Covers Policy Settings and the Scheduler/Dispatcher/Field roles | [ ] |
@@ -136,9 +172,9 @@ The real sources of truth:
 - [[Plan - Delivery Management Open Items]] — the full open-items list
 - This file — the checklist to work through
 
-## Stale comments in the code
+## Stale comments in the code (fixed 2026-11-13)
 
-Four files still say "NOT ported yet", but the feature is already ported in another file:
+Four files used to say "NOT ported yet", but the feature was already ported in another file. The comments now point to the right file:
 
 | File | Comment | Actual status |
 |---|---|---|
