@@ -1,194 +1,93 @@
 ---
 name: Supply Chain App
-description: Home Cartel's order journey as a rail network — every section a line, every page a station.
+description: A dark room lit by one warm lamp. Frosted glass panes, ember for the light you work in, signal green for health and partners.
 colors:
-  station-navy: "#1b2330"
-  station-navy-raised: "#263042"
-  station-navy-rule: "#36425a"
-  platform-concrete: "#eceff3"
-  panel-white: "#ffffff"
-  panel-mist: "#f5f7f9"
-  panel-shade: "#e4e8ee"
-  hairline: "#d5dbe3"
-  hairline-strong: "#b7c0cc"
-  ink: "#1b2330"
-  ink-secondary: "#4a5566"
-  ink-tertiary: "#5f6a7c"
-  line-procurement-violet: "#6a3a9e"
-  line-tony-fan-plum: "#96367f"
-  line-fenteng-indigo: "#4744a6"
-  line-fulfillment-yellow: "#f2b705"
-  line-fulfillment-ochre: "#7a5a00"
-  line-delivery-blue: "#1f5fad"
-  status-ok: "#17693f"
-  status-ok-soft: "#e2f2e8"
-  status-warn: "#a8480b"
-  status-warn-soft: "#fcebdc"
-  status-bad: "#b3261e"
-  status-bad-soft: "#fbe4e2"
-  status-info: "#245ea6"
-  status-info-soft: "#e3ecf8"
-  status-violet: "#5b3ea8"
-  status-violet-soft: "#ece7f8"
+  void: "#07090d"
+  panel: "#131822"
+  panel-raised: "#171d29"
+  panel-high: "#1e2534"
+  glass-edge: "rgba(255,255,255,0.11)"
+  hairline: "rgba(255,255,255,0.10)"
+  hairline-strong: "rgba(255,255,255,0.20)"
+  ink: "#f1f3f8"
+  ink-secondary: "#b2bac8"
+  ink-tertiary: "#8d96a6"
+  ember: "#ff7a1a"
+  ember-hot: "#ffa14a"
+  ember-ink: "#1c0d02"
+  signal: "#2fe38f"
+  signal-ink: "#04170d"
+  status-warn: "#ffb347"
+  status-bad: "#ff7676"
+  status-info: "#78b6ff"
+  status-violet: "#bda5ff"
 typography:
-  title:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
-    fontSize: "15px"
-    fontWeight: 750
-    letterSpacing: "-0.005em"
-  body:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
-    fontSize: "14px"
-    fontWeight: 400
-    lineHeight: 1.4
-    fontFeature: "tnum"
-  station-label:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
-    fontSize: "13px"
-    fontWeight: 550
-  station-label-current:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
-    fontSize: "13px"
-    fontWeight: 750
-  line-code:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
-    fontSize: "12px"
-    fontWeight: 800
-    letterSpacing: "0.02em"
+  family: "Overpass (self-hosted, 300-800), Segoe UI, system-ui"
+  page-title: { size: "26px", weight: 300, tracking: "-0.02em" }
+  title: { size: "15-16px", weight: 700 }
+  body: { size: "14px", weight: 400, figures: "tabular" }
+  tab: { size: "13.5px", weight: 550, current: 700 }
 rounded:
-  control: "5px"
-  panel: "8px"
-  menu: "10px"
-  badge: "11px"
-spacing:
-  station-gap: "20px"
-  header-x: "14px"
-  header-y: "8px"
-components:
-  header:
-    backgroundColor: "{colors.station-navy}"
-    textColor: "{colors.panel-white}"
-    height: "50px"
-  line-badge-delivery:
-    backgroundColor: "{colors.line-delivery-blue}"
-    textColor: "{colors.panel-white}"
-    typography: "{typography.line-code}"
-    rounded: "{rounded.badge}"
-  line-badge-fulfillment:
-    backgroundColor: "{colors.line-fulfillment-yellow}"
-    textColor: "{colors.ink}"
-    typography: "{typography.line-code}"
-    rounded: "{rounded.badge}"
-  station-strip:
-    backgroundColor: "{colors.panel-white}"
-    textColor: "{colors.ink-secondary}"
-    typography: "{typography.station-label}"
-  button-primary-delivery:
-    backgroundColor: "{colors.line-delivery-blue}"
-    textColor: "{colors.panel-white}"
-    rounded: "{rounded.panel}"
-  button-primary-fulfillment:
-    backgroundColor: "{colors.line-fulfillment-yellow}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.panel}"
+  control: "12px"
+  panel: "14-18px"
+  shell: "22px"
+  pill: "999px"
 ---
 
-# Design System: Supply Chain App
+# Design system
 
-## Overview
+Home Cartel sells lighting, so the app is a dark room with the lamps on. The page behind everything is `void` with an ember lamp in the top-left and a signal lamp in the bottom-right; every surface is a pane of frosted glass in front of that light.
 
-**Creative North Star: "The Rail Network"**
+## One light, two colours
 
-Home Cartel's order journey runs like Manila's rail lines: Procurement, the two supplier portals, Fulfillment and Delivery are each a line with its own flat colour, and every page is a station on it. Where you are is a station on a line, not a highlighted word. The world lends only type, palette, density and that one signature move; layouts, tables and controls stay the ones staff already know from the Zoho app.
+- **Ember** is the light you are working in: the current room and page, the primary action, focus, links, the active filter.
+- **Signal green** means healthy or external: OK states, the live dot, and the two supplier portals (Tony Fan, Fenteng Lighting). Inside a portal the room's light is green, so a supplier sees at a glance that they are in a partner space.
+- Warn, bad, info and violet are status colours only. They keep their meaning in every room.
+- Ink on ember is `ember-ink`, never white (white on ember fails contrast).
 
-It is built as a theme layer: the 42 original Zoho widgets are served unchanged and `server/public/theme/theme.css` is injected into each, tagged with the widget's style system (`data-hc-kit`) and its section's line (`data-hc-line`). Density is at least Zoho's; nothing may become slower to scan.
+## Shell (`server/public/index.html`)
 
-**Key Characteristics:**
-- Station-sign navy header over platform-concrete ground and white panels.
-- One flat line colour per section, used for the line itself, the current station and the primary action.
-- Overpass, a wayfinding face, with tabular figures in every table.
-- One-pixel hairlines, no gradients, no decorative shadows.
-- Status colours mean the same thing on every line.
+- **Rail** on the left: the six sections as rooms, grouped Operations and Partners. The current room is lit (glow bar, tinted pane). Folds to icons; on phones it becomes a strip across the top.
+- **Top bar**: the section name in light weight, a "Partner portal" tag for supplier rooms, and the account menu.
+- **Beam**: one glowing line under the page tabs that slides to the page you open. This is the single motion on the page, besides the loading line on the stage while a page loads.
+- **Stage**: the page lives in a glass pane. Real backdrop blur is used here and on the rail and menus, where the light behind is visible.
 
-## Colors
+## Widgets (`server/public/theme/theme.css`)
 
-Cool concrete neutrals, navy signage, and one flat line colour per section.
+Widget files are never edited. The server injects `theme.css` last in `<head>` with `data-hc-kit` (dms, legacy, tw) and `data-hc-line` (the section). The theme redefines each kit's own variables or utility classes so the original pages turn dark without changes:
 
-### Primary (one per line)
-- **Procurement Violet** (#6a3a9e): Procurement's line, primary actions and focus in Procurement pages.
-- **Tony Fan Plum** (#96367f) and **Fenteng Indigo** (#4744a6): the two supplier branches of the Procurement line.
-- **Fulfillment Yellow** (#f2b705): Fulfillment's line and solid fills, always with ink text (#1b2330) on it; **Fulfillment Ochre** (#7a5a00) is its colour for text on white.
-- **Delivery Blue** (#1f5fad): Delivery Management's line, primary actions and focus.
-- **Analytic** is the interchange: ink rail, white badge ringed in ink.
+- dms (Delivery): `--bg`, `--surface`, ... map to the `--hc-*` tokens.
+- legacy (Procurement, supplier portals): `--blue` becomes the room's light; the grey scale is inverted so text stays on the 800 end.
+- tw (Tailwind widgets): slate, ink and accent utility classes map to the same tokens.
+- A scan of every page (headless Chrome, light backgrounds and dark text) found the remaining hard-coded pieces; each has a named rule near the end of `theme.css`.
+- Panels inside widgets are translucent gradients with a 1px edge, because a backdrop blur inside an iframe cannot see the shell behind it. Menus, modals and confirm boxes stay opaque `panel`.
 
-### Neutral
-- **Station Navy** (#1b2330): header; also body ink.
-- **Platform Concrete** (#eceff3): page ground.
-- **Panel White** (#ffffff), **Panel Mist** (#f5f7f9), **Panel Shade** (#e4e8ee): panels, table headers, pressed fills.
-- **Hairline** (#d5dbe3) and **Hairline Strong** (#b7c0cc): every border and divider.
-- **Ink Secondary** (#4a5566) and **Ink Tertiary** (#5f6a7c): labels and supporting text, both ≥4.5:1 on white.
+## Sign-in (`login.html`, `theme/pages.css`)
 
-### Status
-- **OK** (#17693f / #e2f2e8), **Warn** (#a8480b / #fcebdc), **Bad** (#b3261e / #fbe4e2), **Info** (#245ea6 / #e3ecf8), **Violet** (#5b3ea8 / #ece7f8): text / soft fill for pills and counters.
+A pendant lamp hangs over the card and its light falls through the glass. It switches on once when the page loads (not with reduced motion). Account and Users pages use the same glass top bar.
 
-### Named Rules
-**The Active Path Rule.** A line's colour appears only on its rail, the current station, the primary action, focus and selection. Never as decoration.
-**The Same Signal Rule.** Status colours are global; a line colour never stands in for a status.
+## Detail views (`theme/views.css`)
 
-## Typography
+One composition for every record page: an identity bar with the actions, the next-step strip, then **the work on the left and a 340px side column on the right** (pricing, status, audit, conversation). It is CSS only: widget markup, scripts and behaviour are untouched.
 
-**Body and display font:** Overpass (self-hosted variable woff2, 300–800), falling back to Segoe UI and system-ui.
+- Inquiry: the five readiness checks run as a strip across the top, with the result at the end; product, customer, supplier quotes and collateral are the left column; SRP, status signals and Books are the right.
+- Purchase Request and Purchase Order: record on the left; priority, pricing, status and the conversation stacked on the right.
+- Shipments, Replacement Request: the same two columns. Receiving gives the line-items table the full width and puts the info cards under it in two columns.
+- Supplier portals: the response the supplier must fill in comes first (left); the record and the conversation sit beside it. Replacement Request is a balanced two-column stack.
+- Fulfillment (Tailwind) pages use the same record + side grid. Delivery record drawers are wider and read in three columns.
+- Section titles are sentence case over a hairline; no tinted bars, no tracked capitals.
+- Purchase Request and Purchase Order follow the Inquiry composition: one bar with the identity and actions, the next-step strip, the readiness row (Purchase Request), then the work and the side column. Bars that stay at the top while scrolling are frosted (97% panel plus blur) so cards do not show through them.
+- Every "Conversation" card has a minimize button (`theme/views.js`, injected with the theme). The choice is kept in localStorage (`hc-conv-min`).
 
-**Character:** a highway-and-transit wayfinding face: open, slightly wide, unmistakable at small sizes and from a distance.
+## Light mode
 
-### Hierarchy
-- **Title** (750, 15px): the app name in the header.
-- **Body** (400, 14px, 1.4): everything else; widgets keep their own size scale, only the face changes.
-- **Station label** (550, 13px; current station 750): tab names on the line.
-- **Line code** (800, 12px, +0.02em): badge codes P, TF, FL, F, D, A.
+A sun/moon button in the top bar (and on the sign-in, account and users pages) switches between dark and light. Dark is the default; the choice is kept in localStorage (`hc-theme`). `theme/theme-init.js` sets `data-theme` on `<html>` before first paint in the shell, the auth pages and every widget (the server injects it), and widgets follow a switch live through the `storage` event and a postMessage from the shell.
 
-### Named Rules
-**The Columns Never Move Rule.** Tabular figures everywhere, so quantities, prices, dates and record numbers line up.
-**The Sentence Case Rule.** Table headers and labels are in sentence case; tracked all-caps labels are removed.
+Light is the same room in daylight: white glass over a pale cool ground with peach and mint lamps. Ember and signal drop to deeper tones for text (`#b8480a`, `#0b8a55`) and slightly deeper fills (`#ef6d0c`, `#12a566`); text on those fills stays dark ink. Status colours get darker variants. Every colour is a token in `theme.css` / `pages.css` / `index.html`, so a new rule should use the token, never a literal.
 
-## Layout
+## Rules
 
-A navy header row (app name, line switcher, then Local / Design / user on the right), then the station strip, then the page at full width with no outer frame. The station strip scrolls sideways when a line has more stations than fit, fading the clipped edge; the current station is kept in view. Below 760px the header wraps and secondary labels hide.
-
-## Elevation & Depth
-
-Flat. Panels sit on the concrete ground with one quiet shadow (`0 1px 2px rgba(27,35,48,.06), 0 3px 10px rgba(27,35,48,.05)`); menus and dialogs get the lifted one (`0 16px 40px rgba(27,35,48,.18)`). Depth never carries meaning.
-
-## Shapes
-
-Small, consistent corners: controls 5px, panels and buttons 8px, menus 10px, line badges fully rounded. Rules are one pixel; the only thick stroke is the 4px rail.
-
-## Components
-
-### Navigation: the station strip (signature)
-- **Rail:** 4px in the line colour, running from the first station to the last; a one-station line runs edge to edge.
-- **Stations:** 12px white circles with a 3px line-colour ring; the current station is 18px, filled with the line colour, inside a white then line-colour ring, and its label turns ink and bold.
-- **Hover:** the station grows 15% (180ms, ease-out); reduced motion turns it off.
-
-### Line switcher
-- Navy-raised button with the line badge and section name; menu lists every line with its badge and page count.
-
-### Buttons
-- **Primary:** line colour fill with the line's on-colour text (white, or ink on yellow), 8px radius.
-- **Secondary:** white with hairline border.
-- **Focus:** 2px outline in the line's text colour, 2px offset.
-
-### Design toggle
-- Segmented New / Zoho control in the header; Zoho serves every page without the theme layer for side-by-side checks.
-
-## Do's and Don'ts
-
-### Do:
-- **Do** give every new section a line: a flat colour, a short code, and text and on-fill variants that pass 4.5:1.
-- **Do** put new pages on their section's line as stations, in menu order.
-- **Do** restyle widgets only through `theme.css` tokens and adapters, never by editing widget files.
-
-### Don't:
-- **Don't** use a line colour for decoration, backgrounds of whole panels, or status.
-- **Don't** add gradients, glows, or shadows that carry meaning.
-- **Don't** make a page less dense than its Zoho original.
+- Sentence case everywhere; no tracked capitals, no monospace for labels. Figures are tabular so columns do not move.
+- Keyboard focus is a 2px ring in the room's light.
+- `prefers-reduced-motion` turns every transition and animation off.
+- Product behaviour and copy are unchanged; this is a visual layer.

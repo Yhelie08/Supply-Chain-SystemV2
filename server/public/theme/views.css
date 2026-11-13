@@ -1,0 +1,352 @@
+/* Detail views: how a record page is arranged. Loaded after theme.css in every widget.
+   Layout only: the widgets' markup, scripts and behaviour are untouched, and nothing here hides or reorders what a person can do.
+   Everything that targets one page is scoped by that page's own ids. */
+
+/* ---------- shared by the legacy detail pages (Inquiry, Purchase Request, Purchase Order) ---------- */
+/* Section titles are plain sentence case over a hairline, not a tinted bar of tracked capitals. */
+:root[data-hc-kit="legacy"] .card-header,
+:root[data-hc-kit="legacy"] .card-header-row {
+  background: transparent; border-left: 0; border-bottom: 1px solid var(--hc-hair); padding: 14px 20px 12px; color: var(--hc-ink);
+}
+:root[data-hc-kit="legacy"] .card-header { font-size: 15px; font-weight: 700; letter-spacing: -.005em; text-transform: none; }
+:root[data-hc-kit="legacy"] .card-header-row > span:first-child { font-size: 15px; font-weight: 700; letter-spacing: -.005em; text-transform: none; color: var(--hc-ink); }
+:root[data-hc-kit="legacy"] .sidebar-header { background: transparent; color: var(--hc-ink); font-size: 14px; font-weight: 700; letter-spacing: -.005em; text-transform: none; padding: 13px 16px 11px; border-bottom-color: var(--hc-hair); }
+:root[data-hc-kit="legacy"] :is(.field-label, .field-section) { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; color: var(--hc-ink-3); }
+:root[data-hc-kit="legacy"] .field-section { color: var(--hc-ink-2); font-size: 12.5px; font-weight: 700; }
+:root[data-hc-kit="legacy"] .readiness-banner { text-transform: none; letter-spacing: 0; font-size: 13px; }
+
+/* "You are here / next step" strip */
+:root .ns-banner { border-radius: 16px; padding: 12px 18px; background: var(--hc-glass); border-color: var(--hc-glass-edge); color: var(--hc-ink); }
+:root .ns-banner.ns-wait { background: var(--hc-warn-soft); border-color: rgba(255, 179, 71, .35); color: var(--hc-ink); }
+:root .ns-banner.ns-next { background: var(--hc-line-soft); border-color: color-mix(in srgb, var(--hc-line-fill) 40%, transparent); color: var(--hc-ink); }
+:root .ns-banner.ns-done { background: var(--hc-ok-soft); border-color: rgba(47, 227, 143, .35); color: var(--hc-ink); }
+:root .ns-banner .ns-lbl { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; opacity: .85; }
+:root .ns-banner .ns-arrow { opacity: .6; }
+:root .ns-banner .ns-who { color: var(--hc-ink-2); }
+
+/* ---------- Inquiry detail ---------- */
+/*   ┌───────────────────────────────────────────────┐
+     │ readiness: five checks in a row + the result   │
+     ├──────────────────────────────┬────────────────┤
+     │ product, customer, supplier  │ SRP & pricing  │
+     │ quotes, collateral           │ status signals │
+     │ (the work)                   │ books          │
+     └──────────────────────────────┴────────────────┘ chat opens as a third column (or below on narrower screens) */
+#nsBanner { padding: 16px 24px 0 !important; }
+#nsBanner .ns-banner { margin: 0; }
+#dDetailBody {
+  --side: 360px; --chat: 340px;
+  display: grid; align-items: start; column-gap: 20px; row-gap: 0; padding: 16px 24px 32px;
+  grid-template-columns: minmax(0, 1fr) var(--side);
+  grid-template-rows: auto auto auto auto 1fr auto;
+}
+#dDetailBody:not(.chat-closed) { grid-template-columns: minmax(0, 1fr) var(--side) var(--chat); }
+#dDetailBody > :first-child { grid-column: 1; grid-row: 2 / 6; min-width: 0; }
+#dDetailBody > :nth-child(2) { display: contents; }
+#dDetailBody > :nth-child(2) > .sidebar-card { grid-column: 2; margin: 0 0 16px; min-width: 0; }
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) { grid-column: 1 / -1; grid-row: 1; }
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(2) { grid-row: 2; }
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(3) { grid-row: 3; }
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(4) { grid-row: 4; }
+#dDetailBody > #dChatColumn { grid-column: 3; grid-row: 1 / 6; min-width: 0; }
+#dDetailBody > :first-child > .card:last-child { margin-bottom: 0; }
+
+/* readiness: a row of five checks, the result on the right */
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) > .sidebar-body {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 0 18px; align-items: stretch; padding: 14px 18px 16px !important;
+}
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) .check-item { flex-direction: row; align-items: flex-start; gap: 10px; padding: 2px 0; border: 0; min-width: 0; }
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) .check-content { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) .check-title { white-space: normal; flex-shrink: 1; font-size: 13px; line-height: 1.25; }
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) .check-sub { text-align: left; white-space: normal; font-size: 12px; line-height: 1.3; }
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) .readiness-banner { margin: 0; align-self: center; padding: 10px 16px; white-space: nowrap; }
+#dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) .sidebar-body > div[style*="height:12px"] { display: none; }
+
+@media (max-width: 1380px) {
+  /* chat open: it moves under the work instead of squeezing it */
+  #dDetailBody:not(.chat-closed) { grid-template-columns: minmax(0, 1fr) var(--side); }
+  #dDetailBody > #dChatColumn { grid-column: 1 / -1; grid-row: 6; margin-top: 16px; }
+}
+@media (max-width: 1100px) {
+  #dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) > .sidebar-body { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 10px; }
+  #dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) .readiness-banner { grid-column: 1 / -1; }
+}
+@media (max-width: 900px) {
+  #dDetailBody, #dDetailBody:not(.chat-closed) { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; padding: 14px 14px 28px; }
+  #dDetailBody > * , #dDetailBody > :nth-child(2) > .sidebar-card { grid-column: 1 !important; grid-row: auto !important; }
+  #dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) { order: 1; }
+  #dDetailBody > :first-child { order: 2; }
+  #dDetailBody > :nth-child(2) > .sidebar-card:nth-child(2) { order: 3; }
+  #dDetailBody > :nth-child(2) > .sidebar-card:nth-child(3) { order: 4; }
+  #dDetailBody > :nth-child(2) > .sidebar-card:nth-child(4) { order: 5; }
+  #dDetailBody > #dChatColumn { order: 6; margin-top: 0; }
+  #dDetailBody > :nth-child(2) > .sidebar-card:nth-child(1) > .sidebar-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- the other legacy detail pages: same plain section titles and sentence-case labels ---------- */
+:root[data-hc-kit="legacy"] :is(.sec-header, .sec-header.blue) { background: transparent; border-left: 0; border-bottom: 1px solid var(--hc-hair); padding: 14px 20px 12px; color: var(--hc-ink); font-size: 15px; font-weight: 700; letter-spacing: -.005em; text-transform: none; }
+:root[data-hc-kit="legacy"] .section-title { background: transparent; border-left: 0; color: var(--hc-ink); font-size: 14px; font-weight: 700; letter-spacing: -.005em; text-transform: none; }
+:root[data-hc-kit="legacy"] :is(.fi-lbl, .prf-label, .tlhc-title, .detail-grid .card h3, .detail-grid label, .detail-grid .l, .summary-label, .rr-detail-page label) { text-transform: none; letter-spacing: 0; }
+:root[data-hc-kit="legacy"] :is(.fi-lbl, .prf-label) { font-size: 12px; font-weight: 600; color: var(--hc-ink-3); }
+:root[data-hc-kit="legacy"] .detail-grid .card h3 { font-size: 15px; font-weight: 700; color: var(--hc-ink); letter-spacing: -.005em; }
+
+/* ---------- Shipments, Receiving, Replacement Request: the work on the left, a roomier side column on the right ---------- */
+#detailView .detail-grid { grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+#detailView .detail-grid > * { min-width: 0; }
+@media (max-width: 1000px) { #detailView .detail-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Purchase Request: the same composition as the Inquiry detail ----------
+   one bar (back, PR, status chips, actions) -> next-step strip -> readiness row -> work on the left, pricing and status on the right */
+#view-detail .detail-page:has(> .detail-body > #dMain) > .detail-topbar { display: none; }
+#view-detail .detail-page:has(> .detail-body > #dMain) > .detail-subheader { order: 1; top: 0; }
+#view-detail .detail-page:has(> .detail-body > #dMain) > #nsBanner { order: 2; }
+#view-detail .detail-page:has(> .detail-body > #dMain) > #holdBanner { order: 3; }
+#view-detail .detail-page:has(> .detail-body > #dMain) > #dMeta { order: 4; padding: 10px 24px 0; }
+#view-detail .detail-page:has(> .detail-body > #dMain) > .detail-body { order: 5; }
+#view-detail .detail-body:has(> #dMain) {
+  --side: 360px; display: grid; align-items: start; column-gap: 20px; row-gap: 0; padding: 16px 24px 32px;
+  grid-template-columns: minmax(0, 1fr) var(--side); grid-template-rows: auto auto auto auto 1fr;
+}
+#view-detail .detail-body > #dMain { grid-column: 1; grid-row: 2 / 6; min-width: 0; }
+#view-detail .detail-body > #dSidebar { display: contents; }
+#view-detail .detail-body > #dSidebar > .side-card { grid-column: 2; margin: 0 0 16px; min-width: 0; }
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(3) { grid-column: 1 / -1; grid-row: 1; }
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(1) { grid-row: 2; }
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(2) { grid-row: 3; }
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(4) { grid-row: 4; }
+#view-detail .detail-body > #dSidebar + * { grid-column: 2; grid-row: 5; min-width: 0; align-self: start; }
+#view-detail .detail-body > #dMain > .sec-card:last-child { margin-bottom: 0; }
+
+/* readiness: five checks in a row, the result at the end */
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(3) > .side-body {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 0 18px; align-items: stretch; padding: 14px 18px 16px !important;
+}
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(3) .ri-row { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; padding: 2px 0; border: 0; min-width: 0; }
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(3) .ri-left { gap: 10px; align-items: center; }
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(3) .ri-lbl { white-space: normal; font-size: 13px; line-height: 1.25; }
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(3) .ri-detail { text-align: left; white-space: normal; font-size: 12px; line-height: 1.3; padding-left: 28px; }
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(3) .side-body > :last-child:not(.ri-row) { margin: 0; align-self: center; padding: 10px 16px; white-space: nowrap; }
+#view-detail .detail-body > #dSidebar > .side-card:nth-child(3) .side-body > div[style*="height"] { display: none; }
+@media (max-width: 1180px) {
+  #view-detail .detail-body:has(> #dMain) { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; padding: 14px 14px 28px; }
+  #view-detail .detail-body > #dMain, #view-detail .detail-body > #dSidebar > .side-card, #view-detail .detail-body > #dSidebar + * { grid-column: 1 !important; grid-row: auto !important; }
+  #view-detail .detail-body > #dSidebar > .side-card:nth-child(3) { order: -1; }
+  #view-detail .detail-body > #dSidebar > .side-card:nth-child(3) > .side-body { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; }
+}
+
+/* ---------- Purchase Order: summary and lines, then status and conversation beside them ---------- */
+#detail-view .detail-body { grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: auto 1fr; gap: 16px 20px; }
+#detail-view .detail-body > :nth-child(1) { grid-column: 1; grid-row: 1 / 3; min-width: 0; }
+#detail-view .detail-body > :nth-child(2) { grid-column: 2; grid-row: 1; min-width: 0; }
+#detail-view .detail-body > :nth-child(3) { grid-column: 2; grid-row: 2; min-width: 0; }
+@media (max-width: 1000px) {
+  #detail-view .detail-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  #detail-view .detail-body > * { grid-column: 1 !important; grid-row: auto !important; }
+}
+
+/* ---------- Supplier portals ---------- */
+/* Inquiry and PR: the response you must fill in comes first; the record and the conversation sit beside it. */
+#view-detail .detail-body:has(> .sec-card.chat-panel) { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 0 20px; }
+#view-detail .detail-body:has(> .sec-card.chat-panel) > .sec-card { margin-bottom: 16px; }
+#view-detail .detail-body:has(> .sec-card.chat-panel) > .sec-card:nth-child(2) { grid-column: 1; grid-row: 1 / 3; }
+#view-detail .detail-body:has(> .sec-card.chat-panel) > .sec-card:nth-child(1) { grid-column: 2; grid-row: 1; }
+#view-detail .detail-body:has(> .sec-card.chat-panel) > .chat-panel { grid-column: 2; grid-row: 2; }
+/* Purchase Order: summary, lines and audit on the left, the conversation as a sticky side column */
+#view-detail .detail-body:has(> div > .sec-card.chat-panel) { grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; }
+/* Replacement Request: one long stack becomes two balanced columns */
+#view-detail .detail-body:has(> #dmgCard) { display: block; columns: 2 460px; column-gap: 20px; }
+#view-detail .detail-body:has(> #dmgCard) > .sec-card { break-inside: avoid; margin-bottom: 16px; }
+@media (max-width: 1000px) {
+  #view-detail .detail-body:has(> .sec-card.chat-panel) { grid-template-columns: minmax(0, 1fr); }
+  #view-detail .detail-body:has(> .sec-card.chat-panel) > .sec-card, #view-detail .detail-body:has(> .sec-card.chat-panel) > .chat-panel { grid-column: 1 !important; grid-row: auto !important; }
+  #view-detail .detail-body:has(> div > .sec-card.chat-panel) { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* the last tracked-capital labels on the detail pages */
+:root :is(.side-hdr, [class*="detail-label"], #detail-view label, #detailView :is(h3, label, .l)) { text-transform: none; letter-spacing: 0; }
+:root :is(.side-hdr, [class*="detail-label"]) { font-size: 12px; font-weight: 600; }
+:root .side-hdr { font-size: 14px; font-weight: 700; color: var(--hc-ink); }
+
+/* Detail pages sit on the glass, not on an opaque grey sheet; and nothing in them is set in tracked capitals. */
+:root .detail-page, :root .rr-detail-page { background: transparent; }
+:root :is(#view-detail, #detailView, #detail-view) * { text-transform: none; letter-spacing: 0; }
+/* four-up form rows reflow instead of squeezing their fields when the card is narrow */
+:root :is(.sec-body, .card-body) :is(.fg-4, .fg-3) { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+/* ---------- Fulfillment detail pages (Tailwind): the same record + side layout as everywhere else ---------- */
+@media (min-width: 1024px) {
+  [data-hc-kit="tw"] #detailView > .grid.lg\:grid-cols-3 { grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+  [data-hc-kit="tw"] #detailView > .grid.lg\:grid-cols-3 > :is(.lg\:col-span-2, .lg\:col-span-1) { grid-column: auto; min-width: 0; }
+}
+[data-hc-kit="tw"] #detailView :is(h2, h3).tracking-wide, [data-hc-kit="tw"] #detailView h3.text-xs { font-size: 14px; letter-spacing: -.005em; color: var(--hc-ink); }
+[data-hc-kit="tw"] #detailView .tracking-wide, [data-hc-kit="tw"] #detailView .tracking-wider { letter-spacing: 0; }
+[data-hc-kit="tw"] #detailView :is(.rounded-2xl) { border-radius: 18px; }
+
+/* ---------- Delivery: the record drawer is wider, glassier and reads in three columns ---------- */
+:root[data-hc-kit="dms"] .drawer { width: min(660px, 100%); background: var(--hc-panel); border-left: 1px solid var(--hc-hair-strong); }
+:root[data-hc-kit="dms"] .dr-head { padding: 22px 26px 18px; }
+:root[data-hc-kit="dms"] .dr-head h3 { font-size: 21px; font-weight: 600; letter-spacing: -.015em; }
+:root[data-hc-kit="dms"] .dr-body { padding: 4px 26px 30px; }
+:root[data-hc-kit="dms"] .dr-sec { padding: 18px 0; }
+:root[data-hc-kit="dms"] .dr-sec h4 { text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 700; color: var(--hc-ink); }
+:root[data-hc-kit="dms"] .kv { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 20px; }
+:root[data-hc-kit="dms"] .kv div span { font-size: 12px; font-weight: 600; color: var(--hc-ink-3); margin-bottom: 2px; }
+:root[data-hc-kit="dms"] .dr-foot { padding: 14px 26px; background: var(--hc-panel-2); }
+@media (max-width: 700px) { :root[data-hc-kit="dms"] .kv { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Tailwind pages paint a slate wash on the page itself; let the glass show instead. */
+[data-hc-kit="tw"] :is(body, body > div, .min-h-screen):is(.bg-slate-50, .bg-slate-100) { background-color: transparent; }
+/* Receiving: the line-items table needs the full width, so the info cards go underneath in two columns */
+#detailView .detail-grid:has(#evidenceCard) { grid-template-columns: minmax(0, 1fr); }
+#detailView .detail-grid:has(#evidenceCard) > :nth-child(2) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+#detailView .detail-grid:has(#evidenceCard) > :nth-child(2) > :is(#tlhcMount, #incMount) { grid-column: 1 / -1; }
+@media (max-width: 800px) { #detailView .detail-grid:has(#evidenceCard) > :nth-child(2) { grid-template-columns: minmax(0, 1fr); } }
+:root[data-hc-kit="legacy"] :is(.sec-title, .sec-header > *) { color: var(--hc-ink); }
+:root[data-hc-kit="legacy"] .sec-title { font-size: 15px; font-weight: 700; letter-spacing: -.005em; }
+
+/* ---------- Decision workspace (Purchase Request detail): two-up cards ---------- */
+/* The bars that stay at the top while the page scrolls: frosted, so the cards passing under them do not show through the text. */
+#view-detail :is(.detail-topbar, .detail-subheader) { background: var(--hc-glass); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+
+
+/* ---------- Dropdown menu (replaces the browser's own select popup; see views.js) ---------- */
+:root { --hc-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b2bac8' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); }
+:root[data-theme="light"] { --hc-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475163' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); }
+/* The field itself: our own chevron instead of the browser's, rounded, and it answers hover and focus. */
+:root select:not([multiple]):not([size]) {
+  -webkit-appearance: none; appearance: none;
+  background-image: var(--hc-chev) !important; background-repeat: no-repeat !important; background-position: right 9px center !important; background-size: 11px !important;
+  padding-right: 28px !important; border-radius: 9px; cursor: pointer; text-overflow: ellipsis;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+:root select:not([multiple]):not([size]):hover:not(:disabled) { border-color: var(--hc-hair-strong); background-color: var(--hc-panel-2); }
+:root select:not([multiple]):not([size]):focus-visible { outline: none; border-color: var(--hc-line-fill); box-shadow: 0 0 0 3px var(--hc-line-soft); }
+:root select:disabled { cursor: not-allowed; opacity: .65; }
+select[aria-expanded="true"] { border-color: var(--hc-line-fill) !important; box-shadow: 0 0 0 3px var(--hc-line-soft) !important; }
+select[aria-expanded="true"] { background-image: var(--hc-chev) !important; }
+.hc-menu {
+  position: fixed; z-index: 2147483000; margin: 0; padding: 6px; list-style: none; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--hc-panel); color: var(--hc-ink); border: 1px solid var(--hc-hair-strong); border-radius: 12px;
+  box-shadow: var(--hc-shadow-lg); font: 500 13px/1.3 var(--hc-font); scrollbar-width: thin;
+  opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top left; pointer-events: none;
+  transition: opacity .14s ease, transform .18s cubic-bezier(.2, .8, .2, 1);
+}
+.hc-menu.up { transform: translateY(6px) scale(.98); transform-origin: bottom left; }
+.hc-menu.on { opacity: 1; transform: none; pointer-events: auto; }
+.hc-menu li { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 8px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap; transition: background-color .1s ease; }
+.hc-menu li.ind { padding-left: 20px; }
+.hc-menu li.act { background: var(--hc-line-soft); }
+.hc-menu li.sel { color: var(--hc-line-ink); font-weight: 650; }
+.hc-menu li.sel::after { content: ""; flex: none; width: 12px; height: 12px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.hc-menu li.dis { opacity: .4; cursor: default; }
+.hc-menu li.grp { cursor: default; font-size: 11px; font-weight: 650; color: var(--hc-ink-3); padding: 8px 10px 3px; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .hc-menu, select { transition: none !important; } }
+
+/* ---------- Conversation cards: minimize ---------- */
+.hc-conv-hdr { display: flex !important; align-items: center; justify-content: space-between; gap: 10px; }
+.hc-min-btn { flex: none; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border-radius: 8px; cursor: pointer; color: var(--hc-ink-2); background: var(--hc-tint-1); border: 1px solid var(--hc-hair); transition: background .15s, color .15s, transform .2s; }
+.hc-min-btn:hover { color: var(--hc-ink); background: var(--hc-tint-2); border-color: var(--hc-hair-strong); }
+.hc-min-btn:focus-visible { outline: 2px solid var(--hc-line-fill); outline-offset: 2px; }
+.hc-min .hc-min-btn svg { transform: rotate(-90deg); }
+.hc-conv.hc-min > :not(.hc-conv-hdr) { display: none !important; }
+.hc-conv.hc-min { height: auto !important; min-height: 0 !important; max-height: none !important; }
+.hc-conv.hc-min > .hc-conv-hdr { border-bottom: 0; }
+
+/* ---------- Purchase Order: the same composition as the Inquiry detail ---------- */
+#detail-view[style*="block"], #detail-view[style*="flex"] { display: flex !important; flex-direction: column; }
+:root[data-hc-kit="legacy"] .topbar { display: none; }
+#detail-view > .detail-header { order: 1; }
+#detail-view > #nsBanner { order: 2; }
+#detail-view > .detail-body { order: 3; padding: 16px 24px 32px; align-items: start; }
+
+/* ---------- Back button: one look everywhere (the Inquiry button is the model) ---------- */
+:root[data-hc-kit="legacy"] .back-link {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; margin-right: 10px; flex: none; white-space: nowrap;
+  border-radius: var(--radius); border: 1.5px solid var(--gray-200); background: var(--white); color: var(--gray-600);
+  font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+}
+:root[data-hc-kit="legacy"] .back-link:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ---------- Shipments, Receiving, Replacement Request: header like the Inquiry detail ----------
+   a flush bar instead of a floating card, the next-step strip lined up with the cards below it */
+#detailView { padding: 0 0 32px !important; }
+#detailView > .header-strip { border-radius: 0; border-width: 0 0 1px; box-shadow: none; padding: 12px 24px; }
+#detailView > #nsBanner { padding: 16px 24px 0 !important; }
+#detailView > :not(.header-strip):not(#nsBanner) { margin-left: 24px; margin-right: 24px; }
+#detailView > #nsBanner + * { margin-top: 16px; }
+
+/* ---------- Exceptions: the same single bar as the other detail pages ---------- */
+.rr-detail-page { display: flex; flex-direction: column; }
+.rr-detail-page > .rr-topbar { display: none; }
+.rr-detail-page > .rr-subheader { order: 1; top: 0; }
+.rr-detail-page > #nsBanner { order: 2; }
+.rr-detail-page > .rr-body { order: 3; }
+
+/* ---------- List pages: hidden "Next step" column, added "Added Time" column (see views.js) ---------- */
+.hc-hide { display: none !important; }
+th.hc-added, td.hc-added { white-space: nowrap; text-align: left; color: var(--hc-ink-2); font-size: inherit; font-weight: 400; }
+td.hc-added { font-variant-numeric: tabular-nums; }
+
+/* ---------- List typography: headers and badges were 10-11px, which read as fine print ---------- */
+.hc-list thead th, .hc-list th.hc-added { font-size: 12px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.hc-list.hc-grow tbody td { font-size: 13px; }
+.hc-list td.hc-nw { white-space: nowrap; }
+.hc-list td.hc-added .hc-added-t { font-size: 12px; color: var(--hc-ink-3); }
+.hc-list.hc-grow tbody td :is(.badge, .pill, .chip, [class^="badge-"], [class*=" badge-"], [class^="status-"], [class*=" status-"], [class*="-badge"], [class*="-chip"], [class*="-pill"]) { font-size: 12px; }
+.hc-list td.hc-added { font-size: 13px; line-height: 1.3; }
+
+/* ---------- Colour coding: blue stays blue ----------
+   The legacy widgets use --blue both for "the room's accent" (primary buttons, focus, tabs) and for "informational" status
+   (Sent to Books, Confirmed, Shipped ...). The first became ember/green in the theme; the second must stay blue. */
+:root[data-hc-kit="legacy"] :is(.b-blue, .st-underreview, .cs-hidetosupplier, .coll-btn.hidetosupplier, .d-coll-btn.hidetosupplier,
+  .badge-confirmed, .badge-sent, .po-status-topbadge.sent, .ship-sea, .ship-badge, .cat-badge, .status-forsourcing, .badge-blue,
+  .status-completed, .btn-status-submit, .btn-status-sent, .status-acknowledged, .status-shipped, .cell-waiting.on-internal,
+  .stat-value.blue, .signal-val.blue, .c-blue, .qg-tag, .qg-chip) {
+  --blue: var(--hc-info); --blue-dark: var(--hc-info); --blue-light: var(--hc-info-soft);
+  --blue-mid: color-mix(in srgb, var(--hc-info) 40%, transparent);
+}
+
+/* ---------- Primary buttons: the room's fill, not the deep text tone ---------- */
+:root[data-hc-kit="legacy"] .btn-orange { background: var(--hc-line-fill); border-color: var(--hc-line-fill); color: var(--hc-line-on); box-shadow: 0 1px 3px color-mix(in srgb, var(--hc-line-fill) 35%, transparent); }
+:root[data-hc-kit="legacy"] .btn-orange:hover:not(:disabled) { background: color-mix(in srgb, var(--hc-line-fill) 88%, #fff); border-color: transparent; }
+
+/* ---------- First column of the lists stays put, but it is glass like everything else ---------- */
+.col-sticky { background-color: transparent; }
+td.col-sticky, th.col-sticky { background: color-mix(in srgb, var(--hc-panel) 58%, transparent) !important; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+th.col-sticky { background: color-mix(in srgb, var(--hc-panel) 70%, var(--hc-tint-1)) !important; }
+
+/* ---------- New Inquiry / New Purchase Request: one bar, like the detail pages ---------- */
+#view-new .inq-hero, #view-new .new-pr-subheader { position: sticky; top: 0; z-index: 210; border: 0; box-shadow: none; padding: 0 24px; background: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; pointer-events: none; justify-content: flex-end; align-items: center; flex-wrap: nowrap; }
+#view-new .inq-hero > *, #view-new .new-pr-subheader > * { pointer-events: auto; }
+#view-new .inq-hero { height: 61px; margin-top: -61px; }
+#view-new .inq-hero-title, #view-new .new-pr-title { display: none; }
+#view-new .new-pr-subheader { height: 48px; margin-top: -48px; }
+#view-new .new-pr-subheader > :first-child:not(.new-pr-subheader-right) { display: none; }
+#view-new .new-pr-topbar { border-bottom: 1.5px solid var(--hc-glass-edge); box-shadow: none; }
+
+/* the bars carry the same edge and lift as the cards, so they read as one family with the Purchase Order header */
+:root :is(.detail-topbar, .detail-subheader, .rr-subheader, .inq-subheader, .new-pr-topbar, .new-pr-subheader) { border-color: var(--hc-glass-edge); box-shadow: none; }
+
+/* The first column no longer floats over the rest: it is a normal column, like the other lists. */
+table .col-sticky, td.col-sticky, th.col-sticky { position: static !important; left: auto !important; background: transparent !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; }
+
+/* ---------- Supplier portals (Tony Fan, Fenteng): one bar like the buyer pages -- back button, then the record and its status ---------- */
+:root[data-hc-kit="legacy"] .detail-page:has(> .detail-topbar + .detail-subheader):not(:has(> .detail-body > #dMain)) {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); align-content: start;
+}
+:root[data-hc-kit="legacy"] .detail-page:has(> .detail-topbar + .detail-subheader):not(:has(> .detail-body > #dMain)) > * { grid-column: 1 / -1; }
+:root[data-hc-kit="legacy"] .detail-page:has(> .detail-topbar + .detail-subheader):not(:has(> .detail-body > #dMain)) > .detail-topbar {
+  grid-column: 1; grid-row: 1; top: 0; border-right: 0; border-bottom: 1px solid var(--hc-glass-edge); justify-content: flex-start; padding-right: 0; height: auto; min-height: 0;
+}
+:root[data-hc-kit="legacy"] .detail-page:has(> .detail-topbar + .detail-subheader):not(:has(> .detail-body > #dMain)) > .detail-topbar .detail-topbar-title { display: none; }
+:root[data-hc-kit="legacy"] .detail-page:has(> .detail-topbar + .detail-subheader):not(:has(> .detail-body > #dMain)) > .detail-subheader {
+  grid-column: 2; grid-row: 1; top: 0; border-left: 0; border-top-left-radius: 0;
+}
+
+/* ---------- Receiving: the info cards under the work sit side by side and use the full width ---------- */
+#detailView .detail-grid:has(#evidenceCard) > :nth-child(2) {
+  display: grid !important; grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr); gap: 16px 20px; align-items: start; width: 100%;
+}
+#detailView .detail-grid:has(#evidenceCard) > :nth-child(2) > * { margin: 0 !important; width: auto !important; max-width: none !important; min-width: 0; align-self: stretch; }
+#detailView .detail-grid:has(#evidenceCard) > :nth-child(2) > :is(#tlhcMount, #incMount) { grid-column: 1 / -1; }
+#detailView .detail-grid:has(#evidenceCard) > :nth-child(2) > #incMount:empty, #detailView .detail-grid:has(#evidenceCard) > :nth-child(2) > #incMount:not(:has(*)) { display: none; }
+@media (max-width: 900px) { #detailView .detail-grid:has(#evidenceCard) > :nth-child(2) { grid-template-columns: minmax(0, 1fr) !important; } }

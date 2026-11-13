@@ -1,72 +1,119 @@
-/* Supply Chain App theme layer: the rail network (surface brief: .impeccable/surfaces/server-public-index-html.md).
+/* Supply Chain App theme layer: dark glass, ember and signal.
    Injected by server/index.mjs into every widget, last in <head>, with two attributes on <html>:
      data-hc-kit   dms | legacy | tw   which style system the widget was built with
-     data-hc-line  the section's line  procurement | tony-fan | fenteng-lighting | fulfillment | delivery | analytic
-   Widget files are never edited. */
+     data-hc-line  the section: procurement | tony-fan | fenteng-lighting | fulfillment | delivery | analytic
+   Widget files are never edited. The page behind a widget is the shell's room (ambient lamps), so the
+   widget's own background stays transparent and its panels are translucent glass over that light. */
 
 @font-face { font-family: "Overpass"; src: url("/theme/fonts/overpass-latin.woff2") format("woff2"); font-weight: 300 800; font-display: swap;
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: "Overpass"; src: url("/theme/fonts/overpass-latin-ext.woff2") format("woff2"); font-weight: 300 800; font-display: swap;
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 
-/* ---------- tokens: platform concrete, station navy, flat line colours ---------- */
+/* ---------- tokens ---------- */
 :root {
-  --hc-ground: #eceff3; --hc-panel: #ffffff; --hc-panel-2: #f5f7f9; --hc-panel-3: #e4e8ee;
-  --hc-hair: #d5dbe3; --hc-hair-strong: #b7c0cc;
-  --hc-ink: #1b2330; --hc-ink-2: #4a5566; --hc-ink-3: #5f6a7c;
-  --hc-ok: #17693f; --hc-ok-soft: #e2f2e8; --hc-ok-fill: #2e9a5f;
-  --hc-warn: #a8480b; --hc-warn-soft: #fcebdc; --hc-warn-fill: #e07a2e;
-  --hc-bad: #b3261e; --hc-bad-soft: #fbe4e2; --hc-bad-fill: #d64541;
-  --hc-info: #245ea6; --hc-info-soft: #e3ecf8; --hc-info-fill: #3f7fd0;
-  --hc-vio: #5b3ea8; --hc-vio-soft: #ece7f8; --hc-vio-fill: #7a5fd2;
-  --hc-yel: #765a00; --hc-yel-soft: #fbf1cc; --hc-yel-fill: #d9a90b;
-  --hc-shadow: 0 1px 2px rgba(27, 35, 48, .06), 0 3px 10px rgba(27, 35, 48, .05);
-  --hc-shadow-lg: 0 16px 40px rgba(27, 35, 48, .18);
-  --hc-radius: 8px; --hc-radius-sm: 5px;
+  color-scheme: dark;
+  --hc-ground: #0a0d12; --hc-panel: #131822; --hc-panel-2: #171d29; --hc-panel-3: #1e2534;
+  --hc-glass: linear-gradient(180deg, rgba(255, 255, 255, .075), rgba(255, 255, 255, .038));
+  --hc-glass-edge: rgba(255, 255, 255, .11);
+  --hc-bar: rgba(19, 24, 34, .50);
+  /* see-through fills for the surfaces nested inside a pane (table heads, card headers, inset boxes) */
+  --hc-tint-1: rgba(255, 255, 255, .035); --hc-tint-2: rgba(255, 255, 255, .07);
+  --hc-hair: rgba(255, 255, 255, .10); --hc-hair-strong: rgba(255, 255, 255, .20);
+  --hc-ink: #f1f3f8; --hc-ink-2: #b2bac8; --hc-ink-3: #8d96a6;
+  --hc-ok: #2fe38f;   --hc-ok-soft: rgba(47, 227, 143, .13);   --hc-ok-fill: #22c777;
+  --hc-warn: #ffb347; --hc-warn-soft: rgba(255, 179, 71, .13); --hc-warn-fill: #ff9f1a;
+  --hc-bad: #ff7676;  --hc-bad-soft: rgba(255, 107, 107, .14); --hc-bad-fill: #f04a4a;
+  --hc-info: #78b6ff; --hc-info-soft: rgba(111, 176, 255, .13); --hc-info-fill: #3f8ae6;
+  --hc-vio: #bda5ff;  --hc-vio-soft: rgba(183, 156, 255, .14); --hc-vio-fill: #8b66ee;
+  --hc-yel: #ffd54a;  --hc-yel-soft: rgba(255, 213, 74, .12);  --hc-yel-fill: #e8b90c;
+  --hc-shadow: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 8px 24px rgba(0, 0, 0, .28);
+  --hc-shadow-lg: 0 24px 60px rgba(0, 0, 0, .6);
+  --hc-cyan: #5fd6ea; --hc-pink: #f9a8d4; --hc-pink-soft: rgba(244, 114, 182, .14);
+  --hc-scroll: rgba(255, 255, 255, .22); --hc-scroll-hi: rgba(255, 255, 255, .34); --hc-scrim: rgba(4, 6, 10, .62);
+  --hc-radius: 14px; --hc-radius-sm: 9px;
   --hc-font: "Overpass", "Segoe UI", system-ui, sans-serif;
-  /* The section's line. fill = solid areas, on = text on the fill, ink = line-coloured text on white, soft = tint. */
-  --hc-line-fill: #1b2330; --hc-line-on: #ffffff; --hc-line-ink: #1b2330; --hc-line-soft: #e4e8ee;
+  /* The room's light. fill = solid areas, on = text on the fill, ink = light-coloured text on dark, soft = tint. */
+  --hc-line-fill: #ff7a1a; --hc-line-on: #1c0d02; --hc-line-ink: #ff9a45; --hc-line-soft: rgba(255, 122, 26, .14);
 }
-:root[data-hc-line="procurement"]      { --hc-line-fill: #6a3a9e; --hc-line-on: #fff; --hc-line-ink: #6a3a9e; --hc-line-soft: #efe8f7; }
-:root[data-hc-line="tony-fan"]         { --hc-line-fill: #96367f; --hc-line-on: #fff; --hc-line-ink: #96367f; --hc-line-soft: #f6e7f2; }
-:root[data-hc-line="fenteng-lighting"] { --hc-line-fill: #4744a6; --hc-line-on: #fff; --hc-line-ink: #4744a6; --hc-line-soft: #e9e8f7; }
-:root[data-hc-line="fulfillment"]      { --hc-line-fill: #f2b705; --hc-line-on: #1b2330; --hc-line-ink: #7a5a00; --hc-line-soft: #fdf3d0; }
-:root[data-hc-line="delivery"]         { --hc-line-fill: #1f5fad; --hc-line-on: #fff; --hc-line-ink: #1f5fad; --hc-line-soft: #e3ecf8; }
+:root[data-hc-line="tony-fan"], :root[data-hc-line="fenteng-lighting"] {
+  --hc-line-fill: #2fe38f; --hc-line-on: #04170d; --hc-line-ink: #2fe38f; --hc-line-soft: rgba(47, 227, 143, .13);
+}
 
-/* Dark only where the widgets support it (Delivery). */
-@media (prefers-color-scheme: dark) {
-  :root[data-hc-kit="dms"]:not([data-theme="light"]) {
-    --hc-ground: #12161d; --hc-panel: #19202a; --hc-panel-2: #1f2733; --hc-panel-3: #27303d;
-    --hc-hair: #2c3542; --hc-hair-strong: #3a4554;
-    --hc-ink: #e6eaf0; --hc-ink-2: #a9b3c1; --hc-ink-3: #8c97a7;
-    --hc-ok: #4cc38a; --hc-ok-soft: #13291f; --hc-warn: #f08a4b; --hc-warn-soft: #2e1e12;
-    --hc-bad: #f07070; --hc-bad-soft: #331818; --hc-info: #7aa8f0; --hc-info-soft: #16233a;
-    --hc-vio: #a992f2; --hc-vio-soft: #231d3a; --hc-yel: #e5c55a; --hc-yel-soft: #2b2611;
-    --hc-line-fill: #5b95e6; --hc-line-on: #0d1520; --hc-line-ink: #7fb0f0; --hc-line-soft: #17253a;
-    --hc-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 14px rgba(0, 0, 0, .25);
-    --hc-shadow-lg: 0 18px 44px rgba(0, 0, 0, .5);
-  }
+/* Light mode: daylight in the same room. Panes turn white glass, text turns deep ink, and the lights that were pale text on dark
+   (ember, signal) drop to deeper tones so they still read on white. Fills keep the vivid colours. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --hc-ground: #eef1f6; --hc-panel: #ffffff; --hc-panel-2: #f4f6fa; --hc-panel-3: #e8ecf3;
+  --hc-glass: linear-gradient(180deg, rgba(255, 255, 255, .42), rgba(255, 255, 255, .20));
+  --hc-glass-edge: rgba(20, 30, 50, .10);
+  --hc-bar: rgba(255, 255, 255, .30);
+  --hc-tint-1: rgba(20, 30, 50, .035); --hc-tint-2: rgba(20, 30, 50, .065);
+  --hc-hair: rgba(20, 30, 50, .10); --hc-hair-strong: rgba(20, 30, 50, .20);
+  --hc-ink: #141a26; --hc-ink-2: #475163; --hc-ink-3: #5b6578;
+  --hc-ok: #0f8a57;   --hc-ok-soft: rgba(15, 138, 87, .11);   --hc-ok-fill: #1faa6e;
+  --hc-warn: #b45309; --hc-warn-soft: rgba(217, 119, 6, .12);  --hc-warn-fill: #f59e0b;
+  --hc-bad: #c62828;  --hc-bad-soft: rgba(220, 38, 38, .10);  --hc-bad-fill: #dc2626;
+  --hc-info: #1d5fb8; --hc-info-soft: rgba(37, 99, 235, .10);  --hc-info-fill: #3b82f6;
+  --hc-vio: #6d4bc7;  --hc-vio-soft: rgba(124, 58, 237, .10);  --hc-vio-fill: #7c3aed;
+  --hc-yel: #8a6a00;  --hc-yel-soft: rgba(234, 179, 8, .16);   --hc-yel-fill: #d9a90b;
+  --hc-cyan: #0e7490; --hc-pink: #be185d; --hc-pink-soft: rgba(190, 24, 93, .10);
+  --hc-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 6px 20px rgba(30, 40, 70, .08);
+  --hc-shadow-lg: 0 24px 60px rgba(30, 40, 70, .22);
+  --hc-scroll: rgba(20, 30, 50, .22); --hc-scroll-hi: rgba(20, 30, 50, .36); --hc-scrim: rgba(20, 30, 50, .38);
+  --hc-line-fill: #ef6d0c; --hc-line-ink: #b8480a; --hc-line-soft: rgba(255, 122, 26, .13);
+}
+:root[data-theme="light"][data-hc-line="tony-fan"], :root[data-theme="light"][data-hc-line="fenteng-lighting"] {
+  --hc-line-fill: #12a566; --hc-line-ink: #0b8a55; --hc-line-soft: rgba(15, 138, 87, .11);
 }
 
 /* ---------- every widget ---------- */
-:root body { font-family: var(--hc-font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+:root { background: transparent; }
+:root body { background: transparent; color: var(--hc-ink); font-family: var(--hc-font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
 :root :is(button, input, select, textarea) { font-family: inherit; }
 :root :is(h1, h2, h3) { letter-spacing: -0.01em; text-wrap: balance; }
-/* Sentence-case headers and labels: faster to scan than tracked capitals. Columns never move (tabular figures above). */
 :root th { text-transform: none; letter-spacing: 0; }
 :root :is(.uppercase, .stat-label, .kpi-label, .section-title, .sec-title) { text-transform: none; letter-spacing: 0.005em; }
-:root :focus-visible { outline: 2px solid var(--hc-line-ink); outline-offset: 2px; }
-:root ::selection { background: var(--hc-line-soft); color: var(--hc-ink); }
-:root input, :root textarea { caret-color: var(--hc-line-ink); }
+:root :focus-visible { outline: 2px solid var(--hc-line-fill); outline-offset: 2px; }
+:root ::selection { background: var(--hc-line-fill); color: var(--hc-line-on); }
+:root input, :root textarea { caret-color: var(--hc-line-fill); }
 :root a { text-underline-offset: 0.18em; }
-:root { scrollbar-color: var(--hc-hair-strong) transparent; }
+:root { scrollbar-color: var(--hc-scroll) transparent; }
+:root ::-webkit-scrollbar { width: 10px; height: 10px; }
+:root ::-webkit-scrollbar-thumb { background: var(--hc-scroll); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+:root ::-webkit-scrollbar-thumb:hover { background: var(--hc-scroll-hi); background-clip: padding-box; border: 2px solid transparent; }
+:root ::-webkit-scrollbar-track { background: transparent; }
+:root ::placeholder { color: var(--hc-ink-3); opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   :root *, :root *::before, :root *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
 }
 
+/* Baseline for fields the widget did not style itself (zero specificity: any widget rule wins). */
+:where(input, select, textarea) { background-color: var(--hc-panel-2); color: var(--hc-ink); border-color: var(--hc-hair-strong); }
+:where(option) { background: var(--hc-panel); color: var(--hc-ink); }
+
+/* Glass: the main containers of a page. Floating things (menus, modals, confirm boxes) stay opaque panel colour. */
+:root :is(.stat-card, .main-card, .sec-card, .card, .grp-card, .pr-group-card, .po-group-card, .side-card, .header-strip, .kpi, .kpi-card, .panel,
+          .detail-topbar, .detail-subheader, .group-topbar, .group-subheader, .top-bar, .tab-nav, .dtable-wrap, .toolbar-filter) {
+  background: var(--hc-glass); border-color: var(--hc-glass-edge); box-shadow: var(--hc-shadow);
+}
+:root :is(.stat-card, .main-card, .sec-card, .card, .grp-card, .side-card, .kpi, .kpi-card, .panel) { border-radius: var(--hc-radius); }
+/* Same glass for the cards the Purchase Order, Inquiry and timeline pages name differently. */
+:root :is(.list-card, .section-card, .sidebar-card, .tlhc-card, .ev-card, .ctx-ev-card, .info-card) { background: var(--hc-glass); border-color: var(--hc-glass-edge); box-shadow: var(--hc-shadow); }
+:root :is(.list-card, .section-card, .sidebar-card, .tlhc-card) { border-radius: var(--hc-radius); }
+:root :is(.topbar, .rr-topbar, .rr-subheader, .inq-subheader, .detail-header) { background: var(--hc-glass); border-color: var(--hc-glass-edge); }
+/* Surfaces inside a card: see-through, not a second white */
+:root :is(.tlhc-header, .chat-msgs, .product-info-box, .product-image-wrap, .t-item, .list-footer, .table-footer, .lock-banner) { background: var(--hc-tint-1); }
+:root :is(.list-footer, .table-footer) { border-color: var(--hc-hair); }
+/* Bars that stay put while the page scrolls must hide what passes under them. */
+:root :is(.detail-topbar, .detail-subheader, .group-topbar, .group-subheader, #detail-view .topbar, .rr-topbar, .rr-subheader, .inq-subheader, .inq-hero, .new-pr-topbar, .new-pr-subheader) { background: var(--hc-glass); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+:root :is(.confirm-box, .confirm-modal, .modal, .modal-dialog, .modal-header, .modal-footer, .modal-sticky-footer, .save-bar) { background: var(--hc-panel); border-color: var(--hc-hair-strong); color: var(--hc-ink); }
+:root :is(.confirm-box, .confirm-modal, .modal, .modal-dialog) { box-shadow: var(--hc-shadow-lg); }
+:root :is(.modal-overlay, .modal-backdrop, .overlay, .confirm-overlay) { background: var(--hc-scrim); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
 /* ---------- dms: Delivery widgets ---------- */
 :root[data-hc-kit="dms"]:root {
-  --bg: var(--hc-ground); --surface: var(--hc-panel); --surface-2: var(--hc-panel-2); --surface-3: var(--hc-panel-3);
+  --bg: transparent; --surface: var(--hc-panel); --surface-2: var(--hc-tint-1); --surface-3: var(--hc-tint-2);
   --border: var(--hc-hair); --border-strong: var(--hc-hair-strong);
   --text: var(--hc-ink); --muted: var(--hc-ink-2); --faint: var(--hc-ink-3);
   --accent: var(--hc-line-fill); --accent-soft: var(--hc-line-soft); --accent-text: var(--hc-line-on);
@@ -76,30 +123,36 @@
   --yel: var(--hc-yel); --yel-soft: var(--hc-yel-soft);
   --vio: var(--hc-vio); --vio-soft: var(--hc-vio-soft);
   --shadow-sm: none; --shadow: var(--hc-shadow); --shadow-lg: var(--hc-shadow-lg);
-  --radius: var(--hc-radius); --radius-sm: var(--hc-radius-sm); --radius-lg: 10px;
+  --radius: var(--hc-radius); --radius-sm: var(--hc-radius-sm); --radius-lg: 18px;
   --font-sans: var(--hc-font);
-  --gray-50: var(--hc-panel-2); --gray-100: var(--hc-panel-3); --gray-200: var(--hc-hair); --gray-300: var(--hc-hair-strong);
+  --gray-50: var(--hc-tint-1); --gray-100: var(--hc-tint-2); --gray-200: var(--hc-hair); --gray-300: var(--hc-hair-strong);
   --gray-400: var(--hc-ink-3); --gray-500: var(--hc-ink-3); --gray-600: var(--hc-ink-2); --gray-700: var(--hc-ink-2); --gray-800: var(--hc-ink);
 }
 
 /* ---------- legacy: Procurement + supplier portals ---------- */
 :root[data-hc-kit="legacy"]:root {
-  --blue: var(--hc-line-fill); --orange: var(--hc-line-ink);
-  --green: var(--hc-ok); --amber: var(--hc-warn); --red: var(--hc-bad); --purple: var(--hc-vio);
+  --blue: var(--hc-line-fill); --blue-dark: color-mix(in srgb, var(--hc-line-fill) 82%, #fff); --blue-light: var(--hc-line-soft); --blue-mid: color-mix(in srgb, var(--hc-line-fill) 38%, transparent);
+  --green: var(--hc-ok); --green-light: var(--hc-ok-soft); --green-mid: rgba(47, 227, 143, .38);
+  --amber: var(--hc-warn); --amber-light: var(--hc-warn-soft); --amber-mid: rgba(255, 179, 71, .4);
+  --red: var(--hc-bad); --red-light: var(--hc-bad-soft); --red-mid: rgba(255, 107, 107, .4);
+  --purple: var(--hc-vio); --purple-light: var(--hc-vio-soft); --purple-mid: rgba(183, 156, 255, .4);
+  --orange: var(--hc-line-ink); --orange-light: var(--hc-line-soft); --orange-mid: color-mix(in srgb, var(--hc-line-fill) 38%, transparent);
   --white: var(--hc-panel);
-  --gray-50: var(--hc-panel-2); --gray-300: var(--hc-hair-strong); --gray-400: var(--hc-ink-3); --gray-600: var(--hc-ink-2);
-  --radius-sm: var(--hc-radius-sm);
+  --gray-50: var(--hc-tint-1); --gray-100: var(--hc-tint-2); --gray-200: var(--hc-hair); --gray-300: var(--hc-hair-strong);
+  --gray-400: var(--hc-ink-3); --gray-500: var(--hc-ink-3); --gray-600: var(--hc-ink-2); --gray-700: var(--hc-ink-2); --gray-800: var(--hc-ink);
+  --radius-sm: var(--hc-radius-sm); --radius: 12px; --radius-lg: 18px;
   --shadow: var(--hc-shadow); --shadow-lg: var(--hc-shadow-lg);
 }
-:root[data-hc-kit="legacy"] body { background: var(--hc-ground); color: var(--hc-ink); }
+:root[data-hc-kit="legacy"] body { background: transparent; color: var(--hc-ink); }
 
 /* ---------- tw: Tailwind widgets (specificity 0,2,0+ beats Tailwind's 0,1,0) ---------- */
-[data-hc-kit="tw"] body { background: var(--hc-ground); color: var(--hc-ink); }
+[data-hc-kit="tw"] body { background: transparent; color: var(--hc-ink); }
 [data-hc-kit="tw"] .bg-white { background-color: var(--hc-panel); }
 [data-hc-kit="tw"] .bg-slate-50 { background-color: var(--hc-panel-2); }
+[data-hc-kit="tw"] .bg-white:is(.rounded-xl, .rounded-2xl):not(.absolute, .fixed, input, select, textarea, button, th, td, tr, label) { background: var(--hc-glass); }
 [data-hc-kit="tw"] .bg-slate-100 { background-color: var(--hc-panel-3); }
-[data-hc-kit="tw"] .bg-slate-200 { background-color: var(--hc-hair); }
-/* Dark fills are the primary action / active choice: they take the line colour, with the line's own text colour. */
+[data-hc-kit="tw"] .bg-slate-200 { background-color: var(--hc-hair-strong); }
+/* Dark fills were the primary action / active choice: they take the room's light, with its own text colour. */
 [data-hc-kit="tw"] :is(.bg-slate-900, .bg-slate-800) { background-color: var(--hc-line-fill); color: var(--hc-line-on); }
 [data-hc-kit="tw"] :is(.bg-slate-900, .bg-slate-800):is(.text-white, .text-slate-50, .text-slate-100),
 [data-hc-kit="tw"] :is(.bg-slate-900, .bg-slate-800) :is(.text-white, .text-slate-100, .text-slate-200, .text-slate-300) { color: var(--hc-line-on); }
@@ -111,7 +164,8 @@
 [data-hc-kit="tw"] :is(.divide-slate-50, .divide-slate-100) > :not([hidden]) ~ :not([hidden]) { border-color: var(--hc-hair); }
 [data-hc-kit="tw"] :is(.ring-slate-200, .ring-slate-300) { --tw-ring-color: var(--hc-hair-strong); }
 [data-hc-kit="tw"] :is(.shadow-card, .shadow-sm) { box-shadow: var(--hc-shadow); }
-/* status colours keep their meaning on every line */
+[data-hc-kit="tw"] :is(.hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover) { background-color: var(--hc-panel-3); }
+/* status colours keep their meaning on every room */
 [data-hc-kit="tw"] :is(.text-emerald-600, .text-emerald-700, .text-green-600, .text-green-700) { color: var(--hc-ok); }
 [data-hc-kit="tw"] :is(.bg-emerald-50, .bg-emerald-100, .bg-green-50) { background-color: var(--hc-ok-soft); }
 [data-hc-kit="tw"] :is(.bg-emerald-400, .bg-emerald-500, .bg-emerald-600) { background-color: var(--hc-ok-fill); }
@@ -127,3 +181,99 @@
 [data-hc-kit="tw"] :is(.text-violet-600, .text-violet-700, .text-purple-600, .text-purple-700) { color: var(--hc-vio); }
 [data-hc-kit="tw"] :is(.bg-violet-50, .bg-purple-50) { background-color: var(--hc-vio-soft); }
 [data-hc-kit="tw"] :is(.bg-violet-500, .bg-purple-600) { background-color: var(--hc-vio-fill); }
+
+/* ---------- tw: the custom palettes some Tailwind widgets define ---------- */
+/* Analytic: "ink" is a light scale there (900 = page, 700 = card), so each step maps to a glass layer. */
+[data-hc-kit="tw"] .bg-ink-900 { background-color: transparent; }
+[data-hc-kit="tw"] .bg-ink-800 { background-color: var(--hc-panel-2); }
+[data-hc-kit="tw"] .bg-ink-700 { background: var(--hc-glass); }
+[data-hc-kit="tw"] .bg-ink-600 { background-color: var(--hc-panel-3); }
+[data-hc-kit="tw"] :is(.bg-ink-500, .bg-ink-400) { background-color: var(--hc-hair-strong); }
+[data-hc-kit="tw"] :is(.border-ink-400, .border-ink-500, .border-ink-600) { border-color: var(--hc-hair); }
+/* Dashboards: "accent" is the blue scale; it becomes the room's light. */
+[data-hc-kit="tw"] :is(.text-accent-400, .text-accent-500, .text-accent-600, .text-accent-700, .text-accent-800) { color: var(--hc-line-ink); }
+[data-hc-kit="tw"] :is(.bg-accent-50, .bg-accent-100) { background-color: var(--hc-line-soft); }
+[data-hc-kit="tw"] :is(.bg-accent-200, .bg-accent-300) { background-color: color-mix(in srgb, var(--hc-line-fill) 40%, transparent); }
+[data-hc-kit="tw"] :is(.bg-accent-400, .bg-accent-500, .bg-accent-600, .bg-accent-700) { background-color: var(--hc-line-fill); }
+[data-hc-kit="tw"] :is(.bg-accent-400, .bg-accent-500, .bg-accent-600, .bg-accent-700):is(.text-white) { color: var(--hc-line-on); }
+[data-hc-kit="tw"] :is(.border-accent-100, .border-accent-200, .border-accent-300, .border-accent-400, .border-accent-500) { border-color: color-mix(in srgb, var(--hc-line-fill) 45%, transparent); }
+[data-hc-kit="tw"] :is(.ring-accent-200, .ring-accent-300, .ring-accent-400, .ring-accent-500) { --tw-ring-color: color-mix(in srgb, var(--hc-line-fill) 55%, transparent); }
+
+/* ---------- widget parts that hard-code light colours (found by scanning all 42 pages) ---------- */
+:where(:root) :is(h1, h2, h3) { color: var(--hc-ink); }
+:root .toast { background: rgba(28, 34, 48, .96); color: #f1f3f8; border: 1px solid var(--hc-hair-strong); box-shadow: var(--hc-shadow-lg); }
+:root .pill.active { background: var(--hc-line-fill); border-color: transparent; color: var(--hc-line-on); }
+:root .pill.active :is(.pill-count, .cnt) { background: rgba(0, 0, 0, .22); color: inherit; }
+:root .supplier-avatar { background: var(--hc-line-soft); color: var(--hc-line-ink); }
+:root .confirm-btn-ok { background: var(--hc-line-fill); border-color: transparent; color: var(--hc-line-on); }
+:root .fchip.on { background: var(--hc-line-fill); border-color: transparent; color: var(--hc-line-on); }
+:root .list-filter-btn { background: var(--hc-panel-2); border-color: var(--hc-hair-strong); color: var(--hc-ink-2); }
+:root .list-filter-btn .lf-count { color: var(--hc-ink-3); }
+/* next-step and tracking chips */
+:root .ns-pill, :root .trk-chip { border: 1px solid transparent; }
+:root :is(.ns-pill.ns-wait) { background: var(--hc-warn-soft); color: var(--hc-warn); border-color: rgba(255, 179, 71, .3); }
+:root :is(.ns-pill.ns-next) { background: var(--hc-line-soft); color: var(--hc-line-ink); border-color: color-mix(in srgb, var(--hc-line-fill) 38%, transparent); }
+:root :is(.ns-pill.ns-done) { background: var(--hc-ok-soft); color: var(--hc-ok); border-color: rgba(47, 227, 143, .3); }
+:root .ns-who { color: var(--hc-ink-2); }
+:root :is(.trk-chip.trk-exc) { background: var(--hc-bad-soft); color: var(--hc-bad); border-color: rgba(255, 107, 107, .3); }
+:root :is(.trk-chip.trk-rr) { background: var(--hc-info-soft); color: var(--hc-info); border-color: rgba(111, 176, 255, .3); }
+:root :is(.trk-chip.trk-ship) { background: var(--hc-ok-soft); color: var(--hc-ok); border-color: rgba(47, 227, 143, .3); }
+:root :is(.page-header-left, .page-header) h1 { color: var(--hc-ink); }
+
+/* Charts and gauges draw with fixed slate colours; swap them for the dark scale. */
+:root svg :is([stroke="#e2e8f0"], [stroke="#E2E8F0"], [stroke="#f1f5f9"], [stroke="#cbd5e1"]) { stroke: var(--hc-hair-strong); }
+:root svg :is([fill="#64748b"], [fill="#94a3b8"], [fill="#6b7280"]) { fill: var(--hc-ink-3); }
+:root svg :is([fill="#475569"], [fill="#334155"]) { fill: var(--hc-ink-2); }
+:root svg :is([fill="#1e293b"], [fill="#0f172a"]) { fill: var(--hc-ink); }
+:root svg :is([fill="#ffffff"], [fill="#fff"])[class*="recharts"] { fill: var(--hc-panel); }
+[data-hc-kit="tw"] :is(.text-blue-400, .text-blue-500) { color: var(--hc-line-ink); }
+/* Deep inline text colours that were picked for white pages */
+:root [style*="color: rgb(14, 116, 144)"] { color: var(--hc-cyan) !important; }
+:root [style*="color: rgb(124, 58, 237)"] { color: var(--hc-vio) !important; }
+:root [style*="color: rgb(194, 65, 12)"] { color: var(--hc-line-ink) !important; }
+:root [style*="color: rgb(24, 79, 149)"], :root [style*="color: rgb(31, 90, 160)"], :root [style*="color: rgb(7, 89, 133)"], :root [style*="color: rgb(29, 78, 216)"] { color: var(--hc-info) !important; }
+:root [style*="color: rgb(146, 64, 14)"] { color: var(--hc-warn) !important; }
+
+/* Schedule Requests is hand-styled in fixed light colours (no variables), so it gets its own pass. */
+:root :is(.list-header h1, .top-bar .sr-number, .card-title, .form-field label) { color: var(--hc-ink); }
+:root .card-title { border-bottom-color: var(--hc-hair); }
+:root .search-bar input, :root .form-field :is(input, select, textarea), :root .readonly-display { background: var(--hc-panel-2); border-color: var(--hc-hair-strong); color: var(--hc-ink); }
+:root .search-bar input:focus { border-color: var(--hc-line-fill); box-shadow: 0 0 0 3px var(--hc-line-soft); }
+:root table.list-table thead th { background: var(--hc-panel-2); color: var(--hc-ink-2); border-color: var(--hc-hair); }
+:root table.list-table tbody td { border-color: var(--hc-hair); color: var(--hc-ink); }
+:root table.list-table tbody tr:hover { background: var(--hc-panel-3); }
+:root table.list-table .sr-link { color: var(--hc-line-ink); }
+:root .pill-row .pill { background: var(--hc-panel-2); border-color: var(--hc-hair-strong); color: var(--hc-ink-2); }
+:root .pill-row .pill:hover { color: var(--hc-ink); border-color: var(--hc-ink-3); }
+:root .pill-row .pill.active { background: var(--hc-line-fill); border-color: transparent; color: var(--hc-line-on); }
+:root .btn-secondary { background: var(--hc-panel-2); border-color: var(--hc-hair-strong); color: var(--hc-ink); }
+:root .btn-secondary:hover:not(:disabled) { background: var(--hc-panel-3); }
+:root .btn-primary { background: var(--hc-line-fill); color: var(--hc-line-on); }
+:root .btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--hc-line-fill) 85%, #fff); }
+:root .btn-success { background: var(--hc-ok-fill); color: #04170d; }
+:root .btn-danger { background: transparent; color: var(--hc-bad); border-color: rgba(255, 107, 107, .4); }
+:root .btn-danger:hover:not(:disabled) { background: var(--hc-bad-soft); }
+:root .btn-link { color: var(--hc-line-ink); }
+:root .status-pill.pending { background: var(--hc-warn-soft); color: var(--hc-warn); border-color: rgba(255, 179, 71, .3); }
+:root .status-pill.confirmed { background: var(--hc-ok-soft); color: var(--hc-ok); border-color: rgba(47, 227, 143, .3); }
+:root .status-pill.cancelled { background: var(--hc-panel-3); color: var(--hc-ink-2); border-color: var(--hc-hair-strong); }
+:root .exc-chip { background: var(--hc-bad-soft); color: var(--hc-bad); border: 1px solid rgba(255, 107, 107, .3); }
+:root .toppill.active { background: var(--hc-line-fill); border-color: transparent; color: var(--hc-line-on); }
+:root .lang-switch, :root .rthumb-box { background: var(--hc-panel-3); border-color: var(--hc-hair-strong); }
+:root .view-tab:not(.active) { color: var(--hc-ink-2); }
+[data-hc-kit="tw"] :is(.bg-slate-200\/70, .bg-slate-100\/70, .bg-slate-100\/60) { background-color: var(--hc-panel-3); }
+
+/* A few chips carry their pastel colours inline; recolour them for the dark room. */
+:root :is([style*="#e0f2fe"], [style*="#dbeafe"]) { background: var(--hc-info-soft) !important; color: var(--hc-info) !important; border-color: rgba(111, 176, 255, .3) !important; }
+:root :is([style*="#fef3c7"], [style*="#fffbeb"]) { background: var(--hc-warn-soft) !important; color: var(--hc-warn) !important; border-color: rgba(255, 179, 71, .3) !important; }
+:root [style*="#fce7f3"] { background: var(--hc-pink-soft) !important; color: var(--hc-pink) !important; border-color: rgba(244, 114, 182, .3) !important; }
+/* Recharts: quiet grid lines, bars without a white outline */
+:root .recharts-cartesian-grid line { stroke: var(--hc-hair); }
+:root .recharts-rectangle, :root .recharts-bar-rectangle path { stroke: none; }
+:root .recharts-cartesian-axis-tick-value { fill: var(--hc-ink-3); }
+
+/* Light mode: buttons and chips filled with the room's light keep dark ink (white on orange is too faint), and the pale slate
+   text some empty states use becomes readable grey. */
+:root[data-theme="light"] :is(.btn-primary, .btn-orange, .btn-blue, .pill.active, .tab.active, .lang-seg-on, .view-tab.active, .toppill.active) { color: var(--hc-line-on); }
+:root[data-theme="light"] :is(.pill.active, .tab.active) :is(.pill-count, .cnt, .count) { color: inherit; }
+:root[data-theme="light"][data-hc-kit="tw"] :is(.text-slate-300, .text-slate-200):not(:is(.bg-slate-900, .bg-slate-800) *) { color: var(--hc-ink-3); }

@@ -93,7 +93,13 @@ export function createStore(db) {
     const rec = { ID: row.ID, Added_Time: row.Added_Time || '', Modified_Time: row.Modified_Time || '', Added_User: row.Added_User || '' };
     for (const [name, c] of ownColumns(form)) {
       let v = row[name];
-      if (c.kind === 'json') v = v ?? (['grid', 'list', 'checkboxes'].includes(c.type) ? [] : '');
+      if (c.kind === 'json') {
+        v = v ?? (['grid', 'list', 'checkboxes'].includes(c.type) ? [] : '');
+        // Zoho gives a name field its display text too; widgets show that (and fall back to the ID without it)
+        if (c.type === 'name' && v && typeof v === 'object' && !Array.isArray(v)) {
+          v = { ...v, zc_display_value: [v.prefix, v.first_name, v.last_name, v.suffix].filter(Boolean).join(' ') };
+        }
+      }
       else if (c.kind === 'bool') v = v === true;
       else if (c.kind === 'num') v = v == null ? '' : String(v);
       else v = v ?? '';

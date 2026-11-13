@@ -44,14 +44,26 @@ function serveFile(res, file, transform) {
 }
 // Theme layer (server/public/theme): tag which style system the widget uses and which section's
 // line it belongs to, then load theme.css last in <head> so it wins over the widget's own styles.
-const THEME_HEAD = '<link rel="preload" href="/theme/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>'
-  + '<link rel="stylesheet" href="/theme/theme.css">';
+const THEME_HEAD = '<script src="/theme/theme-init.js"></script>'
+  + '<link rel="preload" href="/theme/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>'
+  + '<link rel="stylesheet" href="/theme/theme.css">'
+  + '<link rel="stylesheet" href="/theme/views.css">'
+  + '<script src="/theme/views.js" defer></script>';
 function applyTheme(html, line) {
   const kit = /dms-tokens\.css/.test(html) ? 'dms' : /cdn\.tailwindcss\.com/.test(html) ? 'tw' : 'legacy';
   const attrs = `data-hc-kit="${kit}" data-hc-line="${line}"`;
   html = /<html\b/i.test(html) ? html.replace(/<html\b/i, `<html ${attrs}`) : `<html ${attrs}>${html}`;
   return /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${THEME_HEAD}</head>`) : THEME_HEAD + html;
 }
+// The widgets still say "Zoho Creator" in a few messages people read; the data can come from Postgres, SQLite or Zoho, so say it neutrally.
+const plainWords = (html) => html
+  .replace(/Loading from Zoho Creator(…|\.\.\.)/g, 'Loading$1')
+  .replace(/正在从 Zoho Creator 加载…/g, '正在加载…')
+  .replace(/Loaded from Zoho Creator:/g, 'Loaded from the database:')
+  .replace(/Failed to load records from Zoho Creator\./g, 'Failed to load records.')
+  // The scoreboards read dates as MM-dd-yyyy only; the local database stores yyyy-MM-dd. Let them read both.
+  .replace(/var mm=parseInt\(parts\[0\],10\), dd=parseInt\(parts\[1\],10\), yyyy=parseInt\(parts\[2\],10\);/g,
+    'if (parts[0].length === 4) parts = [parts[1], parts[2], parts[0]]; var mm=parseInt(parts[0],10), dd=parseInt(parts[1],10), yyyy=parseInt(parts[2],10);');
 const inside = (base, p) => { const f = path.resolve(base, p); return f.startsWith(base + path.sep) ? f : null; };
 
 // Backend mode: 'zoho' (default, targets live Zoho Creator API), 'local' (offline SQLite) or 'pg' (Postgres)
@@ -83,7 +95,7 @@ const localApi = {
   invokeCustomApi: async (b) => ({ code: 3000, result: await invokeCustomApi(b.api_name, b.payload) }),
 };
 
-const DATA_SOURCE = BACKEND === 'pg' ? 'Postgres' : BACKEND === 'zoho' ? `Zoho Creator (${process.env.ZOHO_ENV || 'development'})` : 'Local SQLite';
+const DATA_SOURCE =BACKEND === 'pg' ? 'Postgres' : BACKEND === 'zoho' ? `Zoho Creator (${process.env.ZOHO_ENV || 'development'})` : 'Local SQLite';
 
 // 'pg' keeps the business data in Postgres (DATABASE_URL); users and sessions stay in SQLite for now.
 let api;
@@ -238,6 +250,7 @@ async function handle(req, res) {
     return serveFile(res, f, f.endsWith('.html') ? (html) => {
       const who = `<script>window.HC_USER=${jsonForScript({ email: me.email, name: me.name })}</script>`;
       html = html.replace(/<script[^>]*src="[^"]*widgetsdk[^"]*"[^>]*><\/script>/i, `${who}<script src="/zoho-shim.js"></script>`);
+      html = plainWords(html);
       const section = SECTIONS.find((s) => s.label === p.slice(3).split('/')[0]);
       return applyTheme(html, section ? section.id : 'analytic');
     } : undefined);

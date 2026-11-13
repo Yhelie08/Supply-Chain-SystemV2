@@ -3,17 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/theme/theme-init.js"></script>
 <title>Sign in – Supply Chain App</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='8' fill='%231b2330' stroke='%231b2330' stroke-width='3'/%3E%3Ccircle cx='11' cy='11' r='8' fill='none' stroke='%23f2f4f7' stroke-width='2'/%3E%3Crect x='1' y='9' width='20' height='4' rx='1' fill='%23f2b705'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230a0c10'/%3E%3Cpath d='M16 4v6' stroke='%23aab2c0' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M7 20a9 9 0 0 1 18 0z' fill='%23ff7a1a'/%3E%3Cpath d='M11 24.5h10' stroke='%232fe38f' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/theme/pages.css">
 </head>
 <body>
-<div class="topbar">
-  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="none" stroke="#f2f4f7" stroke-width="3"/><rect x="1" y="9" width="20" height="4" rx="1" fill="#f2b705"/></svg>
-  Supply Chain App
-</div>
-<div class="rail"></div>
-<main>
+<div class="login-tools"><span data-theme-toggle></span></div>
+<main class="login">
+  <div class="lamp" aria-hidden="true">
+    <div class="cone"></div>
+    <svg viewBox="0 0 220 270">
+      <defs>
+        <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb877"/><stop offset=".55" stop-color="#ff7a1a"/><stop offset="1" stop-color="#d8540a"/></linearGradient>
+        <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff4e0"/><stop offset=".35" stop-color="#ffc07a" stop-opacity=".85"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></radialGradient>
+      </defs>
+      <path d="M110 0v118" stroke="#8a93a2" stroke-width="2" stroke-linecap="round"/>
+      <rect x="104" y="108" width="12" height="14" rx="3" fill="#aab2c0"/>
+      <path d="M52 200a58 58 0 0 1 116 0z" fill="url(#shade)"/>
+      <path d="M52 200a58 58 0 0 1 58-22" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="3" stroke-linecap="round" transform="translate(0 -2)"/>
+      <ellipse cx="110" cy="200" rx="58" ry="6" fill="#a53f06"/>
+      <g class="bulb"><circle cx="110" cy="214" r="34" fill="url(#glow)"/><circle cx="110" cy="206" r="9" fill="#fff4e0"/></g>
+      <path d="M84 232h52" stroke="#2fe38f" stroke-width="2.4" stroke-linecap="round" opacity=".0"/>
+    </svg>
+  </div>
   <form class="panel narrow" method="post" action="/login">
     <h1>Sign in</h1>
     <p class="lede">Home Cartel's supply chain: procurement, fulfillment and delivery.</p>
