@@ -125,8 +125,8 @@ const jsonForScript = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
 // Account and user-management endpoints (signed-in users; /api/admin/* admins only).
 async function accountApi(req, res, p, me) {
   try {
-    // Admins also see where the data comes from (shown in the account menu).
-    if (p === '/api/me') return send(res, 200, me.role === 'admin' ? { ...me, dataSource: DATA_SOURCE } : me);
+    // Every signed-in user sees where the data comes from (account menu, sidebar badge).
+    if (p === '/api/me') return send(res, 200, { ...me, dataSource: DATA_SOURCE });
     if (p === '/api/account/password' && req.method === 'POST') {
       const b = await readJson(req);
       await auth.changeOwnPassword(me.id, b.current, b.next);

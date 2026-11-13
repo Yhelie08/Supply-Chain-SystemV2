@@ -228,6 +228,37 @@ async function syncSuppliers({ record, store }) {
   }
 }
 
+// ===== Stage_Supplier_Changed (Supplier_1/Supplier_2, on edit, on success): push the supplier's
+// own submitted quote back up into the matching Inquiry's Supplier_Quotes row, plus the
+// collateral/hide-flag fields the native app also pushed up here. Never ported before now — its
+// absence meant a supplier's real Submit Response never reached the buyer's own Inquiry Detail
+// view at all (confirmed live: Supplier_2's own row had real Initial_Price_Supplier/Availability_
+// Supplier saved, but Inquiry_Form's Supplier_Quotes stayed empty forever). Mirrors
+// PASTE_Stage_Supplier_Changed_Production.txt exactly: matched by this supplier's real Books
+// vendor id (via the Supplier_Quotes row's own Supplier_ID -> Suppliers table lookup), not by name. =====
+async function syncBackToInquiry({ s, record, store }) {
+  const inqNo = record.INQ_No_Supplier;
+  if (blank(inqNo)) return;
+  const suppliers = await supplierIndex(store);
+  const quoteRow = (record.Supplier_quotes || [])[0];
+  if (!quoteRow) return;
+  for (const inq of await store.find('Inquiry_Form', (r) => r.INQ_No === inqNo)) {
+    const quotes = (inq.Supplier_Quotes || []).map((q) => {
+      if (quoteBooksId(q, suppliers) !== s.booksId) return q;
+      return {
+        ...q, Availability: quoteRow.Availability_Supplier, Initial_Price: quoteRow.Initial_Price_Supplier,
+        Negotiated: quoteRow.Negotiated_Supplier, Final_Price: quoteRow.Final_Price_Supplier, Lead_Time: quoteRow.Lead_Time_Supplier,
+      };
+    });
+    const patch = { Supplier_Quotes: quotes };
+    if (inq.Product_Sample !== 'HideToSupplier') patch.Product_Sample = record.Product_Sample_Supplier;
+    if (inq.D_Image !== 'HideToSupplier') patch.D_Image = record.D_Image_Supplier;
+    if (inq.Specification !== 'HideToSupplier') { patch.Specification = record.Specification_Supplier; patch.Specification_Details = record.Specification_Details_Supplier; }
+    if (inq.Technical_Drawing !== 'HideToSupplier') patch.Technical_Drawing = record.Technical_Drawing_Supplier;
+    await store.updateRecord('Inquiry_Form', inq.ID, patch, { byForm: true });
+  }
+}
+
 // ===== Item_Image_Create_Update and INQ_AutoFill_Product_Image (on add or edit, on success) =====
 async function productImage({ id, record, store }) {
   const patch = {};
@@ -264,3 +295,7 @@ register('Inquiry_Form', {
   afterUpdate: [stageRows, syncSuppliers, productImage],
   afterDelete: [deleteSupplierCopies],
 });
+
+for (const s of SUPPLIERS) {
+  register(s.form, { afterUpdate: [(args) => syncBackToInquiry({ s, ...args })] });
+}

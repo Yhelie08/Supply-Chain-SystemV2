@@ -187,7 +187,7 @@
     </div>
     <div class="rooms" id="rooms"></div>
     <div class="rail-foot">
-      <div class="live" title="Reading and saving to the local database"><i class="dot"></i><span>Local database</span></div>
+      <div class="live" id="dataSourceBadge" title="Reading and saving to the local database"><i class="dot"></i><span>Local database</span></div>
       <button type="button" class="fold" id="fold" aria-label="Collapse menu" title="Collapse menu"><svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5"/></svg></button>
     </div>
   </aside>
@@ -256,7 +256,13 @@
     $('whoEmail').textContent = me.email;
     $('avatar').textContent = label.trim().charAt(0).toUpperCase();
     $('usersLink').hidden = me.role !== 'admin';
-    if (me.dataSource) { $('whoData').textContent = 'Data: ' + me.dataSource; $('whoData').hidden = false; }
+    if (me.dataSource) {
+      $('whoData').textContent = 'Data: ' + me.dataSource; $('whoData').hidden = false;
+      var badge = $('dataSourceBadge');
+      var isPg = me.dataSource === 'Postgres';
+      badge.querySelector('span').textContent = isPg ? 'Shared Postgres' : me.dataSource;
+      badge.title = isPg ? 'Reading and saving to the shared Postgres database' : 'Reading and saving to the local database';
+    }
   });
   var account = $('account'), accountBtn = $('accountBtn');
   function setAccount(open) { account.classList.toggle('open', open); accountBtn.setAttribute('aria-expanded', String(open)); }
