@@ -15,6 +15,8 @@
         err.code = res.code; err.responseText = JSON.stringify(res);
         throw err;
       }
+      // what the list pages loaded, kept so the theme layer can show each row's Added Time (see theme/views.js)
+      if (op === 'getRecords' && res && Array.isArray(res.data)) { (window.__hcRecs = window.__hcRecs || {})[(body && body.report_name) || ''] = res.data; }
       return res;
     });
   }

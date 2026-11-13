@@ -29,10 +29,26 @@ for (const [form, cols] of Object.entries(columns)) {
 db.exec(`INSERT OR IGNORE INTO sqlite_sequence(name, seq) SELECT name, 4900000000000 FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN (SELECT name FROM sqlite_sequence)`);
 
 // ---------- rows <-> Zoho records ----------
+// What a lookup shows for its target form, taken from the .ds "displayformat" of the fields that
+// point at it, e.g. Customer -> [customer_name], Suppliers -> [" " + Supplier_Name.first_name].
+const DISPLAY = {};
+for (const form of Object.values(forms)) {
+  for (const f of form.fields) {
+    const m = f.lookup?.form && !DISPLAY[f.lookup.form] && /(\w+)(?:\.(\w+))?\s*\]/.exec(f.displayformat || '');
+    if (m) DISPLAY[f.lookup.form] = { field: m[1], part: m[2] };
+  }
+}
+
 function displayOf(form, id) {
   if (!id || !columns[form]) return '';
   const row = db.prepare(`SELECT * FROM ${q(form)} WHERE ID = ?`).get(Number(id));
   if (!row) return '';
+  const d = DISPLAY[form];
+  if (d && columns[form][d.field] && row[d.field] != null && row[d.field] !== '') {
+    if (columns[form][d.field].kind !== 'json') return String(row[d.field]);
+    const j = JSON.parse(row[d.field]);
+    return String((d.part ? j[d.part] : [j.first_name, j.last_name].filter(Boolean).join(' ')) ?? '');
+  }
   for (const [name, c] of Object.entries(columns[form])) {
     const v = row[name];
     if (c.kind === 'text' && v != null && v !== '' && !c.lookup) return String(v);
@@ -45,7 +61,13 @@ export function toRecord(form, row, { raw = false } = {}) {
   const rec = { ID: String(row.ID), Added_Time: row.Added_Time || '', Modified_Time: row.Modified_Time || '', Added_User: row.Added_User || '' };
   for (const [name, c] of Object.entries(columns[form])) {
     let v = row[name];
-    if (c.kind === 'json') v = v ? JSON.parse(v) : c.type === 'grid' || c.type === 'list' || c.type === 'checkboxes' ? [] : '';
+    if (c.kind === 'json') {
+      v = v ? JSON.parse(v) : c.type === 'grid' || c.type === 'list' || c.type === 'checkboxes' ? [] : '';
+      // Zoho gives a name field its display text too; widgets show that (and fall back to the ID without it)
+      if (c.type === 'name' && v && typeof v === 'object' && !Array.isArray(v)) {
+        v = { ...v, zc_display_value: [v.prefix, v.first_name, v.last_name, v.suffix].filter(Boolean).join(' ') };
+      }
+    }
     else if (c.kind === 'bool') v = v === 1 || v === true;
     else if (c.kind === 'num') v = v == null ? '' : String(v);
     else v = v ?? '';
