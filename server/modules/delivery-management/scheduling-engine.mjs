@@ -15,6 +15,7 @@
 // when a calendar entry exists. Numbers in the summaries print with two decimals, a blank team prints "null".
 // Hooks run in the order they are registered; Zoho's order of the workflows is this one before SA_Sync_Sales_Order_Display.
 import { register } from '../../workflows/index.mjs';
+import { withLock } from './locks.mjs';
 import { zohoNow } from '../../criteria.mjs';
 import { truthy, blank, toNum, sameValue } from '../../workflows/deluge.mjs';
 import { SA, scheduleSlot, customerName, defaultDuration, normalizeType, policyReader, raiseException, toLong, r6, hrs, nullText, day } from './scheduling.mjs';
@@ -31,7 +32,11 @@ async function runEngine({ id, record, store, user }) {
 }
 
 // Action 2
-async function confirmCalendar({ id, record: input, store, user }) {
+// The capacity check reads the team's other confirmed jobs and then writes this one: two at once would both see room.
+// They are queued with the engine's other scheduling work (locks.mjs), one at a time.
+const confirmCalendar = (args) => withLock('scheduling', () => confirmCalendarNow(args));
+
+async function confirmCalendarNow({ id, record: input, store, user }) {
   if (blank(input.Confirmed_Schedule_Date) || truthy(input.Calendar_Entry_Created)) return;
   const rec = await fresh(store, id);
   const typeRaw = input.Type_of_Delivery ?? '';

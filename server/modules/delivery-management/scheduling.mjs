@@ -24,6 +24,7 @@
 // "08:00:00 AM" (what Zoho's time field keeps and what the widgets send back) while the text of the summaries keeps the
 // engine's "8:00 AM".
 import { zohoNow } from '../../criteria.mjs';
+import { withLock } from './locks.mjs';
 import { idOf, truthy, blank, toNum, parseDate, ymd, addDays, todayDate } from '../../workflows/deluge.mjs';
 
 export const SA = 'Service_Appointment_Form';
@@ -110,7 +111,11 @@ export async function raiseException(store, rec, { stage, reason, severity }, us
 }
 
 // scheduleSlot(store, recordId, isRerun) -> { status: success | flagged | blocked | skipped | error, message, ... }
-export async function scheduleSlot(store, recordId, isRerun, { user = '' } = {}) {
+// Two people asking for a slot at the same moment would both read the same picture of the day: the work is queued (locks.mjs),
+// one at a time. (Decided by the owner. The queue is inside one server process.)
+export const scheduleSlot = (store, recordId, isRerun, options) => withLock('scheduling', () => scheduleSlotNow(store, recordId, isRerun, options));
+
+async function scheduleSlotNow(store, recordId, isRerun, { user = '' } = {}) {
   const saId = String(recordId ?? '').trim();
   const everything = /^\d+$/.test(saId) ? await store.find(SA) : [];
   const rec = everything.find((r) => r.ID === saId);

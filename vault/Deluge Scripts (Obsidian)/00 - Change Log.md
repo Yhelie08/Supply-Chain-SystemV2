@@ -9,6 +9,13 @@ tags:
 
 Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - Port Status]].
 
+## 2026-11-13
+
+**Delivery Management, two safety rules (branch `feature/delivery-safety`; answers in [[Clarifications - Delivery Management]])**
+- **Confirm once.** `confirm_dms_schedule_request` now refuses a request that is already Confirmed or already has its appointment ("Already confirmed — Service Appointment <id> was already created."), and calls for the same request are queued, so a double click, or three clicks at the same moment, make exactly one appointment. In Zoho a double click made two. A deliberate difference, decided by the owner.
+- **No two people on the same slot.** The scheduling work (the suggestion, `dms_reschedule`, and the calendar write with its capacity check) is queued one at a time (`server/modules/delivery-management/locks.mjs`), so two dispatchers confirming at the same moment no longer both take the room: the second sees the first and gets a Calendar Conflict. Proved by two tests that fail without the queue and pass with it. The queue works inside one server process, which is enough while the app runs as one instance; several instances would need a database lock (as the schedule runner has).
+- Answers recorded: Policy Settings admin-only and the three roles only (not built: the app has no per-role access yet), errors shown when CMS or Books fail (manual retry), the Schedule Requests API and the email and SMS question left to the team. 367 tests.
+
 ## 2026-11-12
 
 **Delivery Management, UAT through the API (2026-11-12):** 22 of 22 checks of the Delivery checklist pass on `npm run dev:pg` (script with a throwaway account, all test records deleted). The owner's click-through in the browser is still to do, and the go-live blockers raised in the review are listed in [[Plan - Delivery Management Open Items]] section 9.
