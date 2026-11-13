@@ -11,9 +11,10 @@ npm test          # all tests (the Postgres ones run on PGlite, no server needed
 ```
 
 `npm run dev:pg` loads the newest backup from `data/zoho-backup` the first time. Make one with
-`node tools/export-zoho-data.mjs` (read-only; needs Zoho credentials, see `.env.example`).
-`npm start` runs the server with `BACKEND` as set: `pg` (Postgres, the target), `zoho` (the old app through its
-API, the default for now) or `local` (SQLite, offline). Variables go in `.env` (copy `.env.example`).
+`node tools/export-zoho-data.mjs` (read-only, GET calls only, code in `tools/zoho/`; needs Zoho credentials from
+`.env` or `server/zoho-credentials.json`, see `.env.example`).
+`npm start` runs the server with `BACKEND` as set: `pg` (Postgres, the target; the Delivery workflows only run here)
+or `local` (SQLite, offline, the default). Zoho Creator is no longer a backend. Variables go in `.env` (copy `.env.example`).
 
 Where to read more, in the Obsidian vault (`vault/`):
 - `Deluge Scripts (Obsidian)/00 - Current System.md`: how it fits together, how to run and host it

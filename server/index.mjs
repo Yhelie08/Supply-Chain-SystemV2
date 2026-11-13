@@ -1,6 +1,6 @@
 // Supply Chain App server: serves the original Zoho widgets with a local SDK stand-in, answers their
-// data calls from the backend chosen by BACKEND (pg = Postgres, zoho = the Creator API, local = SQLite),
-// and requires sign-in for everything. Users and sessions are always in SQLite.
+// data calls from the backend chosen by BACKEND (pg = Postgres, local = SQLite; Zoho Creator is not a backend),
+// and requires sign-in for everything. Users and sessions are in SQLite on local and in Postgres on pg.
 //   npm start  ->  http://localhost:4000   (env: PORT, DATA_DIR, ADMIN_EMAIL, ADMIN_PASSWORD, BACKEND, DATABASE_URL; see .env.example)
 import dns from 'node:dns';
 dns.setDefaultResultOrder('ipv4first');
@@ -66,6 +66,12 @@ const inside = (base, p) => { const f = path.resolve(base, p); return f.startsWi
 
 // Backend mode: 'local' (offline SQLite, default) or 'pg' (Postgres). Zoho Creator is no longer used.
 const BACKEND = process.env.BACKEND || 'local';
+if (BACKEND !== 'local' && BACKEND !== 'pg') {
+  console.warn(`[server] BACKEND=${BACKEND} is not supported (use local or pg); running on local SQLite.`);
+}
+if (BACKEND !== 'pg') {
+  console.warn('[server] Delivery workflows are OFF without BACKEND=pg (scheduling engine, field work, exception queue). Use BACKEND=pg or npm run dev:pg.');
+}
 
 // ---------- the SDK operations (answered from SQLite; there is no Zoho Creator connection) ----------
 const localApi = {
@@ -95,7 +101,7 @@ const localApi = {
 
 const DATA_SOURCE = BACKEND === 'pg' ? 'Postgres' : 'Local SQLite';
 
-// 'pg' keeps the business data in Postgres (DATABASE_URL); users and sessions stay in SQLite for now.
+// 'pg' keeps the business data, the users and the sessions in Postgres (DATABASE_URL).
 let api;
 let tableCounts = () => store.tableCounts();
 if (BACKEND === 'pg') {

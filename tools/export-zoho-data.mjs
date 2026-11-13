@@ -8,7 +8,7 @@
 // a form flagged "fewer fields than the form" needs a fuller report in Zoho before the final export.
 import fs from 'node:fs';
 import path from 'node:path';
-import { zohoAdapter } from '../server/zoho/adapter.mjs';
+import { zohoReader } from './zoho/reader.mjs'; // read-only: GET calls only
 
 const PARSED = path.resolve(import.meta.dirname, '..', 'zoho-export', 'parsed');
 const args = Object.fromEntries(process.argv.slice(2).map((a) => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -48,7 +48,7 @@ for (const { form, report } of plan) {
   if (!report) { entry.notes.push('no list report, cannot export'); console.log(form.name.padEnd(42), 'SKIPPED (no report)'); continue; }
   if (report.criteria) entry.notes.push('report is filtered: not all records');
   try {
-    const res = await zohoAdapter.getRecords({ report_name: report.name, page: 1, pageSize: 1_000_000 });
+    const res = await zohoReader.getRecords({ report_name: report.name, page: 1, pageSize: 1_000_000 });
     const rows = res.data || [];
     entry.rows = rows.length;
     entry.fieldsSeen = new Set(rows.flatMap((r) => Object.keys(r))).size;
