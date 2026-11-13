@@ -18,6 +18,10 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-12
 
+**Forecast engine, F0 to F4 (2026-11-12, branch `feature/forecast-engine`, shared code in `server/forecast/`)**
+- `computeForecast` (the ladder as one pure function), `fcStampBySoNo` (stamps 9 forms), the 7 Instant Forecast workflows (Fulfillment forms), `fcStampPurchaseRequest`, `fcPrToPreOrder` and `PR1_Forecast_Stamp` (Procurement), the daily schedules `Forecast_Stamp_Daily` (per item, with the order roll-up) and `Backfill_PreOrder_Forecast`, and the schedule runner `server/schedules.mjs` (once a day at the local time, advisory lock, off unless `SCHEDULES=on`). Delivery's `fcStampDelivery` now uses the real engine, so the four Delivery `*_Instant_Forecast` workflows work out a forecast for an order that has none.
+- A module can list its schedules in its `index.mjs`; the Port Checklist shows schedules as ported (2 of 6). 425 tests. **Not compared with Zoho Development yet** (planned for the next session; the open questions, first of all whether a blank field joined to text becomes the word "null", are in [[Plan - Forecast Engine]]). No pull request yet.
+
 **Delivery Management, UAT through the API (2026-11-12):** 22 of 22 checks of the Delivery checklist pass on `npm run dev:pg` (script with a throwaway account, all test records deleted). The owner's click-through in the browser is still to do, and the go-live blockers raised in the review are listed in [[Plan - Delivery Management Open Items]] section 9.
 
 **Delivery Management, comparison with Zoho Development and the decisions of the grilling (2026-11-12)**

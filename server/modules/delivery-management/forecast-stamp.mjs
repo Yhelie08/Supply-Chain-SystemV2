@@ -9,11 +9,10 @@
 // that was saved (not "contains": a neighbouring row with a different list would otherwise be stamped, and stamp back),
 // and only when a value differs.
 //
-// THE ENGINE IS NOT HERE. For an order with no forecast yet, Zoho calls `fcStampBySoNo` (864 lines, shared by Fulfillment,
-// Procurement and Delivery), which works the forecast out. That belongs to the forecast milestone, so here it is a
-// dependency: `forecastEngine.stampBySoNo`, empty until that port exists. Until then the call is skipped and logged once,
-// and the stamp copies whatever forecast Sales_Order_Fulfillment already has (the forecast the earlier steps of the chain
-// computed). When the engine is ported, set `forecastEngine.stampBySoNo = async (so, store) => ...`.
+// The engine is shared code (server/forecast/stamp.mjs, `fcStampBySoNo`, used by Fulfillment, Procurement and Delivery). For an
+// order with no forecast yet, this asks it to work one out first. It is held in `forecastEngine.stampBySoNo` so a test can
+// replace it or switch it off (null: the call is skipped and logged once, and the stamp copies whatever forecast
+// Sales_Order_Fulfillment already has).
 //
 // Quirks kept ("mirrors Zoho"): the search for the latest date starts at today and the first dated item always wins the
 // first comparison (even a past date); a missing window or status is written as the text "null".
@@ -21,8 +20,9 @@ import { register } from '../../workflows/index.mjs';
 import { blank } from '../../workflows/deluge.mjs';
 import { todayDate, ymd } from '../../workflows/deluge.mjs';
 import { day, nullText } from './scheduling.mjs';
+import { fcStampBySoNo } from '../../forecast/stamp.mjs';
 
-export const forecastEngine = { stampBySoNo: null };
+export const forecastEngine = { stampBySoNo: (so, store) => fcStampBySoNo(store, so) };
 let warned = false;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 // [form, the field that holds the sales order text]

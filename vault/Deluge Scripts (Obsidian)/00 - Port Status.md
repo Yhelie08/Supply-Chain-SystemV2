@@ -13,9 +13,9 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Part | Total | Ported |
 |---|---:|---:|
-| Deluge functions | 43 | 14 |
+| Deluge functions | 43 | 17 |
 | Custom APIs called by widgets | 25 | 9 |
-| Form workflows (on validate, on success, field rules) | 165 | 38 |
+| Form workflows (on validate, on success, field rules) | 165 | 46 |
 | Scheduled workflows | 6 | 0 |
 | Report-button functions | 16 | 0 |
 
@@ -57,10 +57,10 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `declineDmsScheduleRequest` | `decline_dms_schedule_request` | Delivery Management | Ported | `zoho-export/parsed/functions/declineDmsScheduleRequest.dg` |
 | `diagInsertThenPatch` | — | — | Not ported yet | `zoho-export/parsed/functions/diagInsertThenPatch.dg` |
 | `dmsScheduleSlot` | `dms_reschedule` | Analytic, Fulfillment, Delivery Management | Ported | `zoho-export/parsed/functions/dmsScheduleSlot.dg` |
-| `fcPrToPreOrder` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Not ported yet | `zoho-export/parsed/functions/fcPrToPreOrder.dg` |
-| `fcStampBySoNo` | — | Analytic, Procurement, Fulfillment, Delivery Management | Not ported yet | `zoho-export/parsed/functions/fcStampBySoNo.dg` |
+| `fcPrToPreOrder` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Ported (server/forecast/purchase-request.mjs; not yet compared with Zoho Development) | `zoho-export/parsed/functions/fcPrToPreOrder.dg` |
+| `fcStampBySoNo` | — | Analytic, Procurement, Fulfillment, Delivery Management | Ported (server/forecast/stamp.mjs; not yet compared with Zoho Development) | `zoho-export/parsed/functions/fcStampBySoNo.dg` |
 | `fcStampDelivery` | — | Analytic, Fulfillment, Delivery Management | Ported (copies the forecast; the engine fcStampBySoNo is not ported) | `zoho-export/parsed/functions/fcStampDelivery.dg` |
-| `fcStampPurchaseRequest` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Not ported yet | `zoho-export/parsed/functions/fcStampPurchaseRequest.dg` |
+| `fcStampPurchaseRequest` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Ported (server/forecast/purchase-request.mjs; not yet compared with Zoho Development) | `zoho-export/parsed/functions/fcStampPurchaseRequest.dg` |
 | `getItemBinLocations` | — | — | Not ported yet | `zoho-export/parsed/functions/getItemBinLocations.dg` |
 | `getReceivingBinChoices` | — | — | Not ported yet | `zoho-export/parsed/functions/getReceivingBinChoices.dg` |
 | `patchItemDetailsRetry` | — | — | Not ported yet | `zoho-export/parsed/functions/patchItemDetailsRetry.dg` |
@@ -102,4 +102,4 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 ## Workflows
 
-38 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 15 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.
+46 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 15 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.

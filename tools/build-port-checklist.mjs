@@ -114,9 +114,11 @@ for (const sec of [...SECTIONS, 'Unassigned']) {
 }
 
 const schedules = workflows.filter((w) => w.kind === 'schedule');
-out.push(`## Schedules (${schedules.length}), none ported\n`);
-out.push(table(['Schedule', 'Active in Zoho', 'Lines', 'Needs'], schedules.map((w) => { const src = (w.events || []).map((e) => dg(e.file)).join('\n'); return [`\`${w.name}\``, w.status === 'active' ? 'yes' : 'no (inactive)', lineCount(src), needsOf(src)]; })));
-out.push('A scheduled job needs a runner in our server (a timer or a cron on Railway); none exists yet.\n');
+// A module lists the schedules it ports in its index.mjs (`schedules: [{ name, at, run }]`); server/schedules.mjs runs them.
+const portedSchedules = new Set(modules.flatMap((m) => (m.schedules || []).map((s) => s.name)));
+out.push(`## Schedules (${schedules.length}), ${portedSchedules.size} ported\n`);
+out.push(table(['Schedule', 'Active in Zoho', 'Lines', 'Needs', 'Status'], schedules.map((w) => { const src = (w.events || []).map((e) => dg(e.file)).join('\n'); return [`\`${w.name}\``, w.status === 'active' ? 'yes' : 'no (inactive)', lineCount(src), needsOf(src), portedSchedules.has(w.name) ? 'Ported' : '**To port**']; })));
+out.push('The runner is `server/schedules.mjs`: a timer that runs each ported schedule once a day at its time in its time zone. It is off unless `SCHEDULES=on` is set on the server.\n');
 
 const buttons = workflows.filter((w) => w.kind === 'functions');
 out.push(`## Report-button functions (${buttons.length}), none ported\n`);
