@@ -11,6 +11,14 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-13
 
+**Review ng Postgres update ni sir JV (`jv-update`, commit `77fa25f`): sign-in sa `BACKEND=pg` ay bumabagsak**
+- **Bug:** ang pg `store.run` sa `server/auth.mjs` ay naglalagay ng `RETURNING id` sa bawat INSERT, pero walang `id` column ang `_sessions` (key ay `token_hash`). Resulta: `column "id" does not exist` sa bawat login. Fix: `RETURNING id` lang sa `INSERT INTO _users`.
+- Error message ng `createUser` ngayon ay "Enter a valid email or username (3-32 letters, digits, . _ -)." (dating "email address" lang, kahit tumatanggap na ng username).
+- Bagong test `tests/core/pg-auth.test.js` (PGlite sa likod ng socket, parang `dev:pg`): create user, login gamit ang username, session lookup, sign-out, maling password, duplicate, bad name, admin rules, reset/deactivate/delete. 5 of 5 pasado. Negative control: kapag ibinalik ang `RETURNING id` sa lahat ng INSERT, 0 of 5 pasado (`column "id" does not exist`).
+- Sa temporary `dev:pg` server (port 4012): palit ng password, `/api/admin/users` list, create, reset, delete, logout, at ang bad-name error ay gumana sa HTTP.
+- `docs/shared-postgres-setup.md`: may babala na ito ang shared DB, bawal ang `npm run seed`, `dev:pg` ang default sa PC.
+- **Hindi na-check:** ang totoong shared Railway Postgres (walang tunnel), at ang browser login page. Hindi pinatakbo ang mismong commit `77fa25f` na walang fix; ang bug ay nakita sa code at pinatunayan ng negative control sa itaas.
+
 **After merging jv's UI (branch `Johncel-Dev`; list in [[Checklist - Delivery Missing Functions]], items 17 to 19 and 23)**
 - **`dev:pg` crashed at start** (`read ECONNRESET`): jv's `server/auth.mjs` and `server/pg/api.mjs` each opened a Postgres pool, and the PGlite socket of `npm run dev:pg` takes one connection. `server/pg/pool.mjs` now keeps one pool per URL, so both share it. Production behavior is the same (one pool of 10 instead of two).
 - **`BACKEND` is honest now.** `.env` and `.env.example` say `local`; `BACKEND=zoho` or any other unknown value prints "not supported, running on local SQLite"; anything but `pg` prints that the Delivery workflows are OFF (the hooks are attached only in `server/pg/api.mjs`). Stale Zoho comments fixed in `server/index.mjs` and the README.

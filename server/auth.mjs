@@ -54,7 +54,8 @@ if (BACKEND === 'pg') {
   store = {
     get: async (sql, params) => (await pool.query(toPg(sql), params)).rows[0],
     all: async (sql, params) => (await pool.query(toPg(sql), params)).rows,
-    run: async (sql, params) => { const r = await pool.query(toPg(sql) + (/^INSERT/i.test(sql) ? ' RETURNING id' : ''), params); return { lastInsertRowid: r.rows[0]?.id }; },
+    // Only _users has an id column to hand back; _sessions is keyed by token_hash, so RETURNING id there made every sign-in fail ("column id does not exist").
+    run: async (sql, params) => { const r = await pool.query(toPg(sql) + (/^INSERT\s+INTO\s+_users\b/i.test(sql) ? ' RETURNING id' : ''), params); return { lastInsertRowid: r.rows[0]?.id }; },
   };
 } else {
   const { db } = await import('./db.mjs');
@@ -86,7 +87,7 @@ function toPg(sql) { let i = 0; return sql.replace(/\?/g, () => `$${++i}`); }
 
 export async function createUser({ email, name = '', role = 'user', password, mustChange = true }) {
   email = normEmail(email);
-  if (!isEmail(email)) throw new Error('Enter a valid email address.');
+  if (!isEmail(email)) throw new Error('Enter a valid email or username (3-32 letters, digits, . _ -).');
   if (await store.get('SELECT 1 FROM _users WHERE email = ?', [email])) throw new Error(`${email} already has an account.`);
   const r = await store.run('INSERT INTO _users (email, name, password_hash, role, must_change_password, created_at) VALUES (?, ?, ?, ?, ?, ?)',
     [email, String(name).trim(), hashPassword(password), role === 'admin' ? 'admin' : 'user', mustChange ? 1 : 0, zohoNow()]);

@@ -7,6 +7,13 @@ business data. `server/auth.mjs` picks SQLite or Postgres for accounts based on 
 
 Branch: `jv-update` (based on `main`, merged with `yhelie-update`'s UI). Not pushed to `main` yet.
 
+> **Careful: this is the shared (production) database.**
+> - Do **not** run `npm run seed` against it. It would write mock data into the real tables.
+> - For everyday work on a PC use `npm run dev:pg` (local PGlite, nothing shared). Use the tunnel below only
+>   when you really need the shared accounts, and keep tunnel URLs out of any committed file.
+> - The Delivery Management workflows only run with `BACKEND=pg`, so they also run against the shared data
+>   when you use the tunnel.
+
 ## One-time setup
 
 1. Install Railway CLI: `npm install -g @railway/cli`
@@ -48,6 +55,13 @@ Branch: `jv-update` (based on `main`, merged with `yhelie-update`'s UI). Not pus
 
 Login field accepts a plain username now, not just email (`server/auth.mjs` `isEmail` regex was
 widened: 3-32 chars, letters/digits/dot/underscore/hyphen — real emails still work too).
+
+> **Sign-in fix needed (found in review):** in the first version of this branch, `store.run` in
+> `server/auth.mjs` added `RETURNING id` to every INSERT, but `_sessions` has no `id` column
+> (it is keyed by `token_hash`), so every login on `BACKEND=pg` failed with
+> `column "id" does not exist`. The fix is that only `INSERT INTO _users` gets `RETURNING id`.
+> If you see that error, your `server/auth.mjs` is missing the fix: pull `Johncel-Dev`.
+> Covered by `tests/core/pg-auth.test.js`.
 
 First run with `ADMIN_EMAIL`/`ADMIN_PASSWORD` set creates the admin account automatically.
 Forces a password change on first login.
