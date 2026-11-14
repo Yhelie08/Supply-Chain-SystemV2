@@ -1449,6 +1449,14 @@ function forecastCell(r) {
   async function hydrateItemDetails1(so) {
     if (hydratedItemDetail1Ids.has(so.ID)) return false;
     if (!Array.isArray(so.Item_Details1) || !so.Item_Details1.length) return false;
+    // PERF FIX 2026-11-14: the per-record fetch below exists for Zoho's list API,
+    // which summarizes subforms to [{ID, zc_display_value}]. The ported Postgres
+    // backend already returns full child fields (Item/SKU/Quantity/…) in the bulk
+    // getRecords, so re-fetching every SO was ~1,000 redundant round-trips on live
+    // data (the main Fulfillment lag). Skip when the rows are already complete;
+    // summarized Zoho rows have neither key, so they still hydrate as before.
+    const first = so.Item_Details1[0];
+    if (first && ("Item" in first || "SKU" in first)) { hydratedItemDetail1Ids.add(so.ID); return false; }
     const fullRows = await fetchFullItemDetails1(so.ID);
     if (!fullRows) return false;
     so.Item_Details1 = fullRows;
@@ -1470,7 +1478,9 @@ function forecastCell(r) {
   }
 
   async function hydrateAllItemDetails1(records) {
-    await runWithConcurrency(records, 6, (so) => hydrateItemDetails1(so));
+    let changed = false;
+    await runWithConcurrency(records, 6, async (so) => { if (await hydrateItemDetails1(so)) changed = true; });
+    return changed;
   }
 
   function loadLive() {
@@ -1481,9 +1491,13 @@ function forecastCell(r) {
       checkDeepLinkOpenSO();
       // Fast first paint (Item/SKU/Qty/Bin Location blank until hydrated) —
       // upgrade to accurate data once every SO's Item_Details1 is hydrated.
-      await hydrateAllItemDetails1(records);
-      orderedRows = computeOrderedRows(allRecords);
-      renderAll();
+      // PERF FIX 2026-11-14: only re-render when hydration actually changed
+      // something; on the ported backend the first paint is already complete.
+      const upgraded = await hydrateAllItemDetails1(records);
+      if (upgraded) {
+        orderedRows = computeOrderedRows(allRecords);
+        renderAll();
+      }
     }).catch((err) => {
       // Logged, then shown as the empty state it is. There is deliberately no
       // sample-data fallback: a report that is briefly erroring is not the same
@@ -1498,7 +1512,13 @@ function forecastCell(r) {
   // ---------------------------------------------------------------------
   // Init
   // ---------------------------------------------------------------------
-  searchInput.addEventListener("input", () => { if (currentTab === "list") renderTable(); else renderGroupings(); });
+  // PERF FIX 2026-11-14: debounce the search — rebuilding 1,000+ rows on every
+  // keystroke made typing/filtering janky; render once after a 200ms pause.
+  let searchDebounce = 0;
+  searchInput.addEventListener("input", () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => { if (currentTab === "list") renderTable(); else renderGroupings(); }, 200);
+  });
   stageFilterSelect.addEventListener("change", () => {
     stageFilter = stageFilterSelect.value;
     if (currentTab === "list") renderTable(); else renderGroupings();
