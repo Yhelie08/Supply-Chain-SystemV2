@@ -5,7 +5,7 @@ tags:
   - fulfillment
   - git
   - merge
-status: proposed 2026-11-14, reviewed + corrected; scope widened same day (isama ang jv-update, isang push sa main). Decisions recorded (direct merge, 3 commits). NOT executed. Awaiting owner go.
+status: EXECUTED 2026-11-14 (steps 1–7 done). Save point e184e60/9532b32/d9bf006; merge 1 e444d32 (yhelie-update, 7 conflicts resolved both-intents); merge 2 c68f8f9 (jv-update, clean). Tests 614/614 + UI 124/124; browser spot-check passed; docs synced. PUSH (step 8) NOT DONE — awaiting separate owner go. Follow-ups: CMS retarget to Service Request before CMS_API_KEY; register Yhel engine workflows in ported.json.
 date: 2026-11-14
 ---
 
@@ -137,11 +137,11 @@ Walang untracked-file collision (verified 2026-11-14): ang mga bagong file ni Yh
 - [x] Plan reviewed vs live repo (2026-11-14): claims verified; corrections folded in (pages.json label, no new dependency, +2 fulfillment conflict files, forecast regression gates)
 - [x] Owner confirmed: Schedule Requests removed (CMS → Service Request), Pack → Pack & QC
 - [x] Inspect `origin/jv-update` + `origin/main` (2026-11-14): 1 new JV commit (`83319aa`); main is ancestor → fast-forward push possible
-- [ ] Owner go (steps 1–7)
-- [ ] Commit current work (save point, 3 commits)
-- [ ] Merge `yhelie-update` + `jv-update`, resolve conflicts
-- [ ] `npm install` + full suite + UI tests green
-- [ ] Browser spot-check (Fulfillment + Delivery + Procurement)
+- [x] Owner go (steps 1–7) — "go na", 2026-11-14
+- [x] Commit current work (save point, 3 commits): `e184e60` rehearsal, `9532b32` access/CMS, `d9bf006` docs
+- [x] Merge `yhelie-update` + `jv-update`, resolve conflicts — merge 1 `e444d32`: 7 conflicts resolved (both intents kept), 7 post-merge test failures fixed (stale Pack/Schedule Requests counts; forecast tests now assert cross-record consistency because the Zoho-ported Instant Forecast stamp recomputes on save). Merge 2 `c68f8f9`: clean auto-merge, both intents verified.
+- [x] `npm install` + full suite + UI tests green — 614/614 node (concurrency=2; default parallelism OOMs 2 PGlite files when a dev server runs alongside), 124/124 UI (5 files). No new dependencies (fulfillment:sync script only).
+- [x] Browser spot-check (Fulfillment + Delivery + Procurement) — local SQLite, temp QA admin deleted after: Pack & QC/To Ship/Crate/Order Readiness + Approve Dispatch render; no Pack tab; no Schedule Requests tab, Service Request + full-page form OK, Archived cards OK; Inquiry List renders, JV price-lock confirmed in served widget; sidebar badge "Local SQLite"; no console errors.
 - [ ] Push to main (isang push, separate go, guardrail handling)
 - [ ] CMS retarget to Service Request (bago i-enable ang CMS)
-- [ ] Docs sync (Change Log, Port Status, Fulfillment notes, Delivery checklist + Open Decisions — alisin ang "Schedule Requests display" pending decision)
+- [x] Docs sync (Change Log, Port Status, Fulfillment notes, Delivery checklist + Open Decisions — inalis ang "Schedule Requests display" pending decision; shared-postgres-setup counts 90→88 forms / 88→86 exportable)

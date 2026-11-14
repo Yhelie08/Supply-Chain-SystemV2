@@ -391,7 +391,7 @@ Every Deluge script, workflow and form/report definition in the **Supply Chain A
 | :--- | :--- | ---: |
 | [[Delivery Management/Sales Returns/Widget/SalesReturns Widget\|SalesReturns Widget]] | `—` | — |
 
-#### Schedule Requests (1)
+#### Schedule Requests (1) — TAB REMOVED 2026-11-14 (CMS → Service Request; docs kept for reference)
 
 | Note | Source file | Lines |
 | :--- | :--- | ---: |

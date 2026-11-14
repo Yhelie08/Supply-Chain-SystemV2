@@ -9,6 +9,9 @@ tags:
 
 # 🧩 ScheduleRequest Widget
 
+> [!WARNING] REMOVED 2026-11-14
+> Tinanggal nang tuluyan ang Schedule Requests tab sa app (desisyon ng owner): ang bagong process ay **lahat ng galing CMS ay pumapasok sa Service Request**. Ang widget na ito ay hindi na naka-serve. Reference lang ang doc na ito. Pending: i-retarget ang CMS inbound route (`/api/integrations/cms/*`) sa Service Request bago i-enable ang `CMS_API_KEY`.
+
 > [!INFO] Widget Overview
 > - **Module:** `Delivery Management System (DMS)`
 > - **System Stage:** `Client Schedule Requests`

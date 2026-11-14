@@ -13,7 +13,7 @@ The production system runs on **Railway** (`supply-chain-app` project) with two 
    - Persistent volume attached at `/data` for user file uploads (`/data/uploads`).
 2. **`Postgres`** (Railway Managed PostgreSQL 16+ Service with `postgres-volume`):
    - Stores user authentication and session tables (`_users`, `_sessions`).
-   - Stores all 90 business domain tables mapped dynamically from Zoho forms.
+   - Stores all 88 business domain tables mapped dynamically from Zoho forms (Pack and Pack_Notifications were merged into Pack & QC and removed 2026-11-14).
    - Generates 64-bit integer IDs from `record_id_seq` starting at `4900000000000000000` (exceeding all 19-digit Zoho Creator IDs).
 
 ---
@@ -80,9 +80,9 @@ Railway supports two networking models:
    - Setting `PGSSL=disable` forces `ssl: false` for all hosts.
 
 ### 3.3 Dynamic Schema Synchronization & Sequence Offsets
-- **Schema Auto-Provisioning:** On server boot under `BACKEND=pg`, `server/pg/schema.mjs` executes `ensureSchema(db)`. It dynamically inspects all 90 form definitions from `server/model.mjs`, creating missing tables and issuing `ALTER TABLE ADD COLUMN` for newly added fields.
+- **Schema Auto-Provisioning:** On server boot under `BACKEND=pg`, `server/pg/schema.mjs` executes `ensureSchema(db)`. It dynamically inspects all 88 form definitions from `server/model.mjs`, creating missing tables and issuing `ALTER TABLE ADD COLUMN` for newly added fields.
 - **19-Digit ID Protection:** Zoho Creator IDs are 19-digit integers (e.g. `4662244000013843323`). In PostgreSQL, IDs are stored as 64-bit `BIGINT` columns. In JavaScript, IDs are strictly handled as strings to eliminate IEEE 754 precision loss.
-- **Collision-Safe Sequence:** New records receive IDs from `record_id_seq`, initialized at `4900000000000000000` (well above Zoho's current ~4.66E18 IDs). `syncSequence(db)` queries the maximum ID across all 90 tables and advances the sequence if imported data exceeds the starting value.
+- **Collision-Safe Sequence:** New records receive IDs from `record_id_seq`, initialized at `4900000000000000000` (well above Zoho's current ~4.66E18 IDs). `syncSequence(db)` queries the maximum ID across all 88 tables and advances the sequence if imported data exceeds the starting value.
 
 ---
 
@@ -91,13 +91,13 @@ Railway supports two networking models:
 Follow these steps to export business data from Zoho Creator and import it into PostgreSQL:
 
 ### Step 1: Pre-Flight Export Verification (Dry Run)
-Verify that all 90 forms and reports are cleanly parsed without making network calls:
+Verify that all 88 forms and reports are cleanly parsed without making network calls:
 ```powershell
 node tools/export-zoho-data.mjs --dry-run
 ```
-- Expected output: Scans all 90 forms.
+- Expected output: Scans all 88 forms.
 - Notes:
-  - 88 forms map to valid list reports.
+  - 86 forms map to valid list reports.
   - `Pick_Up_Request_Form` and `Shipment_Order_Form` report `-- no report: cannot export` (these forms have no reports in Zoho Creator and are not used by Delivery widgets).
   - `Pre_Order_FF` flags `Pre_Order1_Report [FILTERED]` (Zoho report filters out packaged-out records).
 - Dry-run exits with code `0`.
@@ -108,7 +108,7 @@ Set your Zoho environment credentials (or ensure valid `.env` with `ZOHO_CLIENT_
 $env:ZOHO_ENV = "production"
 node tools/export-zoho-data.mjs --out=data/zoho-backup/production-latest
 ```
-- Creates `data/zoho-backup/production-latest/` containing 88 `<Form>.json` files and `manifest.json`.
+- Creates `data/zoho-backup/production-latest/` containing 86 `<Form>.json` files and `manifest.json`.
 - The export script logs progress, skips reportless forms cleanly, and exits with code `0` unless an unhandled API error occurs.
 - **Environment header rule:** Zoho Creator v2.1 answers `404` (code `2930`) when the `environment: production` header is sent. The export tool therefore sends the header only for `development`/`stage`; for `production` it calls the API without it. Do not add the header manually. (Verified by `tests/core/zoho-environment-header.test.js`.)
 
@@ -165,7 +165,7 @@ The record import above does not download file attachments. `tools/migrate-zoho-
 3. After deploy: `railway ssh` into the service, then run `node tools/migrate-zoho-files.mjs --backend=pg` (with `--dry-run` first). `--backend=pg` reads the **live Postgres** directly, so no backup JSON is needed in the container (`data/` is gitignored and never uploaded).
 4. Files download directly into the mounted `/data/uploads` volume, so they persist across redeploys. The run is idempotent: records already pointing at `/uploads/` are skipped, so an interrupted run can simply be resumed.
 
-**Scope.** By default the tool migrates only the **13 Delivery Management forms** (`DEFAULT_FORMS`) — on the 2026-11-14 Production data that is **168 files / 234 records / 167 to update**. Pass `--all` to migrate every form: that is **21,345 files** across all 88 forms (38,845 records) and is a much larger, separate run. Do not confuse the two numbers. The Delivery-only run was completed on 2026-11-14 (168 files / 167 records / 0 errors, deployment `c6379920`); app-wide remains deferred.
+**Scope.** By default the tool migrates only the **13 Delivery Management forms** (`DEFAULT_FORMS`) — on the 2026-11-14 Production data that is **168 files / 234 records / 167 to update**. Pass `--all` to migrate every form: that is **21,345 files** across all 88 forms of that export (38,845 records; counts from the 2026-11-14 Production backup, before the Pack removal) and is a much larger, separate run. Do not confuse the two numbers. The Delivery-only run was completed on 2026-11-14 (168 files / 167 records / 0 errors, deployment `c6379920`); app-wide remains deferred.
 
 **Serving.** `/uploads/*` is **auth-gated**, not public: an unauthenticated request is redirected to `/login` (302). With a valid session the file is served (e.g. `200 image/jpeg`). Attachments therefore appear in a record's **detail view**, not inline in list views. This is expected, not a bug.
 

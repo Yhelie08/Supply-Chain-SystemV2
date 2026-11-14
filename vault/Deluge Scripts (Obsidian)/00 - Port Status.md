@@ -103,3 +103,5 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 ## Workflows
 
 46 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 15 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.
+
+**2026-11-14 (merge `e444d32`):** the Fulfillment engine from `yhelie-update` is now in the app — `server/modules/fulfillment/pipeline.mjs` (package → Gate → Release → Pick → Mark Picked → Pack & QC), `qc-routing.mjs`, `crate-dispatch.mjs`, `exception-recheck.mjs`, and the **Need Approval** stage rule in `workflows.mjs` (Approve Dispatch tab). Pack was merged into Pack & QC; the Pack/Pack_Notifications forms were removed (88 forms now). **Pending:** these engine workflows are not yet registered in `fulfillment/ported.json` (the 46 count above does not include them); the forecast Instant Forecast hooks remain the registered ones.

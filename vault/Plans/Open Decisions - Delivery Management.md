@@ -48,20 +48,13 @@ Tatlong paraan:
 
 ---
 
-## 2. Schedule Requests display (A2)
+## 2. Schedule Requests display (A2) — RESOLVED 2026-11-14: removed for good
 
-**Ano ito:** Ang tab na nagpapakita ng mga request ng customer para magpalit ng schedule. Ngayon, galing ang mga request sa CMS. Pero **wala pang pinto** mula CMS papunta sa bagong app.
+**Desisyon ng owner (2026-11-14):** **Tinanggal nang tuluyan ang Schedule Requests tab.** Hindi na ito babalik — ang bagong process ay **lahat ng galing CMS ay pumapasok sa Service Request**. Ang dating tanong (show read-only o hide habang walang CMS door) ay moot na.
 
-**Ang tanong:** Hanggang wala ang pinto, ano ang gagawin sa tab?
+**Applied sa merge (2026-11-14, `e444d32`):** alisin ang tab sa `pages.json` + `import-widgets.mjs`; 12 admin / 11 user delivery tabs. Ang CMS inbound route (`/api/integrations/cms/*`) ay **kailangan pang i-retarget sa Service Request** bago i-enable ang `CMS_API_KEY` — follow-up na nakalista sa Change Log at sa merge plan.
 
-| Option | Ibig sabihin | Epekto |
-|---|---|---|
-| **Show** | Ipakita ang mga request na nasa database, **read-only**, may banner na "CMS not connected" | Makikita ng staff ang existing requests; hindi lang makakatanggap ng bago |
-| **Hide** | Itago ang tab muna | Mas malinis, pero 12 tabs lang ang UAT at baka isipin ng staff na nawala |
-
-**Recommendation ko:** **Show read-only + banner**. Mas mabuting may makita kaysa magmukhang kulang.
-
-**Sagot:** ______________________
+**Sagot:** Removed — CMS enters Service Request (owner, 2026-11-14).
 
 ---
 
@@ -134,7 +127,7 @@ Ang "contract" ay isang simpleng listahan:
 | # | Tanong | Recommendation | Sagot |
 |---|---|---|---|
 | A1 | CMS/Books: A o B? | **A** | |
-| A2 | Schedule Requests: show o hide? | **Show read-only** | |
+| A2 | Schedule Requests: show o hide? | **Removed for good** (2026-11-14: CMS → Service Request) | |
 | A3 | Site follow-up: port o skip? | **Skip muna** | |
 | A6 | Widgets: ikaw lahat o may UI owner? | **Ikaw: UI + backend** | |
 | A10 | Data contract: sino ang pipirma? | **Core owner + PR rule** | |
