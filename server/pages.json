@@ -338,7 +338,8 @@
         "label": "Policy Settings",
         "widget": "Delivery Management/Policy Settings",
         "entry": "index.html",
-        "hidden": true
+        "hidden": true,
+        "adminOnly": true
       }
     ]
   }

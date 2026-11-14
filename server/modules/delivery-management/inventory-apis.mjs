@@ -17,19 +17,32 @@ const text = (v) => (v == null ? '' : String(v));
 const isBlank = (v) => text(v) === '' || text(v) === 'null';
 
 // Shipment Order custom fields (Inventory).
-const SHIPMENT_FIELDS = {
+export const SHIPMENT_FIELDS = {
   deliveryDate: '2680178000000763374', typeOfDelivery: '2680178000000440145', ceilingMaterial: '2680178000000305854',
   ceilingHeight: '2680178000000305840', siteWiringReady: '2680178000000305866', preparedBy: '2680178000004081025', deliveryTeam: '2680178000004081035',
 };
 // Sales Return custom fields (Inventory).
-const RETURN_FIELDS = { subReason: '2680178000022219065', returnedBy: '2680178000022245013' };
+export const RETURN_FIELDS = { subReason: '2680178000022219065', returnedBy: '2680178000022245013' };
+
+// Delivery Type mapping from DMS Form choices to Zoho Books / Inventory picklist choices
+export const BOOKS_DELIVERY_TYPE_MAP = {
+  'Delivery Only': 'Deliver Only',
+  'With Installation': 'Deliver & Install',
+  'Full-Day Install': 'Deliver & Install',
+  'Multi-Day Install': 'Deliver & Install',
+  'Replacement': 'Replacement',
+  'Site Visit': 'Service',
+  'Pullout': 'Pick Up',
+  'Pick Up': 'Pick Up',
+};
 
 // ---------- create_shipment_order ----------
 export async function create_shipment_order(p, data, ctx) {
   const [appointment] = await data.find('Service_Appointment_Form', (r) => r.ID === text(p.recordId).trim());
   const [pack] = await data.find('Package_Shipments', (r) => r.ID === text(p.packageShipmentId).trim());
   if (!pack) return fail('Package Shipment record not found.');
-  const typeOfDelivery = isBlank(p.typeOfDelivery) ? text(appointment?.Type_of_Delivery) : text(p.typeOfDelivery);
+  const rawType = isBlank(p.typeOfDelivery) ? text(appointment?.Type_of_Delivery) : text(p.typeOfDelivery);
+  const typeOfDelivery = BOOKS_DELIVERY_TYPE_MAP[rawType] || rawType;
   if (!appointment) return fail('Service Appointment record not found.');
   const existing = pack.Shipment_Created === true || pack.Shipment_Created === 'true' ? text(pack.Shipment_Order_No) : '';
   if (!isBlank(existing)) return fail(`Already sent — Shipment Order ${existing} already exists for this delivery.`);
@@ -51,15 +64,15 @@ export async function create_shipment_order(p, data, ctx) {
   if (packageId == null) return fail(`Package '${packageNumber}' not found in Inventory for Sales Order ${salesOrder} — cannot create a Shipment without it.`);
 
   const body = {
-    date: p.shipDate, delivery_method: p.carrier, shipping_charge: p.shippingCharge, send_notification: false, is_delivered: false,
+    date: p.shipDate, delivery_method: text(p.carrier), shipping_charge: text(p.shippingCharge), send_notification: false, is_delivered: false,
     shipmentorder_custom_fields: [
-      { customfield_id: SHIPMENT_FIELDS.deliveryDate, value: p.deliveryDate },
-      { customfield_id: SHIPMENT_FIELDS.typeOfDelivery, value: typeOfDelivery },
-      { customfield_id: SHIPMENT_FIELDS.ceilingMaterial, value: p.ceilingMaterial },
-      { customfield_id: SHIPMENT_FIELDS.ceilingHeight, value: p.ceilingHeight },
-      { customfield_id: SHIPMENT_FIELDS.siteWiringReady, value: p.siteWiringReady },
-      { customfield_id: SHIPMENT_FIELDS.preparedBy, value: p.preparedBy },
-      { customfield_id: SHIPMENT_FIELDS.deliveryTeam, value: p.deliveryTeam },
+      { customfield_id: SHIPMENT_FIELDS.deliveryDate, value: text(p.deliveryDate) },
+      { customfield_id: SHIPMENT_FIELDS.typeOfDelivery, value: text(typeOfDelivery) },
+      { customfield_id: SHIPMENT_FIELDS.ceilingMaterial, value: text(p.ceilingMaterial) },
+      { customfield_id: SHIPMENT_FIELDS.ceilingHeight, value: text(p.ceilingHeight) },
+      { customfield_id: SHIPMENT_FIELDS.siteWiringReady, value: text(p.siteWiringReady) },
+      { customfield_id: SHIPMENT_FIELDS.preparedBy, value: text(p.preparedBy) },
+      { customfield_id: SHIPMENT_FIELDS.deliveryTeam, value: text(p.deliveryTeam) },
     ],
   };
   let created;
@@ -103,24 +116,36 @@ export async function create_sales_return_books(p, data, ctx) {
 
   // Each returned SKU takes the first order line with that SKU that no earlier row has taken.
   let returned = [];
-  try { returned = JSON.parse(text(p.itemsJson) || '{}').items || []; } catch { return fail('The returned items could not be read.'); }
+  try {
+    const parsed = JSON.parse(text(p.itemsJson) || '{}');
+    returned = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.items) ? parsed.items : []);
+  } catch {
+    return fail('The returned items could not be read.');
+  }
   const lineItems = [];
   const unmatched = [];
   const used = new Set();
   for (const row of returned) {
-    const sku = row.SKU;
-    const qty = row.Return_Quantity;
-    if (isBlank(sku) || qty == null || Number(qty) <= 0) continue;
+    const sku = text(row?.SKU).trim();
+    const qty = Number(row?.Return_Quantity);
+    if (isBlank(sku) || !Number.isFinite(qty) || qty <= 0) continue;
     const line = lines.find((l) => l.sku === sku && !used.has(l.line_item_id));
-    if (line) { used.add(line.line_item_id); lineItems.push({ item_id: line.item_id, salesorder_item_id: line.line_item_id, quantity: Number(qty) }); } else unmatched.push(sku);
+    if (line) {
+      used.add(line.line_item_id);
+      lineItems.push({ item_id: line.item_id, salesorder_item_id: line.line_item_id, quantity: qty });
+    } else {
+      unmatched.push(sku);
+    }
   }
   if (lineItems.length === 0) return fail(`No returned item matched a real line on Sales Order ${salesOrderNo}. Unmatched SKUs: [${unmatched.join(', ')}]`);
 
+  const subReasonVal = text(p.subReasonVal);
+  const returnedByVal = text(p.returnedByVal);
   let created;
   try {
     created = await ctx.books.inventory.post('/salesreturns', {
       date: p.dateVal, reason: text(p.reasonVal), line_items: lineItems,
-      custom_fields: [{ customfield_id: RETURN_FIELDS.subReason, value: p.subReasonVal }, { customfield_id: RETURN_FIELDS.returnedBy, value: p.returnedByVal }],
+      custom_fields: [{ customfield_id: RETURN_FIELDS.subReason, value: subReasonVal }, { customfield_id: RETURN_FIELDS.returnedBy, value: returnedByVal }],
     }, { query: { salesorder_id: salesorderId } });
   } catch (e) {
     if (e instanceof BooksError) return { ...fail(`Inventory rejected the create — ${e.message}`), raw: JSON.stringify(e.details ?? null) };

@@ -22,21 +22,66 @@ export const functions = {
 // Once only (a deliberate difference from Zoho, decided by the owner: a double click used to make two appointments). A request
 // that is already confirmed, or already has its appointment, is refused; and calls for the same request are queued (locks.mjs),
 // so two clicks at the same moment cannot both pass the check.
-async function confirmRequest(recId, data) {
+async function confirmRequest(recId, data, ctx = {}) {
   const [rec] = await data.find('DMS_Schedule_Request', (r) => r.ID === recId);
   if (!rec) return fail('DMS Schedule Request not found.');
   const existing = rec.Service_Appointment_Record_ID ?? '';
   if (rec.Status === 'Confirmed' || existing !== '') {
     return fail(`Already confirmed${existing !== '' ? ` — Service Appointment ${existing} was already created` : ''}.`);
   }
-  // Zoho also pulls the shipping address and line items from the Books sales order
-  // (Books_Sales_Order_ID). Books is not connected locally, so those stay blank.
+
+  // Zoho Books enrichment (confirmDmsScheduleRequest.dg lines 41–96):
+  // Pulls customer email, shipping address, contact phone, and SO line items into Item_Details.
+  // If Books is unconfigured or unreachable, safely falls back to 'skipped_books_offline' without failing appointment creation.
+  let addressVal = '';
+  let cityVal = '';
+  let contactVal = '';
+  let emailVal = '';
+  let itemRows = [];
+  let itemPatchStatus = rec.Books_Sales_Order_ID ? 'skipped_books_offline' : 'skipped';
+
+  const booksClient = ctx?.books?.books || ctx?.books;
+  const isConfigured = typeof ctx?.books?.isConfigured === 'function' ? ctx.books.isConfigured() : !!booksClient;
+
+  if (rec.Books_Sales_Order_ID && isConfigured && booksClient && typeof booksClient.get === 'function') {
+    try {
+      const soResp = await booksClient.get(`/salesorders/${rec.Books_Sales_Order_ID}`);
+      const soDetail = soResp?.salesorder;
+      if (soDetail) {
+        emailVal = soDetail.email || '';
+        const shippingAddr = soDetail.shipping_address;
+        if (shippingAddr) {
+          const street1 = shippingAddr.address || '';
+          const street2 = shippingAddr.street2 || '';
+          addressVal = street2 ? `${street1}, ${street2}` : street1;
+          cityVal = shippingAddr.city || '';
+          contactVal = shippingAddr.phone || '';
+        }
+        if (Array.isArray(soDetail.line_items) && soDetail.line_items.length > 0) {
+          itemRows = soDetail.line_items.map((li) => ({
+            Item_Name: li.name || '',
+            SKU: li.sku || '',
+            Quantity: li.quantity,
+          }));
+        }
+        itemPatchStatus = itemRows.length > 0 ? 'included_in_create' : 'skipped';
+      }
+    } catch {
+      // Gracefully decouple: external failure falls back to offline status
+      itemPatchStatus = 'skipped_books_offline';
+    }
+  }
+
   const sa = {
     Sales_Order: rec.Sales_Order_Number,
     Customer_Name: { last_name: rec.Customer_Name },
-    Customer_Address: '', City: '', Contact: '', Email: '',
+    Customer_Address: addressVal,
+    City: cityVal,
+    Contact: contactVal,
+    Email: emailVal,
     Type_of_Delivery: rec.Type_of_Delivery || '',
   };
+  if (itemRows.length > 0) sa.Item_Details = itemRows;
   if (rec.Requested_Date) sa.Requested_Delivery_Date = String(rec.Requested_Date).slice(0, 10);
   if (rec.Requested_Time) sa.Requested_Delivery_Time = String(rec.Requested_Time);
   const newSaId = await data.addRecord('Service_Appointment_Form', sa);
@@ -44,15 +89,15 @@ async function confirmRequest(recId, data) {
   const push = await pushDmsStatusToCms(rec.CMS_Schedule_Request_ID, 'Confirmed');
   return ok('Confirmed — Service Appointment created.', {
     serviceAppointmentId: newSaId, cmsPushStatus: push.status,
-    itemPatchStatus: rec.Books_Sales_Order_ID ? 'skipped_books_offline' : 'skipped', dateFormatError: '',
+    itemPatchStatus, dateFormatError: '',
   });
 }
 
 const implemented = {
-  async confirm_dms_schedule_request({ dmsRecordId }, data) {
+  async confirm_dms_schedule_request({ dmsRecordId }, data, ctx = {}) {
     const recId = String(dmsRecordId || '').trim();
     if (!recId) return fail('dmsRecordId is required.');
-    return withLock(`confirm:${recId}`, () => confirmRequest(recId, data));
+    return withLock(`confirm:${recId}`, () => confirmRequest(recId, data, ctx));
   },
 
   // functions/declineDmsScheduleRequest.dg

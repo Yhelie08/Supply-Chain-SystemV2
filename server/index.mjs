@@ -10,6 +10,8 @@ import path from 'node:path';
 import * as store from './db.mjs';
 import * as auth from './auth.mjs';
 import { invokeCustomApi } from './custom-apis.mjs';
+import { createAccess } from './access.mjs';
+import { handleCmsIntegration } from './integrations/cms.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const WIDGETS = path.join(ROOT, 'modules'); // one folder per section, see tools/import-widgets.mjs
@@ -23,6 +25,8 @@ const SECTIONS = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'page
   ...s,
   tabs: s.tabs.map((t) => ({ ...t, src: `/w/${t.widget.split('/').map(encodeURIComponent).join('/')}/${encodeURIComponent(t.entry)}` })),
 }));
+
+const access = createAccess(SECTIONS, WIDGETS); // tabs flagged adminOnly in pages.json (Policy Settings) are for admins
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.mp4': 'video/mp4', '.pdf': 'application/pdf' };
 const SECURITY_HEADERS = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin', 'Content-Security-Policy': "frame-ancestors 'self'" };
@@ -103,11 +107,13 @@ const DATA_SOURCE = BACKEND === 'pg' ? 'Postgres' : 'Local SQLite';
 
 // 'pg' keeps the business data, the users and the sessions in Postgres (DATABASE_URL).
 let api;
+let activeStore;
 let tableCounts = () => store.tableCounts();
 if (BACKEND === 'pg') {
   const { startPg } = await import('./pg/api.mjs');
   const pg = await startPg(invokeCustomApi);
   api = pg.api;
+  activeStore = pg.store;
   tableCounts = () => pg.store.tableCounts();
   // The scheduled workflows the modules list (off unless SCHEDULES=on): see server/schedules.mjs.
   const { startSchedules } = await import('./schedules.mjs');
@@ -115,6 +121,7 @@ if (BACKEND === 'pg') {
   startSchedules({ pool: pg.pool, store: pg.store, schedules: modules.flatMap((m) => m.schedules || []) });
 } else {
   api = localApi;
+  activeStore = store;
 }
 
 // ---------- sign-in helpers ----------
@@ -153,7 +160,7 @@ async function accountApi(req, res, p, me) {
     if (!id && req.method === 'POST') {
       const b = await readJson(req);
       const password = auth.newPassword();
-      const user = await auth.createUser({ email: b.email, name: b.name, role: b.role, password, mustChange: true });
+      const user = await auth.createUser({ email: b.email, name: b.name, role: b.role, team_name: b.team_name, password, mustChange: true });
       return send(res, 200, { user, password });
     }
     if (id && reset && req.method === 'POST') {
@@ -187,6 +194,11 @@ async function handle(req, res) {
   // ---------- public: health check, sign-in page, theme files ----------
   if (p === '/healthz') return send(res, 200, { ok: true });
   if (p.startsWith('/theme/')) { const f = inside(path.join(PUBLIC, 'theme'), p.slice(7)); return f ? serveFile(res, f) : send(res, 404, 'Not found', 'text/plain'); }
+
+  // ---------- external integrations (authenticate via API key, bypass session cookie) ----------
+  if (p.startsWith('/api/integrations/cms/')) {
+    return handleCmsIntegration(req, res, p, activeStore, readJson, send);
+  }
   const token = cookies(req)[auth.COOKIE];
   const me = await auth.userForToken(token);
   if (p === '/login' && req.method === 'POST') {
@@ -218,6 +230,8 @@ async function handle(req, res) {
 
   if (req.method === 'POST' && p === '/api/uploadFile') {
     const { report, id, field, name } = Object.fromEntries(url.searchParams);
+    const denied = access.checkUpload(me, report);
+    if (denied) return send(res, 200, denied);
     const fileName = `${Date.now()}_${String(name).replace(/[^\w.-]+/g, '_')}`;
     fs.writeFileSync(path.join(UPLOADS, fileName), await readBody(req));
     const fileUrl = `/uploads/${fileName}`;
@@ -228,6 +242,8 @@ async function handle(req, res) {
     const b = await readJson(req);
     try {
       const rec = (await api.getRecordById({ report_name: b.report_name, id: b.id })).data;
+      const deniedRec = access.checkRecordAccess(me, b.report_name, rec);
+      if (deniedRec) return send(res, 403, deniedRec);
       const v = String(rec[b.field_name] || '');
       const f = v.startsWith('/uploads/') ? inside(UPLOADS, v.slice(9)) : null;
       if (!f || !fs.existsSync(f)) return send(res, 404, { code: 9280, message: 'File not found' });
@@ -238,24 +254,68 @@ async function handle(req, res) {
     const op = api[p.slice(5)];
     if (!op) return send(res, 404, { code: 404, message: `Unknown operation ${p}` });
     try {
-      const result = await op(await readJson(req), user);
+      const body = await readJson(req);
+      const denied = access.checkCall(me, p.slice(5), body);
+      if (denied) return send(res, 200, denied);
+
+      const opName = p.slice(5);
+
+      if (opName === 'getRecords' && body.report_name) {
+        body.criteria = access.scopeCriteria(me, body.report_name, body.criteria);
+      } else if (opName === 'updateRecords' && body.report_name) {
+        const crit = body.payload?.criteria ?? body.criteria;
+        const scoped = access.scopeCriteria(me, body.report_name, crit);
+        if (body.payload && 'criteria' in body.payload) body.payload.criteria = scoped;
+        else body.criteria = scoped;
+
+        if (me.team_name) {
+          const data = body.payload?.data ?? body.data ?? {};
+          if ((data.Installer && data.Installer !== me.team_name) || (data.Assigned_to_Installer && data.Assigned_to_Installer !== me.team_name)) {
+            return send(res, 200, { code: 403, message: 'Cannot assign records to other teams.' });
+          }
+        }
+      } else if (opName === 'updateRecordById' || opName === 'deleteRecordById') {
+        if (me.team_name && body.report_name && body.id) {
+          try {
+            const existing = await activeStore.getRecordById(body.report_name, body.id);
+            const record = existing?.data ?? existing;
+            const deniedRec = access.checkRecordAccess(me, body.report_name, record);
+            if (deniedRec) return send(res, 200, deniedRec);
+          } catch (e) {
+            // Let op handle not found
+          }
+          if (opName === 'updateRecordById') {
+            const data = body.payload?.data ?? body.data ?? {};
+            if ((data.Installer && data.Installer !== me.team_name) || (data.Assigned_to_Installer && data.Assigned_to_Installer !== me.team_name)) {
+              return send(res, 200, { code: 403, message: 'Cannot assign records to other teams.' });
+            }
+          }
+        }
+      }
+
+      const result = await op(body, user);
+      if (opName === 'getRecordById' && me.team_name && body.report_name && result?.data) {
+        const deniedRec = access.checkRecordAccess(me, body.report_name, result.data);
+        if (deniedRec) return send(res, 404, { code: 9280, message: 'No records found for the given criteria.' });
+      }
       return send(res, 200, result);
     } catch (e) {
       if (!(e instanceof store.ZohoError)) console.error(`[${p}]`, e);
       return send(res, 200, { code: e.code || 500, message: e.message });
     }
   }
-  if (p === '/api/pages') return send(res, 200, SECTIONS);
+  if (p === '/api/pages') return send(res, 200, access.visibleSections(me));
   if (p === '/api/tables') return send(res, 200, await tableCounts());
   if (p.startsWith('/uploads/')) { const f = inside(UPLOADS, p.slice(9)); return f ? serveFile(res, f) : send(res, 404, 'Not found', 'text/plain'); }
   if (p.startsWith('/w/')) {
     // /w/<Section>/<Tab>/<file>  ->  modules/<Section>/<Tab>/app/<file>
     const f = inside(WIDGETS, p.slice(3).replace(/^([^/]+\/[^/]+)\//, '$1/app/'));
     if (!f) return send(res, 404, 'Not found', 'text/plain');
+    if (!access.canServeFile(me, f)) return redirect(res, '/'); // admin-only tab (Policy Settings), checked on the resolved path
     // Swap Zoho's SDK for the local stand-in (told who is signed in) and add the theme layer.
     // Everything else in the widget is untouched.
     return serveFile(res, f, f.endsWith('.html') ? (html) => {
-      const who = `<script>window.HC_USER=${jsonForScript({ email: me.email, name: me.name })}</script>`;
+      const who = `<script>window.HC_USER=${jsonForScript({ email: me.email, name: me.name, team_name: me.team_name || null })}</script>`;
       html = html.replace(/<script[^>]*src="[^"]*widgetsdk[^"]*"[^>]*><\/script>/i, `${who}<script src="/zoho-shim.js"></script>`);
       html = plainWords(html);
       const section = SECTIONS.find((s) => s.label === p.slice(3).split('/')[0]);

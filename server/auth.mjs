@@ -27,7 +27,17 @@ function verifyPassword(password, stored) {
 export const newPassword = () => crypto.randomBytes(12).toString('base64url');
 export const passwordProblem = (p) => (String(p || '').length < 10 ? 'Use at least 10 characters.' : null);
 
-const publicUser = (u) => u && { id: u.id, email: u.email, name: u.name, role: u.role, active: !!u.active, mustChangePassword: !!u.must_change_password, createdAt: u.created_at, lastLogin: u.last_login };
+const publicUser = (u) => u && {
+  id: u.id,
+  email: u.email,
+  name: u.name,
+  role: u.role,
+  team_name: u.team_name ?? null,
+  active: !!u.active,
+  mustChangePassword: !!u.must_change_password,
+  createdAt: u.created_at,
+  lastLogin: u.last_login,
+};
 
 // ---------- storage: local (SQLite, sync) or pg (Postgres, async) behind one async-shaped interface ----------
 let store;
@@ -41,10 +51,14 @@ if (BACKEND === 'pg') {
       name TEXT NOT NULL DEFAULT '',
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+      team_name TEXT DEFAULT NULL,
       active INTEGER NOT NULL DEFAULT 1,
       must_change_password INTEGER NOT NULL DEFAULT 1,
       created_at TEXT, last_login TEXT
     );
+  `);
+  await pool.query('ALTER TABLE _users ADD COLUMN IF NOT EXISTS team_name TEXT DEFAULT NULL');
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS _sessions (
       token_hash TEXT PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES _users(id) ON DELETE CASCADE,
@@ -66,6 +80,7 @@ if (BACKEND === 'pg') {
       name TEXT NOT NULL DEFAULT '',
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+      team_name TEXT DEFAULT NULL,
       active INTEGER NOT NULL DEFAULT 1,
       must_change_password INTEGER NOT NULL DEFAULT 1,
       created_at TEXT, last_login TEXT
@@ -76,6 +91,10 @@ if (BACKEND === 'pg') {
       expires_at INTEGER NOT NULL
     );
   `);
+  const userCols = new Set(db.prepare('PRAGMA table_info(_users)').all().map((c) => c.name));
+  if (!userCols.has('team_name')) {
+    db.exec('ALTER TABLE _users ADD COLUMN team_name TEXT DEFAULT NULL');
+  }
   store = {
     get: async (sql, params = []) => db.prepare(sql).get(...params),
     all: async (sql, params = []) => db.prepare(sql).all(...params),
@@ -85,23 +104,26 @@ if (BACKEND === 'pg') {
 // SQLite uses `?` placeholders; Postgres uses `$1, $2, …`.
 function toPg(sql) { let i = 0; return sql.replace(/\?/g, () => `$${++i}`); }
 
-export async function createUser({ email, name = '', role = 'user', password, mustChange = true }) {
+export async function createUser({ email, name = '', role = 'user', team_name = null, teamName, password, mustChange = true }) {
   email = normEmail(email);
   if (!isEmail(email)) throw new Error('Enter a valid email or username (3-32 letters, digits, . _ -).');
   if (await store.get('SELECT 1 FROM _users WHERE email = ?', [email])) throw new Error(`${email} already has an account.`);
-  const r = await store.run('INSERT INTO _users (email, name, password_hash, role, must_change_password, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    [email, String(name).trim(), hashPassword(password), role === 'admin' ? 'admin' : 'user', mustChange ? 1 : 0, zohoNow()]);
+  const team = (team_name ?? teamName) ? String(team_name ?? teamName).trim() : null;
+  const r = await store.run('INSERT INTO _users (email, name, password_hash, role, team_name, must_change_password, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [email, String(name).trim(), hashPassword(password), role === 'admin' ? 'admin' : 'user', team, mustChange ? 1 : 0, zohoNow()]);
   return publicUser(await store.get('SELECT * FROM _users WHERE id = ?', [r.lastInsertRowid]));
 }
 export const listUsers = async () => (await store.all('SELECT * FROM _users ORDER BY email')).map(publicUser);
 export const getUser = async (id) => publicUser(await store.get('SELECT * FROM _users WHERE id = ?', [Number(id)]));
 
-export async function updateUser(id, { name, role, active }) {
+export async function updateUser(id, { name, role, team_name, teamName, active }) {
   const u = await store.get('SELECT * FROM _users WHERE id = ?', [Number(id)]);
   if (!u) throw new Error('User not found.');
-  const next = { name: name ?? u.name, role: role ?? u.role, active: active === undefined ? u.active : active ? 1 : 0 };
+  const rawTeam = team_name !== undefined ? team_name : teamName;
+  const nextTeam = rawTeam !== undefined ? (rawTeam ? String(rawTeam).trim() : null) : (u.team_name ?? null);
+  const next = { name: name ?? u.name, role: role ?? u.role, team_name: nextTeam, active: active === undefined ? u.active : active ? 1 : 0 };
   if (u.role === 'admin' && (next.role !== 'admin' || !next.active) && (await adminCount()) <= 1) throw new Error('Keep at least one active admin.');
-  await store.run('UPDATE _users SET name = ?, role = ?, active = ? WHERE id = ?', [String(next.name).trim(), next.role === 'admin' ? 'admin' : 'user', next.active, u.id]);
+  await store.run('UPDATE _users SET name = ?, role = ?, team_name = ?, active = ? WHERE id = ?', [String(next.name).trim(), next.role === 'admin' ? 'admin' : 'user', next.team_name, next.active, u.id]);
   if (!next.active) await store.run('DELETE FROM _sessions WHERE user_id = ?', [u.id]);
   return getUser(u.id);
 }
