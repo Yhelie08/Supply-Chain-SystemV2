@@ -10,7 +10,11 @@
 /src/
 /tests/
 /ui-tests/
-/tools/
+# Deploy only the files-migration tool and its Zoho auth (Step 5B), not all of tools/.
+# /tools/* (hindi /tools/) para pwedeng i-re-include ng negation ang specific children.
+/tools/*
+!/tools/migrate-zoho-files.mjs
+!/tools/zoho/
 /index.html
 /vite.config.js
 /dashboard-live.png

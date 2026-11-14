@@ -4,7 +4,8 @@ dns.setDefaultResultOrder('ipv4first');
 import fs from 'node:fs';
 import path from 'node:path';
 
-const CREDENTIALS_FILE = path.resolve(import.meta.dirname, '..', '..', 'server', 'zoho-credentials.json');
+// ZOHO_CREDENTIALS_FILE lets a test use its own file; the real one is never touched by a test that sets it.
+const CREDENTIALS_FILE = process.env.ZOHO_CREDENTIALS_FILE || path.resolve(import.meta.dirname, '..', '..', 'server', 'zoho-credentials.json');
 
 // Configuration from environment or credentials file
 const OWNER = process.env.ZOHO_OWNER || 'homecartel';
@@ -15,8 +16,10 @@ const ACCOUNTS_URL = process.env.ZOHO_ACCOUNTS_URL || 'https://accounts.zoho.com
 
 let cachedToken = null;
 let tokenExpiresAt = 0;
+let credsFromFile = false; // true only when the credentials were read from CREDENTIALS_FILE (see the save below)
 
 function loadCredentials() {
+  credsFromFile = false;
   if (process.env.ZOHO_CLIENT_ID && process.env.ZOHO_CLIENT_SECRET && process.env.ZOHO_REFRESH_TOKEN) {
     return {
       client_id: process.env.ZOHO_CLIENT_ID,
@@ -28,7 +31,9 @@ function loadCredentials() {
   }
   if (fs.existsSync(CREDENTIALS_FILE)) {
     try {
-      return JSON.parse(fs.readFileSync(CREDENTIALS_FILE, 'utf8'));
+      const fromFile = JSON.parse(fs.readFileSync(CREDENTIALS_FILE, 'utf8'));
+      credsFromFile = true;
+      return fromFile;
     } catch (e) {
       console.error('[Zoho Auth] Failed to read credentials file:', e);
     }
@@ -65,8 +70,10 @@ export async function getAccessToken() {
   cachedToken = data.access_token;
   tokenExpiresAt = now + ((data.expires_in || 3600) * 1000);
 
-  // Persist updated access_token to file if file exists
-  if (fs.existsSync(CREDENTIALS_FILE)) {
+  // Persist the new access_token, but only into the file the credentials came from. When they came from the environment
+  // (ZOHO_CLIENT_ID/SECRET/REFRESH_TOKEN) the file must stay as it is: writing the env values into it replaced the real
+  // credentials with test values on 2026-11-14.
+  if (credsFromFile && fs.existsSync(CREDENTIALS_FILE)) {
     try {
       const updated = { ...creds, access_token: cachedToken, updated_at: new Date().toISOString() };
       fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(updated, null, 2));

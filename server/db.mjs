@@ -104,7 +104,8 @@ export function getRecords(reportName, { criteria, page = 1, pageSize, max_recor
   let reportTest = () => true;
   try { reportTest = compileCriteria(reportCriteria, { user }); } catch (e) { console.warn(`[report ${reportName}] criteria ignored: ${e.message}`); }
   const test = compileCriteria(criteria, { user });
-  const all = db.prepare(`SELECT * FROM ${q(form)} ORDER BY ID`).all().map((r) => toRecord(form, r)).filter((r) => reportTest(r) && test(r));
+  // Newest first, like a Zoho report (see server/pg/store.mjs); `find` below stays oldest first on purpose.
+  const all = db.prepare(`SELECT * FROM ${q(form)} ORDER BY ID DESC`).all().map((r) => toRecord(form, r)).filter((r) => reportTest(r) && test(r));
   const size = Math.min(Number(pageSize || max_records || 200), 1000);
   return all.slice((Number(page) - 1) * size, Number(page) * size);
 }

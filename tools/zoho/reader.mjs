@@ -7,9 +7,14 @@ import { cachedFetch } from './limits.mjs';
 async function get(path, headers = {}, retried = false) {
   const token = await getAccessToken();
   const config = getConfig();
+  // Zoho v2.1 expects the environment header in development/stage, but rejects it in
+  // production (404, code 2930). Send it only there; production calls go without it.
+  const requestHeaders = { Authorization: `Zoho-oauthtoken ${token}`, Accept: 'application/json' };
+  if (config.env === 'development' || config.env === 'stage') requestHeaders.environment = config.env;
+  Object.assign(requestHeaders, headers);
   const res = await fetch(`${config.baseUrl}${path}`, {
     method: 'GET',
-    headers: { Authorization: `Zoho-oauthtoken ${token}`, environment: config.env, Accept: 'application/json', ...headers },
+    headers: requestHeaders,
   });
 
   const text = await res.text();

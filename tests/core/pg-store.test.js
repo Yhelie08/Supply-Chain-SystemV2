@@ -66,8 +66,9 @@ test('lookups are resolved in one query per lookup form, not one per row', async
   queries.length = 0;
   const rows = await store.getRecords('Projects', { criteria: 'Project_Name.startsWith("P")' });
   assert.equal(rows.length, 6);
-  assert.deepEqual(rows[0].Customer, { ID: c2, display_value: 'Beta', zc_display_value: 'Beta' });
-  assert.equal(rows[1].Customer.display_value, 'Alpha');
+  // newest first: P5 (odd, so c1 / Alpha) comes before P4 (even, so c2 / Beta)
+  assert.deepEqual(rows[0].Customer, { ID: c1, display_value: 'Alpha', zc_display_value: 'Alpha' });
+  assert.equal(rows[1].Customer.display_value, 'Beta');
   assert.equal(queries.length, 2, 'one query for the page, one for all customers');
 });
 
@@ -113,7 +114,21 @@ test('paging: page and pageSize', async () => {
   const p2 = await store.getRecords('Projects', { page: 2, pageSize: 3 });
   assert.equal(p1.length, 3);
   assert.equal(p2.length, 1);
-  assert.ok(BigInt(p1[0].ID) < BigInt(p2[0].ID));
+  assert.ok(BigInt(p1[0].ID) > BigInt(p2[0].ID), 'page 1 holds the newest records');
+});
+
+test('order: reports come back newest first (like Zoho), so a new record is on page 1; find stays oldest first', async () => {
+  const newest = await store.addRecord('Projects', { Project_Name: 'ZZ newest', Status: 'Open' });
+  const page1 = await store.getRecords('Projects', { page: 1, pageSize: 2 });
+  assert.equal(page1[0].ID, String(newest), 'the record just added is the first one of page 1');
+  const ids = page1.map((r) => BigInt(r.ID));
+  assert.ok(ids[0] > ids[1], 'descending by ID');
+  // the slow path (a criteria the SQL translator leaves to JavaScript) gives the same order
+  const slow = await store.getRecords('Projects', { criteria: 'Group_Discount_Pct > 10 || Project_Name == "ZZ newest"' });
+  assert.equal(slow[0].ID, String(newest));
+  // Deluge loops keep "the record with the smaller id first"
+  const found = await store.find('Projects');
+  assert.ok(BigInt(found[0].ID) < BigInt(found.at(-1).ID), 'find is oldest first');
 });
 
 test('lookup display values follow the format Zoho defines for each form', async () => {

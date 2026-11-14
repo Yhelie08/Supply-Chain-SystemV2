@@ -18,3 +18,5 @@ export function createPool(url = process.env.DATABASE_URL) {
   pools.set(url, pool);
   return pool;
 }
+
+export const getPool = createPool;

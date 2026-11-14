@@ -137,7 +137,9 @@ export function createStore(db) {
       }
       if (translated) {
         const { rows } = await db.query(
-          `SELECT ${selectList(form)} FROM ${q(form)} t ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY t."ID" LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+          // Newest first, like a Zoho report (checked on Zoho Development: Service_Request comes back with the highest ID first).
+          // The widgets read one page of 200, so ascending order would hide every new record once a form has more than 200 rows.
+          `SELECT ${selectList(form)} FROM ${q(form)} t ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY t."ID" DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
           [...params, size, offset],
         );
         return records(form, rows);
@@ -147,7 +149,7 @@ export function createStore(db) {
       let reportTest = () => true;
       try { reportTest = compileCriteria(reportCriteria, { user }); } catch (e) { console.warn(`[report ${reportName}] criteria ignored: ${e.message}`); }
       const test = compileCriteria(criteria, { user });
-      const { rows } = await db.query(`SELECT ${selectList(form)} FROM ${q(form)} t ORDER BY t."ID"`);
+      const { rows } = await db.query(`SELECT ${selectList(form)} FROM ${q(form)} t ORDER BY t."ID" DESC`);
       const all = (await records(form, rows)).filter((r) => reportTest(r) && test(r));
       return all.slice(offset, offset + size);
     },
