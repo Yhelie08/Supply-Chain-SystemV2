@@ -52,5 +52,77 @@
     "notNeeded": {
       "Notify_on_Purchase_Reques1": "inactive in Zoho"
     }
+  },
+  "Purchase_Order": {
+    "ported": [
+      "PO_Generate_Number",
+      "PO_Compute_Totals",
+      "PO_Detect_Mixed",
+      "PO_Status_Timestamps"
+    ],
+    "nativeFormOnly": [
+      "PO_Lock_UI_Fields"
+    ],
+    "notNeeded": {}
+  },
+  "Shipments": {
+    "ported": [
+      "Shipment_Generate_Number",
+      "Shipment_Autofill_From_PO1",
+      "Shipment_Track_Previous_S",
+      "Shipment_Populate_Receivi",
+      "Shipment_Edited_Sync_Rece",
+      "Shipment_Edited_Sync_Rece1",
+      "Shipments_Sync_Shipment_M",
+      "Shipment_Status_Back_Sync"
+    ],
+    "nativeFormOnly": [
+      "Shipment_Autofill_From_PO2",
+      "Shipment_Refresh_PR_Detai",
+      "Shipment_Lock_PO_Fields"
+    ],
+    "notNeeded": {}
+  },
+  "Receiving": {
+    "ported": [
+      "Receiving_Compute_Totals",
+      "Receiving_Set_Line_Result",
+      "Receiving_Validate_Qty",
+      "Receiving_Auto_Exception",
+      "Damage_Missing_Details",
+      "Receiving_Set_Receive_Sta",
+      "Receiving_Sync_Product_Co",
+      "Receiving_Sync_Shipment_M",
+      "Receiving_Sync_Shipment_A",
+      "Notify_on_Receiving_Quant"
+    ],
+    "nativeFormOnly": [
+      "Receiving_Populate_From_S"
+    ],
+    "notNeeded": {
+      "Notify_on_Receiving_Compl": "inactive in Zoho"
+    }
+  },
+  "Replacement_Request": {
+    "ported": [
+      "RR_Generate_Number",
+      "RR_Set_Defaults",
+      "RR_Status_Timestamps",
+      "RR_Validate_Status"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  },
+  "Exceptions": {
+    "ported": [
+      "EXC_Generate_Number",
+      "EXC_Set_Defaults",
+      "EXC_Validate_Status",
+      "EXC_Status_Timestamps"
+    ],
+    "notNeeded": {
+      "Notify_on_Created_Excepti": "inactive in Zoho"
+    },
+    "nativeFormOnly": []
   }
 }

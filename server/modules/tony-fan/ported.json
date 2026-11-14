@@ -1,3 +1,13 @@
 {
-  "_about": "Which Zoho form workflows of this module (by name in zoho-export/parsed/workflows.json) are ported, and which need no port. Read by tools/build-module-readmes.mjs and tools/build-port-checklist.mjs; tests/core/workflow-ports.test.js checks every name exists."
+  "_about": "Which Zoho form workflows of this module (by name in zoho-export/parsed/workflows.json) are ported, and which need no port. Read by tools/build-module-readmes.mjs and tools/build-port-checklist.mjs; tests/core/workflow-ports.test.js checks every name exists.",
+  "Tony_Fan_Replacement_Request": {
+    "ported": [
+      "RR_Generate_Number2",
+      "RR_Set_Defaults2",
+      "RR_Status_Timestamps2",
+      "RR_Validate_Status2"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  }
 }
