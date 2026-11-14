@@ -11,6 +11,12 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-14
 
+**Fulfillment lag fix (Sales Order Report): tinanggal ang ~1,000 redundant requests + debounce search**
+- Owner report: nagla-lag ang live Fulfillment tab pagkatapos ng deploy. Sanhi: ang Zoho-era "hydration" (isa-isang `getRecordById` bawat SO, 6 concurrent) ay redundant sa Postgres backend — kompleto na ang `Item_Details1` sa bulk `getRecords`. Sa live data (~1,762 SO, 1,000 ang cap ng widget) ay ~1,000 round-trips PH→US + pangalawang full-table render. Dagdag: buong table (1,000+ rows) ang re-render sa bawat search keystroke.
+- Fix (`2ab38e5`, widget lang — walang engine/server change): skip ang hydration kapag may `Item`/`SKU` keys na ang unang item row; re-render lang kapag may aktwal na nabago; 200ms debounce ang search. Ang summarized Zoho rows ay magha-hydrate pa rin kung sakaling ibalik sa Creator.
+- Verified: 614/614 node + 124/124 UI; local browser check (temp QA admin + 3 SO, binura agad after): kompleto ang Item/SKU/Qty sa unang paint, **1 `getRecords` / 0 `getRecordById`** sa network log, tama ang debounce filtering, walang console errors.
+- Pending: **redeploy — hiwalay na go ng owner**. Deferred: pagination/"show more" (mas malaking UX change). Ang parehong hydration pattern ay nasa QC Checklist + Order Aggregation widgets din — candidates kung may lag report doon. Pansamantalang ginhawa sa skin: `hc-skin=classic` sa localStorage.
+
 **Merged ang yhelie-update + jv-update, na-push sa main, at na-deploy sa Railway (2026-11-14)**
 - Save point bago mag-merge (3 commits): `e184e60` rehearsal, `9532b32` access/CMS, `d9bf006` docs. Baseline: 570/570 tests green.
 - **Merge 1 — `origin/yhelie-update` (`e444d32`):** Fulfillment engine ni Yhel (pipeline, qc-routing, crate-dispatch, exception-recheck, **Need Approval** stage, **Pack merged into Pack & QC**). 7 conflicts, resolved keeping both intents: ang forecast wiring natin (hooks, schedules, portedFunctions) ay buo pa rin kasama ng engine niya; `auth.mjs` (RETURNING-id guard + team_name + session cache); `pg/store.mjs` (ID DESC + criteria support). Itinama ang stale doc advice ni Yhel: **huwag mag-seed sa shared Postgres** (Production data na ang laman).
