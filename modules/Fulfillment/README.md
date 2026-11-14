@@ -14,7 +14,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | To Ship | `Order_Aggregation2` | [To Ship](To%20Ship/app/index.html) | `Fulfillment/Order Aggregation/Widget/OrderAggregation.zip` |
 | Exception Control | `Exception_Control2` | [Exception Control](Exception%20Control/app/index.html) | `Fulfillment/Exception Control/Widget/ExceptionControl.zip` |
 | Transfer Item | `Transfer_Item` | [Transfer Item](Transfer%20Item/app/index.html) | `Fulfillment/Transfer Item/Widget/TransferWarehouse.zip` |
-| Pack (opened from other tabs) | `Pack1` | [Pack](Pack/app/index.html) | `Fulfillment/Pack/Widget/Pack.zip` |
 | Kanban (opened from other tabs) | `KANBAN` | [Kanban](Kanban/app/index.html) | `Fulfillment/KANBAN/Widget/FulfillmentKanban.zip` |
 
 ## Custom APIs the tabs call
@@ -42,8 +41,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Items | 12 | [Items.json](../../zoho-export/parsed/forms/Items.json) |
 | OrderAgg Notifications | 9 | [OrderAgg_Notifications.json](../../zoho-export/parsed/forms/OrderAgg_Notifications.json) |
 | Order Aggregation | 25 | [Order_Aggregation1.json](../../zoho-export/parsed/forms/Order_Aggregation1.json) |
-| Pack | 22 | [Pack.json](../../zoho-export/parsed/forms/Pack.json) |
-| Pack Notifications | 9 | [Pack_Notifications.json](../../zoho-export/parsed/forms/Pack_Notifications.json) |
 | Package Shipments | 8 | [Package_Shipments.json](../../zoho-export/parsed/forms/Package_Shipments.json) |
 | Pick | 26 | [Pick1.json](../../zoho-export/parsed/forms/Pick1.json) |
 | Pick Notifications | 9 | [Pick_Notifications.json](../../zoho-export/parsed/forms/Pick_Notifications.json) |
@@ -81,8 +78,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 - `Fenteng_Lighting_Replacement_Request_Report` (form `Fenteng_Lighting_Replacement_Request`)
 - `OrderAgg_Notifications_Report` (form `OrderAgg_Notifications`)
 - `Order_Aggregation1_Report` (form `Order_Aggregation1`)
-- `Pack_Notifications_Report` (form `Pack_Notifications`)
-- `Pack_Report` (form `Pack`)
 - `Pick1_Report` (form `Pick1`)
 - `Pick_Notifications_Report` (form `Pick_Notifications`)
 - `PreOrder_Notifications_Report` (form `PreOrder_Notifications`)

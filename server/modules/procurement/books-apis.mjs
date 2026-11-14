@@ -109,3 +109,43 @@ export async function add_item_by_id(p, data, ctx) {
     Unit: item.Unit, Description: item.Description, category: item.category, Warehouse: item.Warehouse, Bin_location: item.Bin_location,
   });
 }
+
+// ---------- fetch_customer_from_books ----------
+// Called when a customer is picked in the New Inquiry / Detail Edit form (not bulk — avoids
+// burning Books API quota on every row of a 10k+ customer list). Looks up the live Books contact
+// by the local Customer record's ID1 (the Books contact_id, same linking convention create_books_contact
+// writes), refreshes address/email/phone/Design fields from Books, and picks up Customer Type from
+// the custom field labeled "Customer Type" if Books has it set (same field create_books_contact writes to).
+const buildAddr = (a) => ({
+  address_line_1: text(a?.address), address_line_2: text(a?.street2),
+  district_city: text(a?.city), state_province: text(a?.state), postal_Code: text(a?.zip), country: text(a?.country),
+});
+export async function fetch_customer_from_books(p, data, ctx) {
+  if (!ctx.books) return fail('Zoho Books is not available in this backend.');
+  if (!p.customerId) return fail('No customerId provided.');
+  const local = await data.getRecordById('Customer', p.customerId).catch(() => null);
+  const contactId = text(local?.ID1).trim();
+  if (!contactId) return ok('No linked Books contact for this customer (ID1 is blank).', { linked: false, customerId: text(p.customerId) });
+
+  let contact;
+  try { contact = (await ctx.books.books.get(`/contacts/${encodeURIComponent(contactId)}`)).contact; } catch (e) {
+    if (e instanceof BooksError && e.code === 'not_configured') return fail(e.message);
+    return ok(`Books contact ${contactId} not found — ${e.message}`, { linked: false, customerId: text(p.customerId) });
+  }
+  if (!contact) return ok(`Books contact ${contactId} not found.`, { linked: false, customerId: text(p.customerId) });
+
+  const typeField = (contact.custom_fields || []).find((f) => text(f.label).trim().toLowerCase() === 'customer type');
+  const booksType = typeField ? { 'End User': 'Enduser', 'Design Partner': 'Designer' }[text(typeField.value)] ?? text(typeField.value) : '';
+
+  const update = {
+    Email: text(contact.email), Phone_Number: text(contact.phone), Mobile: text(contact.mobile),
+    Billing_Address: buildAddr(contact.billing_address), Shipping_Address: buildAddr(contact.shipping_address),
+  };
+  if (booksType) update.Customer_Type = booksType;
+  try { await data.updateRecord('Customer', p.customerId, update, { byForm: true }); } catch { /* best effort — the pick still returns fresh values below */ }
+
+  return ok(`Refreshed from Books contact ${contactId}.`, {
+    linked: true, customerId: text(p.customerId), Email: update.Email, Phone_Number: update.Phone_Number, Mobile: update.Mobile,
+    Customer_Type: booksType, Billing_Address: update.Billing_Address, Shipping_Address: update.Shipping_Address,
+  });
+}

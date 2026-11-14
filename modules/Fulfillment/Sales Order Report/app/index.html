@@ -75,22 +75,22 @@
 
   <div id="listView" class="w-full px-4 sm:px-6 py-5 flex flex-col min-h-screen">
 
-    <!-- Sticky header — title/live badge + stat cards stay pinned to the top
-         of the viewport while the report card/table below scrolls underneath.
-         Matches the page's own bg (bg-slate-100) so scrolled content doesn't
-         show through, and sits above the table via z-20. -->
-    <div id="stickyHeader" class="shrink-0 sticky top-0 z-20 bg-slate-100 pb-5 -mt-5 pt-5">
+    <!-- Header — title/live badge + stat cards. 2026-11-14 (user): NOT pinned any more (it was sticky, and with the glass theme the rows scrolled
+         visibly underneath it and overlapped the title and cards). It scrolls away with the page like everything else. -->
+    <div id="stickyHeader" class="shrink-0 pb-5 -mt-5 pt-5">
       <!-- Top header — single line: title + subtitle sit side by side
            (items-baseline), badges pinned to the right, all in one row. -->
       <header id="topHeader" class="flex flex-nowrap items-baseline justify-between gap-3 mb-5">
         <div class="flex items-baseline gap-2 min-w-0">
           <h1 class="text-xl font-bold text-slate-900 leading-tight shrink-0">Sales Order Report</h1>
-          <p class="text-xs text-slate-500 truncate">
+          <!-- subtitle + Live indicator hidden for now:
+<p class="text-xs text-slate-500 truncate">
             Grouped by Sales Order · Latest Added First ·
             <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
               <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
             </span>
           </p>
+-->
         </div>
         <div class="flex items-center gap-2 text-xs shrink-0">
           <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
@@ -206,20 +206,12 @@
   </div>
 
   <!-- Sales Order Detail view -->
-  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
+  <div id="detailView" class="hidden w-full">
 
-    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
-      <div class="flex items-center gap-2 font-semibold text-slate-600">
-        <span>HC Systems</span><span class="text-slate-300">/</span><span>Sales Order Detail</span>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 shadow-sm transition">
-        ← Back to Sales Order Dashboard
-      </button>
-      <span class="text-slate-300">|</span>
-      <span id="detailBreadcrumb" class="text-slate-500"></span>
+    <!-- One flush bar like the Inquiry / Purchase Request details: back button + the order (the "HC Systems / Sales Order Detail" crumb row is gone) -->
+    <div class="header-strip flex items-center gap-3">
+      <button id="backToListBtn" class="so-back">&#8592; SO List</button>
+      <span id="detailBreadcrumb" class="so-bar-title"></span>
     </div>
 
     <!-- Next Step banner (ADDED 2026-09-30, display only) -->
@@ -400,8 +392,9 @@
   };
 
   // Matches the Fulfillment_Stage picklist values exactly, as defined on the
-  // Sales_Order_Fulfillment form: {"Waiting For Package","Order Readiness",
-  // "Picking","Pack","Quality Checking","Crate","For Delivery"}. Two changes
+  // Sales_Order_Fulfillment form: {"Waiting For Package","Need Approval","Order Readiness",
+  // "Picking","Pack & QC","Crate","For Delivery"}. (Pack and Quality Checking were
+  // merged into one "Pack & QC" stage.) Two changes
   // from the form's previous version: "Waiting For Package" added as the new
   // first stage, and "To Ship" renamed to "Crate". Keep this list (and
   // FULFILLMENT_COLOR below) in exact sync with the form's picklist values —
@@ -411,20 +404,20 @@
   // actual current step).
   const STAT_DEFS = [
     { key: "Waiting For Package", label: "Waiting For Package", caption: "awaiting package",        color: "slate"   },
+    { key: "Need Approval",       label: "Need Approval",       caption: "payment not approved yet",  color: "rose"    },
     { key: "Order Readiness",     label: "Order Readiness",     caption: "not yet released",         color: "amber"   },
     { key: "Picking",             label: "Picking",             caption: "being picked",             color: "orange"  },
-    { key: "Pack",                label: "Pack",                caption: "being packed",             color: "blue"    },
-    { key: "Quality Checking",    label: "Quality Checking",    caption: "under quality check",      color: "indigo"  },
+    { key: "Pack & QC",           label: "Pack & QC",           caption: "being packed & checked",   color: "blue"    },
     { key: "Crate",               label: "Crate",               caption: "being crated",             color: "violet"  },
     { key: "For Delivery",        label: "For Delivery",        caption: "shipped out",              color: "emerald" },
   ];
 
   const FULFILLMENT_COLOR = {
     "Waiting For Package": "slate",
+    "Need Approval": "rose",
     "Order Readiness": "amber",
     "Picking": "orange",
-    "Pack": "blue",
-    "Quality Checking": "indigo",
+    "Pack & QC": "blue",
     "Crate": "violet",
     "For Delivery": "emerald",
   };
@@ -701,10 +694,10 @@
   // (that's where dispatch happens) — neither has its own separate page.
   const STAT_PAGE = {
     "Waiting For Package": "Pre_Order2",
+    "Need Approval":       "Order_Readiness1",   // approved in the Approve Dispatch tab of Order Readiness
     "Order Readiness":     "Order_Readiness1",
     "Picking":              "Pick2",
-    "Pack":                 "Pack1",
-    "Quality Checking":     "Quality_Check",
+    "Pack & QC":            "Quality_Check",   // Pack and QC are one stage / one tab now
     "Crate":                "Crate_Checklist",
     "For Delivery":         "Order_Aggregation2",
     "__exceptions__":       "Exception_Control2",
@@ -848,10 +841,10 @@
   // and Crate-done scripts even though it isn't in STAT_DEFS.
   const NEXT_STEP_BY_STAGE = {
     "Waiting For Package": { action: "Create the package in Zoho Inventory", who: "Sales / Inventory", tone: "next" },
+    "Need Approval":       { action: "Partial / unpaid: approve it in Order Readiness > Approve Dispatch (or wait for payment)", who: "Approver", tone: "next" },
     "Order Readiness":     { action: "Assign a picker, then Release to Pick", who: "Readiness Gate", tone: "next" },
     "Picking":             { action: "Pick the items", who: "Picker", tone: "next" },
-    "Pack":                { action: "Pack, then Send to QC", who: "Packer", tone: "next" },
-    "Quality Checking":    { action: "Approve or Reject in QC", who: "Checker", tone: "next" },
+    "Pack & QC":           { action: "Pack the item, then Approve or Reject in QC", who: "Packer / Checker", tone: "next" },
     "Crate":               { action: "Crate the item", who: "Crater", tone: "next" },
     "Order Aggregation":   { action: "Dispatch (payment must be cleared)", who: "Dispatcher", tone: "next" },
     "For Delivery":        { action: "Handed to Delivery (DMS)", who: "Scheduler", tone: "done" },
@@ -1250,7 +1243,7 @@ function forecastCell(r) {
     // Crate is a conditional step — only orders flagged For_Crate actually go
     // through it, so it's left out of the sequence entirely for orders where
     // For_Crate is false, rather than showing a step that'll never apply.
-    const stageKeys = STAT_DEFS.map(s => s.key).filter((key) => key !== "Crate" || isTrue(so.For_Crate));
+    const stageKeys = STAT_DEFS.map(s => s.key).filter((key) => (key !== "Crate" || isTrue(so.For_Crate)) && (key !== "Need Approval" || so.Fulfillment_Stage === "Need Approval"));
     // Fulfillment_Stage records the stage that was just COMPLETED, not the
     // one currently in progress (e.g. a record showing "Pack" means packing
     // is already done) — so the stepper's highlighted "current" step is one

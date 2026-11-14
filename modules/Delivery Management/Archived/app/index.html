@@ -172,7 +172,7 @@
     <p>Read-only — this record is archived.</p>
   </header>
   <div class="body">
-    <div class="kv" id="dBody"></div>
+    <div class="hc-secs" id="dBody"></div>
     <div class="m-foot">
       <button class="btn" onclick="closeDetail()">Close</button>
       <button class="btn primary" id="dCreateSRBtn" onclick="createSalesReturn(DETAIL_ID)">Create Sales Return</button>
@@ -932,21 +932,32 @@ function openDetail(id){
   DETAIL_ID = id;
   var fw = fieldWorkFor(r);
   document.getElementById('dTitle').textContent = (r.Sales_Order||'—') + ' — ' + (custName(r)||'—');
-  var rows = [
-    ['Type of Delivery', r.Type_of_Delivery || '—'],
-    ['Delivery Status', r.Appointment_Status || '—'],
-    ['Installer / Driver', [r.Installer, r.Assigned_to_Driver].filter(Boolean).join(' / ') || '—'],
-    ['Fleet Assignment', r.Fleet_Assignment || '—'],
-    ['Confirmed Schedule', r.Confirmed_Schedule_Date ? (r.Confirmed_Schedule_Date + ' · ' + (r.Confirmed_Time_Slot||'')) : '—'],
-    ['Address', [r.Customer_Address, r.City].filter(Boolean).join(', ') || '—'],
-    ['Installation Status', fw ? (fw.Installation_Status || '—') : '— (no Field_Work record found)'],
-    ['Customer Rating', fw ? (fw.Customer_Rating || '—') : '—'],
-    ['Exception Status', r.Exception_Status || '—'],
-    ['Exception Reason', r.Exception_Reason || '—'],
-    ['Package Number', r.Package_Number || '—']
+  /* Grouped into cards (it was one flat list of eleven fields). Same fields, same values. */
+  var groups = [
+    ['Delivery', [
+      ['Type of Delivery', r.Type_of_Delivery || '—'],
+      ['Delivery Status', r.Appointment_Status || '—'],
+      ['Confirmed Schedule', r.Confirmed_Schedule_Date ? (r.Confirmed_Schedule_Date + ' · ' + (r.Confirmed_Time_Slot||'')) : '—'],
+      ['Package Number', r.Package_Number || '—']
+    ]],
+    ['Team', [
+      ['Installer / Driver', [r.Installer, r.Assigned_to_Driver].filter(Boolean).join(' / ') || '—'],
+      ['Fleet Assignment', r.Fleet_Assignment || '—']
+    ]],
+    ['Installation', [
+      ['Installation Status', fw ? (fw.Installation_Status || '—') : '— (no Field_Work record found)'],
+      ['Customer Rating', fw ? (fw.Customer_Rating || '—') : '—'],
+      ['Exception Status', r.Exception_Status || '—'],
+      ['Exception Reason', r.Exception_Reason || '—']
+    ]],
+    ['Address', [
+      ['Address', [r.Customer_Address, r.City].filter(Boolean).join(', ') || '—']
+    ]]
   ];
-  document.getElementById('dBody').innerHTML = rows.map(function(row){
-    return '<div><span>' + esc(row[0]) + '</span><b>' + esc(row[1]) + '</b></div>';
+  document.getElementById('dBody').innerHTML = groups.map(function(g){
+    return '<div class="dr-sec"><h4>' + esc(g[0]) + '</h4><div class="kv">' + g[1].map(function(row){
+      return '<div><span>' + esc(row[0]) + '</span><b>' + esc(row[1]) + '</b></div>';
+    }).join('') + '</div></div>';
   }).join('');
 
   document.getElementById('detailModal').classList.add('on');

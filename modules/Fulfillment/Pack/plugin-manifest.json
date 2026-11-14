@@ -1,9 +1,0 @@
-{
-  "service": "CREATOR",
-  "cspDomains": {
-    "connect-src": [],
-    "font-src": ["https://fonts.gstatic.com"],
-    "style-src": ["https://fonts.googleapis.com"]
-  },
-  "config": []
-}

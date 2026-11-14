@@ -240,14 +240,6 @@
         "zip": "Fulfillment/Transfer Item/Widget/TransferWarehouse.zip"
       },
       {
-        "page": "Pack1",
-        "label": "Pack",
-        "widget": "Fulfillment/Pack",
-        "entry": "index.html",
-        "zip": "Fulfillment/Pack/Widget/Pack.zip",
-        "hidden": true
-      },
-      {
         "page": "KANBAN",
         "label": "Kanban",
         "widget": "Fulfillment/Kanban",
@@ -326,12 +318,6 @@
         "label": "Truck Maintenance",
         "widget": "Delivery Management/Truck Maintenance",
         "entry": "index.html"
-      },
-      {
-        "page": "Schedule_Requests",
-        "label": "Schedule Requests",
-        "widget": "Delivery Management/Schedule Requests",
-        "entry": "dms-schedule-request.html"
       },
       {
         "page": "Policy_Setting",

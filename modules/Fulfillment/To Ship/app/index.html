@@ -172,6 +172,16 @@
     background: #f8fafc; padding: 0.5rem 0.75rem; transition: all .15s ease;
   }
   .field-input:focus { outline: none; background: white; box-shadow: 0 0 0 2px #cbd5e1; }
+  /* Edit form's item rows: one line per item, item name gets the most room. The header row above the list uses the same columns. */
+  @media (min-width: 640px) {
+    .item-cols { display: grid; grid-template-columns: minmax(0, 2.6fr) minmax(0, 1.3fr) minmax(0, .7fr) minmax(0, 1.1fr) 8.5rem 3.5rem; }
+    /* Status circle: own styles (not Tailwind classes) so the theme can't wash it out */
+    .item-select-circle { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 22px; height: 22px; padding: 0; border-radius: 50%; cursor: pointer; color: #fff;
+      background: #fff !important; border: 2px solid #64748b !important; box-shadow: 0 0 0 1px rgba(15, 23, 42, .06) !important; transition: border-color .15s, background .15s; }
+    .item-select-circle:hover { border-color: #10b981 !important; }
+    .item-select-circle[aria-checked="true"] { background: #10b981 !important; border-color: #10b981 !important; }
+    .item-select-circle svg { width: 13px; height: 13px; }
+  }
   /* ADDED 2026-09-03, per user ("pag naka edit dapat hindi naiedit ito") — Sales
      Order/Customer Details are pass-through reference data, not meant to be
      retyped from this Edit form. Plain `readonly` (text inputs) keeps the text
@@ -243,12 +253,14 @@
     <header id="topHeader" class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5 shrink-0">
       <div>
         <h1 class="text-xl font-bold text-slate-900 leading-tight">Order Aggregation</h1>
-        <p class="text-xs text-slate-500 mt-0.5">
+        <!-- subtitle + Live indicator hidden for now:
+<p class="text-xs text-slate-500 mt-0.5">
           Group orders by dispatch status ·
           <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
           </span>
         </p>
+-->
       </div>
       <div class="flex items-center gap-2">
 
@@ -261,17 +273,17 @@
              chosen view is remembered per browser in localStorage (wrapped in
              try/catch — Creator iframes can block storage). -->
         <div class="inline-flex rounded-full border border-slate-200 bg-white p-0.5 shrink-0">
-          <button id="viewBoardBtn" type="button"
-            class="view-tab inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition">
-            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 5h5v14H4zM10 5h5v9h-5zM16 5h4v6h-4z" />
-            </svg>Board
-          </button>
           <button id="viewListBtn" type="button"
             class="view-tab inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition">
             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>List
+          </button>
+          <button id="viewBoardBtn" type="button"
+            class="view-tab inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 5h5v14H4zM10 5h5v9h-5zM16 5h4v6h-4z" />
+            </svg>Board
           </button>
         </div>
 
@@ -348,29 +360,20 @@
   </div>
 
   <!-- Order Detail view -->
-  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
-
-    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
-      <div class="flex items-center gap-2 font-semibold text-slate-600">
-        <span>HC Systems</span><span class="text-slate-300">/</span><span>Order Aggregation Detail</span>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
-        ← Back to Order Board
-      </button>
-      <span class="text-slate-300">|</span>
-      <span id="detailBreadcrumb" class="text-slate-500"></span>
+  <div id="detailView" class="hidden w-full">
+    <!-- One flush bar like the Inquiry / Purchase Request details: back button + the record (the "HC Systems / ... Detail" crumb row is gone) -->
+    <div class="header-strip flex items-center gap-3">
+      <button id="backToListBtn" class="so-back">&#8592; Order Board</button>
+      <span id="detailBreadcrumb" class="so-bar-title"></span>
     </div>
 
     <!-- Next Step banner (ADDED 2026-09-30, display only) -->
     <div id="nsBanner"></div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="lg:col-span-2 space-y-4">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 space-y-6">
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 flex items-start justify-between gap-3">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-6 py-5 flex items-start justify-between gap-3">
           <div>
             <h2 id="detailSoNo" class="text-xl font-bold text-slate-900"></h2>
             <p id="detailCustomer" class="text-sm text-slate-600 mt-0.5"></p>
@@ -380,34 +383,31 @@
             <button id="archiveRecordBtn" class="hidden inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg px-3 py-2 transition">
               🗄 Archive
             </button>
-            <button id="editRecordBtn" class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg px-3 py-2 transition">
-              ✏️ Edit
-            </button>
           </div>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-6 py-5">
           <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📄 Sales Order Details</h3>
           <div id="detailFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-6 py-5">
           <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">👤 Customer Details</h3>
           <div id="detailCustomerFields" class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4"></div>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-6 py-5">
           <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🧾 Item Details</h3>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
                 <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
-                  <th class="py-2 pr-3 font-bold">PAC #</th>
-                  <th class="py-2 pr-3 font-bold">Item Name</th>
-                  <th class="py-2 pr-3 font-bold">SKU</th>
-                  <th class="py-2 pr-3 font-bold text-right">Qty</th>
-                  <th class="py-2 pr-3 font-bold">Bin Location</th>
-                  <th class="py-2 font-bold">Status</th>
+                  <th class="py-3 pr-6 font-bold">PAC #</th>
+                  <th class="py-3 pr-6 font-bold">Item Name</th>
+                  <th class="py-3 pr-6 font-bold">SKU</th>
+                  <th class="py-3 pr-6 font-bold text-right">Qty</th>
+                  <th class="py-3 pr-6 pl-4 font-bold">Bin Location</th>
+                  <th class="py-3 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody id="detailItemRows" class="divide-y divide-slate-50"></tbody>
@@ -418,8 +418,8 @@
         <!-- ADDED 2026-07-30 — "Awaiting Items" indicator, detail view. Hidden
              entirely (via inline style set in renderAwaitingItemsPanel) when
              this SO has nothing pending/rejected. -->
-        <div id="awaitingItemsCard" class="bg-white rounded-2xl border border-amber-200 shadow-card px-5 py-4" style="display:none">
-          <h3 class="text-xs font-bold tracking-wide text-amber-700 uppercase mb-3">⏳ Awaiting Items</h3>
+        <div id="awaitingItemsCard" class="bg-white rounded-2xl border border-amber-200 shadow-card px-6 py-5" style="display:none">
+          <h3 class="text-xs font-bold tracking-wide text-amber-700 uppercase mb-2">⏳ Awaiting Items</h3>
           <div id="awaitingItemsList"></div>
         </div>
       </div>
@@ -453,13 +453,14 @@
   <!-- Order Edit view -->
   <div id="editView" class="hidden w-full px-4 sm:px-6 py-5">
 
-    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
+    <!-- Edit form is one centred column (same as the Pack & QC form): breadcrumb, toolbar and cards all share its width. -->
+    <div class="flex items-center justify-between mb-3 text-xs text-slate-400 max-w-4xl mx-auto">
       <div class="flex items-center gap-2 font-semibold text-slate-600">
         <span>HC Systems</span><span class="text-slate-300">/</span><span>Edit Order Aggregation</span>
       </div>
     </div>
 
-    <div class="max-w-4xl">
+    <div class="max-w-4xl mx-auto">
       <div class="flex items-center justify-between mb-4">
         <button id="cancelEditBtn" class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 transition">
           ← Cancel
@@ -502,7 +503,10 @@
             <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase">🧾 Item Details</h3>
             <button id="addItemRowBtn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition">+ Add row</button>
           </div>
-          <div id="itemRows" class="space-y-3"></div>
+          <div class="item-cols item-cols-head hidden sm:grid gap-2 px-3 pb-1.5 text-[11px] font-semibold text-slate-500">
+            <span>Item Name</span><span>SKU</span><span>Qty</span><span>Bin Location</span><span>Dispatch</span><span></span>
+          </div>
+          <div id="itemRows" class="space-y-2"></div>
         </div>
 
         <div class="flex items-center justify-end gap-2 pb-8">
@@ -854,14 +858,14 @@
     // as-is).
     const qtyLabel = (it) => (it.qty && it.qty !== "—" ? ` &times; ${escapeHtml(it.qty)}` : "");
     const pendingLines = info.pending.map((it) =>
-      `<li class="flex items-center justify-between gap-2 py-1"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})${qtyLabel(it)}</span></span><span class="shrink-0 text-amber-600 font-medium">Pending arrival</span></li>`);
+      `<li class="flex items-center justify-between gap-3 py-2"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})${qtyLabel(it)}</span></span><span class="shrink-0 text-amber-600 font-medium">Pending arrival</span></li>`);
     const unpackagedLines = (info.unpackaged || []).map((it) =>
-      `<li class="flex items-center justify-between gap-2 py-1"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})${qtyLabel(it)}</span></span><span class="shrink-0 text-blue-600 font-medium">Received — not yet packaged</span></li>`);
+      `<li class="flex items-center justify-between gap-3 py-2"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})${qtyLabel(it)}</span></span><span class="shrink-0 text-blue-600 font-medium">Received — not yet packaged</span></li>`);
     const rejectedLines = info.rejected.map((it) =>
-      `<li class="flex items-center justify-between gap-2 py-1"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})</span></span><span class="shrink-0 text-rose-600 font-medium">QC Rejected (${escapeHtml(it.status)})</span></li>`);
+      `<li class="flex items-center justify-between gap-3 py-2"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})</span></span><span class="shrink-0 text-rose-600 font-medium">QC Rejected (${escapeHtml(it.status)})</span></li>`);
     // ADDED 2026-08-17 — RR recheck lines, same rendering pattern as the rest.
     const qcRecheckLines = (info.qcRecheck || []).map((it) =>
-      `<li class="flex items-center justify-between gap-2 py-1"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})${qtyLabel(it)}</span></span><span class="shrink-0 text-purple-600 font-medium">🔁 ${escapeHtml(it.rr)} — pending QC recheck</span></li>`);
+      `<li class="flex items-center justify-between gap-3 py-2"><span class="text-slate-700">${escapeHtml(it.itemName)} <span class="text-slate-400">(${escapeHtml(it.sku)})${qtyLabel(it)}</span></span><span class="shrink-0 text-purple-600 font-medium">🔁 ${escapeHtml(it.rr)} — pending QC recheck</span></li>`);
     return `<ul class="text-xs divide-y divide-slate-100">${pendingLines.join("") + unpackagedLines.join("") + rejectedLines.join("") + qcRecheckLines.join("")}</ul>`;
   }
 
@@ -1127,7 +1131,7 @@ function forecastCell(r) {
     { key: "next",     label: "Next Step",     sortable: false },
     { key: "target",   label: "Target Date",   sortable: true },
     { key: "forecast", label: "Forecast",      sortable: true },
-    { key: "act",      label: "",              sortable: false },
+    { key: "act",      label: "Action",        sortable: false },
   ];
 
   const LIST_STATE = {
@@ -1193,7 +1197,7 @@ function forecastCell(r) {
 
   function listHeadHtml() {
     return LIST_COLUMNS.map((c) => {
-      if (!c.sortable) return `<th class="list-th">${escapeHtml(c.label)}</th>`;
+      if (!c.sortable) return `<th class="list-th${c.key === "act" ? " text-center" : ""}">${escapeHtml(c.label)}</th>`;
       const active = listSort.key === c.key;
       const arrow = active ? (listSort.dir === "asc" ? " ↑" : " ↓") : "";
       return `<th class="list-th sortable${active ? " text-slate-900" : ""}" data-sort="${c.key}">${escapeHtml(c.label)}${arrow}</th>`;
@@ -1226,7 +1230,7 @@ function forecastCell(r) {
         <td class="list-td">${nextStepCell(r.ID, nextStepFor(r, state))}</td>
         <td class="list-td text-slate-500 whitespace-nowrap">${target === "—" ? dash : escapeHtml(target)}</td>
         <td class="list-td whitespace-nowrap">${forecastBlank_(r) ? dash : forecastCell(r)}</td>
-        <td class="list-td text-right whitespace-nowrap">${state === "done"
+        <td class="list-td text-center whitespace-nowrap">${state === "done"
           ? `<button type="button" class="archive-row-btn text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg px-2.5 py-1 transition" data-id="${r.ID}">🗄 Archive</button>`
           : ""}</td>
       </tr>`;
@@ -1342,7 +1346,7 @@ function forecastCell(r) {
     // own comment). Falls back to the header PAC only if this exact SO+SKU has
     // no matching readiness-gate record yet.
     document.getElementById("detailItemRows").innerHTML = rows.length
-      ? rows.map((row) => {
+      ? rows.map((row, rowIdx) => {
           // FIXED 2026-08-07 — prefer the row's OWN PAC (Order_Aggregation1's
           // own Item_Details.PAC, real and reliable since the 2026-08-06 fix)
           // over the readiness-gate index lookup, which used to be the only
@@ -1355,20 +1359,50 @@ function forecastCell(r) {
           const pacVal = rowPac !== "—" ? rowPac : ((info && info.pac) ? info.pac : displayVal(r.PAC));
           return `
           <tr>
-            <td class="py-2 pr-3 text-blue-600 font-medium">${escapeHtml(pacVal)}</td>
-            <td class="py-2 pr-3 text-slate-800 font-medium">${escapeHtml(displayVal(row.Item_Name))}</td>
-            <td class="py-2 pr-3 text-slate-500">${escapeHtml(displayVal(row.SKU))}</td>
-            <td class="py-2 pr-3 text-slate-700 text-right">${escapeHtml(displayVal(row.QTY))}</td>
-            <td class="py-2 pr-3 text-slate-500">${escapeHtml(displayVal(row.Bin_Location))}</td>
-            <td class="py-2">${isTrue(row.Dispatched)
+            <td class="py-3.5 pr-6 text-blue-600 font-medium">${escapeHtml(pacVal)}</td>
+            <td class="py-3.5 pr-6 text-slate-800 font-medium">${escapeHtml(displayVal(row.Item_Name))}</td>
+            <td class="py-3.5 pr-6 text-slate-500">${escapeHtml(displayVal(row.SKU))}</td>
+            <td class="py-3.5 pr-6 text-slate-700 text-right">${escapeHtml(displayVal(row.QTY))}</td>
+            <td class="py-3.5 pr-6 pl-4 text-slate-500">${escapeHtml(displayVal(row.Bin_Location))}</td>
+            <td class="py-3.5">${isTrue(row.Dispatched)
               ? `<span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Dispatched</span>`
-              : (isTrue(row.Select1)
-                ? `<span class="text-emerald-600 font-bold">✓ Selected</span>`
-                : `<span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">Pending</span>`)}</td>
+              // Status is just a circle: click it to select the item for dispatch (filled with a check), click again to un-select.
+              // Once the item is dispatched it becomes the fixed "Dispatched" badge above and can no longer be changed.
+              : `<button type="button" role="checkbox" data-glass="off" aria-checked="${isTrue(row.Select1) ? "true" : "false"}" class="item-select-circle" data-row-idx="${rowIdx}" title="${isTrue(row.Select1) ? "Selected for dispatch (click to un-select)" : "Select for dispatch"}">${isTrue(row.Select1) ? `<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2l2.4 2.4 4.6-5"/></svg>` : ""}</button>`}</td>
           </tr>`;
         }).join("")
       : `<tr><td colspan="6" class="py-6 text-center text-slate-400">No item rows.</td></tr>`;
   }
+
+  // Clicking the circle in an item's Status cell (detail view) = select / un-select it for dispatch, saved straight away.
+  // Full-subform write, with only that row's Select1 changed, so every other value (incl. PAC) is kept as is.
+  async function setItemSelected(idx, picked) {
+    const r = currentDetailRecord;
+    if (!r || !Array.isArray(r.Item_Details) || !r.Item_Details[idx]) return;
+    const next = r.Item_Details.map((row, i) => ({
+      Item_Name: textVal(row.Item_Name), SKU: textVal(row.SKU), QTY: textVal(row.QTY), Bin_Location: textVal(row.Bin_Location), PAC: textVal(row.PAC),
+      Select1: i === idx ? picked : isTrue(row.Select1),
+      Dispatched: isTrue(row.Dispatched),
+    }));
+    try {
+      const response = await ZOHO.CREATOR.DATA.updateRecords({
+        app_name: CONFIG.APP_NAME,
+        report_name: CONFIG.REPORT_NAME,
+        payload: { criteria: `(ID == ${r.ID})`, data: { Item_Details: next } },
+      });
+      if (!response || response.code !== 3000) throw new Error("update-failed");
+      r.Item_Details = next;
+      renderItemDetailsTable(r);
+      renderDispatchPanel(r);
+    } catch (err) {
+      console.error(err);
+      toast("Couldn't update the selection.", "error");
+    }
+  }
+  document.getElementById("detailItemRows").addEventListener("click", (ev) => {
+    const circle = ev.target.closest(".item-select-circle");
+    if (circle) setItemSelected(Number(circle.dataset.rowIdx), circle.getAttribute("aria-checked") !== "true");
+  });
 
   // ADDED 2026-07-30 — "Awaiting Items" indicator, detail view half. Reuses
   // awaitingItemLinesHtml() from a prior task — same rendering, no toggle needed
@@ -1478,7 +1512,7 @@ function forecastCell(r) {
       if (state === "partial" && dispatchedItemCount(r) === itemRowCount_(r) && awaitingHereCount > 0) {
         hint.textContent = `Nothing more to dispatch from what's listed here yet — ${awaitingHereCount} item(s) from this SO still in progress upstream (not yet packaged/received/QC'd). See "Awaiting Items" above.`;
       } else {
-        hint.textContent = "Check at least one item's \"Select to Dispatch\" box in Item Details before dispatching.";
+        hint.textContent = "Tick the circle of at least one item in Item Details before dispatching.";
       }
     } else {
       btn.textContent = "🚚 Dispatch Selected Items";
@@ -1992,7 +2026,6 @@ function forecastCell(r) {
     currentDetailRecord = r;
     renderNextStepBanner("nsBanner", r.ID, nextStepFor(r));
 
-    document.getElementById("editRecordBtn").onclick = () => switchToEdit(r);
     const archiveBtn = document.getElementById("archiveRecordBtn");
     archiveBtn.classList.toggle("hidden", dispatchState(r) !== "done");
     archiveBtn.onclick = () => archiveRecord(r.ID);
@@ -2085,16 +2118,14 @@ function forecastCell(r) {
     // output is gone on save. Preserved via a data attribute, same pattern as
     // data-dispatched/data-row above.
     return `
-      <div class="item-row bg-slate-50 rounded-lg px-3 py-3 space-y-2" data-row="${rowIndex}" data-dispatched="${dispatched ? "true" : "false"}" data-pac="${escapeHtml(textVal(row.PAC))}">
-        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center">
-          <input type="text" class="item-name field-input" placeholder="Item Name" value="${escapeHtml(textVal(row.Item_Name))}" ${dispatched ? "readonly" : ""}>
+      <div class="item-row bg-slate-50 rounded-lg px-3 py-2.5" data-row="${rowIndex}" data-dispatched="${dispatched ? "true" : "false"}" data-pac="${escapeHtml(textVal(row.PAC))}">
+        <div class="item-cols grid gap-2 items-center">
+          <input type="text" class="item-name field-input" placeholder="Item Name" title="${escapeHtml(textVal(row.Item_Name))}" value="${escapeHtml(textVal(row.Item_Name))}" ${dispatched ? "readonly" : ""}>
           <input type="text" class="item-sku field-input" placeholder="SKU" value="${escapeHtml(textVal(row.SKU))}" ${dispatched ? "readonly" : ""}>
           <input type="text" class="item-qty field-input" placeholder="Qty" value="${escapeHtml(textVal(row.QTY))}" ${dispatched ? "readonly" : ""}>
           <input type="text" class="item-bin field-input" placeholder="Bin Location" value="${escapeHtml(textVal(row.Bin_Location))}" ${dispatched ? "readonly" : ""}>
-          ${selectCell}
-        </div>
-        <div class="flex items-center justify-end">
-          ${dispatched ? "" : `<button type="button" class="remove-item-row-btn text-xs text-rose-600 hover:text-rose-800 shrink-0">Remove</button>`}
+          <div class="whitespace-nowrap">${selectCell}</div>
+          <div class="text-right">${dispatched ? "" : `<button type="button" class="remove-item-row-btn text-xs text-rose-600 hover:text-rose-800">Remove</button>`}</div>
         </div>
       </div>`;
   }

@@ -51,9 +51,11 @@ export function seedOps() {
   const SOS = Object.fromEntries(rows('Sales_Order').map((r) => [r.Sales_Order_Number, { no: r.Sales_Order_Number, cust: CUSTS[r.Customer_Name], target: r.Target_Delivery_Date }]));
   const prOf = Object.fromEntries(rows('Purchase_Request1').filter((r) => r.Sales_Order).map((r) => [r.Sales_Order, r.PR_No]));
   const userEmail = db.prepare('SELECT email FROM _users ORDER BY ROWID LIMIT 1').get()?.email || 'user@example.com';
-  const PICKERS = opts('Sales_Order_Readiness_Gate', 'Assign_Picker'), PACKERS = opts('Pack', 'Assign_Packer');
+  const PICKERS = opts('Sales_Order_Readiness_Gate', 'Assign_Picker');
   const CRATE_STEPS = opts('Crate_Checklist', 'Crating_Checklist');
-  const stageNames = opts('Sales_Order_Fulfillment', 'Fulfillment_Stage');
+  const stageOpts = opts('Sales_Order_Fulfillment', 'Fulfillment_Stage');
+  // The packages below still use 7 internal steps; Pack and QC are one picklist value now ("Pack & QC"), so steps 3 and 4 share a name.
+  const stageNames = [stageOpts[0], stageOpts[1], stageOpts[2], stageOpts[3], stageOpts[3], stageOpts[4], stageOpts[5]];
 
   // ---------- the packages ----------
   // [pac, so, stage, [[item, qty]...], options]    stage: index into Fulfillment_Stage
@@ -61,8 +63,8 @@ export function seedOps() {
   const PK = [
     ['PAC-1001', 'SO-24095', 0, [[7, 1]], { type: 'Pre Order', pre: 'Pending', ago: 12, dt: 'Delivery and Installation' }],
     ['PAC-1002', 'SO-24080', 0, [[4, 6]], { type: 'Pre Order', pre: 'Received', ago: 30, dt: 'Delivery Only' }],
-    ['PAC-1003', 'SO-24087', 1, [[0, 2], [8, 1]], { pay: 'Partial', ago: 6, dt: 'Delivery and Installation' }],
-    ['PAC-1004', 'SO-24110', 1, [[2, 6]], { pay: 'No', ago: 4, dt: 'Delivery Only' }],
+    ['PAC-1003', 'SO-24087', 1, [[0, 2], [8, 1]], { ago: 6, dt: 'Delivery and Installation' }],
+    ['PAC-1004', 'SO-24110', 0, [[2, 6]], { pay: 'No', ago: 4, dt: 'Delivery Only' }],
     ['PAC-1005', 'SO-24101', 2, [[5, 40], [9, 20]], { picker: 'Hendel', ago: 8, marked: [true, false], dt: 'Full-Day Install' }],
     ['PAC-1006', 'SO-24113', 2, [[9, 20]], { picker: 'Jayvon', ago: 3, dt: 'Delivery Only' }],
     ['PAC-1007', 'SO-24112', 3, [[10, 2]], { packer: 'Kurt', ago: 5, dt: 'Delivery Only' }],
@@ -142,10 +144,6 @@ export function seedOps() {
       Customer_Name: p.c.name, Customer_Address: p.c.addr, Customer_Type: p.c.type, Marked: p.stage >= 3 || !!(p.o.marked && p.o.marked[li]),
       Forecast_Delivery: iso(12 + p.i % 6), Forecast_Window: `${short(10 + p.i % 6)} – ${short(14 + p.i % 6)}`, Forecast_Status: 'On Track',
     }, p.ago - 1);
-    if (p.stage >= 3) add('Pack', {
-      Assign_Packer: p.stage === 3 ? (p.o.packer ?? one(PACKERS, p.i)) : one(PACKERS, p.i), PR: p.pr, RR: '', PAC: p.pac, Demo: '', ...lineCommon(p),
-      Customer_Name: p.c.name, Customer_Type: p.c.type, Customer_Address: p.c.addr, Item_Name: it.name, SKU: it.sku, Quantity: String(it.qty), Bin_Location: it.bin, Send_to_QC: p.stage >= 4,
-    }, p.ago - 2);
     if (p.stage >= 4) {
       const status = p.stage === 4 ? p.o.qc : 'Approved';
       const bad = status === 'Rejected';
@@ -381,7 +379,7 @@ export function seedOps() {
   const tl = (form, key, no, rows) => rows.forEach(([ago, type, title, changes, actor]) => add(form, { [key]: no, Action_Title: title, Action_Type: type, Changes: changes, Actor: actor || 'HC Pack & Fulfill', Logged_On: stamp(-ago, 9 + (ago % 7), 10) }));
   P.forEach((p) => {
     const rows = [[p.ago, 'Created', 'Package created', `Sales order ${p.soNo}\nCustomer: ${p.c.name}\n${p.items.length} line(s)`]];
-    for (let s = 1; s <= p.stage; s++) rows.push([Math.max(p.ago - s, 0), 'Updated', `Moved to ${stageNames[s]}`, `${stageNames[s - 1]} → ${stageNames[s]}`]);
+    for (let s = 1; s <= p.stage; s++) if (stageNames[s] !== stageNames[s - 1]) rows.push([Math.max(p.ago - s, 0), 'Updated', `Moved to ${stageNames[s]}`, `${stageNames[s - 1]} → ${stageNames[s]}`]);
     rows.forEach(([ago, type, title, changes, actor]) => add('SOF_Timeline', { From: 'Sales Order', Package: p.pac, Action_Title: title, Action_Type: type, Changes: changes, Actor: actor || 'HC Pack & Fulfill', Logged_On: stamp(-ago, 9 + (ago % 7), 10) }));
   });
   [['PAC-1003', 'homecartelsales@gmail.com', 'HC Sales', 'Client sent the second payment slip; please recheck the gate.', 3], ['PAC-1003', 'homecartelff@gmail.com', 'HC Pack & Fulfill', 'Will release as soon as finance confirms.', 3],
@@ -417,9 +415,8 @@ export function seedOps() {
     Fenteng_Notifications: [['Purchase Request', 'PR-0002 is waiting for your response.', 'PR-0002'], ['Message', 'HC Purchasing sent you a message on INQ-0005.', 'INQ-0005']],
     SO_Notifications: [['Sales Order', 'SO-24095 now has 2 packages in the pipeline.', 'SO-24095'], ['Stage', 'PAC-1005 moved to Picking.', 'PAC-1005']],
     PreOrder_Notifications: [['Pre-order received', 'The Ribbed Glass Table Lamps for SO-24080 arrived. Select them to package.', 'SO-24080']],
-    ReadinessGate_Notifications: [['Payment', 'PAC-1003 is waiting for the second payment.', 'PAC-1003'], ['Payment', 'PAC-1004 is unpaid; the gate is closed.', 'PAC-1004']],
+    ReadinessGate_Notifications: [['Payment', 'PAC-1003 is paid and ready to release to Pick.', 'PAC-1003'], ['Payment', 'PAC-1004 is unpaid, so it waits in Waiting For Package until it is paid.', 'PAC-1004']],
     Pick_Notifications: [['Pick', 'PAC-1005 was released to Hendel.', 'PAC-1005'], ['Pick', 'PAC-1006 was released to Jayvon.', 'PAC-1006']],
-    Pack_Notifications: [['Pack', 'PAC-1008 has no packer assigned yet.', 'PAC-1008'], ['Pack', 'PAC-1007 is ready for packing (Kurt).', 'PAC-1007']],
     QC_Notifications: [['QC rejected', 'PAC-1010 failed QC: 3 cracked shades.', 'PAC-1010'], ['QC waiting', 'PAC-1009 is waiting for a checker.', 'PAC-1009']],
     OrderAgg_Notifications: [['To ship', 'PAC-1013 was dispatched to Initial Scheduling.', 'PAC-1013'], ['To ship', 'PAC-1012 is waiting to be dispatched.', 'PAC-1012']],
     ExceptionControl_Notifications: [['Exception', 'EXC-F-0001 is in rework.', 'EXC-F-0001'], ['Exception', 'EXC-F-0002 needs an assessment.', 'EXC-F-0002']],

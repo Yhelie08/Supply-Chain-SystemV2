@@ -484,7 +484,7 @@ describe('Tier 1: Feature Coverage Suite (20 Tests across R1-R4)', () => {
 
         // Check tables created
         const tblRes = await memDb.query("SELECT count(*) as count FROM information_schema.tables WHERE table_schema = current_schema()");
-        assert.ok(Number(tblRes.rows[0].count) >= 90, 'All 90 form tables should exist');
+        assert.ok(Number(tblRes.rows[0].count) >= 88, 'All 88 form tables should exist (Pack and Pack_Notifications removed)');
       } finally {
         await memDb.close();
       }

@@ -53,7 +53,6 @@ const SECTIONS = [
     ['Order_Aggregation2', 'To Ship', 'Fulfillment/Order Aggregation/Widget/OrderAggregation.zip'],
     ['Exception_Control2', 'Exception Control', 'Fulfillment/Exception Control/Widget/ExceptionControl.zip'],
     ['Transfer_Item', 'Transfer Item', 'Fulfillment/Transfer Item/Widget/TransferWarehouse.zip'],
-    ['Pack1', 'Pack', 'Fulfillment/Pack/Widget/Pack.zip', { hidden: true }],
     ['KANBAN', 'Kanban', 'Fulfillment/KANBAN/Widget/FulfillmentKanban.zip', { hidden: true }],
   ] },
   // Delivery widgets were unpacked earlier into modules/Delivery Management/<tab label>.
@@ -63,7 +62,7 @@ const SECTIONS = [
     ['Service_Appointment1', 'Service Appointment'], ['Ongoing_Service1', 'Ongoing Service'], ['Archived', 'Archived'],
     ['Field_Service_Site_Visits1', 'Field Service Site Visits'], ['Sales_Returns1', 'Sales Returns'],
     ['DMS_Exception_Queue1', 'DMS Exception Queue'], ['Truck_Maintenance', 'Truck Maintenance'],
-    ['Schedule_Requests', 'Schedule Requests'], ['Policy_Setting', 'Policy Settings', null, { hidden: true, adminOnly: true }],
+    ['Policy_Setting', 'Policy Settings', null, { hidden: true, adminOnly: true }],
   ] },
 ];
 

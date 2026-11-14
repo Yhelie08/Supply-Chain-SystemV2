@@ -15,3 +15,6 @@ self_client.json
 graphify-out/
 vault/Graph/
 gitToken
+
+# old pre-migration Zoho Creator codebase, kept locally for reference only
+ZohoCreatorVersionOLD/

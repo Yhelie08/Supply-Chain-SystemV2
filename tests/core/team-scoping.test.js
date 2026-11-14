@@ -34,13 +34,13 @@ describe('Suite 1: UI Tab Navigation Scoping (visibleSections)', () => {
     assert.equal(adminVisible.length, 6, 'Admin must see all 6 sections');
     const adminDelivery = adminVisible.find((s) => s.id === 'delivery');
     assert.ok(adminDelivery, 'Delivery section must exist');
-    assert.equal(adminDelivery.tabs.length, 13, 'Admin must see all 13 delivery tabs');
+    assert.equal(adminDelivery.tabs.length, 12, 'Admin must see all 12 delivery tabs (Schedule Requests removed: CMS now enters Service Request)');
     assert.ok(adminDelivery.tabs.some((t) => t.page === 'Policy_Setting'));
 
     const userVisible = access.visibleSections(standardUser);
     assert.equal(userVisible.length, 6, 'Standard user sees all 6 sections');
     const userDelivery = userVisible.find((s) => s.id === 'delivery');
-    assert.equal(userDelivery.tabs.length, 12, 'Policy Settings hidden from standard user');
+    assert.equal(userDelivery.tabs.length, 11, 'Policy Settings hidden from standard user');
     assert.ok(!userDelivery.tabs.some((t) => t.page === 'Policy_Setting'));
     assert.ok(userDelivery.tabs.some((t) => t.page === 'Service_Appointment1'));
     assert.ok(userDelivery.tabs.some((t) => t.page === 'Initial_Scheduling1'));

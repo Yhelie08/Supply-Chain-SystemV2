@@ -91,7 +91,16 @@
   function mark(i, scroll) {
     if (items[active]) items[active].classList.remove('act');
     active = i;
-    if (items[i]) { items[i].classList.add('act'); if (scroll) items[i].scrollIntoView({ block: 'nearest' }); }
+    // Scroll the menu's own list only. li.scrollIntoView() also scrolls the page behind it, and the scroll listener below
+    // reads that as "the page moved" and closes the menu the instant it opens.
+    if (items[i]) {
+      var li = items[i]; li.classList.add('act');
+      if (scroll && menu) {
+        var top = li.offsetTop, bot = top + li.offsetHeight;
+        if (top < menu.scrollTop) menu.scrollTop = Math.max(0, top - 6);
+        else if (bot > menu.scrollTop + menu.clientHeight) menu.scrollTop = bot - menu.clientHeight + 6;
+      }
+    }
   }
 
   function step(dir) {
@@ -193,7 +202,13 @@
 
   window.addEventListener('resize', close);
   window.addEventListener('blur', close);
-  document.addEventListener('scroll', function (e) { if (menu && !menu.contains(e.target)) close(); }, true);
+  // A scroll no longer just closes the menu: a form can shift a pixel or two as the dropdown takes focus, and that scroll event
+  // used to shut the menu the instant it opened. The menu follows its dropdown instead, and closes only when the dropdown leaves the screen.
+  document.addEventListener('scroll', function (e) {
+    if (!menu || menu.contains(e.target)) return;
+    var r = owner && owner.getBoundingClientRect();
+    if (!r || r.bottom < 0 || r.top > window.innerHeight) close(); else place(owner);
+  }, true);
 })();
 
 // List pages: the "Next step" column moves inside the record (the detail page already says what the next step is),
@@ -249,38 +264,210 @@
     table.classList.add('hc-list');
     var c0 = table.tBodies[0] && table.tBodies[0].rows[0] && table.tBodies[0].rows[0].cells[0];
     if (c0 && parseFloat(getComputedStyle(c0).fontSize) < 12.9) table.classList.add('hc-grow');
-    var head = table.tHead.rows[0], cols = [].filter.call(head.cells, function (c) { return !c.classList.contains('hc-added'); });
+    var EXTRA = '.hc-added, .hc-mod';
+    var head = table.tHead.rows[0], cols = [].filter.call(head.cells, function (c) { return !c.classList.contains('hc-added') && !c.classList.contains('hc-mod'); });
     if (cols.length < 3) return;
     var body = [].slice.call(table.tBodies[0] ? table.tBodies[0].rows : []);
     body.forEach(function (r) { [].forEach.call(r.cells, function (c) { if (!c.classList.contains('hc-nw') && /^[A-Z]{2,6}-[A-Z0-9-]{2,}$/.test(c.textContent.trim())) c.classList.add('hc-nw'); }); });
-    var ni = -1, hasAdded = false;
+    var hide = [], hasAdded = false, hasMod = false;
     cols.forEach(function (c, i) {
       var t = label(c);
-      if (/^next step/i.test(t)) ni = i;
-      if (/^added time/i.test(t)) hasAdded = true;
+      if (/^next step/i.test(t) || /^rec\. supplier/i.test(t)) hide.push(i); // hidden for now
+      if (/^(added time|petsa nadagdag)/i.test(t)) hasAdded = true;
+      if (/^(last )?(modified|updated)/i.test(t)) hasMod = true;
     });
-    if (ni >= 0) {
+    // the page's own column can appear after ours (a language switch renames its header): then ours goes
+    if (hasAdded) [].forEach.call(table.querySelectorAll('.hc-added'), function (n) { n.parentNode.removeChild(n); });
+    if (hasMod) [].forEach.call(table.querySelectorAll('.hc-mod'), function (n) { n.parentNode.removeChild(n); });
+    hide.forEach(function (ni) {
       cols[ni].classList.add('hc-hide');
-      body.forEach(function (r) { if (r.cells.length - r.querySelectorAll('.hc-added').length === cols.length && r.cells[ni]) r.cells[ni].classList.add('hc-hide'); });
-    }
-    if (hasAdded || !body.length) return;
-    if (!head.querySelector('.hc-added')) {
-      var th = document.createElement('th'); th.className = 'hc-added'; th.textContent = 'Added Time';
-      head.appendChild(th);
-    }
-    body.forEach(function (r) {
-      if (r.querySelector('.hc-added') || r.cells.length !== cols.length) return;
-      var rec = match(r), td = document.createElement('td');
-      var f = rec ? fmt(rec.Added_Time) : ['—', ''];
-      td.className = 'hc-added'; td.textContent = f[0];
-      if (f[1]) { var sub = document.createElement('div'); sub.className = 'hc-added-t'; sub.textContent = f[1]; td.appendChild(sub); }
-      r.appendChild(td);
+      body.forEach(function (r) { if (r.cells.length - r.querySelectorAll(EXTRA).length === cols.length && r.cells[ni]) r.cells[ni].classList.add('hc-hide'); });
     });
+    if (!body.length) return;
+    // Adds one timestamp column (Added Time / Last Modified) to every row of the list, read from the matched record.
+    function addCol(cls, title, field) {
+      if (!head.querySelector('.' + cls)) {
+        var th = document.createElement('th'); th.className = cls; th.textContent = title;
+        head.appendChild(th);
+      }
+      body.forEach(function (r) {
+        if (r.querySelector('.' + cls) || r.cells.length - r.querySelectorAll(EXTRA).length !== cols.length) return;
+        var rec = match(r), td = document.createElement('td');
+        var f = rec ? fmt(rec[field]) : ['—', ''];
+        td.className = cls; td.textContent = f[0];
+        if (f[1]) { var sub = document.createElement('div'); sub.className = 'hc-added-t'; sub.textContent = f[1]; td.appendChild(sub); }
+        r.appendChild(td);
+      });
+    }
+    // A list that already has its own Added Time / Modified column (most Fulfillment lists) shows "Nov 9, 2026 15:07" on one
+    // line; it is rewritten into the same two-line "date / 12-hour time" look as the columns added above.
+    var NATIVE = /^([A-Z][a-z]{2} \d{1,2}, \d{4}),? (\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/;
+    cols.forEach(function (c, i) {
+      var t = label(c);
+      if (!/^added time/i.test(t) && !/^(last )?(modified|updated)/i.test(t)) return;
+      c.classList.add('hc-dt');
+      body.forEach(function (r) {
+        var td = r.cells[i];
+        if (!td || r.cells.length - r.querySelectorAll(EXTRA).length !== cols.length || td.classList.contains('hc-dt') || td.children.length) return;
+        var m = NATIVE.exec(td.textContent.trim());
+        if (!m) return;
+        var h = +m[2], ap = (m[4] || '').toUpperCase();
+        if (!ap) { ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; }
+        td.classList.add('hc-dt');
+        td.textContent = m[1];
+        var sub = document.createElement('div'); sub.className = 'hc-added-t'; sub.textContent = h + ':' + m[3] + ' ' + ap;
+        td.appendChild(sub);
+      });
+    });
+    if (!hasAdded) addCol('hc-added', 'Added Time', 'Added_Time');
+    if (!hasMod) addCol('hc-mod', 'Last Modified', 'Modified_Time');
+    // A fixed-layout table with a <colgroup> (the group cards) gives the two new columns no width at all and they spill out of the card:
+    // give them a share of the table and take the same share off the others.
+    var added = head.querySelectorAll('.hc-added, .hc-mod').length, cg = table.querySelector(':scope > colgroup');
+    if (cg && added && !cg.getAttribute('data-hc-fit') && cg.children.length === cols.length) {
+      cg.setAttribute('data-hc-fit', '1');
+      var cs = [].slice.call(cg.children), each = 9, pct = cs.every(function (c) { return /%$/.test(c.style.width); });
+      if (pct) { var k = (100 - each * added) / 100; cs.forEach(function (c) { c.style.width = (parseFloat(c.style.width) * k).toFixed(2) + '%'; }); }
+      for (var q = 0; q < added; q++) { var col = document.createElement('col'); col.style.width = pct ? each + '%' : '140px'; cg.appendChild(col); }
+    }
   }
 
   var queued = false;
   function scan() { queued = false; [].forEach.call(document.querySelectorAll('table'), tidy); }
   function queue() { if (!queued) { queued = true; setTimeout(scan, 120); } }
-  function start() { scan(); new MutationObserver(queue).observe(document.body, { childList: true, subtree: true }); }
+  // Tabs often just toggle display on an already-rendered table, so watch class/style flips too (but not our own table edits).
+  function start() {
+    scan();
+    new MutationObserver(function (recs) {
+      for (var i = 0; i < recs.length; i++) {
+        var r = recs[i];
+        if (r.type === 'childList' || !/^(TABLE|THEAD|TBODY|TR|TH|TD)$/.test(r.target.tagName)) { queue(); return; }
+      }
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
+// Delivery: a long form opens as a full page (see views.css), so it gets the same "Back" button at the top as a record does.
+// It just presses the form's own Cancel, so the widget's code is untouched.
+(function () {
+  function addBack() {
+    var modals = document.querySelectorAll('.modal.on');
+    for (var i = 0; i < modals.length; i++) {
+      var m = modals[i], h = m.querySelector(':scope > header');
+      // big data-entry forms (New / Edit: five or more fields) open as a page; small action dialogs (Approve, Reschedule ...) stay pop-outs
+      if (m.querySelector('.form-sec') && m.querySelectorAll('.field').length >= 5) m.classList.add('hc-page');
+      if (!m.classList.contains('hc-page') || !h || h.querySelector('.hc-form-back')) continue;
+      var cancel = m.querySelector('[data-cancel]') || m.querySelector('.m-foot .btn:not(.primary)');
+      if (!cancel) continue;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'hc-form-back'; b.textContent = '\u2190 Back';
+      b.addEventListener('click', (function (c) { return function () { c.click(); }; })(cancel));
+      h.insertBefore(b, h.firstChild);
+    }
+  }
+  function start() {
+    if (document.documentElement.getAttribute('data-hc-kit') !== 'dms') return;
+    new MutationObserver(addBack).observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
+// Liquid glass: every button is glass. A button that has a plain (white / grey) fill becomes clear glass; one that has a colour fill
+// (orange, green, red, blue) becomes tinted glass in that same colour. The widgets' own classes and code are untouched: this only reads the
+// colour the button already has and tags it (data-glass), and liquid.css does the painting.
+(function () {
+  if (document.documentElement.getAttribute('data-hc-skin') !== 'liquid') return;
+  var SEL = 'button, .btn, input[type="button"], input[type="submit"], [role="button"]';
+  var SKIP = '.hc-menu, [data-glass="off"]';
+  var queued = [], timer = 0;
+
+  function classify(el) {
+    if (el.closest(SKIP)) return;
+    el.removeAttribute('data-glass'); el.style.removeProperty('--hc-btn-rgb');
+    var cs = getComputedStyle(el);
+    if (cs.display === 'none') return;
+    var m = cs.backgroundColor.match(/[\d.]+/g);
+    if (!m || m.length < 3) return;
+    var r = +m[0], g = +m[1], b = +m[2], a = m[3] === undefined ? 1 : +m[3];
+    if (a < 0.3) return; // see-through already (icon buttons, plain tabs): leave them
+    if (Math.max(r, g, b) - Math.min(r, g, b) > 45) { el.setAttribute('data-glass', 'tint'); el.style.setProperty('--hc-btn-rgb', r + ',' + g + ',' + b); }
+    else {
+      el.setAttribute('data-glass', 'clear');
+      // On dark glass a grey label (the light-mode ink) is hard to read: lift it to the full ink. Coloured labels (red, orange ...) keep their colour.
+      el.removeAttribute('data-glass-fg');
+      var t = cs.color.match(/[\d.]+/g) || [], tr = +t[0], tg = +t[1], tb = +t[2], plain = t.length >= 3 && Math.max(tr, tg, tb) - Math.min(tr, tg, tb) < 60;
+      if (document.documentElement.getAttribute('data-theme') !== 'light') { if (plain) el.setAttribute('data-glass-fg', 'ink'); }
+      // On light glass a white label (a disabled "Save" that is white on a pale grey) disappears: use the dark ink instead.
+      else if (plain && (tr + tg + tb) / 3 > 190) el.setAttribute('data-glass-fg', 'dark');
+    }
+  }
+  function flush() {
+    timer = 0;
+    var list = queued; queued = [];
+    for (var i = 0; i < list.length; i++) { if (list[i].isConnected) classify(list[i]); }
+  }
+  function queue(el) { queued.push(el); if (!timer) timer = setTimeout(flush, 60); }
+  function scan(root) {
+    if (root.nodeType !== 1) return;
+    if (root.matches && root.matches(SEL)) queue(root);
+    var found = root.querySelectorAll ? root.querySelectorAll(SEL) : [];
+    for (var i = 0; i < found.length; i++) queue(found[i]);
+  }
+  function start() {
+    scan(document.body);
+    new MutationObserver(function (recs) {
+      for (var i = 0; i < recs.length; i++) {
+        var r = recs[i];
+        if (r.type === 'childList') { for (var j = 0; j < r.addedNodes.length; j++) scan(r.addedNodes[j]); }
+        else if (r.target.matches && r.target.matches(SEL)) queue(r.target);
+      }
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'disabled', 'aria-pressed'] });
+    window.addEventListener('load', function () { scan(document.body); });
+    // light <-> dark changes the labels' colours: look at every button again
+    new MutationObserver(function () { scan(document.body); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
+// Dark mode: some widgets paint their text with a fixed dark colour of their own (a #334155 label, a slate caption ...). On the dark glass
+// that text is invisible. Any text that is dark AND sits on a dark surface is lifted to the theme's grey (data-hc-lt, see views.css).
+// Text on a light or coloured fill (a white input, an orange button, a pale chip) is left alone, and so is text that has a colour of its own.
+(function () {
+  var root = document.documentElement;
+  function lum(r, g, b) { var f = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); }
+  function rgba(s) { var m = String(s).match(/[\d.]+/g) || []; return [+m[0] || 0, +m[1] || 0, +m[2] || 0, m[3] === undefined ? 1 : +m[3]]; }
+  function surfaceLum(el) {
+    var col = [14, 18, 28], chain = [];
+    for (var e = el; e && e.nodeType === 1; e = e.parentElement) chain.push(e);
+    for (var i = chain.length - 1; i >= 0; i--) {
+      var c = rgba(getComputedStyle(chain[i]).backgroundColor);
+      if (c[3] > 0.02) col = [c[0] * c[3] + col[0] * (1 - c[3]), c[1] * c[3] + col[1] * (1 - c[3]), c[2] * c[3] + col[2] * (1 - c[3])];
+    }
+    return lum(col[0], col[1], col[2]);
+  }
+  function check(el) {
+    if (el.closest('[data-glass="tint"], script, style, svg')) return;
+    el.removeAttribute('data-hc-lt'); // read the colour the widget gave it, not the lifted one (otherwise a second pass would undo the first)
+    var cs = getComputedStyle(el), c = rgba(cs.color);
+    if (c[3] < 0.2 || Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]) > 70) return;
+    if (lum(c[0], c[1], c[2]) < 0.3 && surfaceLum(el) < 0.18) el.setAttribute('data-hc-lt', '1');
+  }
+  function scan(node) {
+    if (root.getAttribute('data-theme') === 'light') return;
+    var base = node.nodeType === 1 ? node : node.parentElement; if (!base) return;
+    var w = document.createTreeWalker(base, NodeFilter.SHOW_TEXT), t, seen = [];
+    while ((t = w.nextNode())) { if (t.nodeValue.trim().length > 1 && t.parentElement && seen.indexOf(t.parentElement) < 0) { seen.push(t.parentElement); check(t.parentElement); } }
+  }
+  function clearAll() { var l = document.querySelectorAll('[data-hc-lt]'); for (var i = 0; i < l.length; i++) l[i].removeAttribute('data-hc-lt'); }
+  var queued = [], timer = 0;
+  function queue(n) { queued.push(n); if (!timer) timer = setTimeout(function () { timer = 0; var q = queued; queued = []; for (var i = 0; i < q.length; i++) if (q[i].isConnected) scan(q[i]); }, 220); }
+  function start() {
+    queue(document.body);
+    new MutationObserver(function (recs) { for (var i = 0; i < recs.length; i++) for (var j = 0; j < recs[i].addedNodes.length; j++) { var n = recs[i].addedNodes[j]; if (n.nodeType === 1 || n.nodeType === 3) queue(n); } })
+      .observe(document.body, { childList: true, subtree: true });
+    new MutationObserver(function () { clearAll(); queue(document.body); }).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    window.addEventListener('load', function () { queue(document.body); });
+  }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();

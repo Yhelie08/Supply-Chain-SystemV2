@@ -26,7 +26,7 @@ after(() => {
 });
 
 describe('Export CLI Subprocess Execution', () => {
-  test('executes tools/export-zoho-data.mjs --dry-run with exit code 0 and evaluates all 90 forms', () => {
+  test('executes tools/export-zoho-data.mjs --dry-run with exit code 0 and evaluates all 88 forms', () => {
     const stdout = execFileSync(
       process.execPath,
       [path.join(ROOT, 'tools', 'export-zoho-data.mjs'), '--dry-run'],
@@ -35,7 +35,7 @@ describe('Export CLI Subprocess Execution', () => {
 
     assert.ok(stdout.includes('Environment: development (dry run, no API calls)'));
     const lines = stdout.trim().split(/\r?\n/).slice(1);
-    assert.equal(lines.length, 90, 'All 90 forms in parsed export must be evaluated');
+    assert.equal(lines.length, 88, 'All 88 forms in parsed export must be evaluated (Pack and Pack_Notifications were merged into Pack & QC and removed)');
 
     const pickUpLine = lines.find((l) => l.startsWith('Pick_Up_Request_Form'));
     assert.ok(pickUpLine, 'Pick_Up_Request_Form should be present');
@@ -108,9 +108,9 @@ describe('Report Selection Ranking & Plan Logic', () => {
     assert.equal(pickReport({ name: 'Missing_Form' }, mockReports), null);
   });
 
-  test('buildExportPlan correctly maps all 90 forms with expected reports and exclusions', () => {
+  test('buildExportPlan correctly maps all 88 forms with expected reports and exclusions', () => {
     const plan = buildExportPlan(forms, reports);
-    assert.equal(plan.length, 90);
+    assert.equal(plan.length, 88);
 
     const unexportable = plan.filter((p) => !p.report).map((p) => p.form.name).sort();
     assert.deepEqual(unexportable, ['Pick_Up_Request_Form', 'Shipment_Order_Form']);

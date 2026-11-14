@@ -210,3 +210,36 @@ For local PC debugging against the shared Railway database without deploying:
 | Uploaded images missing after deployment | Uploads stored on ephemeral container filesystem | Attach Railway volume `supply-chain-app-volume` mounted at `/data`. |
 | Handshake / SSL Error on external proxy | Node PG rejecting untrusted certificate | External proxy URLs automatically enforce `{ rejectUnauthorized: false }`. Verify `server/pg/pool.mjs` is used. |
 | Schedule jobs firing repeatedly across replicas | Multiple containers running uncoordinated schedules | Ensure `SCHEDULES=on` is backed by `server/schedules.mjs` PostgreSQL advisory locks (`pg_try_advisory_lock`). |
+
+First run with `ADMIN_EMAIL`/`ADMIN_PASSWORD` set creates the admin account automatically.
+Forces a password change on first login.
+
+### "No account" / login fails even though the admin account definitely exists
+
+This means your `localhost` is reading from your own **local SQLite** database, not the shared
+Postgres — a completely separate, usually-empty `_users` table. Happens when `BACKEND` isn't set
+to `pg`, or the tunnel from step 1 above isn't running. Check your `.env` has:
+
+```
+BACKEND=pg
+DATABASE_URL=postgresql://postgres:...@127.0.0.1:<port>/railway   (current tunnel session's port/password)
+```
+
+If `BACKEND=local` or missing, or `DATABASE_URL` is stale/not set, the app silently falls back to
+SQLite (`data/app.db`) instead of erroring — so the server still starts fine, it's just reading
+the wrong account list. Re-run `railway connect Postgres --tunnel-only`, copy its fresh `URL:`
+line into `DATABASE_URL`, confirm `BACKEND=pg`, and restart `npm run dev`. The startup log line
+`[pg] connected; schema ready (...)` only appears when it's actually using Postgres — if you don't
+see that line, you're on local SQLite.
+
+## Notes
+
+- Railway's tunnel password and port are session-specific — don't hardcode them anywhere shared, re-copy each session.
+- `.env` is gitignored, never commit it.
+- The shared Postgres now holds **Production data** (38,845 rows imported 2026-11-14, rehearsal). **Do not run `npm run seed` against it** — seed is for a fresh, empty database only.
+- Zoho Creator backend/adapter was removed in this branch (`yhelie-update`'s commit). Only `local` (SQLite)
+  and `pg` (Postgres) backends exist now, via `BACKEND` env var.
+- First person to run the app with `BACKEND=pg` and `ADMIN_EMAIL`/`ADMIN_PASSWORD` set creates the shared
+  admin account. Don't set those two vars again after that (they only act on an empty `_users` table) —
+  everyone else just signs in with whatever account an admin made for them via **Manage users**.
+- Admin accounts: the two active admins copied from the live SQLite during the 2026-11-14 rehearsal (see Change Log); `HCADMIN` is an old Nov-13 test account. Passwords are never written here.

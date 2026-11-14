@@ -571,7 +571,6 @@
     MAX_RECORDS: 1000,
     REPORTS: {
       pick: "Pick1_Report",
-      pack: "Pack_Report",
       qc: "All_Qc_Reports1",
       crate: "All_Crates",
     },
@@ -2241,7 +2240,7 @@
     renderColumnShells();
     Promise.all([
       stageLoadPromise("Pick", CONFIG.REPORTS.pick, loadPickRecords),
-      stageLoadPromise("Pack", CONFIG.REPORTS.pack, loadPackRecords),
+      // Pack form retired (Pack and QC are one tab now): no Pack rows to load, the Pack column stays empty.
       stageLoadPromise("QC", CONFIG.REPORTS.qc, loadQcRecords),
       stageLoadPromise("Crate", CONFIG.REPORTS.crate, loadCrateRecords),
     ]).then(() => {

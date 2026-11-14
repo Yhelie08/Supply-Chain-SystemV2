@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
-import { reports } from '../../server/model.mjs';
+import { forms, reports } from '../../server/model.mjs';
 import { importBackup } from '../../server/pg/import.mjs';
 import { createStore } from '../../server/pg/store.mjs';
 
@@ -20,7 +20,9 @@ test('import a real backup: counts match, IDs are exact, every report reads', { 
   assert.deepEqual(summary.filter((s) => s.status.startsWith('FAILED')), [], 'no form fails to import');
 
   // Row counts equal the export, and a second run changes nothing (tables already have rows).
-  for (const e of manifest.forms.filter((f) => f.rows)) {
+  // Older backups can carry forms that were since removed from the app (Pack, Pack_Notifications -> Pack & QC);
+  // importBackup skips those, so only count forms that are still in the model.
+  for (const e of manifest.forms.filter((f) => f.rows && forms[f.form])) {
     const { rows } = await db.query(`SELECT count(*)::int AS n FROM "${e.form}"`);
     assert.equal(rows[0].n, e.rows, e.form);
   }

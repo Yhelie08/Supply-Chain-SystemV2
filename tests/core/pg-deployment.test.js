@@ -79,10 +79,10 @@ describe('Railway Connection Pooling (server/pg/pool.mjs)', () => {
 });
 
 describe('Railway Schema and Sequence Initialization (server/pg/schema.mjs)', () => {
-  test('ensureSchema creates all 90 tables with record_id_seq starting at 4900000000000000000', async () => {
+  test('ensureSchema creates all 88 tables with record_id_seq starting at 4900000000000000000', async () => {
     const db = new PGlite();
     const stmts = await ensureSchema(db);
-    assert.equal(stmts, Object.keys(columns).length, 'Should create tables for all 90 forms');
+    assert.equal(stmts, Object.keys(columns).length, 'Should create tables for all 88 forms');
 
     const seqRes = await db.query("SELECT start_value FROM pg_sequences WHERE sequencename = 'record_id_seq'");
     assert.equal(String(seqRes.rows[0].start_value), SEQ_START);

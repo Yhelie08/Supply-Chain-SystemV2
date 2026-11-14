@@ -1,0 +1,151 @@
+/* Liquid glass skin: the same app with clearer, glossier glass, in the original ember orange and signal green.
+   It only changes surface effects and a few colour tokens (see theme.css, views.css and the shell's own style), so removing
+   the "data-hc-skin" attribute, or running  localStorage.setItem('hc-skin', 'classic')  in the console and reloading,
+   brings the flat original look straight back.
+
+   Accent: operations are orange, the partner portals (Tony Fan, Fenteng Lighting) are green. Status colours stay as they were.
+   The room behind the glass is a warmer, brighter aurora (orange, amber and green light), so the panes have something to refract. */
+
+/* ===================== dark ===================== */
+:root[data-hc-skin="liquid"] {
+  /* shell + sign-in pages */
+  --void: #07090d; --void-2: #0c1016;
+  --ember: #ff7a1a; --ember-hot: #ffa14a; --ember-ink: #1c0d02; --ember-t: #ffa14a;
+  --signal: #2fe38f; --signal-ink: #04170d; --signal-t: #2fe38f;
+  --lamp-a: rgba(255, 122, 26, .42); --lamp-b: rgba(47, 227, 143, .26); --lamp-c: rgba(255, 170, 90, .13); --cone: 255, 168, 84;
+  --glass: rgba(255, 255, 255, .075); --glass-2: rgba(255, 255, 255, .14);
+  --edge: rgba(255, 255, 255, .17); --edge-2: rgba(255, 255, 255, .30);
+  --pane: linear-gradient(135deg, rgba(255, 255, 255, .15), rgba(255, 255, 255, .045) 55%, rgba(255, 255, 255, .10));
+  --pane-stage: linear-gradient(135deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .03) 60%, rgba(255, 255, 255, .065));
+  --pane-menu: rgba(24, 24, 30, .82);
+  --hi: rgba(255, 255, 255, .34); --dots: rgba(255, 255, 255, .15);
+  --shadow-pane: 0 18px 50px rgba(0, 0, 0, .46), inset 0 -1px 0 rgba(255, 255, 255, .07);
+  --shadow-stage: 0 26px 70px rgba(0, 0, 0, .5), inset 0 -1px 0 rgba(255, 255, 255, .06);
+  /* widgets */
+  --hc-line-fill: #ff7a1a; --hc-line-on: #1c0d02; --hc-line-ink: #ff9a45; --hc-line-soft: rgba(255, 122, 26, .16);
+  --hc-glass: linear-gradient(135deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .045) 60%, rgba(255, 255, 255, .095));
+  --hc-glass-edge: rgba(255, 255, 255, .18);
+  --hc-bar: rgba(255, 255, 255, .075);
+  --hc-shadow: inset 0 1px 0 rgba(255, 255, 255, .30), inset 0 -1px 0 rgba(255, 255, 255, .05), 0 10px 30px rgba(0, 0, 0, .34);
+  --hc-hair: rgba(255, 255, 255, .12); --hc-hair-strong: rgba(255, 255, 255, .24);
+}
+:root[data-hc-skin="liquid"][data-hc-line="tony-fan"], :root[data-hc-skin="liquid"][data-hc-line="fenteng-lighting"] {
+  --hc-line-fill: #2fe38f; --hc-line-on: #04170d; --hc-line-ink: #2fe38f; --hc-line-soft: rgba(47, 227, 143, .15);
+}
+
+/* ===================== light ===================== */
+:root[data-hc-skin="liquid"][data-theme="light"] {
+  --void: #e8ecf4; --void-2: #f1f4fa;
+  --ember-t: #b8480a; --signal-t: #0b8a55;
+  --lamp-a: rgba(255, 138, 52, .70); --lamp-b: rgba(47, 227, 143, .52); --lamp-c: rgba(255, 170, 90, .42); --cone: 255, 150, 60;
+  --glass: rgba(255, 255, 255, .50); --glass-2: rgba(255, 255, 255, .80);
+  --edge: rgba(255, 255, 255, .70); --edge-2: rgba(255, 255, 255, .95);
+  --pane: linear-gradient(135deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .36) 55%, rgba(255, 255, 255, .60));
+  --pane-stage: linear-gradient(135deg, rgba(255, 255, 255, .58), rgba(255, 255, 255, .22) 60%, rgba(255, 255, 255, .42));
+  --pane-menu: rgba(255, 255, 255, .88);
+  --hi: rgba(255, 255, 255, 1); --dots: rgba(20, 30, 50, .16);
+  --shadow-pane: 0 18px 50px rgba(30, 40, 70, .16), inset 0 -1px 0 rgba(255, 255, 255, .5);
+  --shadow-stage: 0 26px 70px rgba(30, 40, 70, .16), inset 0 -1px 0 rgba(255, 255, 255, .45);
+  --shadow-menu: 0 24px 60px rgba(30, 40, 70, .25), inset 0 1px 0 #fff;
+  --hc-line-fill: #ef6d0c; --hc-line-ink: #b8480a; --hc-line-soft: rgba(255, 122, 26, .13);
+  --hc-glass: linear-gradient(135deg, rgba(255, 255, 255, .66), rgba(255, 255, 255, .28) 60%, rgba(255, 255, 255, .52));
+  --hc-glass-edge: rgba(255, 255, 255, .85);
+  --hc-bar: rgba(255, 255, 255, .45);
+  --hc-shadow: inset 0 1px 0 #ffffff, inset 0 -1px 0 rgba(255, 255, 255, .4), 0 10px 30px rgba(30, 40, 70, .13);
+  --hc-hair: rgba(20, 30, 50, .11); --hc-hair-strong: rgba(20, 30, 50, .21);
+}
+:root[data-hc-skin="liquid"][data-theme="light"][data-hc-line="tony-fan"], :root[data-hc-skin="liquid"][data-theme="light"][data-hc-line="fenteng-lighting"] {
+  --hc-line-fill: #12a566; --hc-line-on: #04170d; --hc-line-ink: #0b8a55; --hc-line-soft: rgba(15, 138, 87, .11);
+}
+
+/* ===================== shell: the glass panes catch light ===================== */
+:root[data-hc-skin="liquid"] .rail,
+:root[data-hc-skin="liquid"] .stage {
+  background-image: radial-gradient(120% 70% at 0% 0%, rgba(255, 255, 255, .22), transparent 55%), var(--pane-stage);
+  -webkit-backdrop-filter: blur(34px) saturate(185%); backdrop-filter: blur(34px) saturate(185%);
+}
+:root[data-hc-skin="liquid"] .rail { background-image: radial-gradient(120% 60% at 0% 0%, rgba(255, 255, 255, .26), transparent 55%), var(--pane); }
+:root[data-hc-skin="liquid"][data-theme="light"] .rail,
+:root[data-hc-skin="liquid"][data-theme="light"] .stage { background-image: radial-gradient(120% 70% at 0% 0%, rgba(255, 255, 255, .9), transparent 55%), var(--pane-stage); }
+:root[data-hc-skin="liquid"][data-theme="light"] .rail { background-image: radial-gradient(120% 60% at 0% 0%, rgba(255, 255, 255, .95), transparent 55%), var(--pane); }
+:root[data-hc-skin="liquid"] :is(.theme-toggle, .account > button, .fold, .room .ico) {
+  -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--hi), 0 6px 18px rgba(0, 0, 20, .14);
+}
+:root[data-hc-skin="liquid"] .menu { -webkit-backdrop-filter: blur(34px) saturate(190%); backdrop-filter: blur(34px) saturate(190%); }
+:root[data-hc-skin="liquid"] .avatar { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5); }
+:root[data-hc-skin="liquid"] .room[aria-current="true"] { background: linear-gradient(90deg, color-mix(in srgb, var(--room) 22%, transparent), rgba(255, 255, 255, .10) 75%); box-shadow: inset 0 1px 0 var(--hi); }
+
+/* the room behind the glass: a brighter aurora with an amber and a rose glow in the corners, so the panes have something to refract */
+:root[data-hc-skin="liquid"] .ambient {
+  background:
+    radial-gradient(60vmax 46vmax at 4% -8%, var(--lamp-a), transparent 62%),
+    radial-gradient(52vmax 40vmax at 104% 108%, var(--lamp-b), transparent 60%),
+    radial-gradient(36vmax 30vmax at 70% -20%, var(--lamp-c), transparent 70%),
+    radial-gradient(38vmax 28vmax at -4% 104%, rgba(255, 190, 100, .26), transparent 66%),
+    radial-gradient(34vmax 26vmax at 104% 6%, rgba(255, 120, 90, .16), transparent 66%),
+    var(--void);
+}
+
+/* ===================== sign-in, account and user pages (pages.css; the widgets carry data-hc-kit, these pages do not) ===================== */
+:root[data-hc-skin="liquid"]:not([data-hc-kit]) .btn.primary { background: linear-gradient(180deg, rgba(255, 255, 255, .38), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, var(--ember-hot), var(--ember)); box-shadow: 0 8px 26px rgba(255, 122, 26, .38), inset 0 1px 0 rgba(255, 255, 255, .6); }
+:root[data-hc-skin="liquid"]:not([data-hc-kit]) .btn.primary:hover { box-shadow: 0 10px 32px rgba(255, 122, 26, .5), inset 0 1px 0 rgba(255, 255, 255, .6); }
+
+/* ===================== widgets: cards and buttons ===================== */
+/* the filled things (primary buttons, the chosen pill or tab) are glossy, like a drop of glass */
+:root[data-hc-skin="liquid"] :is(.btn-orange, .btn.primary, .btn-primary, .pill.active, .view-tab.is-active, .list-filter-btn.is-active, .lang-seg.lang-seg-on, .fpill.active, .chip.active) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .38), rgba(255, 255, 255, 0) 55%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 6px 18px color-mix(in srgb, var(--hc-line-fill) 38%, transparent);
+}
+:root[data-hc-skin="liquid"] :is(.stat-card, .main-card, .sec-card, .card, .grp-card, .pr-group-card, .po-group-card, .side-card, .group-card, .kpi, .kpi-card, .panel, .list-card, .section-card, .sidebar-card, .tlhc-card) {
+  background-image: radial-gradient(110% 80% at 0% 0%, rgba(255, 255, 255, .16), transparent 55%), var(--hc-glass);
+}
+:root[data-hc-skin="liquid"][data-theme="light"] :is(.stat-card, .main-card, .sec-card, .card, .grp-card, .pr-group-card, .po-group-card, .side-card, .group-card, .kpi, .kpi-card, .panel, .list-card, .section-card, .sidebar-card, .tlhc-card) {
+  background-image: radial-gradient(110% 80% at 0% 0%, rgba(255, 255, 255, .85), transparent 55%), var(--hc-glass);
+}
+:root[data-hc-skin="liquid"] :is(.drawer, .modal, .confirm-box, .confirm-modal) { -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); }
+:root[data-hc-skin="liquid"] .hc-menu { -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); }
+
+/* ===================== every button is glass (tagged by views.js: data-glass="clear" | "tint") ===================== */
+:root[data-hc-skin="liquid"] [data-glass] {
+  border: 1px solid rgba(255, 255, 255, .30) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(160%); backdrop-filter: blur(10px) saturate(160%);
+  transition: background .15s ease, box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+}
+:root[data-hc-skin="liquid"] [data-glass="clear"] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, .07)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), inset 0 -1px 0 rgba(255, 255, 255, .06), 0 4px 14px rgba(0, 0, 0, .22) !important;
+}
+:root[data-hc-skin="liquid"] [data-glass="clear"]:hover:not(:disabled) { background: linear-gradient(180deg, rgba(255, 255, 255, .32), rgba(255, 255, 255, .13)) !important; }
+:root[data-hc-skin="liquid"] [data-glass="tint"] {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 52%),
+    linear-gradient(180deg, rgba(var(--hc-btn-rgb), .84), rgba(var(--hc-btn-rgb), .60)) !important;
+  border-color: rgba(255, 255, 255, .45) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .65), inset 0 -1px 0 rgba(255, 255, 255, .12), 0 6px 18px rgba(var(--hc-btn-rgb), .38) !important;
+}
+:root[data-hc-skin="liquid"] [data-glass="tint"]:hover:not(:disabled) { filter: brightness(1.07) saturate(1.1); }
+:root[data-hc-skin="liquid"] [data-glass]:active:not(:disabled) { transform: translateY(1px); }
+:root[data-hc-skin="liquid"][data-theme="light"] [data-glass] { border-color: rgba(255, 255, 255, .95) !important; }
+:root[data-hc-skin="liquid"][data-theme="light"] [data-glass="clear"] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .88), rgba(255, 255, 255, .46)) !important;
+  box-shadow: inset 0 1px 0 #ffffff, 0 0 0 1px rgba(30, 45, 90, .10), 0 4px 14px rgba(40, 70, 140, .12) !important;
+}
+:root[data-hc-skin="liquid"][data-theme="light"] [data-glass="clear"]:hover:not(:disabled) { background: linear-gradient(180deg, #ffffff, rgba(255, 255, 255, .62)) !important; }
+:root[data-hc-skin="liquid"][data-theme="light"] [data-glass="tint"] { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 -1px 0 rgba(255, 255, 255, .2), 0 6px 18px rgba(var(--hc-btn-rgb), .30) !important; }
+:root[data-hc-skin="liquid"][data-theme="light"] [data-glass="tint"] {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 52%),
+    linear-gradient(180deg, rgba(var(--hc-btn-rgb), .96), rgba(var(--hc-btn-rgb), .76)) !important;
+}
+/* dark glass: a lighter label on the grey buttons, a little less white in the glass so the label stands out, and a disabled button stays readable */
+:root[data-hc-skin="liquid"]:not([data-theme="light"]) [data-glass-fg="ink"] { color: var(--hc-ink) !important; }
+:root[data-hc-skin="liquid"]:not([data-theme="light"]) [data-glass="clear"] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .15), rgba(255, 255, 255, .045)) !important;
+}
+:root[data-hc-skin="liquid"] [data-glass]:disabled { opacity: .62 !important; }
+:root[data-hc-skin="liquid"]:not([data-theme="light"]) [data-glass="tint"]:disabled { filter: saturate(.85); }
+
+/* tab strips (underline tabs): no gloss block behind the chosen tab, and a clearer label on dark glass */
+:root[data-hc-skin="liquid"]:not([data-theme="light"]) .tab-btn:not(.active) { color: var(--hc-ink-2); }
+:root[data-hc-skin="liquid"] .tab-btn { box-shadow: none; background-image: none; }

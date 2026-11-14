@@ -594,33 +594,6 @@
     "fieldCount": 9
   },
   {
-    "name": "Pack",
-    "label": "Pack",
-    "successMessage": "Data Added Successfully!",
-    "line": 7829,
-    "reports": [
-      "Pack_Report"
-    ],
-    "workflows": [
-      "PACK_SEND_TO_QC",
-      "Pack_Notify_New_Record"
-    ],
-    "usedByFunctions": [],
-    "fieldCount": 22
-  },
-  {
-    "name": "Pack_Notifications",
-    "label": "Pack Notifications",
-    "successMessage": "Data Added Successfully!",
-    "line": 8041,
-    "reports": [
-      "Pack_Notifications_Report"
-    ],
-    "workflows": [],
-    "usedByFunctions": [],
-    "fieldCount": 9
-  },
-  {
     "name": "Package_Shipments",
     "label": "Package Shipments",
     "successMessage": "Data Added Successfully!",

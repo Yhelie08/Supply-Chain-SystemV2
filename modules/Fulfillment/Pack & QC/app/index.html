@@ -140,6 +140,15 @@
   .field-required-mark { color: #ef4444; margin-left: 2px; }
   .field-input-error { border-color: #ef4444 !important; background: #fef2f2 !important; }
 
+  /* Split-quantity dialog box: the theme turns every "bg-white rounded-2xl" into see-through glass, which made this
+     small pop-up hard to read against the form behind it. A dialog should be solid. */
+  #splitQtyModal > div {
+    background: var(--hc-panel, #fff) !important;
+    background-image: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
   /* EN/TL language switch — ADDED 2026-11-05. Plain CSS, not Tailwind classes,
      so it survives this app's precompiled-CSS widgets too. */
   .lang-switch {
@@ -167,13 +176,15 @@
     <!-- Top header -->
     <header id="topHeader" class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5 shrink-0">
       <div>
-        <h1 class="text-xl font-bold text-slate-900 leading-tight">QC Report</h1>
-        <p class="text-xs text-slate-500 mt-0.5">
+        <h1 class="text-xl font-bold text-slate-900 leading-tight">Pack &amp; Quality Checking</h1>
+        <!-- subtitle + Live indicator hidden for now:
+<p class="text-xs text-slate-500 mt-0.5">
           Latest Activity First ·
           <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
           </span>
         </p>
+-->
       </div>
       <div class="flex items-center gap-2 text-xs">
         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 font-medium text-slate-600">
@@ -247,24 +258,15 @@
   </div>
 
   <!-- QC Detail view -->
-  <div id="detailView" class="hidden w-full px-4 sm:px-6 py-5">
-
-    <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
-      <div class="flex items-center gap-2 font-semibold text-slate-600">
-        <span>HC Systems</span><span class="text-slate-300">/</span><span>QC Report Detail</span>
-      </div>
-      <div class="lang-switch" data-i18n-skip>
+  <div id="detailView" class="hidden w-full">
+    <!-- One flush bar like the Inquiry / Purchase Request details: back button + the record (the "HC Systems / ... Detail" crumb row is gone) -->
+    <div class="header-strip flex items-center gap-3">
+      <button id="backToListBtn" class="so-back">&#8592; QC List</button>
+      <span id="detailBreadcrumb" class="so-bar-title"></span>
+      <div class="lang-switch ml-auto" data-i18n-skip>
           <button type="button" data-lang-btn="en" class="lang-seg">EN</button>
           <button type="button" data-lang-btn="tl" class="lang-seg">TL</button>
         </div>
-    </div>
-
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <button id="backToListBtn" class="inline-flex items-center gap-1.5 font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg px-3 py-1.5 transition">
-        ← Back to QC Dashboard
-      </button>
-      <span class="text-slate-300">|</span>
-      <span id="detailBreadcrumb" class="text-slate-500"></span>
     </div>
 
     <!-- Next Step banner (ADDED 2026-09-30, display only) -->
@@ -322,7 +324,7 @@
       </div>
 
       <div class="lg:col-span-1">
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 sticky top-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
           <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-4 flex items-center gap-1.5">🔍 QC Summary</h3>
           <div class="space-y-3">
             <div class="flex items-center justify-between">
@@ -786,7 +788,7 @@
 
     // ---- detail view ----
     ["QC Report Detail", "Detalye ng QC Report"],
-    ["← Back to QC Dashboard", "← Balik sa QC Dashboard"],
+    ["← QC List", "← Balik sa QC Dashboard"],
     ["✏️ Edit", "✏️ I-edit"],
     ["📄 Sales Order Details", "📄 Detalye ng Sales Order"],
     ["👤 Customer Details", "👤 Detalye ng Customer"],
@@ -2055,8 +2057,8 @@
   function nextStepFor(r) {
     if (r.QC_Status === "Approved") return { here: "QC Approved", action: "Moved to Crate / Order Aggregation", who: "Crater / Dispatcher", tone: "done" };
     if (r.QC_Status === "Rejected") return { here: "QC Rejected", action: "Sent to Exception Control", who: "Warehouse", tone: "done" };
-    if (isBlank(r.Quality_Checker)) return { here: "Quality Checking", action: "Assign a packer", who: "Warehouse", tone: "next" };
-    return { here: "Quality Checking", action: "Pack the item, then open QC and Approve or Reject", who: "Packer / Checker", tone: "next" };
+    if (isBlank(r.Quality_Checker)) return { here: "Pack & QC", action: "Assign a packer", who: "Warehouse", tone: "next" };
+    return { here: "Pack & QC", action: "Pack the item, then open QC and Approve or Reject", who: "Packer / Checker", tone: "next" };
   }
 
   // ---------------------------------------------------------------------
@@ -2177,7 +2179,9 @@
   function refreshQcOpenBtn(r) {
     const row = Array.from(tableBody.querySelectorAll(".record-row")).find((tr) => tr.dataset.id === String(r.ID));
     if (!row) return;
-    const td = row.lastElementChild;
+    // Not lastElementChild: the theme appends a "Last Modified" cell after Action, and that would get the button.
+    const td = row.querySelector(".qc-action-cell");
+    if (!td) return;
     td.innerHTML = qcOpenBtnHtml(r);
     wireQcOpenBtn(td.querySelector(".open-qc-btn"));
   }
@@ -2298,7 +2302,7 @@ function forecastCell(r) {
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Order_Type))}</td>
         <td class="px-3 py-2.5">${forecastCell(r)}</td>
         <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
-        <td class="px-5 py-2.5 text-right">${qcOpenBtnHtml(r)}</td>
+        <td class="qc-action-cell px-5 py-2.5 text-right">${qcOpenBtnHtml(r)}</td>
       </tr>`;
   }
 

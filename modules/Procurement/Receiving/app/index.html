@@ -1407,7 +1407,7 @@ function renderList(){
     var excCount = parseInt(r.Exception_Count||0,10);
     var fulfExcBadge = (r.Source_Module === 'Fulfillment EXC') ? ' <span class="badge" style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4">Fulfillment EXC</span>' : '';
     return '<tr class="row-' + status + '" onclick="openDetail(\'' + r.ID + '\')">' +
-      '<td><strong>' + esc(r.Receive_No1) + '</strong>' + fulfExcBadge + replBadge(r) + '</td>' +
+      '<td><strong>' + esc(r.Receive_No1) + '</strong>' + fulfExcBadge + /* replBadge(r) hidden for now */ '' + '</td>' +
       '<td>' + esc(r.PO_No) + '</td>' +
       '<td>' + esc(r.SO_No) + '</td>' +
       '<td>' + trkChips(trkShipFor(r) ? [trkShipFor(r)] : [], 'trk-ship') + '</td>' +

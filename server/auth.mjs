@@ -117,6 +117,7 @@ export const listUsers = async () => (await store.all('SELECT * FROM _users ORDE
 export const getUser = async (id) => publicUser(await store.get('SELECT * FROM _users WHERE id = ?', [Number(id)]));
 
 export async function updateUser(id, { name, role, team_name, teamName, active }) {
+  forgetSessions();
   const u = await store.get('SELECT * FROM _users WHERE id = ?', [Number(id)]);
   if (!u) throw new Error('User not found.');
   const rawTeam = team_name !== undefined ? team_name : teamName;
@@ -128,6 +129,7 @@ export async function updateUser(id, { name, role, team_name, teamName, active }
   return getUser(u.id);
 }
 export async function deleteUser(id) {
+  forgetSessions();
   const u = await store.get('SELECT * FROM _users WHERE id = ?', [Number(id)]);
   if (!u) throw new Error('User not found.');
   if (u.role === 'admin' && u.active && (await adminCount()) <= 1) throw new Error('Keep at least one active admin.');
@@ -137,10 +139,12 @@ export async function deleteUser(id) {
 const adminCount = async () => Number((await store.get("SELECT COUNT(*) AS n FROM _users WHERE role = 'admin' AND active = 1")).n);
 
 export async function setPassword(id, password, { mustChange = false } = {}) {
+  forgetSessions();
   await store.run('UPDATE _users SET password_hash = ?, must_change_password = ? WHERE id = ?', [hashPassword(password), mustChange ? 1 : 0, Number(id)]);
   await store.run('DELETE FROM _sessions WHERE user_id = ?', [Number(id)]);
 }
 export async function changeOwnPassword(id, current, next) {
+  forgetSessions();
   const u = await store.get('SELECT * FROM _users WHERE id = ?', [Number(id)]);
   if (!u || !verifyPassword(current, u.password_hash)) throw new Error('Your current password is not correct.');
   const problem = passwordProblem(next);
@@ -173,12 +177,29 @@ export async function signIn(email, password, ip) {
   await store.run('UPDATE _users SET last_login = ? WHERE id = ?', [zohoNow(), u.id]);
   return { token, user: publicUser(u) };
 }
+// Who a session belongs to is asked on EVERY request (the page, each widget call). On a remote database that is one extra round trip
+// (~0.3 s on Railway) per request, so the answer is remembered for a few seconds. Anything that changes a user or a session (sign out,
+// deactivate, delete, password change) clears it at once, so a signed-out session never lingers more than a moment.
+const SESSION_TTL_MS = 30_000;
+const sessionCache = new Map(); // token hash -> { user, until }
+const forgetSessions = () => sessionCache.clear();
 export async function userForToken(token) {
   if (!token) return null;
+  const key = sha256(token);
+  const hit = sessionCache.get(key);
+  if (hit && hit.until > Date.now()) return hit.user;
+  const user = await lookupUserForToken(token);
+  if (user) {
+    if (sessionCache.size > 500) sessionCache.clear();
+    sessionCache.set(key, { user, until: Date.now() + SESSION_TTL_MS });
+  } else sessionCache.delete(key);
+  return user;
+}
+async function lookupUserForToken(token) {
   const row = await store.get('SELECT u.* FROM _sessions s JOIN _users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1', [sha256(token), Date.now()]);
   return publicUser(row);
 }
-export const signOut = (token) => token && store.run('DELETE FROM _sessions WHERE token_hash = ?', [sha256(token)]);
+export const signOut = (token) => { forgetSessions(); return token && store.run('DELETE FROM _sessions WHERE token_hash = ?', [sha256(token)]); };
 export const cookieMaxAge = SESSION_DAYS * 86400;
 
 /** First start on a fresh database: create the admin from ADMIN_EMAIL / ADMIN_PASSWORD. */
