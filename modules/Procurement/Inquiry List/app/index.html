@@ -3904,23 +3904,30 @@ document.querySelectorAll('.coll-btn').forEach(function(btn){
   });
 });
 
-/* PRICE FLOW (2026-07-14, thingsToDo.txt): shared by both the New Inquiry quotes
-   grid (Availability/Initial/Negotiated/Final/Lead/Stage/Selected — initialIdx=1) and
-   the Detail Edit quotes grid (Suppliers/Availability/Initial/Negotiated/Final/Lead/
-   Stage/Selected — initialIdx=2). Negotiated unlocks once Initial has a value; Final
-   is always computed, never typed directly. */
+/* PRICE FLOW (2026-07-14, thingsToDo.txt; revised 2026-11-13 per user — buyer shouldn't be
+   able to pre-fill pricing for a supplier who hasn't actually responded yet): shared by both
+   the New Inquiry quotes grid (Availability/Initial/Negotiated/Final/Lead/Stage/Selected —
+   initialIdx=1) and the Detail Edit quotes grid (Suppliers/Availability/Initial/Negotiated/
+   Final/Lead/Stage/Selected — initialIdx=2). Initial + Negotiated both stay locked while
+   Availability is "Pending" (the supplier hasn't responded through their own portal yet) —
+   unlock the instant it's changed to Confirmed/Unavailable/Cannot Produce. Negotiated also
+   still requires Initial to have a value on top of that. Final is always computed, never
+   typed directly. */
 function applyQuoteRowPriceLock(tr, initialIdx){
   initialIdx = initialIdx || 1;
   var cells = tr.querySelectorAll('.qi');
-  var initialEl = cells[initialIdx], negEl = cells[initialIdx+1], finalEl = cells[initialIdx+2];
-  if(!initialEl || !negEl || !finalEl) return;
+  var availEl = cells[initialIdx-1], initialEl = cells[initialIdx], negEl = cells[initialIdx+1], finalEl = cells[initialIdx+2];
+  if(!availEl || !initialEl || !negEl || !finalEl) return;
   function recompute(){
+    var responded = availEl.value !== 'Pending';
+    initialEl.disabled = !responded;
     var initial = parseFloat(initialEl.value)||0;
     var negotiated = parseFloat(negEl.value)||0;
-    negEl.disabled = !(initial > 0);
+    negEl.disabled = !responded || !(initial > 0);
     var fin = negotiated > 0 ? negotiated : initial;
     finalEl.value = fin > 0 ? fin : '';
   }
+  availEl.addEventListener('change', recompute);
   initialEl.addEventListener('input', recompute);
   negEl.addEventListener('input', recompute);
   recompute();

@@ -2058,6 +2058,14 @@ function submitResponse(){
   const acDetailsOk = (collSpec !== "Completed") || (specDetailsTrim !== "");
   if(acSampleOk && acDimageOk && acDrawingOk && acSpecOk && acDetailsOk){
     payload.Response_Status = "Completed";
+  } else if(status === "Waiting"){
+    /* BUG found live 2026-11-13 (Tony Fan portal, same code here): a normal price-only
+       submit (no collateral yet, since collateral stays locked until Selected) never
+       advanced Response_Status past "Waiting" at all — only the Completed branch above
+       ever set it. The buyer's own Inquiry Detail grid gates on Response_Status !=
+       "Waiting" to know a supplier has actually responded, so a real submitted quote
+       silently never showed as responded on the buyer's side. */
+    payload.Response_Status = "Submit Response";
   }
 
   const btn = $('submitBtn');
