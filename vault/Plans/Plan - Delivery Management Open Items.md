@@ -53,11 +53,11 @@ Done on Development only, with records marked `ZZ-CMP` (availability, appointmen
 | # | Item | Owner | Needs | Status |
 |---|---|---|---|---|
 | 1 | Forecast engine `fcStampBySoNo` (the 4 Delivery `*_Instant_Forecast` copy what Fulfillment already computed; they do not compute a forecast) | forecast milestone, owner to be named | the shared port | waiting |
-| 2 | CMS inbound route with an API key (core PR) calling `upsertDmsScheduleRequest` and `addDmsScheduleRequestMessage`; `CMS_STATUS_URL` and `CMS_MESSAGE_URL` values | core owner, with the person who owns the CMS app | route + key + URLs | decided, not built |
+| 2 | CMS inbound route with an API key (`POST /api/integrations/cms/*`) calling `upsertDmsScheduleRequest` and `addDmsScheduleRequestMessage`; `CMS_STATUS_URL` and `CMS_MESSAGE_URL` values | core owner, with the person who owns the CMS app | URLs + CMS live config | route built (2026-11-13), waiting for CMS live test |
 | 3 | Live check of Geoapify (geocoding) | the owner | new `GEOAPIFY_API_KEY` | waiting for the key |
 | 4 | Live check of Inventory (`create_shipment_order`, `create_sales_return_books`): the Deluge posts a string body, the client posts JSON | the owner | Books OAuth client and the owner's OK for the first live call | waiting |
 | 5 | Files: photos, signatures and video in 9 forms (Field_Work 8 fields, Service_Appointment_Form 2, Field_Service_Site_Visit_Form 5, Sales_Returns_Form 3, Daily_Checklist_for_Vehicle 2, Dispatch_Checklist, Evidence_Photos, Site_Visit_Photos, Exception_Control1); one-time download from Zoho; volume backup | core owner | download tool, backup | decided, not built |
-| 6 | Roles and per-tab access (section 5): the app has no per-role access yet | core owner | auth feature | needs the matrix confirmed |
+| 6 | Roles and per-tab access (section 5): the app has no per-role access yet. **2026-11-13: Policy Settings is admin-only** (`server/access.mjs`); Scheduler/Dispatcher/Field roles and per-tab access are not built | core owner | auth feature | needs the matrix confirmed |
 | 7 | Production export of the Delivery forms (Development has 5 appointments, 3 field work rows, 17 availability rows); `Shipment_Order_Form` and `Pick_Up_Request_Form` have no readable report | repo owner | export | open |
 | 8 | `TZ=Asia/Manila` on the server (Railway variable and `.env`): "today" for the engine is the server's date | repo owner | variable | open |
 | 9 | Hard-coded keys that are public in git: the old Geoapify key (in the Deluge and the `.ds`), the Custom API public keys in the Service Appointment, Service Request, Archived, Sales Returns and Schedule Requests widgets, the two CMS public keys in the Deluge; make the repo Private | repo owner | rotate, remove | open |

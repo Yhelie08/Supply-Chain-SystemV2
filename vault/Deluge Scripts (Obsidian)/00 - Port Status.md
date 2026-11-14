@@ -59,7 +59,7 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `dmsScheduleSlot` | `dms_reschedule` | Analytic, Fulfillment, Delivery Management | Ported | `zoho-export/parsed/functions/dmsScheduleSlot.dg` |
 | `fcPrToPreOrder` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Ported (server/forecast/purchase-request.mjs; not yet compared with Zoho Development) | `zoho-export/parsed/functions/fcPrToPreOrder.dg` |
 | `fcStampBySoNo` | — | Analytic, Procurement, Fulfillment, Delivery Management | Ported (server/forecast/stamp.mjs; not yet compared with Zoho Development) | `zoho-export/parsed/functions/fcStampBySoNo.dg` |
-| `fcStampDelivery` | — | Analytic, Fulfillment, Delivery Management | Ported (copies the forecast; the engine fcStampBySoNo is not ported) | `zoho-export/parsed/functions/fcStampDelivery.dg` |
+| `fcStampDelivery` | — | Analytic, Fulfillment, Delivery Management | Ported (copies the forecast; for an order with none it calls the engine fcStampBySoNo, merged 2026-11-13) | `zoho-export/parsed/functions/fcStampDelivery.dg` |
 | `fcStampPurchaseRequest` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Ported (server/forecast/purchase-request.mjs; not yet compared with Zoho Development) | `zoho-export/parsed/functions/fcStampPurchaseRequest.dg` |
 | `getItemBinLocations` | — | — | Not ported yet | `zoho-export/parsed/functions/getItemBinLocations.dg` |
 | `getReceivingBinChoices` | — | — | Not ported yet | `zoho-export/parsed/functions/getReceivingBinChoices.dg` |
