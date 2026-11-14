@@ -28,10 +28,10 @@ test('paid + package goes to Order Readiness', async () => {
   assert.equal((await read(id)).Fulfillment_Stage, 'Order Readiness');
 });
 
-test('a package that is not paid (No or Partial) waits in Waiting For Package', async () => {
+test('a package with a package number is in Order Readiness whatever the payment (No, Partial, blank)', async () => {
   for (const Status of ['No', 'Partial', '']) {
-    const id = await add({ Package: 'PAC-1', Status, Fulfillment_Stage: 'Order Readiness' });
-    assert.equal((await read(id)).Fulfillment_Stage, 'Waiting For Package', `Status "${Status}"`);
+    const id = await add({ Package: 'PAC-1', Status });
+    assert.equal((await read(id)).Fulfillment_Stage, 'Order Readiness', `Status "${Status}"`);
   }
 });
 
@@ -42,12 +42,13 @@ test('paid but no package yet waits', async () => {
   }
 });
 
-test('it moves up when the payment and the package arrive later', async () => {
+test('it moves up as soon as the package number arrives, payment does not matter', async () => {
   const id = await add({ Status: 'No' });
+  assert.equal((await read(id)).Fulfillment_Stage, 'Waiting For Package');
   await edit(id, { Package: 'PAC-2' });
-  assert.equal((await read(id)).Fulfillment_Stage, 'Waiting For Package');
+  assert.equal((await read(id)).Fulfillment_Stage, 'Order Readiness');
   await edit(id, { Status: 'Partial' });
-  assert.equal((await read(id)).Fulfillment_Stage, 'Waiting For Package');
+  assert.equal((await read(id)).Fulfillment_Stage, 'Order Readiness');
   await edit(id, { Status: 'Yes' });
   assert.equal((await read(id)).Fulfillment_Stage, 'Order Readiness');
 });

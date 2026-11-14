@@ -587,6 +587,12 @@
   // QCChecklist's own Rejected handler to find/reopen this exact exception.
   // ---------------------------------------------------------------------
   function createQcRecordForCompleted(rec) {
+    // 2026-11-14 — the server does this now (server/modules/fulfillment/exception-recheck.mjs, on the save that sets Completed): ONE pending
+    // QC record per item + package, Quantity = the repaired units only, each exception sent once. Creating the record here as well
+    // would make a duplicate, so this only tells the user. The code below is left unused.
+    toast("Completed — sent to Quality Check for review.", "success");
+    return;
+    // eslint-disable-next-line no-unreachable
     const so = rec.Sales_Order || "";
     const sku = rec.SKU || "";
     const preOrderCfg = {

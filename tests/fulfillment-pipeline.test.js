@@ -46,21 +46,22 @@ test('paid + package: the Order Readiness stage and one Gate record per item, wi
   assert.equal(g.Bin_Location, 'A-01');
 });
 
-test('not paid, or no package yet: nothing enters Readiness and the package waits', async () => {
+test('a package number is enough for the Gate, paid or not (the payment is copied); no package number: it waits and has none', async () => {
   for (const extra of [{ Status: 'No' }, { Status: 'Partial' }, { Package: '' }]) {
     await db.query(`DELETE FROM "${SOF}"`);
+    await db.query(`DELETE FROM "${GATE}"`);
     const id = await addPackage(extra);
-    assert.equal((await sof(id)).Fulfillment_Stage, 'Waiting For Package', JSON.stringify(extra));
-    assert.equal((await rows(GATE)).length, 0, JSON.stringify(extra));
+    assert.equal((await sof(id)).Fulfillment_Stage, extra.Package === '' ? 'Waiting For Package' : 'Order Readiness', JSON.stringify(extra));
+    assert.equal((await rows(GATE)).length, extra.Package === '' ? 0 : 2, JSON.stringify(extra));
   }
 });
 
-test('paying later moves the package into Readiness; saving again does not duplicate the Gate records', async () => {
+test('paying later updates the Gate records (payment status); saving again does not duplicate them', async () => {
   const id = await addPackage({ Status: 'No' });
-  assert.equal((await rows(GATE)).length, 0);
+  assert.deepEqual((await rows(GATE)).map((g) => g.payment_status), ['No', 'No']);
   await store.updateRecord(SOF, id, { Status: 'Yes' }, { byForm: true });
   assert.equal((await sof(id)).Fulfillment_Stage, 'Order Readiness');
-  assert.equal((await rows(GATE)).length, 2);
+  assert.deepEqual((await rows(GATE)).map((g) => g.payment_status), ['Yes', 'Yes']);
   await store.updateRecord(SOF, id, { Shipping_Address: '2 Side St' }, { byForm: true });
   const gate = await rows(GATE);
   assert.equal(gate.length, 2);
@@ -196,10 +197,10 @@ test('reconcile: data written with no hook is carried all the way, with the cust
   const noPackage = await raw.addRecord(SOF, { SO_No: 'SO-9', Fulfillment_Stage: 'Waiting For Package', Package: '', Status: 'Yes', Customer: customer, Item_Details1: [lamp] });
 
   let done = await reconcileFulfillment(raw);
-  assert.equal(done.gate, 1);
-  assert.equal((await rows(GATE)).length, 2, 'SO-7 has two items; the unpaid and the package-less orders have none');
+  assert.equal(done.gate, 2);
+  assert.equal((await rows(GATE)).length, 3, 'SO-7 has two items, SO-8 one; the package-less order has none');
   assert.equal((await sof(paid)).Fulfillment_Stage, 'Order Readiness');
-  assert.equal((await sof(unpaid)).Fulfillment_Stage, 'Waiting For Package');
+  assert.equal((await sof(unpaid)).Fulfillment_Stage, 'Order Readiness');
   assert.equal((await sof(noPackage)).Fulfillment_Stage, 'Waiting For Package');
 
   const lampGate = (await rows(GATE)).find((g) => g.SKU === 'L-1');

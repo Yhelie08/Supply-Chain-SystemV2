@@ -91,7 +91,16 @@
   function mark(i, scroll) {
     if (items[active]) items[active].classList.remove('act');
     active = i;
-    if (items[i]) { items[i].classList.add('act'); if (scroll) items[i].scrollIntoView({ block: 'nearest' }); }
+    // Scroll the menu's own list only. li.scrollIntoView() also scrolls the page behind it, and the scroll listener below
+    // reads that as "the page moved" and closes the menu the instant it opens.
+    if (items[i]) {
+      var li = items[i]; li.classList.add('act');
+      if (scroll && menu) {
+        var top = li.offsetTop, bot = top + li.offsetHeight;
+        if (top < menu.scrollTop) menu.scrollTop = Math.max(0, top - 6);
+        else if (bot > menu.scrollTop + menu.clientHeight) menu.scrollTop = bot - menu.clientHeight + 6;
+      }
+    }
   }
 
   function step(dir) {
@@ -193,7 +202,13 @@
 
   window.addEventListener('resize', close);
   window.addEventListener('blur', close);
-  document.addEventListener('scroll', function (e) { if (menu && !menu.contains(e.target)) close(); }, true);
+  // A scroll no longer just closes the menu: a form can shift a pixel or two as the dropdown takes focus, and that scroll event
+  // used to shut the menu the instant it opened. The menu follows its dropdown instead, and closes only when the dropdown leaves the screen.
+  document.addEventListener('scroll', function (e) {
+    if (!menu || menu.contains(e.target)) return;
+    var r = owner && owner.getBoundingClientRect();
+    if (!r || r.bottom < 0 || r.top > window.innerHeight) close(); else place(owner);
+  }, true);
 })();
 
 // List pages: the "Next step" column moves inside the record (the detail page already says what the next step is),

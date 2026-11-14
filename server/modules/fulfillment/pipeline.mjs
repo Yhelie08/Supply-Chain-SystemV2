@@ -6,10 +6,10 @@
 // For Delivery.
 //
 // What it does:
-//   A Sales_Order_Fulfillment record (one per package) with a Package AND paid (Status "Yes") creates one
-//   Sales_Order_Readiness_Gate record per item line, with the customer name and address. The stage is set by workflows.mjs
-//   (Waiting For Package -> Order Readiness). Not paid yet: nothing is created; Gate records that already exist are only
-//   refreshed (payment, address, quantity), so paying later and saving again moves the package in without duplicates.
+//   A Sales_Order_Fulfillment record (one per package) with a Package creates one Sales_Order_Readiness_Gate record per item
+//   line, with the customer name and address, whatever the payment (rule from the user, 2026-11-14, like Zoho): the payment status is
+//   copied onto the Gate record and Gate records that already exist are only refreshed (payment, address, quantity), so paying later
+//   and saving again updates them without duplicates. The stage is set by workflows.mjs (Waiting For Package -> Order Readiness).
 //   A Gate record saved with Release checked creates (or updates) its Pick1 record, adds a Pick_Notifications row for a new
 //   one, and the package's Fulfillment_Stage becomes "Picking". Per item: a sibling that is not released stays out of Pick.
 //   A Pick1 record saved with Marked ("Mark Picked") checked creates (or updates) its Checker_Checklist record, the item's Pack & QC
@@ -20,8 +20,7 @@
 // target date, forecast): nothing is renamed, rounded or recalculated on the way. A value that comes out empty never blanks one that is
 // already there (customer name / address, forecast).
 //
-// Differences from Zoho, on purpose: the Gate is only filled for PAID packages (rule from the user, 2026-11-13); Zoho filled it
-// for any package. A stage only moves FORWARD (Zoho's Gate script set "Order Readiness" on every save, pulling a package that
+// Differences from Zoho, on purpose: A stage only moves FORWARD (Zoho's Gate script set "Order Readiness" on every save, pulling a package that
 // was already further along back). Writes made here do not run the workflows again (a scripted insert / update does not on
 // Zoho either).
 import { register } from '../../workflows/index.mjs';
@@ -54,7 +53,6 @@ export async function soToReadiness({ record: sof, store, user }) {
   const so = text(sof.SO_No);
   const pkg = text(sof.Package);
   if (pkg === '') return; // no package yet: nothing to sync
-  const paid = sof.Status === 'Yes';
 
   let customerName = '';
   if (!blank(sof.Customer)) {
@@ -89,7 +87,7 @@ export async function soToReadiness({ record: sof, store, user }) {
         }
       }
     }
-    if (!existing.length && paid) await store.addRecord(GATE, { sales_order_number: so, ...common, ...item }, user);
+    if (!existing.length) await store.addRecord(GATE, { sales_order_number: so, ...common, ...item }, user);
   }
 }
 register(SOF, { afterAdd: soToReadiness, afterUpdate: soToReadiness });
@@ -160,7 +158,8 @@ export async function pickedToQc({ record: pick, store, user }) {
   };
   // Only a QC record that is still pending counts as "the same": one already approved / rejected is history, so an item that comes
   // back through Pick (an RR) always gets a new QC record. No Quality_Checker here: the Pack & QC page assigns it.
-  const pending = await store.find(QC, (c) => c.SO === so && c.SKU === text(pick.SKU) && c.PAC === pac && text(c.RR) === rr && text(c.QC_Status) === '');
+  // (A pending re-check of repaired units, Recheck_Exceptions, is never "the same": it belongs to Exception Control.)
+  const pending = await store.find(QC, (c) => c.SO === so && c.SKU === text(pick.SKU) && c.PAC === pac && text(c.RR) === rr && text(c.QC_Status) === '' && !Array.isArray(c.Recheck_Exceptions));
   if (pending.length) for (const c of pending) await store.updateRecord(QC, c.ID, fields, { byForm: true });
   else await store.addRecord(QC, { SO: so, PAC: pac, SKU: text(pick.SKU), ...fields }, user);
   await advanceStage(store, so, pick.Item_Name, pick.SKU, 'Pack & QC');
@@ -171,7 +170,7 @@ register(PICK, { afterAdd: pickedToQc, afterUpdate: pickedToQc });
 // The hooks above run when a widget writes through the API. Data that arrives another way (a custom API, an import, a row written
 // directly, or anything saved before these hooks existed) would never move on. This sweep finds that data and runs the same steps on
 // it. It is safe to run any time and as often as wanted: it only acts where a step is missing, and a second run changes nothing.
-//   1. a package that is paid and has a package number -> its Readiness Gate records (and the Order Readiness stage)
+//   1. a package that has a package number -> its Readiness Gate records (and the Order Readiness stage)
 //   2. a Gate record that is Released -> its Pick1 record
 //   3. a Pick1 record that is Marked -> its QC record
 //   4. every package's stage is brought forward to where its Gate / Pick / QC records show it is (never backward)
@@ -187,7 +186,6 @@ export async function reconcileFulfillment(store, { user = 'system' } = {}) {
     if (pkg === '') continue;
     const stage = readinessStage(sof);
     if (stage !== undefined && stage !== sof.Fulfillment_Stage) { await store.updateRecord(SOF, sof.ID, { Fulfillment_Stage: stage }, { byForm: true }); done.stage++; }
-    if (sof.Status !== 'Yes') continue;
     const missing = (sof.Item_Details1 || []).some((row) => !gates.some((g) => g.sales_order_number === text(sof.SO_No) && g.SKU === text(row.SKU) && g.Package_Order === pkg));
     if (missing) { await soToReadiness({ record: sof, store, user }); done.gate++; }
   }

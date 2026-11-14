@@ -140,6 +140,15 @@
   .field-required-mark { color: #ef4444; margin-left: 2px; }
   .field-input-error { border-color: #ef4444 !important; background: #fef2f2 !important; }
 
+  /* Split-quantity dialog box: the theme turns every "bg-white rounded-2xl" into see-through glass, which made this
+     small pop-up hard to read against the form behind it. A dialog should be solid. */
+  #splitQtyModal > div {
+    background: var(--hc-panel, #fff) !important;
+    background-image: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
   /* EN/TL language switch — ADDED 2026-11-05. Plain CSS, not Tailwind classes,
      so it survives this app's precompiled-CSS widgets too. */
   .lang-switch {
@@ -2170,7 +2179,9 @@
   function refreshQcOpenBtn(r) {
     const row = Array.from(tableBody.querySelectorAll(".record-row")).find((tr) => tr.dataset.id === String(r.ID));
     if (!row) return;
-    const td = row.lastElementChild;
+    // Not lastElementChild: the theme appends a "Last Modified" cell after Action, and that would get the button.
+    const td = row.querySelector(".qc-action-cell");
+    if (!td) return;
     td.innerHTML = qcOpenBtnHtml(r);
     wireQcOpenBtn(td.querySelector(".open-qc-btn"));
   }
@@ -2291,7 +2302,7 @@ function forecastCell(r) {
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Order_Type))}</td>
         <td class="px-3 py-2.5">${forecastCell(r)}</td>
         <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
-        <td class="px-5 py-2.5 text-right">${qcOpenBtnHtml(r)}</td>
+        <td class="qc-action-cell px-5 py-2.5 text-right">${qcOpenBtnHtml(r)}</td>
       </tr>`;
   }
 
