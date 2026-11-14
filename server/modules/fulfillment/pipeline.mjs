@@ -26,7 +26,8 @@
 import { register } from '../../workflows/index.mjs';
 import { blank, truthy } from '../../workflows/deluge.mjs';
 import { zohoNow } from '../../criteria.mjs';
-import { readinessStage } from './workflows.mjs';
+import { packageStage, needsPaymentApproval } from './workflows.mjs';
+import { eq } from './where.mjs';
 
 const SOF = 'Sales_Order_Fulfillment';
 const GATE = 'Sales_Order_Readiness_Gate';
@@ -34,13 +35,13 @@ const PICK = 'Pick1';
 const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
 
 // The pipeline, in order (Crate is skipped by packages that are not for crating, so it is only a position here).
-export const STAGE_ORDER = ['Waiting For Package', 'Order Readiness', 'Picking', 'Pack & QC', 'Crate', 'Order Aggregation', 'For Delivery'];
+export const STAGE_ORDER = ['Waiting For Package', 'Need Approval', 'Order Readiness', 'Picking', 'Pack & QC', 'Crate', 'Order Aggregation', 'For Delivery'];
 
 // Moves the package record(s) that hold this item to `stage`, only forward. The item is found in
 // Sales_Order_Fulfillment.Item_Details1 by SO + Item + SKU, like Zoho.
 export async function advanceStage(store, so, itemName, sku, stage) {
   const target = STAGE_ORDER.indexOf(stage);
-  for (const sof of await store.find(SOF, (r) => r.SO_No === so)) {
+  for (const sof of await store.find(SOF, (r) => r.SO_No === so, { criteria: eq('SO_No', so) })) {
     const holdsItem = (sof.Item_Details1 || []).some((row) => text(row.Item) === text(itemName) && text(row.SKU) === text(sku));
     if (!holdsItem) continue;
     if (sof.Fulfillment_Stage === stage || STAGE_ORDER.indexOf(sof.Fulfillment_Stage) > target) continue; // there already, or further along
@@ -71,12 +72,12 @@ export async function soToReadiness({ record: sof, store, user }) {
 
   for (const row of sof.Item_Details1 || []) {
     const item = { Item_Name: text(row.Item), SKU: text(row.SKU), Quantity: text(row.Quantity), Bin_Location: text(row.Bin_Location) };
-    const existing = await store.find(GATE, (g) => g.sales_order_number === so && g.SKU === item.SKU && g.Package_Order === pkg);
+    const existing = await store.find(GATE, (g) => g.sales_order_number === so && g.SKU === item.SKU && g.Package_Order === pkg, { criteria: eq('sales_order_number', so) });
     for (const gate of existing) {
       await store.updateRecord(GATE, gate.ID, refresh(gate, { ...common, ...item }), { byForm: true });
       // An item already released keeps Pick1 in step (a corrected quantity, address...).
       if (truthy(gate.Release)) {
-        for (const pick of await store.find(PICK, (p) => p.SO === so && p.SKU === item.SKU && p.Item_Name === item.Item_Name && p.Package_Order === pkg)) {
+        for (const pick of await store.find(PICK, (p) => p.SO === so && p.SKU === item.SKU && p.Item_Name === item.Item_Name && p.Package_Order === pkg, { criteria: eq('SO', so) })) {
           await store.updateRecord(PICK, pick.ID, {
             Package_Order: pkg, PR_if_any: common.pr_number, RR: common.rr_number, Delivery_Type: common.Delivery_Type, Order_Type: common.Order_Type,
             Target_Delivery_Date: common.Target_Delivery_Date, For_Crate: common.For_Crate, Item_Name: item.Item_Name, Bin_Location: item.Bin_Location,
@@ -98,7 +99,8 @@ export async function releaseToPick({ record: gate, store, user }) {
   if (!truthy(gate.Release)) return;
 
   // Every record of this sales order that is itself released goes to Pick1 (a sibling that is not released stays out).
-  for (const g of await store.find(GATE, (r) => r.sales_order_number === so && truthy(r.Release))) {
+  // A record that still needs a payment approval (Partial / unpaid, see workflows.mjs) never goes to Pick.
+  for (const g of await store.find(GATE, (r) => r.sales_order_number === so && truthy(r.Release) && !needsPaymentApproval(r), { criteria: eq('sales_order_number', so) })) {
     const rr = text(g.rr_number);
     const fields = {
       Picker: g.Assign_Picker, Package_Order: g.Package_Order, PR_if_any: g.pr_number, RR: g.rr_number, Demo: g.Demo, Delivery_Type: g.Delivery_Type,
@@ -107,7 +109,7 @@ export async function releaseToPick({ record: gate, store, user }) {
       Forecast_Delivery: g.Forecast_Delivery, Forecast_Window: g.Forecast_Window, Forecast_Status: g.Forecast_Status,
     };
     // RR is part of the key: an RR replacement reuses the original's package number.
-    const found = await store.find(PICK, (p) => p.SO === so && p.SKU === g.SKU && p.Item_Name === g.Item_Name && p.Package_Order === g.Package_Order && text(p.RR) === rr);
+    const found = await store.find(PICK, (p) => p.SO === so && p.SKU === g.SKU && p.Item_Name === g.Item_Name && p.Package_Order === g.Package_Order && text(p.RR) === rr, { criteria: eq('SO', so) });
     if (found.length) {
       for (const p of found) await store.updateRecord(PICK, p.ID, fields, { byForm: true });
     } else {
@@ -129,7 +131,7 @@ const QC = 'Checker_Checklist';
 // Customer record. Only what is found is returned.
 async function customerContact(store, so, itemName, sku) {
   const out = {};
-  const [sof] = await store.find(SOF, (r) => r.SO_No === so && (r.Item_Details1 || []).some((row) => text(row.Item) === text(itemName) && text(row.SKU) === text(sku)));
+  const [sof] = await store.find(SOF, (r) => r.SO_No === so && (r.Item_Details1 || []).some((row) => text(row.Item) === text(itemName) && text(row.SKU) === text(sku)), { criteria: eq('SO_No', so) });
   if (!sof) return out;
   if (text(sof.Contact_No) !== '') out.Contact = text(sof.Contact_No);
   if (!blank(sof.Customer)) {
@@ -159,7 +161,7 @@ export async function pickedToQc({ record: pick, store, user }) {
   // Only a QC record that is still pending counts as "the same": one already approved / rejected is history, so an item that comes
   // back through Pick (an RR) always gets a new QC record. No Quality_Checker here: the Pack & QC page assigns it.
   // (A pending re-check of repaired units, Recheck_Exceptions, is never "the same": it belongs to Exception Control.)
-  const pending = await store.find(QC, (c) => c.SO === so && c.SKU === text(pick.SKU) && c.PAC === pac && text(c.RR) === rr && text(c.QC_Status) === '' && !Array.isArray(c.Recheck_Exceptions));
+  const pending = await store.find(QC, (c) => c.SO === so && c.SKU === text(pick.SKU) && c.PAC === pac && text(c.RR) === rr && text(c.QC_Status) === '' && !Array.isArray(c.Recheck_Exceptions), { criteria: eq('SO', so) });
   if (pending.length) for (const c of pending) await store.updateRecord(QC, c.ID, fields, { byForm: true });
   else await store.addRecord(QC, { SO: so, PAC: pac, SKU: text(pick.SKU), ...fields }, user);
   await advanceStage(store, so, pick.Item_Name, pick.SKU, 'Pack & QC');
@@ -184,10 +186,10 @@ export async function reconcileFulfillment(store, { user = 'system' } = {}) {
   for (const sof of sofs) {
     const pkg = text(sof.Package);
     if (pkg === '') continue;
-    const stage = readinessStage(sof);
-    if (stage !== undefined && stage !== sof.Fulfillment_Stage) { await store.updateRecord(SOF, sof.ID, { Fulfillment_Stage: stage }, { byForm: true }); done.stage++; }
     const missing = (sof.Item_Details1 || []).some((row) => !gates.some((g) => g.sales_order_number === text(sof.SO_No) && g.SKU === text(row.SKU) && g.Package_Order === pkg));
     if (missing) { await soToReadiness({ record: sof, store, user }); done.gate++; }
+    const stage = await packageStage(store, sof); // after the Gate records exist: whether they need an approval decides it
+    if (stage !== undefined && stage !== sof.Fulfillment_Stage) { await store.updateRecord(SOF, sof.ID, { Fulfillment_Stage: stage }, { byForm: true }); done.stage++; }
   }
 
   // 2. Released Gate records -> Pick1

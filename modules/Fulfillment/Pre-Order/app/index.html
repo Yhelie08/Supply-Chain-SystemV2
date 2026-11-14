@@ -491,6 +491,8 @@ var PRHold = (function(){
   // ---------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------
+  // "SO-90008" already starts with SO: do not print "SO SO-90008". A bare number (no SO- prefix) still gets one.
+  function soLabel(v) { const x = displayVal(v); return /^so-?/i.test(x) ? x : "SO " + x; }
   function displayVal(v) {
     if (v === null || v === undefined || v === "") return "—";
     if (typeof v === "object") return v.zc_display_value || v.display_value || v.ID || "—";
@@ -635,7 +637,7 @@ var PRHold = (function(){
       return;
     }
     const soList = [...new Set(selected.map((r) => displayVal(r.SO)))];
-    const msg = `This creates ${soList.length > 1 ? soList.length + " real Books packages (1 per SO)" : "a real Books package"} for ${selected.length} item(s) across SO ${soList.join(", ")} — every not-yet-packaged item on the same SO is included automatically. Cannot be undone from here. Continue?`;
+    const msg = `This creates ${soList.length > 1 ? soList.length + " real Books packages (1 per SO)" : "a real Books package"} for ${selected.length} item(s) across ${soList.map(soLabel).join(", ")} — every not-yet-packaged item on the same SO is included automatically. Cannot be undone from here. Continue?`;
     showConfirm(msg, (deliveryType) => doCreatePackage(deliveryType));
   }
 
@@ -1222,7 +1224,7 @@ var PRHold = (function(){
     currentDetailRecord = r;
 
     document.getElementById("detailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
-    document.getElementById("detailSoNo").textContent = displayVal(r.SO) !== "—" ? `SO ${displayVal(r.SO)}` : "Pre Order Record";
+    document.getElementById("detailSoNo").textContent = displayVal(r.SO) !== "—" ? soLabel(r.SO) : "Pre Order Record";
     document.getElementById("detailCustomer").textContent = displayVal(r.Customer_Name);
     document.getElementById("detailSubline").textContent = `${displayVal(r.Order_Type)} · ${displayVal(r.Delivery_Type)}`;
 
@@ -1297,34 +1299,22 @@ var PRHold = (function(){
       el.innerHTML = readinessBadge(r);
       return;
     }
-    const checked = isTrue(r.Select_To_Package) ? "checked" : "";
-    const disabled = info.state !== "ready" ? "disabled" : "";
+    // 2026-11-14 (user): no "Select to package" checkbox in the detail view, selecting is for the LIST only. The detail's Create Package
+    // button is on whenever this item is ready; it packages this item (plus whatever is selected in the list / on the same SO).
     el.innerHTML = `
       ${readinessBadge(r)}
-      <label class="flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer">
-        <input type="checkbox" id="detailSelectCb" class="h-4 w-4 rounded border-slate-300" ${checked} ${disabled} />
-        Select to package
-      </label>
-      <button id="detailCreatePackageBtn" class="bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed" ${isTrue(r.Select_To_Package) ? "" : "disabled"}>
+      <button id="detailCreatePackageBtn" class="bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed" ${info.state === "ready" ? "" : "disabled"}>
         Create Package
       </button>`;
 
-    const cb = document.getElementById("detailSelectCb");
     const btn = document.getElementById("detailCreatePackageBtn");
-    if (cb) {
-      cb.addEventListener("change", () => {
-        toggleSelectToPackage(r.ID, cb.checked).then(() => {
-          btn.disabled = !cb.checked;
-        });
-      });
-    }
     if (btn) {
       btn.addEventListener("click", () => {
         if (CONFIG.CUSTOM_API_KEY_CREATE_PACKAGE.startsWith("REPLACE_WITH")) {
           toast("Custom API key not configured yet.", "error");
           return;
         }
-        showConfirm(`This creates a real Books package for ${displayVal(r.SKU)} (qty ${displayVal(r.Qty)}) on SO ${displayVal(r.SO)}. Cannot be undone from here. Continue?`, (deliveryType) => doDetailCreatePackage(r, btn, deliveryType));
+        showConfirm(`This creates a real Books package for ${displayVal(r.SKU)} (qty ${displayVal(r.Qty)}) on ${soLabel(r.SO)}. Cannot be undone from here. Continue?`, (deliveryType) => doDetailCreatePackage(r, btn, deliveryType));
       });
     }
   }

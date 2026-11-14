@@ -208,9 +208,15 @@ export function createStore(db) {
     },
 
     // Deluge-style helper for ported functions: find('Form', rec => ...)
-    async find(formName, test = () => true) {
+    // Optional { criteria } is a Zoho criteria string, e.g. '(SO_No == "SO-1")': Postgres filters, so only those rows are read (on a remote
+    // database reading a whole table costs a lot). `test` still runs on what comes back, so a criteria that cannot be translated is safe:
+    // it falls back to reading everything.
+    async find(formName, test = () => true, { criteria } = {}) {
       const form = formByName(formName);
-      const { rows } = await db.query(`SELECT ${selectList(form)} FROM ${q(form)} t ORDER BY t."ID"`);
+      const t = criteria ? criteriaToSql(criteria, form, {}, 0) : null;
+      const { rows } = t
+        ? await db.query(`SELECT ${selectList(form)} FROM ${q(form)} t WHERE ${t.sql} ORDER BY t."ID"`, t.params)
+        : await db.query(`SELECT ${selectList(form)} FROM ${q(form)} t ORDER BY t."ID"`);
       return (await records(form, rows, { raw: true })).filter(test);
     },
 

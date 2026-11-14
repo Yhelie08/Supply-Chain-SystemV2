@@ -111,3 +111,13 @@ test('pending or blank status does nothing', async () => {
   assert.equal((await raw.find(AGG)).length + (await raw.find(CRATE)).length + (await raw.find(EXC)).length, 0);
   assert.equal(await stage(), 'Pack & QC');
 });
+
+test('store.find with a criteria reads only the matching rows; without one it reads everything; a bad criteria still gives the right rows', async () => {
+  const { eq } = await import('../server/modules/fulfillment/where.mjs');
+  await raw.addRecord(AGG, { SO: 'SO-A', PAC: 'PAC-A', Item_Details: [] });
+  await raw.addRecord(AGG, { SO: 'SO-B', PAC: 'PAC-B', Item_Details: [] });
+  assert.equal((await raw.find(AGG)).length, 2);
+  assert.deepEqual((await raw.find(AGG, () => true, { criteria: eq('SO', 'SO-A') })).map((r) => r.SO), ['SO-A']);
+  assert.equal((await raw.find(AGG, () => true, { criteria: eq('SO', 'a "quoted" \ value') })).length, 0);
+  assert.deepEqual((await raw.find(AGG, (r) => r.SO === 'SO-B', { criteria: '(NoSuchField == "x")' })).map((r) => r.SO), ['SO-B']);
+});

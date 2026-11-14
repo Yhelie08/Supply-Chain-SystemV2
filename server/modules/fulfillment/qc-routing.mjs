@@ -22,6 +22,7 @@ import { register } from '../../workflows/index.mjs';
 import { blank } from '../../workflows/deluge.mjs';
 import { zohoNow } from '../../criteria.mjs';
 import { advanceStage } from './pipeline.mjs';
+import { eq } from './where.mjs';
 
 const QC = 'Checker_Checklist';
 const EXC = 'Exception_Control1';
@@ -48,7 +49,7 @@ function spareParts(rows) {
 async function supplierOf(store, pr) {
   if (pr === '') return '';
   try {
-    const [rec] = await store.find('Purchase_Request1', (r) => text(r.PR_Number) === pr || text(r.PR_No) === pr);
+    const [rec] = await store.find('Purchase_Request1', (r) => text(r.PR_Number) === pr || text(r.PR_No) === pr, { criteria: `${eq('PR_Number', pr)} || ${eq('PR_No', pr)}` });
     return rec ? text(rec.Supplier) : '';
   } catch { return ''; }
 }
@@ -112,14 +113,14 @@ async function approvedToCrate({ record: qc, store, user }, so, sku, pac, units)
     Item_Name: qc.Item_Name, Quantity: await approvedTotal(store, so, sku, pac, units), Assigned_Checker: qc.Quality_Checker,
     Forecast_Delivery: qc.Forecast_Delivery, Forecast_Window: qc.Forecast_Window, Forecast_Status: qc.Forecast_Status,
   };
-  const existing = await store.find(CRATE, (c) => text(c.SO) === so && text(c.SKU) === sku && text(c.Package_Order) === pac);
+  const existing = await store.find(CRATE, (c) => text(c.SO) === so && text(c.SKU) === sku && text(c.Package_Order) === pac, { criteria: eq('SO', so) });
   if (existing.length) for (const c of existing) await store.updateRecord(CRATE, c.ID, fields, { byForm: true });
   else await store.addRecord(CRATE, { SO: so, Package_Order: pac, SKU: sku, ...fields }, user);
 }
 
 // Every approved unit of this item in this package, across all of its QC records (a second batch adds to the first).
 async function approvedTotal(store, so, sku, pac, fallback) {
-  const rows = await store.find(QC, (c) => text(c.SO) === so && text(c.SKU) === sku && text(c.PAC) === pac && text(c.QC_Status) === 'Approved');
+  const rows = await store.find(QC, (c) => text(c.SO) === so && text(c.SKU) === sku && text(c.PAC) === pac && text(c.QC_Status) === 'Approved', { criteria: eq('SO', so) });
   const sum = rows.reduce((n, c) => n + count(c.Quantity), 0);
   return sum > 0 ? sum : fallback;
 }
@@ -129,7 +130,7 @@ async function approvedTotal(store, so, sku, pac, fallback) {
 // the record is created; City / Email / Contact / Forecast only fill what is still empty later), `item` = { Item_Name, SKU, QTY,
 // Bin_Location, PAC }. Used by the QC route (not crated) and by the Crate route (crating Done).
 export async function upsertToShip(store, user, so, header, item, extra = {}) {
-  const [agg] = await store.find(AGG, (a) => text(a.SO) === so);
+  const [agg] = await store.find(AGG, (a) => text(a.SO) === so, { criteria: eq('SO', so) });
   if (!agg) {
     await store.addRecord(AGG, { SO: so, PAC: item.PAC, ...header, ...extra, Item_Details: [item] }, user);
     return;

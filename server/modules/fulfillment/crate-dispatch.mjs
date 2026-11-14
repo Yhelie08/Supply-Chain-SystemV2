@@ -22,6 +22,7 @@ import { register } from '../../workflows/index.mjs';
 import { blank, truthy } from '../../workflows/deluge.mjs';
 import { advanceStage } from './pipeline.mjs';
 import { upsertToShip } from './qc-routing.mjs';
+import { eq } from './where.mjs';
 
 const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
 const count = (v) => { const n = parseInt(text(v), 10); return Number.isFinite(n) && n > 0 ? n : 0; };
@@ -32,7 +33,7 @@ export async function crateToShip({ record: c, store, user }) {
   if (so === '' || sku === '') return;
   if (text(c.Crating_Status1) !== 'Done') { await advanceStage(store, so, c.Item_Name, sku, 'Crate'); return; }
 
-  const [qc] = await store.find('Checker_Checklist', (r) => text(r.SO) === so && text(r.SKU) === sku && text(r.PAC) === pac && text(r.QC_Status) === 'Approved');
+  const [qc] = await store.find('Checker_Checklist', (r) => text(r.SO) === so && text(r.SKU) === sku && text(r.PAC) === pac && text(r.QC_Status) === 'Approved', { criteria: eq('SO', so) });
   const from = qc || {};
   await upsertToShip(store, user, so, {
     ORDER_TYPE: c.Order_Type, Target_Date: c.Target_Delivery_Date, PR: c.PR_if_any, DEMO: c.Dem_if_any, DELIVERY_TYPE: c.Delivery_Type,
@@ -68,7 +69,7 @@ export async function preOrderToGate({ record: p, store, user }) {
   };
   // A value that comes out empty never blanks one the Gate already has.
   const KEEP_IF_EMPTY = ['customer_name', 'customer_address', 'Forecast_Delivery', 'Forecast_Window', 'Forecast_Status', 'Bin_Location'];
-  const existing = await store.find(GATE, (g) => text(g.sales_order_number) === so && text(g.SKU) === sku && text(g.Package_Order) === pkg && text(g.rr_number) === rr);
+  const existing = await store.find(GATE, (g) => text(g.sales_order_number) === so && text(g.SKU) === sku && text(g.Package_Order) === pkg && text(g.rr_number) === rr, { criteria: eq('sales_order_number', so) });
   for (const g of existing) {
     const patch = Object.fromEntries(Object.entries(values).filter(([k, v]) => !(KEEP_IF_EMPTY.includes(k) && v === '' && !blank(g[k]))));
     await store.updateRecord(GATE, g.ID, patch, { byForm: true });

@@ -15,6 +15,7 @@
 import { register } from '../../workflows/index.mjs';
 import { blank, truthy } from '../../workflows/deluge.mjs';
 import { advanceStage } from './pipeline.mjs';
+import { eq } from './where.mjs';
 
 const EXC = 'Exception_Control1';
 const QC = 'Checker_Checklist';
@@ -31,7 +32,7 @@ export async function repairedToQc({ record: exc, previous, store, user, id }) {
   let origin = null;
   if (text(exc.QC_ID) !== '') { try { origin = await store.getRecordById(QC, text(exc.QC_ID), { raw: true }); } catch { origin = null; } }
   if (!origin) {
-    const all = await store.find(QC, (c) => text(c.SO) === so && text(c.SKU) === sku && text(c.PAC) === pac);
+    const all = await store.find(QC, (c) => text(c.SO) === so && text(c.SKU) === sku && text(c.PAC) === pac, { criteria: eq('SO', so) });
     origin = all[all.length - 1] || {};
   }
   const header = {
@@ -44,7 +45,7 @@ export async function repairedToQc({ record: exc, previous, store, user, id }) {
   const units = count(exc.Qty) || 1;
 
   // A re-check that is still pending takes this unit too; otherwise a new one.
-  const pending = (await store.find(QC, (c) => text(c.SO) === so && text(c.SKU) === sku && text(c.PAC) === pac && text(c.RR) === text(header.RR) && text(c.QC_Status) === '' && Array.isArray(c.Recheck_Exceptions)))[0];
+  const pending = (await store.find(QC, (c) => text(c.SO) === so && text(c.SKU) === sku && text(c.PAC) === pac && text(c.RR) === text(header.RR) && text(c.QC_Status) === '' && Array.isArray(c.Recheck_Exceptions), { criteria: eq('SO', so) }))[0];
   let qcId;
   if (pending) {
     qcId = pending.ID;

@@ -51,7 +51,7 @@ test('a package number is enough for the Gate, paid or not (the payment is copie
     await db.query(`DELETE FROM "${SOF}"`);
     await db.query(`DELETE FROM "${GATE}"`);
     const id = await addPackage(extra);
-    assert.equal((await sof(id)).Fulfillment_Stage, extra.Package === '' ? 'Waiting For Package' : 'Order Readiness', JSON.stringify(extra));
+    assert.equal((await sof(id)).Fulfillment_Stage, extra.Package === '' ? 'Waiting For Package' : 'Need Approval', JSON.stringify(extra));
     assert.equal((await rows(GATE)).length, extra.Package === '' ? 0 : 2, JSON.stringify(extra));
   }
 });
@@ -200,7 +200,7 @@ test('reconcile: data written with no hook is carried all the way, with the cust
   assert.equal(done.gate, 2);
   assert.equal((await rows(GATE)).length, 3, 'SO-7 has two items, SO-8 one; the package-less order has none');
   assert.equal((await sof(paid)).Fulfillment_Stage, 'Order Readiness');
-  assert.equal((await sof(unpaid)).Fulfillment_Stage, 'Order Readiness');
+  assert.equal((await sof(unpaid)).Fulfillment_Stage, 'Need Approval');
   assert.equal((await sof(noPackage)).Fulfillment_Stage, 'Waiting For Package');
 
   const lampGate = (await rows(GATE)).find((g) => g.SKU === 'L-1');

@@ -94,9 +94,9 @@ const CONFIG = {
   MAX_RECORDS: 1000,
 };
 
-const STAGE_KEYS = ["Waiting For Package","Order Readiness","Picking","Pack & QC","Crate","For Delivery"];
-const STAGE_SHORT = { "Waiting For Package":"Waiting", "Order Readiness":"Readiness", "Picking":"Picking", "Pack & QC":"Pack & QC", "Crate":"Crate", "For Delivery":"Delivered" };
-const STAGE_COLOR = { "Waiting For Package":"#94a3b8", "Order Readiness":"#9ec5f4", "Picking":"#6da7ec", "Pack & QC":"#3987e5", "Crate":"#184f95", "For Delivery":"#0ca30c" };
+const STAGE_KEYS = ["Waiting For Package","Need Approval","Order Readiness","Picking","Pack & QC","Crate","For Delivery"];
+const STAGE_SHORT = { "Waiting For Package":"Waiting", "Need Approval":"Approval", "Order Readiness":"Readiness", "Picking":"Picking", "Pack & QC":"Pack & QC", "Crate":"Crate", "For Delivery":"Delivered" };
+const STAGE_COLOR = { "Waiting For Package":"#94a3b8", "Need Approval":"#e5484d", "Order Readiness":"#9ec5f4", "Picking":"#6da7ec", "Pack & QC":"#3987e5", "Crate":"#184f95", "For Delivery":"#0ca30c" };
 const WEEKDAY_LABELS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 /* Confirmed live 2026-08-27 (Widget/Fulfillment/Scoreboard's own original
@@ -405,7 +405,7 @@ function App(){
       if (stageCounts.hasOwnProperty(stage)) stageCounts[stage]++;
       if (str(r,"Status") === "Partial") partialIdx.push(i);
     });
-    var notStarted = stageCounts["Waiting For Package"]||0;
+    var notStarted = (stageCounts["Waiting For Package"]||0)+(stageCounts["Need Approval"]||0);
     var inProgress = (stageCounts["Order Readiness"]||0)+(stageCounts["Picking"]||0)+(stageCounts["Pack & QC"]||0)+(stageCounts["Crate"]||0);
     var delivered = stageCounts["For Delivery"]||0;
     var pipelineTotal = notStarted + inProgress + delivered;
