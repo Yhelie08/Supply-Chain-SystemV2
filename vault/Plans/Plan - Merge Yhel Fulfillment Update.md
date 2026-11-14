@@ -5,7 +5,7 @@ tags:
   - fulfillment
   - git
   - merge
-status: EXECUTED 2026-11-14 (steps 1–7 done). Save point e184e60/9532b32/d9bf006; merge 1 e444d32 (yhelie-update, 7 conflicts resolved both-intents); merge 2 c68f8f9 (jv-update, clean). Tests 614/614 + UI 124/124; browser spot-check passed; docs synced. PUSH (step 8) NOT DONE — awaiting separate owner go. Follow-ups: CMS retarget to Service Request before CMS_API_KEY; register Yhel engine workflows in ported.json.
+status: EXECUTED + DEPLOYED 2026-11-14. Save point e184e60/9532b32/d9bf006; merge 1 e444d32 (yhelie-update, 7 conflicts resolved both-intents); merge 2 c68f8f9 (jv-update, clean). Tests 614/614 + UI 124/124; browser spot-check passed; docs synced. PUSH done (owner himself, main = 7225cc9, fast-forward); deploy 33945185 SUCCESS via railway up, live verified. Follow-ups: CMS retarget to Service Request before CMS_API_KEY; register Yhel engine workflows in ported.json.
 date: 2026-11-14
 ---
 
@@ -108,7 +108,7 @@ Walang untracked-file collision (verified 2026-11-14): ang mga bagong file ni Yh
 - **Schedule Requests removed — confirmed ng owner (2026-11-14).** Bagong process: lahat ng galing CMS ay pumapasok sa **Service Request**. ⚠️ **Gap:** ang local CMS integration (`server/integrations/cms.mjs` → `cms-sync.mjs`, tested sa `tests/core/cms-route.test.js`) ay nagsusulat pa rin sa `DMS_Schedule_Request` / `DMS_Schedule_Request_Messages`. Follow-up work: i-retarget ang CMS route sa Service Request (form + field mapping + chat handling + tests + CMS guide). Hindi pa urgent sa production: unset pa ang `CMS_API_KEY` sa Railway, so walang CMS data na pumapasok — pero **gawin bago i-enable ang CMS**, kundi mapupunta ang messages sa form na walang tab.
 - **Delivery UI changes (commit `34cb5f4`, intentional):** records/long forms open as full pages (small dialogs stay pop-outs); Archived grouped into cards; Refresh/Debug buttons + subtitles hidden; Service Appointment Action column hidden; liquid glass skin app-wide (`hc-skin=classic` in localStorage restores the flat look). Makikita ito ng staff sa next deploy — kasama sa spot-check.
 - **`tools/fulfillment-sync.mjs` (new, `npm run fulfillment:sync`):** catch-up tool na **nagsusulat sa database** (nililipat ang packages sa Readiness/Pick/Pack & QC stages). "Safe to run any time" ang claim nito, pero production write pa rin — **huwag patakbuhin against Railway nang walang explicit owner go + rollback path**. Nangangailangan ng Railway tunnel + `DATABASE_URL`.
-- **Deploy is separate:** merging locally does NOT redeploy Railway, and pushing to `main` is GitHub only. The rehearsal deploy (`c6379920`) stays as-is until a deliberate, owner-approved `railway up`. The next deploy would include Yhel's Fulfillment + JV's supplier-quote work. Verify na walang GitHub auto-deploy ang Railway bago ang push (step 8).
+- **Deploy is separate:** merging locally does NOT redeploy Railway, and pushing to `main` is GitHub only. The rehearsal deploy (`c6379920`) stays as-is until a deliberate, owner-approved `railway up`. The next deploy would include Yhel's Fulfillment + JV's supplier-quote work. Verify na walang GitHub auto-deploy ang Railway bago ang push (step 8). **(Done 2026-11-14: verified `source: null`, then owner-approved `railway up` → deployment `33945185` SUCCESS, live verified.)**
 - **The lock-down plan** ([[Plan - Field Account API Allowlist]]) is independent; do it before or after the merge, but re-run its tests after merging since `server/index.mjs` and `access.mjs` may shift.
 
 ## 7. Reversibility and safety
@@ -125,9 +125,9 @@ Walang untracked-file collision (verified 2026-11-14): ang mga bagong file ni Yh
 - [x] **Commit granularity: 3 commits** — decided ng owner 2026-11-14: (1) rehearsal + files migration, (2) access/scoping/CMS + adminOnly, (3) docs + vault plans.
 - [x] **Scope: isama ang `origin/jv-update`** — owner, 2026-11-14. 1 new commit (`83319aa`); the rest of JV's work is already in Yhel's branch.
 - [x] **End goal: isang push sa `main`** — owner, 2026-11-14. Fast-forward verified; push after green tests + spot-check, with separate go (step 8).
-- [ ] **Go to execute steps 1–7 (save point + merges + tests + spot-check)** — owner: "huwag muna" (2026-11-14). Ready ang plan; hinihintay ang go.
-- [ ] **Go to push (step 8)** — after green; guardrail handling decided at that point.
-- [ ] Deploy after merge? (separate go)
+- [x] **Go to execute steps 1–7 (save point + merges + tests + spot-check)** — owner: "go na" (2026-11-14); executed same day.
+- [x] **Go to push (step 8)** — owner himself ran the push 2026-11-14 (guardrail intact); `origin/main` = `7225cc9`, fast-forward, `origin/Johncel-Dev` synced.
+- [x] Deploy after merge — owner go 2026-11-14; `railway up` deployment `33945185` SUCCESS, live verified (liquid.css 200, login page new skin, schema 0 changes, schedules on).
 - [ ] CMS retarget to Service Request: after merge, before CMS go-live (recommended timing)?
 
 ## 9. Status
@@ -142,6 +142,7 @@ Walang untracked-file collision (verified 2026-11-14): ang mga bagong file ni Yh
 - [x] Merge `yhelie-update` + `jv-update`, resolve conflicts — merge 1 `e444d32`: 7 conflicts resolved (both intents kept), 7 post-merge test failures fixed (stale Pack/Schedule Requests counts; forecast tests now assert cross-record consistency because the Zoho-ported Instant Forecast stamp recomputes on save). Merge 2 `c68f8f9`: clean auto-merge, both intents verified.
 - [x] `npm install` + full suite + UI tests green — 614/614 node (concurrency=2; default parallelism OOMs 2 PGlite files when a dev server runs alongside), 124/124 UI (5 files). No new dependencies (fulfillment:sync script only).
 - [x] Browser spot-check (Fulfillment + Delivery + Procurement) — local SQLite, temp QA admin deleted after: Pack & QC/To Ship/Crate/Order Readiness + Approve Dispatch render; no Pack tab; no Schedule Requests tab, Service Request + full-page form OK, Archived cards OK; Inquiry List renders, JV price-lock confirmed in served widget; sidebar badge "Local SQLite"; no console errors.
-- [ ] Push to main (isang push, separate go, guardrail handling)
+- [x] Push to main — owner pushed 2026-11-14; `origin/main` = `7225cc9` (fast-forward), `origin/Johncel-Dev` synced.
+- [x] Deploy to Railway — `railway up --service supply-chain-app` deployment `33945185` SUCCESS 2026-11-14; live verified: `/theme/liquid.css` 404→200, login page new skin, `[pg] schema ready (0 changes)`, schedules on, Fulfillment 11 / Delivery 12 pages; Books/Akeneo/Shopify "not configured" (expected, keys unset).
 - [ ] CMS retarget to Service Request (bago i-enable ang CMS)
 - [x] Docs sync (Change Log, Port Status, Fulfillment notes, Delivery checklist + Open Decisions — inalis ang "Schedule Requests display" pending decision; shared-postgres-setup counts 90→88 forms / 88→86 exportable)
