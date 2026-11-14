@@ -28,8 +28,8 @@ test('a form belongs to one module only', () => {
 
 test('a custom API name is defined once, and an unported one says so', async () => {
   assert.equal(Object.keys(customApis).length, modules.reduce((n, m) => n + Object.keys(m.apis).length, 0));
-  assert.equal((await invokeCustomApi('create_rr_main', {})).status, 'error');
-  assert.match((await invokeCustomApi('create_rr_main', {})).message, /not ported yet/);
+  assert.equal((await invokeCustomApi('create_bin_receiving', {})).status, 'error');
+  assert.match((await invokeCustomApi('create_bin_receiving', {})).message, /not ported yet/);
   assert.match((await invokeCustomApi('No_Such_Api', {})).message, /Unknown custom API/);
 });
 
