@@ -384,8 +384,9 @@ function App(){
     Promise.all([
       fetchReport(CONFIG.SOF_REPORT), fetchReport(CONFIG.QC_REPORT),
       fetchReport(CONFIG.PICK_REPORT), Promise.resolve([]), // Pack form retired: Pack and QC are one tab now, so there are no Pack rows
+      fetchReport("Capacity_Days"), // report_name with no reports.json entry resolves to the form of the same name
     ]).then(function(results){
-      setRaw({ sof: results[0], qc: results[1], pick: results[2], pack: results[3] });
+      setRaw({ sof: results[0], qc: results[1], pick: results[2], pack: results[3], capacityDays: results[4] });
       setLoading(false);
     }).catch(function(err){
       console.error("[FulfillmentScoreboard] load failed:", err);
@@ -540,8 +541,26 @@ function App(){
     activity = activity.filter(function(a){ return a.date; }).sort(function(a,b){ return b.date - a.date; }).slice(0,9)
       .map(function(a){ return Object.assign({}, a, { when: timeAgo(a.date) }); });
 
+    // Backlog days (05/02 §1): open_boxes / (people * boxes_per_hour * hours_per_day). Box count: real
+    // Box_Count if counted, else the line-quantity sum (effectiveBoxes's own fallback, mirrored here since
+    // this is a client-side widget and cannot import server/modules/fulfillment/sorter.mjs).
+    var todayStr = (function(){ var d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); })();
+    var todayCapacity = (raw.capacityDays || []).find(function(r){ return str(r,"Date") === todayStr; })
+      || (raw.capacityDays || []).filter(function(r){ return str(r,"Date") && str(r,"Date") < todayStr; }).sort(function(a,b){ return str(b,"Date").localeCompare(str(a,"Date")); })[0];
+    var capPeople = todayCapacity ? Number(todayCapacity.People) || 4 : 4;
+    var capBoxesPerHour = todayCapacity ? Number(todayCapacity.Boxes_Per_Hour) || 8 : 8;
+    var capHoursPerDay = todayCapacity ? Number(todayCapacity.Hours_Per_Day) || 7 : 7;
+    var capacityBoxes = capPeople * capBoxesPerHour * capHoursPerDay;
+    var openBoxes = raw.sof.filter(function(r){ return str(r,"Fulfillment_Stage") !== "For Delivery"; }).reduce(function(n, r){
+      var effective = (r.Box_Count_Source === "counted" && r.Box_Count) ? Number(r.Box_Count) : null;
+      if (effective !== null) return n + effective;
+      return n + (r.Item_Details1 || []).reduce(function(m, row){ return m + (parseFloat(row.Quantity) || 0); }, 0);
+    }, 0);
+    var backlogDays = openBoxes === 0 ? 0 : (capacityBoxes === 0 ? Infinity : openBoxes / capacityBoxes);
+
     return {
       pipelineTotal: pipelineTotal, notStarted: notStarted, inProgress: inProgress, delivered: delivered,
+      backlogDays: backlogDays, openBoxes: openBoxes, capacityBoxes: capacityBoxes,
       activeLast4: activeLast4, activePrev4: activePrev4, activeSpark: activeBuckets.map(function(b){return b.count;}),
       newLast4: newLast4, newPrev4: newPrev4, newSpark: newBuckets.map(function(b){return b.count;}), newTotal: raw.sof.length,
       deliveredCount: delivered, deliveredLast4: deliveredLast4, deliveredPrev4: deliveredPrev4, deliveredSpark: deliveredBuckets.map(function(b){return b.count;}),
@@ -626,6 +645,9 @@ function App(){
                   sub="currently at For Delivery"
                   deltaPct={pctChange(computed.deliveredLast4, computed.deliveredPrev4)} deltaGoodWhen="up"
                   sparkData={computed.deliveredSpark} sparkColor="#0ca30c" />
+                <KpiCard label="Backlog" icon={<IconPackage size={17}/>} value={Number.isFinite(computed.backlogDays) ? computed.backlogDays.toFixed(1) + "d" : "—"}
+                  sub={computed.openBoxes + " open boxes / " + computed.capacityBoxes + " cap/day"}
+                  deltaPct={null} deltaGoodWhen={null} />
                 <KpiCard label="Open Issues" icon={<IconAlert size={17}/>} value={computed.openIssuesCount}
                   sub="short / partial receive"
                   deltaPct={pctChange(computed.partialLast4, computed.partialPrev4)} deltaGoodWhen="down"
