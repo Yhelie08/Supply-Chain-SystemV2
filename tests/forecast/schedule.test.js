@@ -223,7 +223,7 @@ test('it is off unless SCHEDULES=on', () => {
   off.stop();
 });
 
-test('the Fulfillment module lists the two forecast schedules under their Zoho names', () => {
+test('the modules list their schedules under their Zoho names (two forecast, two shipment)', () => {
   const names = modules.flatMap((m) => (m.schedules || []).map((s) => s.name));
-  assert.deepEqual(names.sort(), ['Backfill_PreOrder_Forecas', 'Forecast_Stamp_Daily']);
+  assert.deepEqual(names.sort(), ['Backfill_PreOrder_Forecas', 'Daily_Shipment_10_Day_Che', 'Forecast_Stamp_Daily', 'Shipment_Delay_Status_Dai']);
 });
