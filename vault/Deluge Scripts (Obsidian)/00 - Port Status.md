@@ -13,9 +13,9 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Part | Total | Ported |
 |---|---:|---:|
-| Deluge functions | 43 | 29 |
-| Custom APIs called by widgets | 28 | 24 |
-| Form workflows (on validate, on success, field rules) | 165 | 95 |
+| Deluge functions | 43 | 30 |
+| Custom APIs called by widgets | 28 | 25 |
+| Form workflows (on validate, on success, field rules) | 165 | 109 |
 | Scheduled workflows | 6 | 0 |
 | Report-button functions | 16 | 0 |
 
@@ -33,7 +33,7 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `addItemByIdBooks` | `add_item_by_id` | Procurement, Fulfillment | Ported | `zoho-export/parsed/functions/addItemByIdBooks.dg` |
 | `Approve_Multiple_PRs` | — | — | Not ported yet | `zoho-export/parsed/functions/Approve_Multiple_PRs.dg` |
 | `approvePOFenteng` | `approve_po_fenteng` | Procurement | Ported | `zoho-export/parsed/functions/approvePOFenteng.dg` |
-| `approvePOHC` | `Approve_P_O_H_C` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOHC.dg` |
+| `approvePOHC` | `Approve_P_O_H_C` | Procurement | Ported | `zoho-export/parsed/functions/approvePOHC.dg` |
 | `approvePOMain` | `approve_po_main` | Procurement | Ported | `zoho-export/parsed/functions/approvePOMain.dg` |
 | `approvePOTony` | `approve_po_tony` | Procurement | Ported | `zoho-export/parsed/functions/approvePOTony.dg` |
 | `approveRRFenteng` | `approve_rr_fenteng` | Fenteng Lighting | Ported | `zoho-export/parsed/functions/approveRRFenteng.dg` |
@@ -74,7 +74,7 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Custom API | Deluge function | Status |
 |---|---|---|
-| `Approve_P_O_H_C` | `approvePOHC` | Not ported yet |
+| `Approve_P_O_H_C` | `approvePOHC` | Ported |
 | `acknowledge_po_fenteng` | `acknowledgePOFenteng` | Ported |
 | `acknowledge_po_tony` | `acknowledgePOTony` | Ported |
 | `add_item_by_id` | `addItemByIdBooks` | Ported |
@@ -105,4 +105,4 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 ## Workflows
 
-95 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 32 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.
+109 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 39 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.

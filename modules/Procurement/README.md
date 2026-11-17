@@ -18,7 +18,7 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 
 | Custom API | Deluge function | Local app |
 |---|---|---|
-| `Approve_P_O_H_C` | [approvePOHC](../../zoho-export/parsed/functions/approvePOHC.dg) | Not ported yet |
+| `Approve_P_O_H_C` | [approvePOHC](../../zoho-export/parsed/functions/approvePOHC.dg) | Ported |
 | `add_item_by_id` | [addItemByIdBooks](../../zoho-export/parsed/functions/addItemByIdBooks.dg) | Ported |
 | `approve_po_fenteng` | [approvePOFenteng](../../zoho-export/parsed/functions/approvePOFenteng.dg) | Ported |
 | `approve_po_main` | [approvePOMain](../../zoho-export/parsed/functions/approvePOMain.dg) | Ported |

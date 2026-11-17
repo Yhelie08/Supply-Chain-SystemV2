@@ -5,7 +5,7 @@ tags:
   - fulfillment
   - git
   - merge
-status: EXECUTED + DEPLOYED 2026-11-14. Save point e184e60/9532b32/d9bf006; merge 1 e444d32 (yhelie-update, 7 conflicts resolved both-intents); merge 2 c68f8f9 (jv-update, clean). Tests 614/614 + UI 124/124; browser spot-check passed; docs synced. PUSH done (owner himself, main = 7225cc9, fast-forward); deploy 33945185 SUCCESS via railway up, live verified. Follow-ups: CMS retarget to Service Request before CMS_API_KEY; register Yhel engine workflows in ported.json.
+status: EXECUTED + DEPLOYED 2026-11-14. Save point e184e60/9532b32/d9bf006; merge 1 e444d32 (yhelie-update, 7 conflicts resolved both-intents); merge 2 c68f8f9 (jv-update, clean). Tests 614/614 + UI 124/124; browser spot-check passed; docs synced. PUSH done (owner himself, main = 7225cc9, fast-forward); deploy 33945185 SUCCESS via railway up, live verified. Follow-ups: CMS retarget to Service Request before CMS_API_KEY; register Yhel engine workflows in ported.json (DONE 2026-11-17).
 date: 2026-11-14
 ---
 

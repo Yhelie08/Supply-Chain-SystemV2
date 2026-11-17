@@ -4,7 +4,7 @@ tags:
   - plan
   - procurement
   - migration
-status: draft - open questions for the team (section 6)
+status: M1-M6 + M8 schedules done (Books parts excluded) 2026-11-17; M7 Books poller, M9, M10 open; open questions in section 6
 date: 2026-11-12
 ---
 
@@ -15,8 +15,8 @@ date: 2026-11-12
 
 ## 1. Buod (summary in Tagalog)
 - Procurement ang unang module na tatapusin natin bago ang Fulfillment at Delivery. **Sabay-sabay ang paglipat ng staff sa dulo**, kapag tapos na ang lahat ng module. Kaya ang "pulidong Procurement" ay milestone sa paggawa, hindi pa paglabas sa staff.
-- Ngayon: **22 sa 58** workflows ng Procurement ang tapos, **0 sa 20** sa mga portal ng Tony Fan at Fenteng. Inquiry at Purchase Request lang ang halos kumpleto.
-- **Hindi pa gumagana ang Create PO.** Tumatawag ang Purchase Request tab ng 4 na function (`approve_po_main`, `approve_po_fenteng`, `approve_po_tony`, `Approve_P_O_H_C`) na wala pa sa server. Kaya 25 ang tunay na bilang ng custom API, hindi 21.
+- **Update 2026-11-17:** tapos na ang lahat ng workflows: Procurement **58/58**, Tony Fan **8/8**, Fenteng **12/12** (dati: 22/58 at 0/20). Naka-port na rin ang M1–M6 at ang shipment schedules ng M8, maliban sa Books.
+- **Gumagana na ang Create PO** (`approve_po_main`, `approve_po_tony`, `approve_po_fenteng`, `Approve_P_O_H_C`), pati ang Create RR, acknowledge PO at approve RR. **Hindi pa kasama ang Books part** ng Tony/Fenteng PO, at ang `create_bin_receiving` (Books, 1,885 lines). Ang susunod ay ang M7 (Books poller), M9 at M10, na lahat ay naghihintay ng Books OAuth client (tanong #4).
 - **May malaking butas**: ang pagpasok ng Sales Order, bayad, at invoice mula sa Zoho Books ay ginagawa ng mga function sa loob ng Books (hindi sa Creator). Kapag iniwan ang Creator, wala nang magpapasok ng Sales Order, kaya walang Purchase Request. Kailangan natin itong gawing "poller" sa server natin.
 - Ang mga tanong na kailangang sagutin ng team ay nasa **seksyon 6**, may numero, para madaling sagutin.
 
