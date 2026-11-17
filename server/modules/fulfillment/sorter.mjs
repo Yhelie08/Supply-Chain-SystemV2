@@ -4,6 +4,11 @@
 // on identical input always gives the identical answer (determinism is an explicit acceptance requirement).
 import { blank } from '../../workflows/deluge.mjs';
 import { needsPaymentApproval } from './workflows.mjs';
+import { zohoNow } from '../../criteria.mjs';
+import { policyReader } from '../delivery-management/scheduling.mjs';
+
+const SOF_NAME = 'Sales_Order_Fulfillment';
+const OPEN_STAGE = (stage) => stage !== 'For Delivery';
 
 const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
 const OPEN_EXCEPTION_STATUSES = new Set(['Pending', 'In Rework']);
@@ -102,4 +107,39 @@ export function rankAndCutLine(entries, { policy = () => null } = {}) {
     used += boxes;
     return { ...e, queueRank: i + 1, suggestedRelease: fitsBefore };
   });
+}
+
+async function scoreAllOpenPackages(store) {
+  const [sofs, gates, exceptions, policy] = await Promise.all([
+    store.find(SOF_NAME, (r) => OPEN_STAGE(r.Fulfillment_Stage)),
+    store.find('Sales_Order_Readiness_Gate'),
+    store.find('Exception_Control1'),
+    policyReader(store),
+  ]);
+  const openExceptions = exceptions.filter((e) => OPEN_EXCEPTION_STATUSES.has(text(e.Status)));
+  const now = new Date();
+  const entries = sofs.map((sof) => ({ sof, ...categorize(sof, { gates, openExceptions, now, policy }) }));
+  return rankAndCutLine(entries, { policy });
+}
+
+// Writes the scored result back onto Sales_Order_Fulfillment. Suggested_Action is left blank this slice: the
+// spec's `suggested_actions` lookup table (Admin-editable module/category/condition -> text) is shared
+// infrastructure beyond this slice's scope, and hardcoding English strings here would just be thrown away once
+// that table exists.
+export async function rescoreAll(store) {
+  const scored = await scoreAllOpenPackages(store);
+  const stamp = zohoNow();
+  for (const e of scored) {
+    await store.updateRecord(SOF_NAME, e.sof.ID, {
+      Category: e.category, Blocked_Reason: e.blockedReason || '', Queue_Rank: String(e.queueRank),
+      Priority_Reason: e.priorityReason, Suggested_Action: '', Suggested_Release: e.suggestedRelease, Scored_At: stamp,
+    }, { byForm: true });
+  }
+  return { scored: scored.length };
+}
+
+// Re-score everything (ranks are global, so a single-SO change can shift everyone's rank) — this is a thin
+// name for callers who only know which SO changed; it does not skip work, it documents intent at the call site.
+export async function rescoreOne(store, _soNo) {
+  return rescoreAll(store);
 }
