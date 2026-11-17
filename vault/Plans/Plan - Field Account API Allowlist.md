@@ -14,10 +14,10 @@ date: 2026-11-14
 
 # Field account API allowlist (deny-by-default)
 
-## 1. Buod (Tagalog)
-- **Ang butas:** ang field account (hal. team CJ) ay 3 tabs lang ang nakikita sa menu, pero kapag tinawag ang API diretso, nakakabasa/nakakasulat pa rin sa ibang data. Nakatago lang ang pinto, hindi nakakandado.
-- **Ang fix:** deny-by-default allowlist — field account = ang data lang ng 3 tabs nila (14 pangalan), everything else denied. Admin at regular user ay hindi gagalawin.
-- **Status:** plano pa lang, hindi pa nako-code. Hinihintay ang go ng may-ari.
+## 1. Summary
+- **The hole:** a field account (e.g. team CJ) sees only 3 tabs in the menu, but calling the API directly still reads and writes other data. The door is hidden, not locked.
+- **The fix:** a deny-by-default allowlist: a field account gets only the data of its 3 tabs (14 names), everything else is denied. Admin and regular users are not touched.
+- **Status:** plan only, not coded yet. Waiting for the owner's go.
 
 ## 2. The problem (OWASP A01 — broken access control)
 

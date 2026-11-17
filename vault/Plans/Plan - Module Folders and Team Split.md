@@ -16,13 +16,13 @@ date: 2026-11-12
 > [!SUCCESS] Status 2026-11-12
 > The restructure of section 9 is done on branch `feature/postgres-data-layer` and waits in [PR #3](https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/3) (PR #2 was merged earlier without it): `server/modules/<module>/` exists for all six sections, the server finds the modules by itself, `ported.json` is per module, the tests are in `tests/core/` and `tests/procurement/`, and `.github/CODEOWNERS` is in place (core to `@Yhelie08`, module lines commented until the usernames are known). It changed nothing in how the app behaves: 249 tests pass (245 before, plus 4 new ones for the modules). The only number that moved is the custom API count, 6 of 21 became 6 of 25, because four `approve_po_*` APIs that the Create PO button calls are now listed. The team can start once PR #3 is reviewed and merged (section 10).
 
-## 1. Buod (Tagalog)
-- Tama ang hati: **bawat tao ay may sariling module at sariling folder** para doon siya mag-edit. Ang mga module ay ang nasa dropdown ng app: Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment, Delivery Management.
-- Pero **hindi sapat ang folder lang.** Ngayon, may 3 file na kailangang galawin ng *lahat*: `server/custom-apis.mjs`, `server/workflows/all.mjs` at `server/workflows/ported.json`. Magkakabanggaan sila sa pag-merge.
-- Ang ayos: ilipat ang code ng bawat module sa `server/modules/<module>/`, at awtomatikong kunin ng server ang lahat ng nandoon. Kapag nagdagdag ka ng workflow o API, **sarili mong folder lang ang gagalawin mo.**
-- Ang **core** (database, hooks, Books client) ay pinagsasaluhan: hindi ito ginagalaw ng lahat, at may magre-review sa bawat pagbabago.
-- **Mauna ang pag-aayos na ito bago mag-clone ang iba**, para walang rebase. Isang PR, isang tao ang gagawa. Hindi nito babaguhin ang takbo ng app o ang mga test.
-- **Bago mag-imbita ng kahit sino: gawing Private ang repo** (Public ito ngayon). Tingnan ang seksyon 2.
+## 1. Summary
+- The split is right: **each person has their own module and their own folder** to edit in. The modules are the ones in the app's dropdown: Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment, Delivery Management.
+- But **a folder alone is not enough.** Today *everyone* has to edit 3 files: `server/custom-apis.mjs`, `server/workflows/all.mjs` and `server/workflows/ported.json`. They would clash on every merge.
+- The fix: move each module's code into `server/modules/<module>/`, and let the server pick up everything there by itself. When you add a workflow or an API, **you only touch your own folder.**
+- The **core** (database, hooks, Books client) is shared: not everyone edits it, and every change gets a reviewer.
+- **Do this restructure before the others clone**, so nobody has to rebase. One PR, done by one person. It does not change how the app runs or the tests.
+- **Before inviting anyone: make the repo Private** (it is Public now). See section 2.
 
 ## 2. Before anyone is invited (do this first)
 > [!WARNING] The GitHub repository is public today

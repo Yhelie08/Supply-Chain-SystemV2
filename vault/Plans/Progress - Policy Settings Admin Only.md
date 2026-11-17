@@ -12,68 +12,68 @@ date: 2026-11-13
 > [!INFO] Where this fits
 > Roles Phase 1 from [[Checklist - Delivery Missing Functions]] item 7. The decision (Policy Settings admin-only, three roles only) is in [[Clarifications - Delivery Management]]. The draft role matrix is in [[Plan - Delivery Management Open Items]] section 5. Short entry: [[00 - Change Log]].
 
-# Progress — Policy Settings admin lang (2026-11-13)
+# Progress — Policy Settings, admin only (2026-11-13)
 
-## Ang problema
+## The problem
 
-Ang Policy Settings (4 numbers ng scheduling engine) ay **hidden** sa menu, pero bukas pa rin:
+Policy Settings (the 4 numbers of the scheduling engine) is **hidden** in the menu, but it was still open:
 
-- Kahit sinong naka-sign in ay nakakabukas ng `/w/Delivery Management/Policy Settings/index.html`.
-- Kahit sinong naka-sign in ay nakakapag-POST ng `/api/updateRecordById` (o add / delete) sa `All_Policy_Settings`. Kung page lang ang itago, bukas pa rin ang pinto sa likod.
+- Anyone signed in could open `/w/Delivery Management/Policy Settings/index.html`.
+- Anyone signed in could POST `/api/updateRecordById` (or add / delete) on `All_Policy_Settings`. Hiding the page alone leaves the back door open.
 
-## Ano ang ginawa
+## What was done
 
-| Bahagi | Ano |
+| Part | What |
 |---|---|
-| `server/access.mjs` (bago) | `canServeFile`, `visibleSections`, `checkCall`, `checkUpload`; isang lugar ang rules |
-| `server/pages.json`, `tools/import-widgets.mjs` | `"adminOnly": true` sa Policy Settings tab (nasa generator din, para hindi mawala kapag nag-regenerate) |
-| `server/index.mjs` | 4 hook: widget file, `/api/pages`, SDK writes, `/api/uploadFile` |
-| `tests/core/access.test.js` (bago) | 5 tests |
+| `server/access.mjs` (new) | `canServeFile`, `visibleSections`, `checkCall`, `checkUpload`; the rules in one place |
+| `server/pages.json`, `tools/import-widgets.mjs` | `"adminOnly": true` on the Policy Settings tab (also in the generator, so a regenerate does not drop it) |
+| `server/index.mjs` | 4 hooks: widget file, `/api/pages`, SDK writes, `/api/uploadFile` |
+| `tests/core/access.test.js` (new) | 5 tests |
 
 Rules:
 
-- **Page:** non-admin → redirect sa `/`. Chine-check ang **resolved file path**, hindi ang URL, kaya hindi gumagana ang `..%2F` trick; hindi rin mahalaga ang uppercase/lowercase (Windows).
-- **Menu:** tinatanggal ang tab sa `/api/pages` para sa non-admin.
-- **Writes:** `addRecords` (form `Policy_Settings`), `updateRecordById`, `updateRecords`, `deleteRecordById` (report `All_Policy_Settings`) at `/api/uploadFile` → `{code: 403, message: "Only admins can open or change Policy Settings."}` para sa non-admin.
-- **Bukas pa rin:** reads (`getRecords`, `getRecordById`) at lahat ng ibang form. Ang scheduling engine ay nagbabasa sa server (`scheduling.mjs`), kaya hindi apektado.
+- **Page:** non-admin → redirect to `/`. The **resolved file path** is checked, not the URL, so the `..%2F` trick does not work; upper/lower case does not matter either (Windows).
+- **Menu:** the tab is removed from `/api/pages` for non-admins.
+- **Writes:** `addRecords` (form `Policy_Settings`), `updateRecordById`, `updateRecords`, `deleteRecordById` (report `All_Policy_Settings`) and `/api/uploadFile` → `{code: 403, message: "Only admins can open or change Policy Settings."}` for non-admins.
+- **Still open:** reads (`getRecords`, `getRecordById`) and every other form. The scheduling engine reads on the server (`scheduling.mjs`), so it is not affected.
 
-## Paano na-verify
+## How it was verified
 
-| Check | Resulta |
+| Check | Result |
 |---|---|
 | `node --test tests/core/access.test.js` | 5 of 5 |
 | `tests/core/*` + `tests/delivery-management/*` | 162 of 162 |
-| Totoong server, temp SQLite, `BACKEND=local`, port 4013 (binura pagkatapos) | 15 of 15 |
+| Real server, temp SQLite, `BACKEND=local`, port 4013 (deleted afterwards) | 15 of 15 |
 
-Sa 15 HTTP checks:
+In the 15 HTTP checks:
 
-- **Admin:** page 200; add at update gumana; ang `..%2F` URL ay 200 (kaya talagang umaabot ito sa Policy page).
-- **Normal user:** page 302; walang Policy Settings sa menu; add / update / delete / upload ay 403; `getRecords` OK (nakita ang value na sinave ng admin); ang write sa ibang form ay hindi na-block ng guard; ang `..%2F` URL ay 302.
+- **Admin:** page 200; add and update worked; the `..%2F` URL is 200 (so it really reaches the Policy page).
+- **Normal user:** page 302; no Policy Settings in the menu; add / update / delete / upload are 403; `getRecords` OK (saw the value the admin saved); a write to another form was not blocked by the guard; the `..%2F` URL is 302.
 
-## Hindi pa na-check
+## Not checked yet
 
-- Buong `npm run test:all` — may dev server sa port 4000, kaya hindi ko tinakbo ang buong suite.
-- Browser click-through (admin na nag-e-edit ng 4 numbers, user na nare-redirect).
-- `npm run dev:pg` (Postgres). Backend-independent ang guard, pero hindi ko ito sinubukan sa pg.
-- `server/index.mjs` ay core file: sabihan ang core owner bago i-merge.
+- The full `npm run test:all`: a dev server was running on port 4000, so the full suite was not run.
+- Browser click-through (an admin editing the 4 numbers, a user being redirected).
+- `npm run dev:pg` (Postgres). The guard does not depend on the backend, but it was not tried on pg.
+- `server/index.mjs` is a core file: tell the core owner before merging.
 
-## Phase 2 — hindi pa ginagawa
+## Phase 2 — not started
 
-Scheduler / Dispatcher / Field roles at per-tab access. Hinihintay ang pagkumpirma ng matrix:
+Scheduler / Dispatcher / Field roles and per-tab access. Waiting for the matrix to be confirmed:
 
-- Nagla-login ba mismo ang installers at drivers (phones), o ang field team lead ang nag-e-enter?
-- Pwede bang mag-resolve ng exceptions ang dispatcher?
-- Sino ang pwedeng mag-edit ng Policy Settings bukod sa admin?
+- Do the installers and drivers sign in themselves (phones), or does the field team lead enter the data?
+- May the dispatcher resolve exceptions?
+- Who besides the admin may edit Policy Settings?
 
-Kapag natuloy: kailangan ng bagong column sa `_users` (hindi na sapat ang `admin | user` na CHECK), at ang mga kasalukuyang normal user ay mawawalan ng Delivery tabs hanggang bigyan ng role. Pag-isipan muna.
+If it goes ahead: `_users` needs a new column (the `admin | user` CHECK is no longer enough), and the current normal users lose the Delivery tabs until they are given a role. Think it through first.
 
-# Ang buong listahan ng kulang (kopya ng sagot, 2026-11-13)
+# The full list of what is missing (copy of the answer, 2026-11-13)
 
-Walang kulang na Delivery function mula sa Zoho Creator: 16/16 workflows, 6/6 custom APIs, 20/20 reports. Ang kulang ay koneksyon, permissions at data. Ang buong detalye ay nasa [[Checklist - Delivery Missing Functions]].
+No Delivery function from Zoho Creator is missing: 16/16 workflows, 6/6 custom APIs, 20/20 reports. What is missing is connections, permissions and data. Full detail in [[Checklist - Delivery Missing Functions]].
 
-| Grupo | Item |
+| Group | Item |
 |---|---|
-| May code, walang key o URL | Books/Inventory OAuth (#2, #3); CMS push URLs (#4) |
-| Wala pang code | CMS → app route (#6); Roles Phase 2 (#7); Files migration (#8); Email/SMS (#9); Audit trail (#10); Multi-instance lock (#11) |
-| Data at deployment | Production export (#12); Railway pa rin bridge sa Zoho (#13); Upstream Fulfillment: `SO_to_Readiness`, `Release_Records_to_Pick1` (#16); 8 empty forms sa backup (§2.4) |
-| Hindi pa na-verify | Click-through ng 13 tabs (#20, §3); `npm audit` 6 vulnerabilities (#21); keys public sa git (#22) |
+| Has code, no key or URL | Books/Inventory OAuth (#2, #3); CMS push URLs (#4) |
+| No code yet | CMS → app route (#6); Roles Phase 2 (#7); Files migration (#8); Email/SMS (#9); Audit trail (#10); Multi-instance lock (#11) |
+| Data and deployment | Production export (#12); Railway still bridges to Zoho (#13); Upstream Fulfillment: `SO_to_Readiness`, `Release_Records_to_Pick1` (#16); 8 empty forms in the backup (§2.4) |
+| Not verified yet | Click-through of the 13 tabs (#20, §3); `npm audit` 6 vulnerabilities (#21); keys public in git (#22) |

@@ -13,110 +13,110 @@ date: 2026-11-13
 
 # Progress — Delivery Safety (2026-11-13)
 
-## Sandali lang: ano ang branch na ito?
+## In short: what is this branch?
 
 - Branch: `feature/delivery-safety`
-- Naka-push, **wala pang PR**
-- **367 sa 367 tests ang pumasa** (ayon sa run mo)
-- Isang commit: `5dac5fb` — "confirm once, and queue the scheduling work"
-- May **9 na bagong tests** sa `tests/delivery-management/safety.test.js`
+- Pushed, **no PR yet**
+- **367 of 367 tests pass** (from your run)
+- One commit: `5dac5fb` — "confirm once, and queue the scheduling work"
+- **9 new tests** in `tests/delivery-management/safety.test.js`
 
-## Ano ang nagawa
+## What was done
 
-### #5 — Isang confirm lang
+### #5 — Confirm only once
 
-**Dati:** kapag na-click ang Confirm nang dalawang beses, **dalawang appointment** ang nagagawa. Parang dalawang beses mong pinindot ang "Order" sa online shop — dalawang order ang dumating.
+**Before:** clicking Confirm twice made **two appointments**. Like pressing "Order" twice in an online shop: two orders arrive.
 
-**Ngayon:** ang pangalawang confirm ay tinatanggihan:
+**Now:** the second confirm is refused:
 
 > "Already confirmed — Service Appointment ... was already created."
 
-Kahit **tatlong click nang sabay**, isang appointment lang ang magagawa.
+Even **three clicks at the same time** make only one appointment.
 
-**Importante:** ito ay **sadyang kaibahan sa Zoho**. Sa Zoho, double click = two appointments. Napagkasunduan na ito.
+**Important:** this is a **deliberate difference from Zoho**. In Zoho, a double click = two appointments. This was agreed.
 
-### #6 — Walang dalawang tao sa isang slot
+### #6 — No two people in one slot
 
-**Dati:** dalawang dispatcher, sabay confirm ng parehong oras. Pareho silang nakakakita ng "bakante," pareho silang nag-save. Nagkakaproblema pagkatapos.
+**Before:** two dispatchers confirm the same time at the same moment. Both see "free", both save. Trouble afterwards.
 
-**Ngayon:** parang **pila sa tindahan** — isa-isa lang. Ang pangalawa ay makakakita ng nauna at makakatanggap ng **Calendar Conflict**.
+**Now:** like a **queue at a shop**, one at a time. The second one sees the first and gets a **Calendar Conflict**.
 
-**Patunay:** may **dalawang test na bumabagsak kapag tinanggal ang pila**, at pumapasa kapag nandiyan. Ibig sabihin, totoong problema ito noon — hindi hula.
+**Proof:** **two tests fail when the queue is removed** and pass when it is there. So this was a real problem, not a guess.
 
-**Limitasyon:** gumagana ang pila **sa isang server lang**. Kung magkaroon ng maraming server instances, kailangan ng database lock. Nakasulat ito sa `locks.mjs` at sa Change Log.
+**Limit:** the queue works **on one server only**. With several server instances a database lock is needed. This is written in `locks.mjs` and in the Change Log.
 
 ### #7 — Error messages
 
-Kapag pumalya ang CMS o Books, **may error message na** noon pa. Walang binago.
+When the CMS or Books fails, **there was already an error message**. Nothing changed.
 
-## Ano ang hindi pa kaya ngayon
+## What cannot be done yet
 
-| # | Ano | Bakit hindi pa |
+| # | What | Why not yet |
 |---|---|---|
-| #3 | Policy Settings — admin lang | Wala pang per-role access ang buong app; core work ito |
-| #4 | Tatlong roles (Scheduler, Dispatcher, Field team) | Parehong dahilan; core work ito |
+| #3 | Policy Settings — admin only | The app has no per-role access yet; this is core work |
+| #4 | Three roles (Scheduler, Dispatcher, Field team) | Same reason; core work |
 
-Nakasulat na ang mga sagot sa [[Clarifications - Delivery Management]] para hindi makalimutan.
+The answers are written in [[Clarifications - Delivery Management]] so they are not forgotten.
 
-## #8 — Ang oras (clock)
+## #8 — The clock
 
-**Simpleng paliwanag:**
+**Simple explanation:**
 
-- May team na may **2 oras nang trabaho** sa araw na iyon.
-- May bagong order.
-- Sa **Zoho**: hindi nagbibigay ng oras. Walang suggestion, walang paliwanag. **Bug ito.**
-- Sa **bagong app**: nagbibigay ng **10:18 AM**, kasunod ng trabaho.
+- A team already has **2 hours of work** that day.
+- A new order comes in.
+- In **Zoho**: no time is given. No suggestion, no explanation. **This is a bug.**
+- In the **new app**: it gives **10:18 AM**, right after that work.
 
-**Tanong:** panatilihin ba ang fix, o gayahin ang Zoho (walang lalabas)?
+**Question:** keep the fix, or copy Zoho (nothing shown)?
 
-**Recommendation:** panatilihin ang fix. Walang customer o dispatcher ang gustong order na walang oras.
+**Recommendation:** keep the fix. No customer or dispatcher wants an order without a time.
 
-Nasa [[Decision - Delivery Clock Divergence]] ang buong detalye at signature block.
+Full detail and the signature block: [[Decision - Delivery Clock Divergence]].
 
-## Ano pa ang kulang (simple na listahan)
+## What is still missing (simple list)
 
-### Mga desisyong hindi pa nasagot
+### Decisions not answered yet
 
-- **Scope:** mananatili ba ang CMS at Books? (A1)
-- **Schedule Requests:** ipakita ba muna ang records, o itago? (A2)
-- **Site confirmation follow-up:** ipoport ba o skip? (A3)
-- **Widget/UI:** ikaw ba ang mag-aayos ng 13 tabs? (A6)
-- **Data contract:** sino ang pipirma? (A10)
+- **Scope:** do the CMS and Books stay? (A1)
+- **Schedule Requests:** show the records first, or hide them? (A2)
+- **Site confirmation follow-up:** port it or skip it? (A3)
+- **Widget/UI:** will you fix the 13 tabs? (A6)
+- **Data contract:** who signs it? (A10)
 
-### Mga access at keys
+### Access and keys
 
 - Production data (export)
 - Books OAuth client
 - Geoapify key
-- CMS URLs at API key
-- Railway settings (`BACKEND=pg`, `TZ`, atbp.)
-- Files (ilang GB, saan ilalagay, backup)
+- CMS URLs and API key
+- Railway settings (`BACKEND=pg`, `TZ`, etc.)
+- Files (a few GB, where to store them, backup)
 
-### Bago mag-go-live
+### Before go-live
 
 - Rollback plan
-- Backup ng database at files
-- Monitoring at alerts
+- Database and file backups
+- Monitoring and alerts
 - Time zone
-- Private repo at key rotation
+- Private repo and key rotation
 - Reviewer
-- UAT ng owner at staff
+- UAT by the owner and staff
 
 ### Acceptance
 
-- Pirmahan ang clock decision (#8)
-- UAT click-through ng 13 tabs
+- Sign the clock decision (#8)
+- UAT click-through of the 13 tabs
 - Sign-off
 
-## Ano ang susunod (sunod-sunod)
+## What comes next (in order)
 
-1. **Desisyunan ang #8** (clock) — pirmahan ang decision file.
-2. **Sagutin ang natitirang tanong** sa Clarifications (A1, A2, A3, A6, A10 muna).
-3. **I-open ang PR** para sa `feature/delivery-safety`.
-4. **UAT** — owner muna, tapos staff.
-5. **Go-live checklist** — keys, data, files, deployment, backup.
+1. **Decide #8** (clock): sign the decision file.
+2. **Answer the remaining questions** in Clarifications (A1, A2, A3, A6, A10 first).
+3. **Open the PR** for `feature/delivery-safety`.
+4. **UAT**: the owner first, then staff.
+5. **Go-live checklist**: keys, data, files, deployment, backup.
 
-## Mga file
+## Files
 
 - [[Clarifications - Delivery Management]]
 - [[Decision - Delivery Clock Divergence]]

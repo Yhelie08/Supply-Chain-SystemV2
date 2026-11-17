@@ -13,10 +13,10 @@ date: 2026-11-12
 
 # Delivery Management: open items and decisions
 
-## 1. Buod (Tagalog)
-- **Tapos na sa code:** 16 sa 16 na workflow at 6 sa 6 na custom API ng Delivery, 357+ na test.
-- **Hindi pa tapos o hindi pa tiyak** ay nakalista sa seksyon 4, bawat isa ay may may-ari. Ang pinakamalaki: ang forecast engine (hiwalay na milestone), ang CMS (mananatili sa Zoho, kailangan ng papasok na route), ang mga file (Railway volume), ang mga role, at ang live na pagsubok ng Geoapify at Inventory (hinihintay ang mga susi).
-- **Nakumpara na sa Zoho Development** (seksyon 3). Dalawa ang nahanap: (1) sa Zoho, **walang suggestion** na lalabas kapag may oras na ang team sa araw na iyon, dahil sa decimal na paghahati; ang port ay gumagamit ng buong minuto (sinadyang pagkakaiba); (2) ang pagbibilang ng gamit na oras ay **hindi** sinisingil sa lahat ng team sa Zoho; mali ang unang kopya ng port at naitama na.
+## 1. Summary
+- **Done in code:** 16 of 16 Delivery workflows and 6 of 6 custom APIs, 357+ tests.
+- **Not done or not certain yet** is listed in section 4, each with an owner. The biggest: the forecast engine (a separate milestone), the CMS (stays in Zoho, needs an inbound route), the files (Railway volume), the roles, and the live test of Geoapify and Inventory (waiting for the keys).
+- **Compared with Zoho Development** (section 3). Two findings: (1) in Zoho **no suggestion** appears when the team already has hours that day, because of a decimal division; the port uses whole minutes (a deliberate difference); (2) in Zoho the used hours are **not** charged to every team; the first version of the port got this wrong and it is fixed.
 
 ## 2. Decided (the grilling, 2026-11-12)
 | # | Question | Answer |
@@ -95,7 +95,7 @@ Before starting: restart the server (the hooks load at start); open Daily Team A
 4. **Override:** confirm a different time. Expect a refusal without Override By and Reason; with them it saves and the summary says "Override: ...".
 5. **Stacking:** a second appointment for the same team and day. Expect it to start after the first one's hours (for example 10:18 AM), not nothing.
 6. **Conflict:** fill a team's day, then confirm one more at the suggested time. Expect a Calendar Conflict exception in DMS Exception Queue.
-7. **Re-Schedule button** on a Queued appointment. Expect a new suggestion; on a Completed one, "tapos na ang delivery".
+7. **Re-Schedule button** on a Queued appointment. Expect a new suggestion; on a Completed one, "the delivery is done".
 8. **Field Work:** set a Field Work to Reschedule Requested without a reason (refused), then with one (an exception appears). Mark another Complete: the appointment becomes Completed with "Actual: ..." in the summary, and a later job of the same team is flagged Schedule Drift if it was planned earlier.
 9. **Exception Queue:** resolve an exception with "Revert to System". Expect a fresh suggestion. Resolve a Dispatch exception: expect a Priority copy in the queue and the old appointment Failed.
 10. **Sales Returns and Shipment** (after the Books OAuth client is in `.env`): create a Sales Return in Books and a Shipment Order.

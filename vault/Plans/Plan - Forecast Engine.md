@@ -12,10 +12,10 @@ date: 2026-11-12
 
 # Forecast engine: what is built and what is left
 
-## 1. Buod (Tagalog)
-- **Tapos na sa code (F0 hanggang F4):** ang forecast ladder, ang pag-stamp kada order sa pag-save, ang bahagi ng PR, ang pitong Instant Forecast na workflow, ang dalawang daily schedule, at ang runner ng mga schedule.
-- **Hindi pa nasusubukan laban sa Zoho Development (F5).** Ipinagpaliban ng may-ari sa susunod na araw. Hangga't hindi ito nagagawa, ang mga bagay na may markang (?) sa code ay hula batay sa Deluge, hindi kumpirmado.
-- Hindi pa naka-open ang PR. Naka-push ang branch para may backup.
+## 1. Summary
+- **Done in code (F0 to F4):** the forecast ladder, stamping each order on save, the PR part, the seven Instant Forecast workflows, the two daily schedules, and the schedule runner.
+- **Not yet compared with Zoho Development (F5).** The owner moved it to another day. Until it is done, whatever is marked (?) in the code is a guess from the Deluge, not confirmed.
+- The PR is not open yet. The branch is pushed as a backup.
 
 ## 2. Where the code is (`server/forecast/`, shared code like `server/workflows/suppliers.mjs`)
 | File | What it is |

@@ -7,7 +7,7 @@ After you change code, config or tools in this repo, in the same session:
 3. If you ported a Deluge script, also follow `vault/Plans/Plan - Delivery Management.md` ("After each step"): `ported.json`, then `node tools/build-module-readmes.mjs && node tools/build-port-checklist.mjs`.
 4. Do not claim something is done in a note unless it was run. Write "not verified" instead.
 
-Notes are written in the same mix of English and Tagalog the existing ones use; keep them short.
+Notes are written in plain English (owner decision, 2026-11-17); keep them short. The Deluge script copies under `vault/Deluge Scripts (Obsidian)/**/Deluge/` keep their original comments as they are.
 
 ## Running and testing
 - Delivery Management workflows (scheduling engine, field work, exception queue) only run with `BACKEND=pg`. Test them with `npm run dev:pg` (local PGlite), not `npm run dev`.

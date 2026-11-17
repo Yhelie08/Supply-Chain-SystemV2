@@ -15,11 +15,11 @@ date: 2026-11-12
 > [!SUCCESS] Status update 2026-11-12
 > **PR #2 was merged into `main` at 04:33 UTC**, one minute after it was opened, so `main` now has the Postgres layer, the hooks, the Books client and the Inquiry and Purchase Request ports. The module restructure and the team-split plan were added to the branch afterwards and are **not in `main` yet**: they are in **[PR #3](https://github.com/Yhelie08/Supply-Chain-SystemV2/pull/3)**. **Teammates should wait until PR #3 is merged before they clone and start a module branch**, so that everyone starts from the same layout. The sections below describe the plan as it was written, before PR #2 was merged.
 
-## 1. Buod (Tagalog)
-- **Isang pull request lang ang kailangan**: mula sa `feature/postgres-data-layer` papunta sa `main`.
-- Ang `feature/zoho-backend-adapter` ay **naka-merge na** (PR #1). Walang gagawin dito; pwede na itong burahin sa GitHub.
-- Ang PR ay **Draft** muna, para makita nina Sir Yhel at Sir JV ang kabuuan habang nagdadagdag pa tayo. **I-merge pagkatapos ma-review ang restructure ng mga module**, para makapagsimula ang buong team mula sa `main`. Ang Procurement ay itutuloy sa sarili nitong branch.
-- Ang pag-merge sa `main` ay **hindi nagde-deploy** sa Railway. Mano-mano ang deploy mula sa PC (`railway up`).
+## 1. Summary
+- **Only one pull request is needed**: from `feature/postgres-data-layer` into `main`.
+- `feature/zoho-backend-adapter` is **already merged** (PR #1). Nothing to do; it can be deleted on GitHub.
+- The PR stays a **Draft** first, so Sir Yhel and Sir JV can see the whole of it while we keep adding. **Merge it after the module restructure is reviewed**, so the whole team can start from `main`. Procurement continues on its own branch.
+- Merging into `main` **does not deploy** to Railway. The deploy is manual from a PC (`railway up`).
 
 ## 2. State on GitHub (checked 2026-11-12)
 | Branch | Behind `main` | Ahead of `main` | Pull request | What to do |

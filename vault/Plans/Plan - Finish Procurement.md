@@ -13,12 +13,12 @@ date: 2026-11-12
 
 # Plan: finish Procurement, end to end
 
-## 1. Buod (summary in Tagalog)
-- Procurement ang unang module na tatapusin natin bago ang Fulfillment at Delivery. **Sabay-sabay ang paglipat ng staff sa dulo**, kapag tapos na ang lahat ng module. Kaya ang "pulidong Procurement" ay milestone sa paggawa, hindi pa paglabas sa staff.
-- **Update 2026-11-17:** tapos na ang lahat ng workflows: Procurement **58/58**, Tony Fan **8/8**, Fenteng **12/12** (dati: 22/58 at 0/20). Naka-port na rin ang M1–M6 at ang shipment schedules ng M8, maliban sa Books.
-- **Gumagana na ang Create PO** (`approve_po_main`, `approve_po_tony`, `approve_po_fenteng`, `Approve_P_O_H_C`), pati ang Create RR, acknowledge PO at approve RR. **Hindi pa kasama ang Books part** ng Tony/Fenteng PO, at ang `create_bin_receiving` (Books, 1,885 lines). Ang susunod ay ang M7 (Books poller), M9 at M10, na lahat ay naghihintay ng Books OAuth client (tanong #4).
-- **May malaking butas**: ang pagpasok ng Sales Order, bayad, at invoice mula sa Zoho Books ay ginagawa ng mga function sa loob ng Books (hindi sa Creator). Kapag iniwan ang Creator, wala nang magpapasok ng Sales Order, kaya walang Purchase Request. Kailangan natin itong gawing "poller" sa server natin.
-- Ang mga tanong na kailangang sagutin ng team ay nasa **seksyon 6**, may numero, para madaling sagutin.
+## 1. Summary
+- Procurement is the first module we finish, before Fulfillment and Delivery. **Staff move over all at once at the end**, when every module is done. So a "polished Procurement" is a build milestone, not yet a release to staff.
+- **Update 2026-11-17:** every workflow is done: Procurement **58/58**, Tony Fan **8/8**, Fenteng **12/12** (was 22/58 and 0/20). M1–M6 and the shipment schedules of M8 are ported too, except the Books parts.
+- **Create PO works** (`approve_po_main`, `approve_po_tony`, `approve_po_fenteng`, `Approve_P_O_H_C`), and so do Create RR, acknowledge PO and approve RR. **Not yet included: the Books part** of the Tony/Fenteng PO, and `create_bin_receiving` (Books, 1,885 lines). Next are M7 (Books poller), M9 and M10, all waiting for the Books OAuth client (question #4).
+- **There is a big gap**: sales orders, payments and invoices come in from Zoho Books through functions that run inside Books (not in Creator). Once Creator is left, nothing brings sales orders in, so no Purchase Requests are made. We must rebuild this as a "poller" on our server.
+- The questions the team must answer are in **section 6**, numbered, so they are easy to answer.
 
 ## 2. Decisions made so far (with the owner)
 - Staff go live **all at once**, when every module is ported. No bridge to Zoho Creator is built.

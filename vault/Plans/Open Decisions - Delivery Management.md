@@ -11,157 +11,157 @@ date: 2026-11-13
 > [!INFO] Where this fits
 > The five decisions that block the flow edits. The full question list: [[Clarifications - Delivery Management]]. The one signed decision: [[Decision - Delivery Clock Divergence]]. What was already done: [[Progress - Delivery Safety]]. The build plan: [[Plan - Delivery Management]].
 
-# Delivery Management — Ang Limang Desisyon Bago Mag-edit ng Flow
+# Delivery Management — The Five Decisions Before Editing the Flow
 
-- **Status:** Bukas — naghihintay ng sagot
-- **Petsa:** 2026-11-13
-- **Sino ang magsasagot:** may-ari ng Delivery module
-- **Naka-link:** [[Clarifications - Delivery Management]] (lahat ng tanong A1–D5), [[Decision - Delivery Clock Divergence]] (ang isang napirmahang desisyon)
+- **Status:** Open — waiting for answers
+- **Date:** 2026-11-13
+- **Who answers:** the owner of the Delivery module
+- **Linked:** [[Clarifications - Delivery Management]] (all questions A1–D5), [[Decision - Delivery Clock Divergence]] (the one signed decision)
 
-## Paano gamitin ang file na ito
+## How to use this file
 
-Tatlong paraan:
+Three ways:
 
-1. **Isa-isa** — sagutin ang "Sagot" line.
-2. **"Default lahat"** — gagamitin ko lahat ng recommendation sa ibaba.
-3. **"Hindi ko alam"** — magiging listahan ng blocker, hindi hula.
+1. **One by one** — fill in the "Answer" line.
+2. **"All defaults"** — I will use every recommendation below.
+3. **"I don't know"** — it becomes a list of blockers, not a guess.
 
 ---
 
-## 1. Scope ng CMS at Books (A1)
+## 1. Scope of the CMS and Books (A1)
 
-**Ano ito:** Ang bagong app ay pumapalit sa Zoho Creator para sa Delivery. Pero may dalawang bagay na Zoho pa rin:
+**What it is:** the new app replaces Zoho Creator for Delivery. But two things are still Zoho:
 
-- **CMS** — hiwalay na Zoho Creator app kung saan nagtataas ng schedule request ang customer service.
-- **Books** — Zoho Books/Inventory, para sa shipment at sales return.
+- **CMS** — a separate Zoho Creator app where customer service raises schedule requests.
+- **Books** — Zoho Books/Inventory, for shipments and sales returns.
 
-**Ang tanong:** Papayagan ba nating manatili ang dalawang ito bilang "external" (A), o tatangkain nating alisin lahat ng Zoho (B)?
+**The question:** do we let these two stay as "external" systems (A), or try to remove all of Zoho (B)?
 
-| Option | Ibig sabihin | Trabaho |
+| Option | Meaning | Work |
 |---|---|---|
-| **A** | Wala nang Delivery data sa Creator, pero **OK lang** ang CMS at Books | Maliit: isang "pinto" para makapasok ang CMS |
-| **B** | Tanggalin **lahat** ng Zoho, including CMS at Books | Malaki: rebuild ng CMS at replacement ng Books — hindi na Delivery-only |
+| **A** | No Delivery data left in Creator, but the CMS and Books are **fine** | Small: one "door" for the CMS to come in |
+| **B** | Remove **all** of Zoho, including the CMS and Books | Big: rebuild the CMS and replace Books — no longer Delivery-only |
 
-**Recommendation ko:** **A**. Ang Books ay accounting system — hindi dapat galawin ng Delivery team. Ang CMS ay pwedeng manatili habang may pinto.
+**My recommendation:** **A**. Books is the accounting system; the Delivery team should not touch it. The CMS can stay as long as there is a door.
 
-**Sagot:** ______________________
+**Answer:** ______________________
 
 ---
 
 ## 2. Schedule Requests display (A2) — RESOLVED 2026-11-14: removed for good
 
-**Desisyon ng owner (2026-11-14):** **Tinanggal nang tuluyan ang Schedule Requests tab.** Hindi na ito babalik — ang bagong process ay **lahat ng galing CMS ay pumapasok sa Service Request**. Ang dating tanong (show read-only o hide habang walang CMS door) ay moot na.
+**Owner decision (2026-11-14):** **the Schedule Requests tab is removed for good.** It will not come back; in the new process **everything from the CMS comes in as a Service Request**. The old question (show read-only or hide while there is no CMS door) no longer applies.
 
-**Applied sa merge (2026-11-14, `e444d32`):** alisin ang tab sa `pages.json` + `import-widgets.mjs`; 12 admin / 11 user delivery tabs. Ang CMS inbound route (`/api/integrations/cms/*`) ay **kailangan pang i-retarget sa Service Request** bago i-enable ang `CMS_API_KEY` — follow-up na nakalista sa Change Log at sa merge plan.
+**Applied in the merge (2026-11-14, `e444d32`):** the tab is removed from `pages.json` + `import-widgets.mjs`; 12 admin / 11 user delivery tabs. The CMS inbound route (`/api/integrations/cms/*`) **still has to be pointed at Service Request** before `CMS_API_KEY` is enabled — a follow-up listed in the Change Log and the merge plan.
 
-**Sagot:** Removed — CMS enters Service Request (owner, 2026-11-14).
+**Answer:** Removed — the CMS enters Service Request (owner, 2026-11-14).
 
 ---
 
 ## 3. Site follow-up (A3)
 
-**Ano ito:** Sa Zoho, may automatic follow-up para sa mga site na hindi pa nagko-confirm. **Inactive ito ngayon.** Kung buhayin, ito ang gagawin:
+**What it is:** Zoho has an automatic follow-up for sites that have not confirmed. **It is inactive today.** If it were turned on, it would:
 
-- Mag-e-email sa customer
-- Bibilangin ang attempts
-- Kapag lumampas sa max, mark na **"Unreachable"** at gagawa ng high-severity exception
+- Email the customer
+- Count the attempts
+- Past the maximum, mark the site **"Unreachable"** and create a high-severity exception
 
-**Ang tanong:** Iport ba o skip?
+**The question:** port it or skip it?
 
-| Option | Ibig sabihin | Kailangan |
+| Option | Meaning | Needs |
 |---|---|---|
-| **Port** | Gawin sa bagong app | Email service, bagong schedule, tests |
-| **Skip** | Hayaan ang staff na mag-follow up manually | Dokumento lang ng manual process |
+| **Port** | Build it in the new app | Email service, a new schedule, tests |
+| **Skip** | Staff follow up by hand | Only a write-up of the manual process |
 
-**Recommendation ko:** **Skip muna.** Inactive naman sa Zoho, at walang email service sa app ngayon. Kung hihingin ng staff, doon lang natin gawin.
+**My recommendation:** **Skip for now.** It is inactive in Zoho anyway, and the app has no email service today. If staff ask for it, build it then.
 
-**Sagot:** ______________________ (kung port: sino ang may-ari ng email?)
+**Answer:** ______________________ (if port: who owns the email?)
 
 ---
 
 ## 4. Widget ownership (A6)
 
-**Ano ito:** Ang 13 tabs ay maliliit na web pages (widgets). Kung may sirang button o maling field sa bagong app, **sino ang mag-aayos?**
+**What it is:** the 13 tabs are small web pages (widgets). If a button is broken or a field is wrong in the new app, **who fixes it?**
 
-| Option | Ibig sabihin |
+| Option | Meaning |
 |---|---|
-| **Ikaw: UI + backend** | Ikaw ang may hawak ng lahat ng Delivery — mas mabilis, isang tao ang may alam |
-| **Backend only** | Ikaw lang ang backend; may ibang tao sa UI — kailangan i-assign at i-coordinate |
+| **You: UI + backend** | You own all of Delivery — faster, one person knows everything |
+| **Backend only** | You do only the backend; someone else does the UI — needs assigning and coordination |
 
-**Bakit mahalaga:** Hindi matatapos ang UAT kung walang may-ari ng UI bugs. Kapag may nag-edit ng widget, kailangan din niyang maintindihan ang data.
+**Why it matters:** UAT cannot finish without an owner for the UI bugs. Whoever edits a widget must also understand the data.
 
-**Recommendation ko:** **Ikaw: UI + backend** para sa Delivery.
+**My recommendation:** **You: UI + backend** for Delivery.
 
-**Sagot:** ______________________
+**Answer:** ______________________
 
 ---
 
 ## 5. Data contract (A10)
 
-**Ano ito:** Ang Delivery ay gumagamit ng **shared forms** — Service Request, Sales Order Fulfillment, Items, Customer, Sales Order, Policy Settings. Ginagamit din ito ng ibang modules.
+**What it is:** Delivery uses **shared forms** — Service Request, Sales Order Fulfillment, Items, Customer, Sales Order, Policy Settings. Other modules use them too.
 
-Ang "contract" ay isang simpleng listahan:
+The "contract" is a simple list:
 
-- Aling fields ang binabasa/isinusulat ng Delivery
-- Anong values/status ang expected
-- Sino ang pwedeng magbago
+- Which fields Delivery reads and writes
+- Which values/statuses are expected
+- Who may change them
 
-**Bakit mahalaga:** Parang shared kwarto. Kung may mag-rearrange ng furniture (mag-rename ng field o magpalit ng status word) nang walang abiso, **matitipa ang Delivery** — at hindi agad halata.
+**Why it matters:** it is like a shared room. If someone rearranges the furniture (renames a field or changes a status word) without notice, **Delivery breaks** — and not visibly at first.
 
-**Ang tanong:** Sino ang pipirma, at ano ang rule kapag may magbago?
+**The question:** who signs, and what is the rule when something changes?
 
-| Option | Ibig sabihin |
+| Option | Meaning |
 |---|---|
-| **Core owner signs** | Isang tao ang may final say sa shared schema; may PR + Delivery tests bago magbago |
-| **Each module owner signs their own** | Mas mabilis, pero pwedeng magka-conflict |
-| **No contract** | Pinakamabilis, pero risky |
+| **Core owner signs** | One person has the final say on the shared schema; a PR + Delivery tests before any change |
+| **Each module owner signs their own** | Faster, but conflicts are possible |
+| **No contract** | Fastest, but risky |
 
-**Recommendation ko:** **Core owner signs; anumang shared-field change ay may PR + Delivery tests.** Ikaw ang mag-aayos kung may masira sa Delivery side, pero ang change ay may review.
+**My recommendation:** **The core owner signs; any shared-field change needs a PR + Delivery tests.** You fix whatever breaks on the Delivery side, but the change gets a review.
 
-**Sagot:** ______________________ (pangalan + rule)
+**Answer:** ______________________ (name + rule)
 
 ---
 
-## Buod
+## Summary
 
-| # | Tanong | Recommendation | Sagot |
+| # | Question | Recommendation | Answer |
 |---|---|---|---|
-| A1 | CMS/Books: A o B? | **A** | |
-| A2 | Schedule Requests: show o hide? | **Removed for good** (2026-11-14: CMS → Service Request) | |
-| A3 | Site follow-up: port o skip? | **Skip muna** | |
-| A6 | Widgets: ikaw lahat o may UI owner? | **Ikaw: UI + backend** | |
-| A10 | Data contract: sino ang pipirma? | **Core owner + PR rule** | |
+| A1 | CMS/Books: A or B? | **A** | |
+| A2 | Schedule Requests: show or hide? | **Removed for good** (2026-11-14: CMS → Service Request) | |
+| A3 | Site follow-up: port or skip? | **Skip for now** | |
+| A6 | Widgets: you do everything, or a UI owner? | **You: UI + backend** | |
+| A10 | Data contract: who signs? | **Core owner + PR rule** | |
 
 ---
 
-## Ano ang nangyayari pagkatapos ng mga sagot
+## What happens after the answers
 
-| Kung ang sagot ay... | Ang mangyayari sa build |
+| If the answer is... | What happens in the build |
 |---|---|
-| **A1 = A** | Mananatili ang Books at CMS. Isang inbound route lang ang bubuksan (kailangan ng API key). |
-| **A1 = B** | Bagong malaking proyekto: CMS rebuild + Books replacement. Hindi na Delivery-only — kailangan ng bagong plano. |
-| **A2 = Show** | Read-only list + banner sa tab. Kasama sa UAT (13 tabs). |
-| **A2 = Hide** | Nakatago ang tab. UAT = 12 tabs. Ipapakita kapag may pinto na. |
-| **A3 = Skip** | Walang bagong code. Isusulat ang manual follow-up process sa docs. |
-| **A3 = Port** | Bagong email service + schedule + tests. Kailangan ng owner ng email. |
-| **A6 = Ikaw lahat** | Walang koordinasyon. Ikaw ang aayos ng UI bugs sa UAT. |
-| **A6 = Backend only** | Kailangan ng pangalan ng UI owner bago mag-UAT. |
-| **A10 = Core owner** | Isusulat ang field list bilang `Delivery Data Contract.md`, may PR rule. |
+| **A1 = A** | Books and the CMS stay. Only one inbound route opens (needs an API key). |
+| **A1 = B** | A big new project: CMS rebuild + Books replacement. No longer Delivery-only — needs a new plan. |
+| **A2 = Show** | Read-only list + banner on the tab. Part of UAT (13 tabs). |
+| **A2 = Hide** | The tab is hidden. UAT = 12 tabs. Shown once the door exists. |
+| **A3 = Skip** | No new code. The manual follow-up process is written in the docs. |
+| **A3 = Port** | New email service + schedule + tests. Needs an owner for the email. |
+| **A6 = You do everything** | No coordination. You fix the UI bugs in UAT. |
+| **A6 = Backend only** | Needs the name of a UI owner before UAT. |
+| **A10 = Core owner** | The field list is written as `Delivery Data Contract.md`, with the PR rule. |
 
-## Ano ang HINDI kasama sa file na ito
+## What is NOT in this file
 
-Ang mga ito ay kailangan bago mag-live, pero hindi kailangan bago mag-edit ng flow:
+These are needed before going live, but not before editing the flow:
 
 - Production export (B1)
 - Books OAuth, Geoapify key, CMS URLs/API key (B2–B4)
 - CMS inbound route (B5)
-- Files at Railway env (B6–B7)
+- Files and Railway env (B6–B7)
 - Rollback, backup, monitoring, timezone (C1–C6)
 - Private repo + key rotation (C7)
 - UAT participants, reviewer, sign-off (D3–D5)
 
-Nasa [[Clarifications - Delivery Management]] ang buong listahan.
+The full list is in [[Clarifications - Delivery Management]].
 
-## Isang linya lang kung ayaw mong mag-isip
+## One line if you do not want to think about it
 
-> **"Default lahat"** — A1 = A, A2 = Show read-only, A3 = Skip, A6 = Ikaw lahat, A10 = Core owner + PR rule.
+> **"All defaults"** — A1 = A, A2 = Show read-only, A3 = Skip, A6 = You do everything, A10 = Core owner + PR rule.

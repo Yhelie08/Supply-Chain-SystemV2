@@ -12,12 +12,12 @@ date: 2026-11-12
 
 # Plan: Delivery Management
 
-## 1. Buod (Tagalog)
-- 16 na workflow at 3 custom API ang kulang (0 sa 16 ang tapos; 3 sa 6 ng API ang tapos na: confirm, decline, push to CMS).
-- Ang **puso ay ang scheduling engine**: `dmsScheduleSlot` (521 linya). Tatlong bagay ang tumatawag dito: ang API na `dms_reschedule`, ang `SA_Scheduling_Engine` at ang `EXC_Resolve_Sync`. Kaya ito ang unang malaking port.
-- Una ang maliliit na validation (madali, mabilis makita na gumagana), saka ang engine, saka ang pagpasok ng request, saka ang dalawang Inventory API.
-- Ang 5 `*_Instant_Forecast` ay tumatawag lang sa `fcStampDelivery` (forecast engine). **Hindi ito kasama dito**; hihintayin ang forecast milestone.
-- Bago mag-umpisa: i-merge muna ang PR #3, saka mag-branch ng `feature/delivery-management`.
+## 1. Summary
+- 16 workflows and 3 custom APIs are missing (0 of 16 done; 3 of the 6 APIs are done: confirm, decline, push to CMS).
+- The **heart is the scheduling engine**: `dmsScheduleSlot` (521 lines). Three things call it: the `dms_reschedule` API, `SA_Scheduling_Engine` and `EXC_Resolve_Sync`. So it is the first big port.
+- First the small validations (easy, quick to see working), then the engine, then the request intake, then the two Inventory APIs.
+- The 5 `*_Instant_Forecast` only call `fcStampDelivery` (forecast engine). **Not part of this plan**; they wait for the forecast milestone.
+- Before starting: merge PR #3 first, then branch `feature/delivery-management`.
 
 ## 2. What is in scope
 
