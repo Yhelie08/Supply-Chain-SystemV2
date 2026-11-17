@@ -1,0 +1,14 @@
+{
+  "name": "Tony_Fan_Purchase_Request",
+  "extends": true,
+  "_about": "Spec v1.4 SP-R1 (review C11): the supplier never sees our selling price (SRP). The copy used to carry SRP_Rate_PR_Supplier2 only so the portal could tell that a reference price exists. It now carries this yes / no flag instead and never the amount.",
+  "fields": [
+    {
+      "name": "Ref_Price_Known_Supplier2",
+      "label": "Reference price known",
+      "type": "picklist",
+      "options": ["Yes", "No"],
+      "helpText": "Yes = we already hold a reference price for this item, so a Confirmed answer may skip the initial price. Never the amount."
+    }
+  ]
+}

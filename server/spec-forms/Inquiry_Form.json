@@ -1,0 +1,55 @@
+{
+  "name": "Inquiry_Form",
+  "extends": true,
+  "_about": "Spec v1.4 Inquiry (02 / 01) and Timestamps (05 / 04). All server-written: a widget write to them is dropped.",
+  "fields": [
+    {
+      "name": "Sent_At",
+      "label": "Sent At",
+      "type": "datetime",
+      "helpText": "inquiry.sent: the first time the inquiry had a supplier row."
+    },
+    {
+      "name": "First_Quote_At",
+      "label": "First Quote At",
+      "type": "datetime",
+      "helpText": "inquiry.first_quote_received."
+    },
+    {
+      "name": "Selected_At",
+      "label": "Supplier Selected At",
+      "type": "datetime",
+      "helpText": "inquiry.supplier_selected (the first one; every change is in the event log)."
+    },
+    {
+      "name": "Estimate_Pushed_At",
+      "label": "Estimate Pushed At",
+      "type": "datetime",
+      "helpText": "inquiry.estimate_pushed."
+    },
+    {
+      "name": "Selected_Supplier_Id",
+      "label": "Selected Supplier ID",
+      "type": "text",
+      "helpText": "The supplier ID of the selected quote row (INQ-R6)."
+    },
+    {
+      "name": "Selected_Lead_Days",
+      "label": "Selected Lead Days",
+      "type": "number",
+      "helpText": "The lead time of the selected quote as a number of days: the production days of the feasibility calculator (INQ-R3)."
+    },
+    {
+      "name": "Feasibility_Hints",
+      "label": "Feasibility Hints",
+      "type": "textarea",
+      "helpText": "One line per quote when a needed-by date was given (INQ-R7)."
+    },
+    {
+      "name": "Quotes_Alert_At",
+      "label": "All Quotes Alert At",
+      "type": "datetime",
+      "helpText": "When the buyer was told that every supplier has quoted."
+    }
+  ]
+}

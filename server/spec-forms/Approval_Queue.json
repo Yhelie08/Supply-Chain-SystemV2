@@ -1,0 +1,24 @@
+{
+  "name": "Approval_Queue",
+  "label": "Approval Queue",
+  "_about": "Decisions waiting for a human (spec 05 Shared Engines / 06, AQ-1..4). The system prepares an item; a person decides with one click; the decision is stamped (who, when, which option). Decided_*, Escalated_At and Status are written by the server. An item whose record changed (the supplier shipped) becomes stale on its own. It never cancels or changes anything by itself except what the chosen option says.",
+  "fields": [
+    { "name": "Kind", "label": "Kind", "type": "picklist", "options": ["ladder_day3", "air_upgrade", "forecast_promise_change"] },
+    { "name": "Record_Type", "label": "Record Type", "type": "text" },
+    { "name": "Record_Id", "label": "Record ID", "type": "text" },
+    { "name": "Record_No", "label": "Record No", "type": "text" },
+    { "name": "Summary", "label": "Summary", "type": "textarea" },
+    { "name": "Options", "label": "Options", "type": "textarea", "helpText": "JSON list of the choices." },
+    { "name": "Payload", "label": "Payload", "type": "textarea", "helpText": "JSON: the facts the options use (e.g. the proposed target date)." },
+    { "name": "Prepared_By_Type", "label": "Prepared By", "type": "picklist", "options": ["system", "agent"] },
+    { "name": "Status", "label": "Status", "type": "picklist", "options": ["pending", "decided", "stale"] },
+    { "name": "Due_At", "label": "Decide By", "type": "datetime", "helpText": "Created + approval_sla_hours." },
+    { "name": "Escalated_At", "label": "Escalated At", "type": "datetime" },
+    { "name": "Decision", "label": "Decision", "type": "text" },
+    { "name": "Decision_Note", "label": "Decision Note", "type": "text" },
+    { "name": "Decided_By", "label": "Decided By", "type": "text" },
+    { "name": "Decided_By_Type", "label": "Decided By Type", "type": "picklist", "options": ["human", "agent", "system"] },
+    { "name": "Decided_At", "label": "Decided At", "type": "datetime" },
+    { "name": "Result", "label": "Result", "type": "text", "helpText": "What the decision did, in words." }
+  ]
+}

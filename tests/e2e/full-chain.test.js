@@ -35,7 +35,7 @@ test('1. Procurement: PO -> Shipment -> Receiving, all 3 lamps counted in', asyn
   ok(ship, 'shipment');
   const rcv = await one('Receiving');
   assert.equal((await one('Shipments')).Sales_Order, SO);
-  const lines = rcv.Receiving_Line_Items.map((l) => ({ ...l, Accepted_Qty: 3 }));
+  const lines = rcv.Receiving_Line_Items.map((l) => ({ ...l, Accepted_Qty: 3, Bin_location: 'A-01-1' })); // received = counted AND binned (spec D12)
   ok(await api.updateRecordById('Receiving', rcv.ID, { Receiving_Line_Items: lines }), 'receiving count');
   const done = await one('Receiving');
   assert.equal(done.Receive_Status, 'Received');

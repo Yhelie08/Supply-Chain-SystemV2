@@ -17,6 +17,7 @@
 // does NOT make a second Receiving record: the existing one is pointed at the new shipment. Its lines and Expected_Qty are left
 // alone, so Accepted + Damage + Missing = Expected still holds. In the same way an edit of a shipment never changes the Expected_Qty
 // of a Receiving line that already exists, only NEW lines (no line with that PR_No + SKU) get their Expected_Qty from Shipment_QTY.
+import { portalOf } from '../../workflows/suppliers.mjs';
 import { register } from '../../workflows/index.mjs';
 import { blank, idOf } from '../../workflows/deluge.mjs';
 import { nextNumber } from './purchase-order.mjs';
@@ -96,7 +97,7 @@ async function syncAfterEdit({ record: ship, id, store }) {
   for (const sr of ship.PO_Shipments || []) if (text(sr.Line_Status) !== '') statusByLine.set(`${text(sr.PR_No)}|${text(sr.SKU)}`, sr.Line_Status);
   if (statusByLine.size === 0) return;
   const supplier = text(ship.Supplier);
-  const copies = supplier.includes('Fenteng') ? ['Fenteng_Shipment', 'Supplier1_Shipment_Details'] : supplier.includes('Tony') ? ['Tony_Shipment', 'Supplier2_Shipment_Details'] : null;
+  const copies = portalOf(supplier)?.key === 'fenteng' ? ['Fenteng_Shipment', 'Supplier1_Shipment_Details'] : portalOf(supplier)?.key === 'tony' ? ['Tony_Shipment', 'Supplier2_Shipment_Details'] : null;
   if (!copies) return;
   const [form, grid] = copies;
   for (const copy of await store.find(form, (c) => text(c.Parent_Shipment_ID) === shipId)) {

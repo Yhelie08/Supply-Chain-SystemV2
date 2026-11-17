@@ -9,6 +9,7 @@
 //
 // "Once only": a PR that is already approved is not picked up again, a line (PR_No) is never added twice to a PO, to the supplier copy,
 // to a shipment or to a Receiving record, and a supplier copy / shipment / Receiving record is found again, never duplicated.
+import { portalOf } from '../../workflows/suppliers.mjs';
 import { ok, fail } from '../../custom-api-helpers.mjs';
 import { blank, idOf, truthy, toNum, todayDate, ymd } from '../../workflows/deluge.mjs';
 import { zohoNow } from '../../criteria.mjs';
@@ -34,81 +35,14 @@ const nameOf = (v) => (v && typeof v === 'object' ? text(v.first_name) || text(v
 async function soNumberOf(store, po) { return text((await byId(store, 'Sales_Order', po.SO_No))?.Sales_Order_Number); }
 
 // ---------------- approvePOMain ----------------
-export async function approvePOMain({ soNo }, store, ctx = {}) {
-  soNo = text(soNo);
-  if (soNo === '') return fail('soNo is required.');
-  const prs = await store.find(PR, (p) => text(p.Sales_Order) === soNo && !truthy(p.PR_Approved) && truthy(p.PR_READY_FOR_PO), { criteria: crit('Sales_Order', soNo) });
-  let approved = '', skipped = '';
-  for (const pr of prs) {
-    if (text(pr.Hold_Status) === 'On Hold' || text(pr.Hold_Status) === 'Cancelled') { skipped += `${pr.PR_No} (${pr.Hold_Status}), `; continue; }
-    if (text(pr.Followed_Recommendation) === 'No' && text(pr.Override_Reason) === '') { skipped += `${pr.PR_No}, `; continue; }
-    const supplier = text(pr.Selected_Supplier);
-    const customer = await byId(store, 'Customer', pr.Customer);
-    const item = await byId(store, 'Items', pr.Items);
-
-    // the open PO of this sales order that already has a line for this supplier, else a new Draft PO
-    let target = null;
-    for (const po of await store.find(PO, (p) => text(p.PO_Status) !== 'Completed')) {
-      if ((await soNumberOf(store, po)) !== text(pr.Sales_Order)) continue;
-      if ((po.PO_Line_Items || []).some((ln) => sameSupplier(text(ln.Supplier), supplier))) target = po;
-    }
-    const patch = {};
-    if (!target) {
-      const [so] = await store.find('Sales_Order', (s) => text(s.Sales_Order_Number) === text(pr.Sales_Order), { criteria: crit('Sales_Order_Number', pr.Sales_Order) });
-      const soId = so ? so.ID : await store.addRecord('Sales_Order', { Sales_Order_Number: pr.Sales_Order }, ctx.user);
-      const id = await store.addRecord(PO, {
-        PO_No: await nextNumber(store, PO, 'PO_No', 'PO'), Customer: text(customer?.customer_name), Customer_Type: pr.Customer_Type, Sales_Owner: pr.Sales_Owner,
-        PO_Date: today(), PO_Status: 'Draft', SO_No: soId,
-      }, ctx.user);
-      target = await store.getRecordById(PO, id, { raw: true });
-    }
-    if ((target.PO_Line_Items || []).some((ln) => text(ln.PR_No) === text(pr.PR_No))) {
-      await store.updateRecord(PR, pr.ID, { PR_Status: 'Converted to PO', Link_PO_No: target.PO_No, PR_Approved: true }, { byForm: true });
-      approved += `${pr.PR_No} -> ${target.PO_No}; `;
-      continue;
-    }
-    patch.Sales_Owner = pr.Sales_Owner;
-    const rate = blank(pr.Selcted_Final_Cost) ? 0 : toNum(pr.Selcted_Final_Cost);
-    const qty = round0(pr.quantity);
-    const line = {
-      PR_No: pr.PR_No, Supplier: supplier, Item: text(item?.item_name), SKU: pr.sku, QTY: qty, Unit: pr.unit, Final_Price: rate, Line_Total: qty * round0(rate),
-      Shipping_Mode: pr.Shipment_Mode, Target_Delivery: pr.Target_Delivery, supplier_target_date: pr.supplier_target_date, Delay_Status: pr.Delay_Status,
-      Required_Days_Lead: pr.Required_Days_Lead, Remaining_Days: pr.Remaining_Days, Followed_Recommendation: pr.Followed_Recommendation,
-      Override_Reason: pr.Override_Reason, Priority: pr.Priority, Production_Date: today(),
-    };
-    if (item && toNum(item.Rate) !== 0) { line.SRP_Rate_PO = round0(item.Rate); patch.SRP_Rate = round0(item.Rate); }
-    if (item && !blank(item.Image)) line.Item_Image = item.Image;
-    const lines = [...(target.PO_Line_Items || []), line];
-    patch.PO_Line_Items = lines;
-    patch.Total_PO_Value = lines.reduce((s, l) => s + (blank(l.Line_Total) ? 0 : toNum(l.Line_Total)), 0);
-    patch.Total_Lines = lines.length;
-    patch.Sent_On = zohoNow();
-    patch.Is_Locked = true;
-
-    // the supplier's load: how many open PO lines it has now
-    const suppliers = await store.find('Suppliers');
-    const mine = suppliers.find((s) => { const n = nameOf(s.Supplier_Name); return n === supplier || n.includes(supplier) || supplier.includes(n); });
-    patch.Supplier_Load_At_PO = mine ? toNum(mine.Active_PO_Count) : 0;
-    await store.updateRecord(PO, target.ID, patch, { byForm: true });
-    await store.updateRecord(PR, pr.ID, { PR_Status: 'Converted to PO', Link_PO_No: target.PO_No, Production_Date: today() }, { byForm: true });
-    if (mine) {
-      let active = 0;
-      for (const po of await store.find(PO, (p) => text(p.PO_Status) !== 'Completed' && text(p.PO_Status) !== 'Cancelled')) {
-        for (const ln of po.PO_Line_Items || []) { const s = text(ln.Supplier); if (s === supplier || s.includes(supplier) || supplier.includes(s)) active++; }
-      }
-      await store.updateRecord('Suppliers', mine.ID, { Active_PO_Count: active }, { byForm: true });
-    }
-    await store.updateRecord(PR, pr.ID, { Last_Update: zohoNow(), PR_Approved: true }, { byForm: true });
-    approved += `${pr.PR_No} -> ${target.PO_No}; `;
-  }
-  if (approved === '' && skipped === '') return { status: 'empty', message: `No eligible PRs found for SO ${soNo}` };
-  return ok(`Approved: ${approved}` + (skipped !== '' ? ` | Skipped (needs Override Reason, or On Hold/Cancelled): ${skipped}` : ''));
-}
+// Moved to po-create.mjs (spec v1.4: the feasibility gate, one PO = one supplier + one mode).
+import { approvePOMain } from './po-create.mjs';
+export { approvePOMain };
 
 // ---------------- approvePOTony / approvePOFenteng ----------------
 export const SUPPLIER = {
-  Tony: { name: 'Tony', copy: 'Tony_Fan_Purchase_Order', sfx: '_Supplier2', ship: 'Tony_Shipment', grid: 'Supplier2_Shipment_Details' },
-  Fenteng: { name: 'Fenteng', copy: 'Fenteng_Lighting_Purchase_Order', sfx: '_Supplier1', ship: 'Fenteng_Shipment', grid: 'Supplier1_Shipment_Details' },
+  Tony: { name: 'Tony Fan', copy: 'Tony_Fan_Purchase_Order', sfx: '_Supplier2', ship: 'Tony_Shipment', grid: 'Supplier2_Shipment_Details' },
+  Fenteng: { name: 'Fenteng Lighting', copy: 'Fenteng_Lighting_Purchase_Order', sfx: '_Supplier1', ship: 'Fenteng_Shipment', grid: 'Supplier1_Shipment_Details' },
 };
 
 // Totals / status of a Receiving record from its lines (Receiving_Compute_Totals + Set_Line_Result + Set_Receive_Status).
@@ -119,8 +53,9 @@ export function receivingTotals(lines) {
   for (const l of out) {
     exp += n(l.Expected_Qty); acc += n(l.Accepted_Qty); dmg += n(l.Damage_Qty); mis += n(l.Missing_Qty);
     const complete = n(l.Accepted_Qty) + n(l.Damage_Qty) + n(l.Missing_Qty) === n(l.Expected_Qty) && n(l.Accepted_Qty) === n(l.Expected_Qty);
-    l.Line_Result = complete ? 'Complete' : 'Incomplete'; l.Ready_for_Fulfillment = complete;
-    if (complete) ready++; else incomplete++;
+    const binned = text(l.Bin_location).trim() !== '' && text(l.Bin_location).trim() !== 'Receiving Area'; // spec D12: ready = counted AND binned
+    l.Line_Result = complete ? 'Complete' : 'Incomplete'; l.Ready_for_Fulfillment = complete && binned;
+    if (complete && binned) ready++; else incomplete++;
   }
   const status = out.length === 0 || (acc === 0 && dmg === 0 && mis === 0) ? 'Pending' : incomplete === 0 ? 'Received' : 'Partial Received';
   return { lines: out, totals: { Total_Expected_Qty: exp, Total_Accepted_Qty: acc, Total_Damage_Qty: dmg, Total_Missing_Qty: mis, Total_Lines: out.length, Incomplete_Lines: incomplete, Ready_for_Fulfillment1: ready, Receive_Status: status } };
@@ -136,7 +71,7 @@ export async function approveSupplierPO(key, { soNo }, store, ctx = {}) {
   const prs = await store.find(PR, (p) => text(p.Sales_Order) === soNo && truthy(p.PR_Approved) && text(p.Link_PO_No) !== '', { criteria: crit('Sales_Order', soNo) });
   for (const pr of prs) {
     const supplier = text(pr.Selected_Supplier);
-    if (!supplier.includes(S.name)) continue;
+    if (portalOf(supplier)?.name !== S.name) continue;
     const item = await byId(store, 'Items', pr.Items);
     const poNo = text(pr.Link_PO_No);
     let [copy] = await store.find(S.copy, (c) => text(c[f('PO_No')]) === poNo, { criteria: crit(f('PO_No'), poNo) });
@@ -147,10 +82,9 @@ export async function approveSupplierPO(key, { soNo }, store, ctx = {}) {
     const note = () => { if (!touched.includes(copy[f('PO_No')])) touched.push(copy[f('PO_No')]); };
     if ((copy[f('PO_Line_Items')] || []).some((ln) => text(ln[f('PR_No')]) === text(pr.PR_No))) { note(); continue; }
     const rate = blank(pr.Selcted_Final_Cost) ? 0 : toNum(pr.Selcted_Final_Cost);
-    let itemPrice = 0;
-    if (!blank(pr.SRP_Approved_PR) && toNum(pr.SRP_Approved_PR) !== 0) itemPrice = toNum(pr.SRP_Approved_PR);
-    else if (!blank(pr.SRP_Rate_PR) && toNum(pr.SRP_Rate_PR) !== 0) itemPrice = toNum(pr.SRP_Rate_PR);
-    else if (item && toNum(item.Rate) !== 0) itemPrice = toNum(item.Rate);
+    // spec SP-R1: the supplier sees "our PO price to them", never a customer price. Item_Price used to be our SRP, then the catalog rate;
+    // it is now the supplier's own price of the line (the same number as Final_Price). Nothing reads it back on the buyer's side.
+    const itemPrice = rate;
     const qty = round0(pr.quantity);
     const line = {
       [f('PR_No')]: pr.PR_No, [f('Supplier')]: supplier, [f('Item')]: text(item?.item_name), [f('SKU')]: pr.sku, [f('QTY')]: qty, [f('Unit')]: pr.unit,
@@ -192,7 +126,9 @@ export async function shipmentAndReceivingFor(store, ctx, S, poNo, shipExtra = {
   const shipPatch = { ...shipExtra };
   const shipLines = (ship.PO_Shipments || []).map((l) => ({ ...l }));
   for (const ln of apo.PO_Line_Items || []) {
-    shipPatch.Required_Days_Lead = ln.Required_Days_Lead; shipPatch.Remaining_Days = ln.Remaining_Days; shipPatch.Target_Date = ln.Target_Delivery;
+    shipPatch.Required_Days_Lead = ln.Required_Days_Lead; shipPatch.Remaining_Days = ln.Remaining_Days;
+    // a PO can carry several Sales Orders (spec PO-R4): the shipment takes the EARLIEST target
+    if (!blank(ln.Target_Delivery) && (blank(shipPatch.Target_Date) || text(ln.Target_Delivery) < text(shipPatch.Target_Date))) shipPatch.Target_Date = ln.Target_Delivery;
     shipPatch.Supplier_Target_Date = ln.supplier_target_date; shipPatch.Production_Date = ln.Production_Date;
     if (text(ln.PR_No) !== '') {
       const [prLine] = await store.find(PR, (p) => text(p.PR_No) === text(ln.PR_No), { criteria: crit('PR_No', ln.PR_No) });
@@ -208,6 +144,7 @@ export async function shipmentAndReceivingFor(store, ctx, S, poNo, shipExtra = {
       Shipment_No: ship.Shipment_No, Parent_Shipment_ID: String(ship.ID),
       [S.grid]: shipLines.map((l) => ({ SKU: l.SKU, Item_Name: l.Item_Name, PR_No: l.PR_No, RR_No: '' })),
     }, ctx.user);
+    await (await import('./ship-track.mjs')).refreshSupplierView(store, ship.ID); // the Production screen of the supplier portal
   }
 
   let [rcv] = await store.find('Receiving', (r) => idOf(r.Shipments) === String(ship.ID));

@@ -1,0 +1,25 @@
+{
+  "name": "Purchase_Request1",
+  "extends": true,
+  "_about": "Fields added by the HomeCartel spec v1.4 (02 Procurement / 02 Purchase Request and Pricing, 05 Shared Engines 01, 03, 04). All of them are written by the server (server/modules/procurement/pr-spec.mjs): a widget write to them is dropped.",
+  "fields": [
+    { "name": "PR_Spec", "label": "PR (spec v1.4)", "type": "section" },
+    { "name": "Order_Date", "label": "Order Date", "type": "date", "helpText": "The Sales Order date (a PR with no order uses the day it was created), spec DT-1." },
+    { "name": "Pr_State", "label": "PR State", "type": "picklist", "options": ["open", "ready_for_po", "on_hold", "converted", "cancelled"], "helpText": "One state from the older Open / Converted + Hold_Status + ready flag." },
+    { "name": "Pricing_Status", "label": "Pricing Status", "type": "picklist", "options": ["needs_pricing", "auto_priced", "needs_manual_quote"] },
+    { "name": "Feasibility", "label": "Feasibility", "type": "picklist", "options": ["feasible", "at_risk", "impossible"] },
+    { "name": "Shortfall_Days", "label": "Shortfall (days)", "type": "number" },
+    { "name": "Earliest_Feasible_Date", "label": "Earliest Feasible Date", "type": "date" },
+    { "name": "Air_Option", "label": "Air Option", "type": "text" },
+    { "name": "Recommended_Supplier", "label": "Recommended Supplier", "type": "text" },
+    { "name": "Recommended_Supplier_Id", "label": "Recommended Supplier ID", "type": "text" },
+    { "name": "Recommendation_Reason", "label": "Recommendation (in words)", "type": "textarea" },
+    { "name": "Selected_Supplier_Id", "label": "Selected Supplier ID", "type": "text", "helpText": "The Suppliers record ID of the selected supplier (the name is only for display, spec INQ-R6)." },
+    { "name": "Pr_Category", "label": "Category", "type": "picklist", "options": ["act_now", "tell_customer", "watch", "on_track", "blocked"] },
+    { "name": "Blocked_Reason", "label": "Blocked Reason", "type": "text" },
+    { "name": "Queue_Rank", "label": "Queue Rank", "type": "number" },
+    { "name": "Priority_Reason", "label": "Priority Reason", "type": "text" },
+    { "name": "Suggested_Action", "label": "Suggested Action", "type": "text" },
+    { "name": "Scored_At", "label": "Scored At", "type": "datetime" }
+  ]
+}

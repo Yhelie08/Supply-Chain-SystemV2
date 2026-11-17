@@ -264,11 +264,11 @@ describe('Inquiry detail', () => {
     const id = idOf('INQ-00013');
     cleanup();
     mount(id);
-    await user.click(screen.getByTitle('Open conversation with Tony'));
-    expect(await screen.findByText('Conversation — Tony')).toBeTruthy();
+    await user.click(screen.getByTitle('Open conversation with Tony Fan'));
+    expect(await screen.findByText('Conversation — Tony Fan')).toBeTruthy();
     expect(screen.getByText('Confirmed. We can ship within two weeks.')).toBeTruthy();
     await user.type(screen.getByLabelText('Message'), 'Please ship early');
-    const panel = screen.getByText('Conversation — Tony').closest('.chat-panel');
+    const panel = screen.getByText('Conversation — Tony Fan').closest('.chat-panel');
     await user.click(within(panel).getByRole('button', { name: 'Send' }));
     expect(saved().messages.some((m) => m.message === 'Please ship early' && m.role === 'Buyer')).toBe(true);
   });

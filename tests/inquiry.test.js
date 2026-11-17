@@ -286,19 +286,22 @@ test('catalog: an item needs an ID and a name, and the same ID updates instead o
 test('conversation: only Fenteng and Tony have threads, only if quoted; empty messages are refused', () => {
   const db = seedDb(TODAY);
   const ed = byNo(db, 'INQ-00013');
-  assert.equal(chatKey('Tony Fan'), 'Tony');
-  assert.equal(chatKey('Fenteng Lighting'), 'Fenteng');
+  assert.equal(chatKey('Tony Fan'), 'Tony Fan');
+  assert.equal(chatKey('Tony'), 'Tony Fan');
+  assert.equal(chatKey('Antony'), '');
+  assert.equal(chatKey('Fenteng Lighting'), 'Fenteng Lighting');
+  assert.equal(chatKey('Fenteng'), 'Fenteng Lighting');
   assert.equal(chatKey('HC System'), '');
   refused(() => go(db, 'chatSend', { id: ed.id, supplier: 'Tony Fan', role: 'Buyer', message: '   ' }), 'INQ.CHAT');
   refused(() => go(db, 'chatSend', { id: ed.id, supplier: 'Fenteng Lighting', role: 'Buyer', message: 'hi' }), 'INQ.CHAT');
   refused(() => go(db, 'chatSend', { id: ed.id, supplier: 'HC System', role: 'Buyer', message: 'hi' }), 'INQ.CHAT');
-  const thread = db.messages.filter((m) => m.inqNo === ed.no && m.supplier === 'Tony');
+  const thread = db.messages.filter((m) => m.inqNo === ed.no && m.supplier === 'Tony Fan');
   assert.deepEqual(thread.map((m) => m.role), ['Buyer', 'Supplier']);
   const before = db.timeline.length;
   const d2 = go(db, 'chatSend', { id: ed.id, supplier: 'Tony Fan', role: 'Supplier', message: 'ok' });
   assert.equal(d2.timeline.length, before, 'a supplier reply is not a timeline entry');
   const d3 = go(db, 'chatSend', { id: ed.id, supplier: 'Tony Fan', role: 'Buyer', message: 'thanks' });
-  assert.equal(d3.timeline.at(-1).title, 'Message sent to Tony');
+  assert.equal(d3.timeline.at(-1).title, 'Message sent to Tony Fan');
 });
 
 test('internal notes need text and keep their author role', () => {

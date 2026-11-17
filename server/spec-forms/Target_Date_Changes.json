@@ -1,0 +1,17 @@
+{
+  "name": "Target_Date_Changes",
+  "label": "Target Date Changes",
+  "_about": "Every change of a promise date: old, new, why, who, whether the customer was told (spec 05 Shared Engines / 03, DT-4). The forecast never changes the target by itself (DT-5): a proposed change goes through the Approval Queue.",
+  "fields": [
+    { "name": "Record_Type", "label": "Record Type", "type": "text" },
+    { "name": "Record_Id", "label": "Record ID", "type": "text" },
+    { "name": "Record_No", "label": "Record No", "type": "text" },
+    { "name": "Old_Date", "label": "Old Date", "type": "date" },
+    { "name": "New_Date", "label": "New Date", "type": "date" },
+    { "name": "Reason", "label": "Reason", "type": "text" },
+    { "name": "Changed_By", "label": "Changed By", "type": "text" },
+    { "name": "Customer_Told", "label": "Customer Told", "type": "checkbox" },
+    { "name": "Changed_At", "label": "Changed At", "type": "datetime" },
+    { "name": "Via", "label": "Via", "type": "picklist", "options": ["person", "approval_queue"] }
+  ]
+}

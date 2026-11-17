@@ -1,0 +1,21 @@
+{
+  "name": "Ladder_Events",
+  "label": "Ladder Events",
+  "_about": "Supplier ladder steps (spec 02 Procurement / 04 Ship and Track). Each rung fires once per shipment per kind and is logged here. Rungs and days are constants in code for now (LD-R4: to move to the Control Panel).",
+  "fields": [
+    { "name": "Record_Type", "label": "Record Type", "type": "text" },
+    { "name": "Record_Id", "label": "Record ID", "type": "text" },
+    { "name": "Record_No", "label": "Record No", "type": "text" },
+    { "name": "PO_No", "label": "PO No", "type": "text" },
+    { "name": "Supplier", "label": "Supplier", "type": "text" },
+    { "name": "Kind", "label": "Kind", "type": "picklist", "options": ["production_start", "production_finish"] },
+    { "name": "Rung", "label": "Rung", "type": "number" },
+    { "name": "Days_Late", "label": "Days Late", "type": "number" },
+    { "name": "Fired_At", "label": "Fired At", "type": "datetime" },
+    { "name": "Action_Text", "label": "Action", "type": "text" },
+    { "name": "Action_Taken", "label": "Action Taken", "type": "text", "helpText": "Filled by the buyer (e.g. called the supplier). Setting it stamps Last_Chase_At on the shipment." },
+    { "name": "Decision", "label": "Decision", "type": "picklist", "options": ["hold", "cancel_resource", "upgrade_mode"] },
+    { "name": "Decided_By", "label": "Decided By", "type": "text" },
+    { "name": "Decided_At", "label": "Decided At", "type": "datetime" }
+  ]
+}

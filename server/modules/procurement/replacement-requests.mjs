@@ -6,9 +6,12 @@
 // Once only: an RR that already exists for the same exception + SKU + source type is not made again (the answer says "No new RR needed"),
 // and a supplier copy is never made twice, nor for a supplier different from the one the main RR was sent to.
 // Items that are damaged but repairable, and were not marked "Not Fixed", are not replaced (they go back through repair, see Exception Control).
+import { portalOf } from '../../workflows/suppliers.mjs';
 import { ok, fail } from '../../custom-api-helpers.mjs';
 import { blank, todayDate, ymd, toNum } from '../../workflows/deluge.mjs';
 import { nextNumber } from './purchase-order.mjs';
+import { loadSettings } from './plan.mjs';
+import { targetFor, orderDateFor, originalTargetFor, logOnce, rollupRr } from './rr-spec.mjs';
 
 const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
 const today = () => ymd(todayDate());
@@ -43,8 +46,9 @@ function groups(exc, supplierOverride = '') {
   for (const pc of exc.Product_Context1 || []) {
     if (text(pc.Type_field) === 'Damage' && text(pc.Repairable) === 'Yes' && text(pc.Repair_Outcome) !== 'Not Fixed') continue;
     const key = `${text(pc.SKU)}||${text(pc.Type_field)}`;
-    if (!out.has(key)) out.set(key, { sku: text(pc.SKU), item: pc.Item, supplier: supplierOverride !== '' ? supplierOverride : pc.Supplier, type: text(pc.Type_field), qty: 0, spareType: '', spairs: '' });
+    if (!out.has(key)) out.set(key, { sku: text(pc.SKU), item: pc.Item, supplier: supplierOverride !== '' ? supplierOverride : pc.Supplier, original: text(pc.Supplier), prNo: '', type: text(pc.Type_field), qty: 0, spareType: '', spairs: '' });
     const g = out.get(key);
+    if (g.prNo === '' && text(pc.PR_No) !== '') g.prNo = text(pc.PR_No);
     g.qty += blank(pc.Qty) ? 0 : toNum(pc.Qty);
     const sp = spareParts(pc.Quantity_of_damage_spare_s, pc.Spare_Part_Type_Other);
     if (sp) { g.spareType = g.spareType === '' ? sp.type : `${g.spareType}, ${sp.type}`; g.spairs = g.spairs === '' ? sp.pairs : `${g.spairs}, ${sp.pairs}`; }
@@ -66,15 +70,29 @@ export async function createRRMain({ exceptionId }, store, ctx = {}) {
   for (const rr of await store.find('Replacement_Request', (x) => text(x.Source_Exception_No) === text(exc.Exception_No), { criteria: q('Source_Exception_No', exc.Exception_No) })) {
     for (const row of rr.Replacement_Summary || []) made.add(`${text(row.SKU)}||${text(rr.Source_Type)}`);
   }
+  // spec RR-R1: the supplier chosen in the dialog (kept on the exception), the original one is recorded; a reason when it was changed
+  const override = text(exc.RR_Supplier_Override).trim();
+  const reason = text(exc.RR_Supplier_Change_Reason).trim();
+  const todo = groups(exc, override).filter((g) => !made.has(`${g.sku}||${sourceTypeOf(exc, g)}`));
+  const sameSupplier = (a, b) => (portalOf(a) && portalOf(b) ? portalOf(a).key === portalOf(b).key : text(a).trim().toLowerCase() === text(b).trim().toLowerCase());
+  const changed = (g) => override !== '' && text(g.original).trim() !== '' && !sameSupplier(g.original, g.supplier);
+  if (todo.some(changed) && reason === '') return fail('Give a reason for changing the supplier.');
+  const settings = await loadSettings(store);
   let created = 0;
-  for (const g of groups(exc)) {
+  for (const g of todo) {
     const sourceType = sourceTypeOf(exc, g);
     if (made.has(`${g.sku}||${sourceType}`)) continue;
-    await store.addRecord('Replacement_Request', {
+    // RR-R3: the target (the original one if it is still ahead, else today + rr_default_days) and the original SO's Order Date
+    const target = targetFor(await originalTargetFor(store, g), settings);
+    const orderDate = await orderDateFor(store, { prNo: g.prNo, soNo: exc.Sales_Order });
+    const rrId = await store.addRecord('Replacement_Request', {
+      Target_Delivery: target, Order_Date: orderDate, Original_Supplier: text(g.original), Supplier_Change_Reason: changed(g) ? reason : '',
       RR_No: await nextNumber(store, 'Replacement_Request', 'RR_No', 'RR'), RR_Date: today(), RR_Status: 'Open', Source_Type: sourceType, Source_Exception_No: exc.Exception_No,
       Last_Updated: today(), RR_Supplier: g.supplier, RR_SKU: g.sku, RR_Item_Name: g.item, RR_Qty_Value: g.qty, RR_PR_No: exc.Receiving_Line_ID,
       RR_Item_to_Replace: g.spareType, RR_Damage_Qty: g.qty, RR_Spare_Parts: g.spairs, Replacement_Summary: [summaryRow(exc, g)],
     }, ctx.user);
+    const rr = await store.getRecordById('Replacement_Request', rrId, { raw: true });
+    await logOnce(store, { recordType: 'rr', record: rr, no: rr.RR_No, event: 'rr.created', note: `${g.supplier}${changed(g) ? ` (was ${g.original})` : ''}` });
     made.add(`${g.sku}||${sourceType}`);
     created++;
     // the original PO remembers which SKUs are missing / damaged
@@ -83,13 +101,14 @@ export async function createRRMain({ exceptionId }, store, ctx = {}) {
     }
   }
   if (created > 0) await store.updateRecord('Exceptions', exc.ID, { Exception_Status: 'Under Review' }, { byForm: true });
+  if (created > 0) await rollupRr(store); // the new RRs are Broken and ranked at once, not at the next scoring
   return { status: 'success', created, message: created > 0 ? `${created} RR(s) created.` : 'No new RR needed — every item already has one.' };
 }
 
 // ---------------- createRRTony / createRRFenteng ----------------
 const SUPPLIER = {
-  Tony: { name: 'Tony', form: 'Tony_Fan_Replacement_Request', po: 'Tony_Fan_Purchase_Order', sfx: '_Supplier2' },
-  Fenteng: { name: 'Fenteng', form: 'Fenteng_Lighting_Replacement_Request', po: 'Fenteng_Lighting_Purchase_Order', sfx: '_Supplier1' },
+  Tony: { name: 'Tony Fan', form: 'Tony_Fan_Replacement_Request', po: 'Tony_Fan_Purchase_Order', sfx: '_Supplier2' },
+  Fenteng: { name: 'Fenteng Lighting', form: 'Fenteng_Lighting_Replacement_Request', po: 'Fenteng_Lighting_Purchase_Order', sfx: '_Supplier1' },
 };
 
 export async function createRRSupplier(key, { exceptionId }, store, ctx = {}) {
@@ -103,7 +122,7 @@ export async function createRRSupplier(key, { exceptionId }, store, ctx = {}) {
   const parents = await store.find('Replacement_Request', (x) => text(x.Source_Exception_No) === text(exc.Exception_No), { criteria: q('Source_Exception_No', exc.Exception_No) });
   let created = 0;
   for (const g of groups(exc, text(exc.RR_Supplier_Override).trim())) {
-    if (!text(g.supplier).includes(S.name)) continue;
+    if (portalOf(g.supplier)?.name !== S.name) continue;
     const sourceType = sourceTypeOf(exc, g);
     if (made.has(`${g.sku}||${sourceType}`)) continue;
     let parentNo = '', parentSupplier = '';
@@ -112,7 +131,7 @@ export async function createRRSupplier(key, { exceptionId }, store, ctx = {}) {
       if ((p.Replacement_Summary || []).some((row) => text(row.SKU) === g.sku)) { parentNo = text(p.RR_No); parentSupplier = text(p.RR_Supplier); }
     }
     // a supplier's copy never disagrees with its parent RR about who the supplier is (a blank parent supplier is allowed: older RRs have none)
-    if (parentNo !== '' && parentSupplier.trim() !== '' && !parentSupplier.includes(S.name)) continue;
+    if (parentNo !== '' && parentSupplier.trim() !== '' && portalOf(parentSupplier)?.name !== S.name) continue;
     if (parentNo === '') continue;
     await store.addRecord(S.form, {
       RR_No: parentNo, RR_Date: today(), RR_Status: 'Open', Source_Type: sourceType, Source_Exception_No: exc.Exception_No, Last_Updated: today(),

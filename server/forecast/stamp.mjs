@@ -19,6 +19,7 @@
 //  - When several shipments carry the PR, the last one in the loop sets the status; a later row without a date keeps the
 //    earlier date. The loop is in ID order.
 //  - Receiving, Pick, QC, Order Aggregation, Crate and Gate rows that name another PR than the order's are skipped.
+import { forecastSettings } from '../modules/procurement/forecast-settings.mjs';
 import { computeForecast, settingsFrom } from './engine.mjs';
 import { todayDate, parseDate } from '../workflows/deluge.mjs';
 
@@ -55,7 +56,7 @@ export async function fcStampBySoNo(store, soNo, { today = todayDate() } = {}) {
   soNo = String(soNo);
 
   // 1. settings
-  const settings = settingsFrom((await store.find('Forecast_Settings'))[0] ?? null);
+  const settings = await forecastSettings(store); // the Procurement Settings page, over the old Forecast_Settings record
 
   // 2. the Sales_Order_Fulfillment row (the first one)
   const [sof] = await store.find('Sales_Order_Fulfillment', (r) => r.SO_No === soNo);

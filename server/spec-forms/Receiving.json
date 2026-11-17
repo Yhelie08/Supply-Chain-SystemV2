@@ -1,0 +1,85 @@
+{
+  "name": "Receiving",
+  "extends": true,
+  "_about": "Fields added by the HomeCartel spec v1.4 (02 Procurement / 05 Receiving, 05 Shared Engines 01, 04): the four receiving events (arrived, counted, binned, available) as server stamps, the queue columns of the Arrivals list, and the shortage suggestion. Written by the server (server/modules/procurement/receiving-spec.mjs).",
+  "fields": [
+    {
+      "name": "Rcv_Spec",
+      "label": "Receiving (spec v1.4)",
+      "type": "section"
+    },
+    {
+      "name": "Order_Date",
+      "label": "Order Date",
+      "type": "date",
+      "helpText": "Oldest Sales Order date among the lines (DT-1)."
+    },
+    {
+      "name": "Arrived_At",
+      "label": "Arrived",
+      "type": "datetime",
+      "helpText": "The gate log, or derived: before the first count (T-5)."
+    },
+    {
+      "name": "Counted_At",
+      "label": "Counted",
+      "type": "datetime"
+    },
+    {
+      "name": "Binned_At",
+      "label": "Binned",
+      "type": "datetime",
+      "helpText": "When every line has a bin location."
+    },
+    {
+      "name": "Available_At",
+      "label": "Available",
+      "type": "datetime",
+      "helpText": "When every line is counted in full and binned: pickable."
+    },
+    {
+      "name": "Rcv_State",
+      "label": "State",
+      "type": "picklist",
+      "options": [
+        "expected",
+        "arrived",
+        "counted",
+        "binned",
+        "available"
+      ]
+    },
+    {
+      "name": "Days_Waiting",
+      "label": "Days Waiting",
+      "type": "number"
+    },
+    {
+      "name": "Queue_Rank",
+      "label": "Queue Rank",
+      "type": "number"
+    },
+    {
+      "name": "Priority_Reason",
+      "label": "Priority Reason",
+      "type": "text"
+    },
+    {
+      "name": "Suggested_Action",
+      "label": "Suggested Action",
+      "type": "text"
+    },
+    {
+      "name": "Line_Stamps",
+      "label": "Line Stamps",
+      "type": "textarea",
+      "helpText": "JSON: counted / binned / available time of each line (the first time, never overwritten)."
+    },
+    {
+      "name": "Report_Arrived_On",
+      "label": "Arrived on (gate log)",
+      "type": "text",
+      "helpText": "Write-only: yyyy-MM-dd or yyyy-MM-dd HH:mm. The server stamps Arrived with when it happened and when we were told."
+    }
+  ]
+}

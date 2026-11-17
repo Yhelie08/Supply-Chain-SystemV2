@@ -1,0 +1,63 @@
+{
+  "name": "Exceptions",
+  "extends": true,
+  "_about": "Spec v1.4 (05 Shared Engines / 05 Exceptions, EX-2): where the problem was found and where it was caused, and who is at fault, so damage can be traced to its origin.",
+  "fields": [
+    {
+      "name": "Exc_Spec",
+      "label": "Exception (spec v1.4)",
+      "type": "section"
+    },
+    {
+      "name": "Found_Stage",
+      "label": "Found at",
+      "type": "picklist",
+      "options": [
+        "receiving",
+        "pick",
+        "qc",
+        "rework",
+        "crate",
+        "aggregation",
+        "site"
+      ],
+      "helpText": "Set by the server from where the exception was raised."
+    },
+    {
+      "name": "Caused_Stage",
+      "label": "Caused at",
+      "type": "picklist",
+      "options": [
+        "supplier",
+        "transit",
+        "warehouse",
+        "site",
+        "unknown"
+      ],
+      "helpText": "Damage found at QC but caused in transit is a freight problem, not a QC problem."
+    },
+    {
+      "name": "Fault_Origin",
+      "label": "Fault Origin",
+      "type": "picklist",
+      "options": [
+        "supplier",
+        "transit",
+        "warehouse",
+        "site",
+        "unknown"
+      ]
+    },
+    {
+      "name": "Affected_Qty",
+      "label": "Affected Qty",
+      "type": "number"
+    },
+    {
+      "name": "Resolved_At",
+      "label": "Resolved At",
+      "type": "datetime",
+      "helpText": "Stamped by the server when the status becomes Resolved."
+    }
+  ]
+}

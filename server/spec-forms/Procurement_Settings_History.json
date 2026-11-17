@@ -1,0 +1,14 @@
+{
+  "name": "Procurement_Settings_History",
+  "label": "Procurement Settings History",
+  "_about": "Every change of a Procurement setting: old value, new value, who, when (spec CP-R5). Written by the server only.",
+  "fields": [
+    { "name": "Setting_Key", "label": "Setting Key", "type": "text" },
+    { "name": "Old_Value", "label": "Old Value", "type": "text" },
+    { "name": "New_Value", "label": "New Value", "type": "text" },
+    { "name": "Changed_By", "label": "Changed By", "type": "text" },
+    { "name": "Changed_At", "label": "Changed At", "type": "datetime" },
+    { "name": "Reason", "label": "Reason", "type": "text" },
+    { "name": "Effect", "label": "Effect", "type": "text", "helpText": "What the change did to open shipments, e.g. 3 moved category." }
+  ]
+}

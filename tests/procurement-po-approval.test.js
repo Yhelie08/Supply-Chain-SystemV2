@@ -80,12 +80,12 @@ test('Create PO for the supplier: its copy of the PO, one Pending shipment with 
   assert.equal(copy.PO_No_Supplier2, 'PO-00001');
   assert.equal(copy.PO_Status_Supplier2, 'Draft');
   assert.equal(Number(copy.Total_PO_Value_Supplier2), 300);
-  assert.deepEqual(copy.PO_Line_Items_Supplier2.map((l) => [l.PR_No_Supplier2, Number(l.QTY_Supplier2), l.Item_Price_Supplier2]), [['PR-1', 2, '150'], ['PR-2', 1, '0']]);
+  assert.deepEqual(copy.PO_Line_Items_Supplier2.map((l) => [l.PR_No_Supplier2, Number(l.QTY_Supplier2), l.Item_Price_Supplier2]), [['PR-1', 2, '100'], ['PR-2', 1, '100']], 'the supplier sees its own price, not the catalog / selling price');
   const ships = await store.find('Shipments');
   assert.equal(ships.length, 1);
   assert.equal(ships[0].Shipment_No, 'SHP-00001');
   assert.equal(ships[0].Shipment_Status, 'Pending');
-  assert.equal(ships[0].Supplier, 'Tony');
+  assert.equal(ships[0].Supplier, 'Tony Fan');
   assert.equal(ships[0].Sales_Order, 'SO-A');
   assert.equal(ships[0].PO_Shipments.length, 2);
   const [tonyShip] = await store.find('Tony_Shipment');

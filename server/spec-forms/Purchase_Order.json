@@ -1,0 +1,141 @@
+{
+  "name": "Purchase_Order",
+  "extends": true,
+  "_about": "Fields added by the HomeCartel spec v1.4 (02 Procurement / 03 Purchase Order and Feasibility Gate, 05 Shared Engines 03, 04). One PO = one supplier = one mode (PO-R4); the lines carry their own Sales Order. Written by the server (server/modules/procurement/po-spec.mjs) except the deposit fields.",
+  "fields": [
+    {
+      "name": "PO_Spec",
+      "label": "PO (spec v1.4)",
+      "type": "section"
+    },
+    {
+      "name": "Supplier_Id",
+      "label": "Supplier ID",
+      "type": "text",
+      "helpText": "The Suppliers record ID. The name is only for display."
+    },
+    {
+      "name": "Supplier_Name",
+      "label": "Supplier",
+      "type": "text"
+    },
+    {
+      "name": "Shipment_Mode",
+      "label": "Shipment Mode",
+      "type": "picklist",
+      "options": [
+        "Airfreight",
+        "LCL",
+        "FCL"
+      ],
+      "helpText": "One PO = one mode: lines of another mode go on a separate PO."
+    },
+    {
+      "name": "Earliest_Order_Date",
+      "label": "Earliest Customer Order Date",
+      "type": "date",
+      "helpText": "The oldest Sales Order date among the lines (DT-1)."
+    },
+    {
+      "name": "Earliest_Target",
+      "label": "Earliest Target",
+      "type": "date"
+    },
+    {
+      "name": "Born_Late",
+      "label": "Born Late",
+      "type": "checkbox",
+      "helpText": "At least one line was raised although it cannot arrive in time (PO-R1, PO-R3)."
+    },
+    {
+      "name": "Shortfall_Days",
+      "label": "Shortfall (days)",
+      "type": "number",
+      "helpText": "The largest shortfall among the lines, after the choice made at Create PO."
+    },
+    {
+      "name": "Feasibility_Note",
+      "label": "Feasibility Note",
+      "type": "textarea",
+      "helpText": "Per line: how many days late, and the option the buyer chose."
+    },
+    {
+      "name": "Po_State",
+      "label": "PO State",
+      "type": "picklist",
+      "options": [
+        "draft",
+        "sent",
+        "acknowledged",
+        "closed",
+        "cancelled"
+      ]
+    },
+    {
+      "name": "Deposit_Paid",
+      "label": "Deposit Paid",
+      "type": "checkbox",
+      "helpText": "Restricted: buyer, supervisor, admin (PO-R7). The supplier ladder reads it."
+    },
+    {
+      "name": "Deposit_Amount",
+      "label": "Deposit Amount",
+      "type": "CNY"
+    },
+    {
+      "name": "Cancelled_At",
+      "label": "Cancelled At",
+      "type": "datetime"
+    },
+    {
+      "name": "Lines_Raised",
+      "label": "Lines Raised",
+      "type": "number",
+      "helpText": "How many lines this PO raised (spec PO-R3: the base of the born-late rate). Server-written."
+    },
+    {
+      "name": "Lines_Born_Late",
+      "label": "Lines Born Late",
+      "type": "number",
+      "helpText": "Lines that could not arrive in time AT THE GATE, before any option was chosen (spec PO-R3). Server-written."
+    },
+    {
+      "name": "Po_Category",
+      "label": "Urgency",
+      "type": "picklist",
+      "options": [
+        "broken",
+        "act_now",
+        "tell_customer",
+        "watch",
+        "on_track",
+        "blocked"
+      ],
+      "helpText": "The most urgent category of the PO's shipments (Sorting Engine). Server-written."
+    },
+    {
+      "name": "Po_Queue_Rank",
+      "label": "Queue Rank",
+      "type": "number",
+      "helpText": "Best rank of the PO's shipments. Server-written."
+    },
+    {
+      "name": "Po_Priority_Reason",
+      "label": "Why",
+      "type": "text",
+      "helpText": "Server-written."
+    },
+    {
+      "name": "Po_Forecast_Pickable",
+      "label": "Forecast Pickable",
+      "type": "date",
+      "helpText": "Latest forecast pickable date of the PO's shipments. Server-written."
+    },
+    {
+      "name": "Po_Scored_At",
+      "label": "Scored At",
+      "type": "datetime",
+      "helpText": "Server-written."
+    }
+  ]
+}
