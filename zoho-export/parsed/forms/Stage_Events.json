@@ -1,0 +1,49 @@
+{
+  "name": "Stage_Events",
+  "label": "Stage Events",
+  "successMessage": "Data Added Successfully!",
+  "fields": [
+    {
+      "name": "Record_Type",
+      "label": "Record Type",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Record_ID",
+      "label": "Record ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Event",
+      "label": "Event",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Occurred_At",
+      "label": "Occurred At",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Reported_At",
+      "label": "Reported At",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Source",
+      "label": "Source",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Note",
+      "label": "Note",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

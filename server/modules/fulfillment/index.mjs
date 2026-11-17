@@ -11,7 +11,7 @@ import './sorter-hooks.mjs';
 
 export default {
   label: 'Fulfillment',
-  forms: ['Sales_Order_Fulfillment', 'Checker_Checklist', 'Crate_Checklist', 'Sales_Order_Readiness_Gate', 'Pre_Order_FF', 'Order_Aggregation1', 'Pick1', 'Warehouse_Request', 'Transfer_Warehouse', 'Capacity_Days'],
+  forms: ['Sales_Order_Fulfillment', 'Checker_Checklist', 'Crate_Checklist', 'Sales_Order_Readiness_Gate', 'Pre_Order_FF', 'Order_Aggregation1', 'Pick1', 'Warehouse_Request', 'Transfer_Warehouse', 'Capacity_Days', 'Stage_Events'],
   functions,
   apis,
   // Deluge functions this module ports without a custom API of their own (read by tools/build-module-readmes.mjs). The forecast
