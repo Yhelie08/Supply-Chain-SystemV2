@@ -9,13 +9,29 @@ tags:
 
 Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - Port Status]].
 
+## 2026-11-17
+
+**Merged `origin/yhelie-update` (`885ec51`) sa `Johncel-Dev`: Create PO, Create RR, Tony/Fenteng portals**
+- Laman ng commit ni Yhel: `approve_po_main/tony/fenteng`, `create_rr_main/tony/fenteng`, `acknowledge_po_*`, `approve_rr_*`, Tony/Fenteng shipment sync, supplier PR rules. **Hindi kasama ang Books part** ng Create PO ng Tony/Fenteng (on hold, nakasulat sa `po-approval.mjs`).
+- 1 conflict sa `server/modules/procurement/apis.mjs` (sabay nagdagdag ng imports; pinagsama: `create_receiving_from_shipment` + `clone_shipment_for_replacement` + ang 6 na API ni Yhel).
+- 4 test ang bumagsak pagka-merge (`PO-00003` imbes na `PO-00001`): dahil sa `_number_series` counter ng `1511487`, hindi nare-reset sa pagitan ng tests. Fix: `DELETE FROM _number_series` sa `beforeEach` ng `procurement-po-approval.test.js` at `procurement-supplier-portal.test.js` (parehong ayos sa ibang procurement tests). Walang binago sa code ni Yhel.
+- Verified: `npm test` **687/687**, `npm run test:ui` **124/124**. Sa branch ni Yhel mismo, 33/33 ang mga test niya. Regenerated Port Status + Checklist: **95 of 109** workflows, **24 of 28** custom APIs.
+- Natitira: Procurement 5 workflows (`Proj_Code_AutoNumber`, Supplier_1/2 `Stage_Supplier_Changed` + `Mandatory_Supplier_Fields`) + `Approve_P_O_H_C`, `create_bin_receiving` (Books); Fenteng `PO_Generate_Number2`; Fulfillment 8 workflows + `create_package_ff`, `check_payment_status`; 2 shipment schedules; Books inbound poller (M7).
+- **Hindi na-check:** browser walkthrough ng Create PO / portals; Zoho Dev comparison; kung sakop na ng Fulfillment engine ni Yhel ang 8 "kulang" na Fulfillment workflows. Hindi pa na-push.
+
 ## 2026-11-14
+
+**Security hardening plan created (proposed, awaiting go) — 5 findings, repo→private decided**
+- Tanong ng owner: "mas maganda bang language ang gamitin para secured ang website?" Sagot: **hindi — language ≠ security**; ang HTML/JS ay display layer ng lahat ng website, ang security ay nasa server practices. Manual read-only code review (walang scanner/skill — direktang pagbasa ng code + git state, may file/line evidence). Rewrite: hindi recommended (buwan, mataas ang risk, kailangan pa rin ang parehong fixes). Hardening ng current Node stack ang direksyon.
+- **5 findings:** (1) **public ang repo** + legacy Geoapify key sa 3 tracked files (`Supply_Chain_App.ds`, `SA_Geocode_Address.dg`, vault note `dms_location_route_geocode.md`) — **hindi ito ang live key** (fingerprint comparison: legacy `8e00…` vs live `1549…`; ang live key ay nasa `.env`/Railway lang, verified wala sa tracked files); (2) field account API hole (OWASP A01 — naitala na sa allowlist plan + checklist item 26); (3) stored XSS sa `/uploads/` (walang type check, `.html`/`.svg` served same-origin); (4) walang body size limit (`readBody`); (5) mahinang CSP (`frame-ancestors` lang) + 14 widgets sa Tailwind CDN.
+- **Owner decisions:** gagawing **private** ang repo; i-revoke ang legacy key; "iplan muna sa vault" — kaya plano pa lang, **hindi pa nako-code**.
+- Plan: [[Plan - Security Hardening]] — P1 (secrets/repo) → P2 (allowlist, hiwalay na go) → P3+P4 (uploads XSS + size limits) → P5 (CSP + vendored Tailwind via `applyTheme` transform, walang per-widget edits). Bawat batch: hiwalay na go, tests green, owner push, owner-approved deploy. Kasama: trufflehog scan verification, honest limitations (`'unsafe-inline` kailangan ng ported widgets), optional items (second admin cleanup, HSTS).
 
 **Fulfillment lag fix (Sales Order Report): tinanggal ang ~1,000 redundant requests + debounce search**
 - Owner report: nagla-lag ang live Fulfillment tab pagkatapos ng deploy. Sanhi: ang Zoho-era "hydration" (isa-isang `getRecordById` bawat SO, 6 concurrent) ay redundant sa Postgres backend — kompleto na ang `Item_Details1` sa bulk `getRecords`. Sa live data (~1,762 SO, 1,000 ang cap ng widget) ay ~1,000 round-trips PH→US + pangalawang full-table render. Dagdag: buong table (1,000+ rows) ang re-render sa bawat search keystroke.
 - Fix (`2ab38e5`, widget lang — walang engine/server change): skip ang hydration kapag may `Item`/`SKU` keys na ang unang item row; re-render lang kapag may aktwal na nabago; 200ms debounce ang search. Ang summarized Zoho rows ay magha-hydrate pa rin kung sakaling ibalik sa Creator.
 - Verified: 614/614 node + 124/124 UI; local browser check (temp QA admin + 3 SO, binura agad after): kompleto ang Item/SKU/Qty sa unang paint, **1 `getRecords` / 0 `getRecordById`** sa network log, tama ang debounce filtering, walang console errors.
-- Pending: **redeploy — hiwalay na go ng owner**. Deferred: pagination/"show more" (mas malaking UX change). Ang parehong hydration pattern ay nasa QC Checklist + Order Aggregation widgets din — candidates kung may lag report doon. Pansamantalang ginhawa sa skin: `hc-skin=classic` sa localStorage.
+- **Push: done** (owner mismo, `origin/main` = `2f33104`, fast-forward — verified sa git). May bagong deployment `2672e1e3` **SUCCESS** (2026-11-14 15:27) pagkatapos ng push — posibleng lag-fix deploy ng owner; **hindi pa na-verify ang live widget** (browser check ang kailangan). Deferred: pagination/"show more" (mas malaking UX change). Ang parehong hydration pattern ay nasa QC Checklist + Order Aggregation widgets din — candidates kung may lag report doon. Pansamantalang ginhawa sa skin: `hc-skin=classic` sa localStorage.
 
 **Merged ang yhelie-update + jv-update, na-push sa main, at na-deploy sa Railway (2026-11-14)**
 - Save point bago mag-merge (3 commits): `e184e60` rehearsal, `9532b32` access/CMS, `d9bf006` docs. Baseline: 570/570 tests green.

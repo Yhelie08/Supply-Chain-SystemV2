@@ -15,19 +15,15 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Sales Returns | `Sales_Returns1` | [Sales Returns](Sales%20Returns/app/index.html) | — |
 | DMS Exception Queue | `DMS_Exception_Queue1` | [DMS Exception Queue](DMS%20Exception%20Queue/app/index.html) | — |
 | Truck Maintenance | `Truck_Maintenance` | [Truck Maintenance](Truck%20Maintenance/app/index.html) | — |
-| Schedule Requests | `Schedule_Requests` | [Schedule Requests](Schedule%20Requests/app/dms-schedule-request.html) | — |
 | Policy Settings (opened from other tabs) | `Policy_Setting` | [Policy Settings](Policy%20Settings/app/index.html) | — |
 
 ## Custom APIs the tabs call
 
 | Custom API | Deluge function | Local app |
 |---|---|---|
-| `confirm_dms_schedule_request` | [confirmDmsScheduleRequest](../../zoho-export/parsed/functions/confirmDmsScheduleRequest.dg) | Ported |
 | `create_sales_return_books` | [createSalesReturnBooks](../../zoho-export/parsed/functions/createSalesReturnBooks.dg) | Ported |
 | `create_shipment_order` | [createShipmentOrder](../../zoho-export/parsed/functions/createShipmentOrder.dg) | Ported |
-| `decline_dms_schedule_request` | [declineDmsScheduleRequest](../../zoho-export/parsed/functions/declineDmsScheduleRequest.dg) | Ported |
 | `dms_reschedule` | [dmsScheduleSlot](../../zoho-export/parsed/functions/dmsScheduleSlot.dg) | Ported |
-| `push_dms_message_to_cms` | [pushDmsMessageToCms](../../zoho-export/parsed/functions/pushDmsMessageToCms.dg) | Ported |
 
 ## Forms (database tables)
 
@@ -36,7 +32,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Customer | 10 | [Customer.json](../../zoho-export/parsed/forms/Customer.json) |
 | DMS Exception Queue | 15 | [DMS_Exception_Queue.json](../../zoho-export/parsed/forms/DMS_Exception_Queue.json) |
 | DMS Schedule Request | 12 | [DMS_Schedule_Request.json](../../zoho-export/parsed/forms/DMS_Schedule_Request.json) |
-| DMS Schedule Request Messages | 7 | [DMS_Schedule_Request_Messages.json](../../zoho-export/parsed/forms/DMS_Schedule_Request_Messages.json) |
 | Daily Checklist for Vehicle | 13 | [Daily_Checklist_for_Vehicle.json](../../zoho-export/parsed/forms/Daily_Checklist_for_Vehicle.json) |
 | Daily Team Availability | 11 | [Daily_Team_Availability.json](../../zoho-export/parsed/forms/Daily_Team_Availability.json) |
 | Delivery Scheduling Form | 34 | [Delivery_Scheduling.json](../../zoho-export/parsed/forms/Delivery_Scheduling.json) |
@@ -67,8 +62,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 - `All_Policy_Settings` (form `Policy_Settings`)
 - `All_Service_Entries` (form `Service_Entries`)
 - `All_Site_Visit_Photos` (form `Site_Visit_Photos`)
-- `DMS_Schedule_Request_Messages_Report` (form `DMS_Schedule_Request_Messages`)
-- `DMS_Schedule_Request_Report` (form `DMS_Schedule_Request`)
 - `Daily_Checklist_for_Vehicle_Report` (form `Daily_Checklist_for_Vehicle`)
 - `Delivery_Scheduling_Report` (form `Delivery_Scheduling`)
 - `Exception_Control_Report` (form `Exception_Control1`)
@@ -83,15 +76,11 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 
 ## Deluge functions
 
-- [confirmDmsScheduleRequest](../../zoho-export/parsed/functions/confirmDmsScheduleRequest.dg)(String dmsRecordId)
 - [createSalesReturnBooks](../../zoho-export/parsed/functions/createSalesReturnBooks.dg)(String recordId, String salesOrderNo, String rmaVal, String dateVal, String reasonVal, String subReasonVal, String returnedByVal, String itemsJson)
 - [createShipmentOrder](../../zoho-export/parsed/functions/createShipmentOrder.dg)(String recordId, String packageShipmentId, String typeOfDelivery, String shipDate, String deliveryDate, String carrier, String shippingCharge, String ceilingMaterial, String ceilingHeight, String siteWiringReady, String preparedBy, String deliveryTeam)
-- [declineDmsScheduleRequest](../../zoho-export/parsed/functions/declineDmsScheduleRequest.dg)(String dmsRecordId)
 - [dmsScheduleSlot](../../zoho-export/parsed/functions/dmsScheduleSlot.dg)(String recordId, bool isRerun)
 - [fcStampBySoNo](../../zoho-export/parsed/functions/fcStampBySoNo.dg)(string soNo)
 - [fcStampDelivery](../../zoho-export/parsed/functions/fcStampDelivery.dg)(string soText)
-- [pushDmsMessageToCms](../../zoho-export/parsed/functions/pushDmsMessageToCms.dg)(String cmsRecordId, String senderEmail, String senderName, String message, String sentOn)
-- [pushDmsStatusToCms](../../zoho-export/parsed/functions/pushDmsStatusToCms.dg)(String cmsRecordId, String newStatus)
 
 ## Workflows on these forms
 

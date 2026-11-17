@@ -14,8 +14,8 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 
 | Custom API | Deluge function | Local app |
 |---|---|---|
-| `acknowledge_po_fenteng` | [acknowledgePOFenteng](../../zoho-export/parsed/functions/acknowledgePOFenteng.dg) | Not ported yet |
-| `approve_rr_fenteng` | [approveRRFenteng](../../zoho-export/parsed/functions/approveRRFenteng.dg) | Not ported yet |
+| `acknowledge_po_fenteng` | [acknowledgePOFenteng](../../zoho-export/parsed/functions/acknowledgePOFenteng.dg) | Ported |
+| `approve_rr_fenteng` | [approveRRFenteng](../../zoho-export/parsed/functions/approveRRFenteng.dg) | Ported |
 
 ## Forms (database tables)
 

@@ -14,8 +14,8 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 
 | Custom API | Deluge function | Local app |
 |---|---|---|
-| `acknowledge_po_tony` | [acknowledgePOTony](../../zoho-export/parsed/functions/acknowledgePOTony.dg) | Not ported yet |
-| `approve_rr_tony` | [approveRRTony](../../zoho-export/parsed/functions/approveRRTony.dg) | Not ported yet |
+| `acknowledge_po_tony` | [acknowledgePOTony](../../zoho-export/parsed/functions/acknowledgePOTony.dg) | Ported |
+| `approve_rr_tony` | [approveRRTony](../../zoho-export/parsed/functions/approveRRTony.dg) | Ported |
 
 ## Forms (database tables)
 

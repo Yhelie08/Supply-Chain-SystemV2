@@ -13,9 +13,9 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Part | Total | Ported |
 |---|---:|---:|
-| Deluge functions | 43 | 17 |
-| Custom APIs called by widgets | 25 | 9 |
-| Form workflows (on validate, on success, field rules) | 165 | 46 |
+| Deluge functions | 43 | 29 |
+| Custom APIs called by widgets | 28 | 24 |
+| Form workflows (on validate, on success, field rules) | 165 | 95 |
 | Scheduled workflows | 6 | 0 |
 | Report-button functions | 16 | 0 |
 
@@ -26,21 +26,21 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 
 | Function | Custom API | Used by | Status | Source |
 |---|---|---|---|---|
-| `acknowledgePOFenteng` | `acknowledge_po_fenteng` | Fenteng Lighting | Not ported yet | `zoho-export/parsed/functions/acknowledgePOFenteng.dg` |
-| `acknowledgePOTony` | `acknowledge_po_tony` | Tony Fan | Not ported yet | `zoho-export/parsed/functions/acknowledgePOTony.dg` |
+| `acknowledgePOFenteng` | `acknowledge_po_fenteng` | Fenteng Lighting | Ported | `zoho-export/parsed/functions/acknowledgePOFenteng.dg` |
+| `acknowledgePOTony` | `acknowledge_po_tony` | Tony Fan | Ported | `zoho-export/parsed/functions/acknowledgePOTony.dg` |
 | `addCustomerByIdBooks` | — | — | Not ported yet | `zoho-export/parsed/functions/addCustomerByIdBooks.dg` |
-| `addDmsScheduleRequestMessage` | — | — | Ported (module integration, no inbound route yet) | `zoho-export/parsed/functions/addDmsScheduleRequestMessage.dg` |
+| `addDmsScheduleRequestMessage` | — | — | Ported (inbound route /api/integrations/cms/message) | `zoho-export/parsed/functions/addDmsScheduleRequestMessage.dg` |
 | `addItemByIdBooks` | `add_item_by_id` | Procurement, Fulfillment | Ported | `zoho-export/parsed/functions/addItemByIdBooks.dg` |
 | `Approve_Multiple_PRs` | — | — | Not ported yet | `zoho-export/parsed/functions/Approve_Multiple_PRs.dg` |
-| `approvePOFenteng` | `approve_po_fenteng` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOFenteng.dg` |
+| `approvePOFenteng` | `approve_po_fenteng` | Procurement | Ported | `zoho-export/parsed/functions/approvePOFenteng.dg` |
 | `approvePOHC` | `Approve_P_O_H_C` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOHC.dg` |
-| `approvePOMain` | `approve_po_main` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOMain.dg` |
-| `approvePOTony` | `approve_po_tony` | Procurement | Not ported yet | `zoho-export/parsed/functions/approvePOTony.dg` |
-| `approveRRFenteng` | `approve_rr_fenteng` | Fenteng Lighting | Not ported yet | `zoho-export/parsed/functions/approveRRFenteng.dg` |
-| `approveRRTony` | `approve_rr_tony` | Tony Fan | Not ported yet | `zoho-export/parsed/functions/approveRRTony.dg` |
+| `approvePOMain` | `approve_po_main` | Procurement | Ported | `zoho-export/parsed/functions/approvePOMain.dg` |
+| `approvePOTony` | `approve_po_tony` | Procurement | Ported | `zoho-export/parsed/functions/approvePOTony.dg` |
+| `approveRRFenteng` | `approve_rr_fenteng` | Fenteng Lighting | Ported | `zoho-export/parsed/functions/approveRRFenteng.dg` |
+| `approveRRTony` | `approve_rr_tony` | Tony Fan | Ported | `zoho-export/parsed/functions/approveRRTony.dg` |
 | `checkPaymentStatus` | `check_payment_status` | Fulfillment | Not ported yet | `zoho-export/parsed/functions/checkPaymentStatus.dg` |
-| `cloneShipmentForReplacement` | `clone_shipment_for_replacement` | Procurement | Not ported yet | `zoho-export/parsed/functions/cloneShipmentForReplacement.dg` |
-| `confirmDmsScheduleRequest` | `confirm_dms_schedule_request` | Delivery Management | Ported | `zoho-export/parsed/functions/confirmDmsScheduleRequest.dg` |
+| `cloneShipmentForReplacement` | `clone_shipment_for_replacement` | Procurement | Ported | `zoho-export/parsed/functions/cloneShipmentForReplacement.dg` |
+| `confirmDmsScheduleRequest` | `confirm_dms_schedule_request` | — | Ported | `zoho-export/parsed/functions/confirmDmsScheduleRequest.dg` |
 | `Create_Estimate_Inq_Fn` | — | — | Not ported yet | `zoho-export/parsed/functions/Create_Estimate_Inq_Fn.dg` |
 | `createBinReceivingWidget` | `create_bin_receiving` | Procurement | Not ported yet | `zoho-export/parsed/functions/createBinReceivingWidget.dg` |
 | `createBooksContact` | `create_books_contact` | Procurement | Ported | `zoho-export/parsed/functions/createBooksContact.dg` |
@@ -48,13 +48,13 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `createExceptionControlFromComplaint` | — | — | Not ported yet | `zoho-export/parsed/functions/createExceptionControlFromComplaint.dg` |
 | `createNewCustomerBooks` | — | — | Not ported yet | `zoho-export/parsed/functions/createNewCustomerBooks.dg` |
 | `createPackageFF` | `create_package_ff` | Fulfillment | Not ported yet | `zoho-export/parsed/functions/createPackageFF.dg` |
-| `createReceivingFromShipmentWidget` | `create_receiving_from_shipment` | Procurement | Not ported yet | `zoho-export/parsed/functions/createReceivingFromShipmentWidget.dg` |
-| `createRRFenteng` | `create_rr_fenteng` | Procurement | Not ported yet | `zoho-export/parsed/functions/createRRFenteng.dg` |
-| `createRRMain` | `create_rr_main` | Procurement | Not ported yet | `zoho-export/parsed/functions/createRRMain.dg` |
-| `createRRTony` | `create_rr_tony` | Procurement | Not ported yet | `zoho-export/parsed/functions/createRRTony.dg` |
+| `createReceivingFromShipmentWidget` | `create_receiving_from_shipment` | Procurement | Ported | `zoho-export/parsed/functions/createReceivingFromShipmentWidget.dg` |
+| `createRRFenteng` | `create_rr_fenteng` | Procurement | Ported | `zoho-export/parsed/functions/createRRFenteng.dg` |
+| `createRRMain` | `create_rr_main` | Procurement | Ported | `zoho-export/parsed/functions/createRRMain.dg` |
+| `createRRTony` | `create_rr_tony` | Procurement | Ported | `zoho-export/parsed/functions/createRRTony.dg` |
 | `createSalesReturnBooks` | `create_sales_return_books` | Delivery Management | Ported | `zoho-export/parsed/functions/createSalesReturnBooks.dg` |
 | `createShipmentOrder` | `create_shipment_order` | Delivery Management | Ported | `zoho-export/parsed/functions/createShipmentOrder.dg` |
-| `declineDmsScheduleRequest` | `decline_dms_schedule_request` | Delivery Management | Ported | `zoho-export/parsed/functions/declineDmsScheduleRequest.dg` |
+| `declineDmsScheduleRequest` | `decline_dms_schedule_request` | — | Ported | `zoho-export/parsed/functions/declineDmsScheduleRequest.dg` |
 | `diagInsertThenPatch` | — | — | Not ported yet | `zoho-export/parsed/functions/diagInsertThenPatch.dg` |
 | `dmsScheduleSlot` | `dms_reschedule` | Analytic, Fulfillment, Delivery Management | Ported | `zoho-export/parsed/functions/dmsScheduleSlot.dg` |
 | `fcPrToPreOrder` | — | Analytic, Procurement, Tony Fan, Fenteng Lighting, Fulfillment | Ported (server/forecast/purchase-request.mjs; not yet compared with Zoho Development) | `zoho-export/parsed/functions/fcPrToPreOrder.dg` |
@@ -64,44 +64,45 @@ See [[00 - Current System]] for how the local app runs and [[00 - Change Log]] f
 | `getItemBinLocations` | — | — | Not ported yet | `zoho-export/parsed/functions/getItemBinLocations.dg` |
 | `getReceivingBinChoices` | — | — | Not ported yet | `zoho-export/parsed/functions/getReceivingBinChoices.dg` |
 | `patchItemDetailsRetry` | — | — | Not ported yet | `zoho-export/parsed/functions/patchItemDetailsRetry.dg` |
-| `pushDmsMessageToCms` | `push_dms_message_to_cms` | Delivery Management | Ported (skipped until CMS_MESSAGE_URL is set) | `zoho-export/parsed/functions/pushDmsMessageToCms.dg` |
-| `pushDmsStatusToCms` | — | Delivery Management | Ported (skipped until CMS_STATUS_URL is set) | `zoho-export/parsed/functions/pushDmsStatusToCms.dg` |
+| `pushDmsMessageToCms` | `push_dms_message_to_cms` | — | Ported (skipped until CMS_MESSAGE_URL is set) | `zoho-export/parsed/functions/pushDmsMessageToCms.dg` |
+| `pushDmsStatusToCms` | — | — | Ported (skipped until CMS_STATUS_URL is set) | `zoho-export/parsed/functions/pushDmsStatusToCms.dg` |
 | `reScheduleDelivery` | — | — | Ported (the dms_reschedule API runs it) | `zoho-export/parsed/functions/reScheduleDelivery.dg` |
 | `syncWarehouseBins` | — | — | Not ported yet | `zoho-export/parsed/functions/syncWarehouseBins.dg` |
-| `upsertDmsScheduleRequest` | — | — | Ported (module integration, no inbound route yet) | `zoho-export/parsed/functions/upsertDmsScheduleRequest.dg` |
+| `upsertDmsScheduleRequest` | — | — | Ported (inbound route /api/integrations/cms/schedule-request) | `zoho-export/parsed/functions/upsertDmsScheduleRequest.dg` |
 
 ## Custom APIs the widgets call
 
 | Custom API | Deluge function | Status |
 |---|---|---|
 | `Approve_P_O_H_C` | `approvePOHC` | Not ported yet |
-| `acknowledge_po_fenteng` | `acknowledgePOFenteng` | Not ported yet |
-| `acknowledge_po_tony` | `acknowledgePOTony` | Not ported yet |
+| `acknowledge_po_fenteng` | `acknowledgePOFenteng` | Ported |
+| `acknowledge_po_tony` | `acknowledgePOTony` | Ported |
 | `add_item_by_id` | `addItemByIdBooks` | Ported |
-| `approve_po_fenteng` | `approvePOFenteng` | Not ported yet |
-| `approve_po_main` | `approvePOMain` | Not ported yet |
-| `approve_po_tony` | `approvePOTony` | Not ported yet |
-| `approve_rr_fenteng` | `approveRRFenteng` | Not ported yet |
-| `approve_rr_tony` | `approveRRTony` | Not ported yet |
+| `approve_po_fenteng` | `approvePOFenteng` | Ported |
+| `approve_po_main` | `approvePOMain` | Ported |
+| `approve_po_tony` | `approvePOTony` | Ported |
+| `approve_rr_fenteng` | `approveRRFenteng` | Ported |
+| `approve_rr_tony` | `approveRRTony` | Ported |
 | `check_payment_status` | `checkPaymentStatus` | Not ported yet |
-| `clone_shipment_for_replacement` | `cloneShipmentForReplacement` | Not ported yet |
+| `clone_shipment_for_replacement` | `cloneShipmentForReplacement` | Ported |
 | `confirm_dms_schedule_request` | `confirmDmsScheduleRequest` | Ported |
 | `create_bin_receiving` | `createBinReceivingWidget` | Not ported yet |
 | `create_books_contact` | `createBooksContact` | Ported |
 | `create_estimate` | `createEstimateForInquiry` | Ported |
 | `create_package_ff` | `createPackageFF` | Not ported yet |
-| `create_receiving_from_shipment` | `createReceivingFromShipmentWidget` | Not ported yet |
-| `create_rr_fenteng` | `createRRFenteng` | Not ported yet |
-| `create_rr_main` | `createRRMain` | Not ported yet |
-| `create_rr_tony` | `createRRTony` | Not ported yet |
+| `create_receiving_from_shipment` | `createReceivingFromShipmentWidget` | Ported |
+| `create_rr_fenteng` | `createRRFenteng` | Ported |
+| `create_rr_main` | `createRRMain` | Ported |
+| `create_rr_tony` | `createRRTony` | Ported |
 | `create_sales_return_books` | `createSalesReturnBooks` | Ported |
 | `create_shipment_order` | `createShipmentOrder` | Ported |
 | `decline_dms_schedule_request` | `declineDmsScheduleRequest` | Ported |
 | `dms_reschedule` | `dmsScheduleSlot` | Ported |
+| `fetch_customer_from_books` | `fetchCustomerFromBooks` | Ported |
+| `fetch_item_from_akeneo` | `fetchItemFromAkeneo` | Ported |
 | `push_dms_message_to_cms` | `pushDmsMessageToCms` | Ported |
+| `search_items_akeneo` | `searchItemsAkeneo` | Ported |
 
 ## Workflows
 
-46 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 15 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.
-
-**2026-11-14 (merge `e444d32`):** the Fulfillment engine from `yhelie-update` is now in the app — `server/modules/fulfillment/pipeline.mjs` (package → Gate → Release → Pick → Mark Picked → Pack & QC), `qc-routing.mjs`, `crate-dispatch.mjs`, `exception-recheck.mjs`, and the **Need Approval** stage rule in `workflows.mjs` (Approve Dispatch tab). Pack was merged into Pack & QC; the Pack/Pack_Notifications forms were removed (88 forms now). **Pending:** these engine workflows are not yet registered in `fulfillment/ported.json` (the 46 count above does not include them); the forecast Instant Forecast hooks remain the registered ones.
+95 of the 165 form workflows run in the app (the ported ones are listed in `server/modules/<module>/ported.json`); another 32 need no port (they only drive Zoho's own forms, are inactive, or have no script). Schedules and report-button functions are not ported yet. All are listed per form in `zoho-export/parsed/workflows.json` and per section in `modules/<Section>/README.md`.

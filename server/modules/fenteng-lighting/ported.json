@@ -16,7 +16,33 @@
       "PO_Detect_Mixed2",
       "PO_Status_Timestamps2"
     ],
+    "nativeFormOnly": [
+      "Disable_All_Fields_PO_Sup1"
+    ],
+    "notNeeded": {
+      "Notify_Fenteng_on_Purchas": "inactive in Zoho"
+    }
+  },
+  "Fenteng_Lighting_Purchase_Request": {
+    "ported": [
+      "Mandatory_PR_Fields_Suppl",
+      "PR_Stage_Supplier_Changed",
+      "Fenteng_Sync_Image_PR"
+    ],
+    "nativeFormOnly": [
+      "Disable_PR_Details_Suppli"
+    ],
+    "notNeeded": {
+      "Notify_Fenteng_on_Purchas1": "inactive in Zoho"
+    }
+  },
+  "Fenteng_Shipment": {
+    "ported": [
+      "Fenteng_Shipment_Sync"
+    ],
     "nativeFormOnly": [],
-    "notNeeded": {}
+    "notNeeded": {
+      "Notify_Fenteng_on_Shipmen": "inactive in Zoho"
+    }
   }
 }

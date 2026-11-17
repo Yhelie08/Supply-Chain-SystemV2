@@ -96,3 +96,42 @@ test('the server logged no errors during the whole flow', () => {
   const errors = harness.logs.filter((l) => /Error|ECONN|UnhandledPromise|TypeError|ReferenceError|failed/i.test(l) && !/schema ready/.test(l));
   assert.deepEqual(errors, []);
 });
+
+test('Create PO -> supplier copy -> acknowledge -> Create RR -> supplier approves, through the custom APIs of the real server', async () => {
+  const cust = await api.addRecords('Customer', { customer_name: 'API Customer' });
+  const item = await api.addRecords('Items', { item_name: 'API Lamp', SKU: 'API-1', Rate: 100 });
+  await api.addRecords('Suppliers', { Supplier_Name: { first_name: 'Tony Fan', last_name: '' }, Active_PO_Count: 0 });
+  const pr = await api.addRecords('Purchase_Request1', { PR_No: 'PR-API', Sales_Order: 'SO-API', PR_Approved: false, PR_READY_FOR_PO: true, Selected_Supplier: 'Tony', Customer: cust.data.data.ID, Items: item.data.data.ID, sku: 'API-1', quantity: 2, unit: 'pcs', Selcted_Final_Cost: 50, Shipment_Mode: 'Air', Target_Delivery: '2026-12-30', Followed_Recommendation: 'Yes' });
+  assert.equal(pr.data.code, 3000, JSON.stringify(pr.data));
+  // the PR page's own readiness rules (supplier chosen in the response rows...) are tested elsewhere: here the PR is simply set ready, in the database
+  await harness.query('UPDATE "Purchase_Request1" SET "PR_READY_FOR_PO" = TRUE, "Selected_Supplier" = $1 WHERE "Sales_Order" = $2', ['Tony', 'SO-API']);
+  const prNo = (await rows('Purchase_Request1'))[0].PR_No;
+  const call = async (name, payload) => { const r = await api.invokeCustomApi(name, payload); assert.equal(r.data?.code, 3000, `${name}: ${JSON.stringify(r.data)}`); return r.data.result; };
+
+  assert.equal((await call('approve_po_main', { soNo: 'SO-API' })).status, 'success');
+  assert.equal((await call('approve_po_main', { soNo: 'SO-API' })).status, 'empty', 'a second click makes nothing');
+  const tony = await call('approve_po_tony', { soNo: 'SO-API' });
+  assert.equal(tony.processed, 1, JSON.stringify(tony));
+  assert.equal((await call('approve_po_tony', { soNo: 'SO-API' })).processed, 0);
+  const poNo = (await rows('Purchase_Order')).find((p) => p.PO_Line_Items.some((l) => l.PR_No === prNo)).PO_No;
+  assert.equal((await rows('Tony_Fan_Purchase_Order')).filter((c) => c.PO_No_Supplier2 === poNo).length, 1);
+  const shipsBefore = (await rows('Shipments')).length;
+
+  const ack = await call('acknowledge_po_tony', { poNoSupplier2: poNo, etd: '2026-12-01', eta: '2026-12-10' });
+  assert.equal(ack.status, 'success', JSON.stringify(ack));
+  assert.equal((await call('acknowledge_po_tony', { poNoSupplier2: poNo, etd: '2026-12-01', eta: '2026-12-10' })).status, 'already');
+  assert.equal((await rows('Shipments')).length, shipsBefore, 'acknowledging does not make another shipment');
+  assert.equal((await rows('Purchase_Order')).find((p) => p.PO_No === poNo).PO_Status, 'Confirmed');
+
+  // a damaged exception -> Create RR (main, then the supplier's copy) -> the supplier approves
+  const exc = (await rows('Exceptions'))[0];
+  await api.updateRecordById('Exceptions', exc.ID, { Source_Module: 'Receiving', PO_No: poNo, Sales_Order: 'SO-API', Receiving_Line_ID: 'PR-API', Product_Context1: [{ SKU: 'API-1', Item: 'API Lamp', Supplier: 'Tony', Type_field: 'Damage', Qty: 1, Repairable: 'No' }] });
+  assert.equal((await call('create_rr_main', { exceptionId: String(exc.ID) })).created, 1);
+  assert.equal((await call('create_rr_main', { exceptionId: String(exc.ID) })).created, 0);
+  assert.equal((await call('create_rr_tony', { exceptionId: String(exc.ID) })).created, 1);
+  const copy = (await rows('Tony_Fan_Replacement_Request'))[0];
+  const main = (await rows('Replacement_Request')).find((r) => r.Source_Exception_No === exc.Exception_No);
+  assert.equal(copy.RR_No, main.RR_No);
+  assert.equal((await call('approve_rr_tony', { rrRecordId: String(copy.ID), expectedShipDate: '2026-12-05', eta: '2026-12-12' })).status, 'success');
+  assert.equal((await rows('Replacement_Request')).find((r) => r.RR_No === main.RR_No).RR_Status, 'Acknowledged');
+});

@@ -172,7 +172,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Service_Appointment_Form | SA_Geocode_Address | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Service_Appointment_Form/SA_Geocode_Address.dg) |
 | Receiving | Receiving_Sync_Shipment_Arrived | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Receiving/Receiving_Sync_Shipment_A.dg) |
 | Pick1 | Pick1 Marked to Pack Sync | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Pick1/Pick1_Marked_to_Pack_Sync.dg) |
-| Pack | PACK SEND TO QC | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Pack/PACK_SEND_TO_QC.dg) |
 | Checker_Checklist | QC Approved sync to Crate or Order Aggregation | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Checker_Checklist/QC_Approved_sync_to_Crate.dg) |
 | Crate_Checklist | Crating Done sync to Order Aggregation | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Crate_Checklist/Crating_Done_sync_to_Orde.dg) |
 | Checker_Checklist | Show/Hide Damage Detail Fields | on add or edit | [on user input of Item_to_Replace](../../zoho-export/parsed/workflows/form/Checker_Checklist/Show_Hide_Damage_Detail_F.dg) |
@@ -190,7 +189,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Checker_Checklist | QC_Notify_New_Record | on add | [on success](../../zoho-export/parsed/workflows/form/Checker_Checklist/QC_Notify_New_Record.dg) |
 | Order_Aggregation1 | OrderAgg_Notify_New_Record | on add | [on success](../../zoho-export/parsed/workflows/form/Order_Aggregation1/OrderAgg_Notify_New_Recor.dg) |
 | Pick1 | Pick1_Notify_New_Record | on add | [on success](../../zoho-export/parsed/workflows/form/Pick1/Pick1_Notify_New_Record.dg) |
-| Pack | Pack_Notify_New_Record | on add | [on success](../../zoho-export/parsed/workflows/form/Pack/Pack_Notify_New_Record.dg) |
 | Fenteng_Lighting_Replacement_Request | Notify Fenteng on Replacement Request added | on add | [on success](../../zoho-export/parsed/workflows/form/Fenteng_Lighting_Replacement_Request/Notify_Fenteng_on_Replace.dg) |
 | Fenteng_Lighting_Purchase_Order | Notify Fenteng on Purchase Order added | on add | [on success](../../zoho-export/parsed/workflows/form/Fenteng_Lighting_Purchase_Order/Notify_Fenteng_on_Purchas.dg) |
 | Tony_Fan_Purchase_Order | Notify Tony on Purchase Order added | on add | [on success](../../zoho-export/parsed/workflows/form/Tony_Fan_Purchase_Order/Notify_Tony_on_Purchase_O.dg) |

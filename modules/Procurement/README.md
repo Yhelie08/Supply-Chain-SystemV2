@@ -20,17 +20,20 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 |---|---|---|
 | `Approve_P_O_H_C` | [approvePOHC](../../zoho-export/parsed/functions/approvePOHC.dg) | Not ported yet |
 | `add_item_by_id` | [addItemByIdBooks](../../zoho-export/parsed/functions/addItemByIdBooks.dg) | Ported |
-| `approve_po_fenteng` | [approvePOFenteng](../../zoho-export/parsed/functions/approvePOFenteng.dg) | Not ported yet |
-| `approve_po_main` | [approvePOMain](../../zoho-export/parsed/functions/approvePOMain.dg) | Not ported yet |
-| `approve_po_tony` | [approvePOTony](../../zoho-export/parsed/functions/approvePOTony.dg) | Not ported yet |
-| `clone_shipment_for_replacement` | [cloneShipmentForReplacement](../../zoho-export/parsed/functions/cloneShipmentForReplacement.dg) | Not ported yet |
+| `approve_po_fenteng` | [approvePOFenteng](../../zoho-export/parsed/functions/approvePOFenteng.dg) | Ported |
+| `approve_po_main` | [approvePOMain](../../zoho-export/parsed/functions/approvePOMain.dg) | Ported |
+| `approve_po_tony` | [approvePOTony](../../zoho-export/parsed/functions/approvePOTony.dg) | Ported |
+| `clone_shipment_for_replacement` | [cloneShipmentForReplacement](../../zoho-export/parsed/functions/cloneShipmentForReplacement.dg) | Ported |
 | `create_bin_receiving` | [createBinReceivingWidget](../../zoho-export/parsed/functions/createBinReceivingWidget.dg) | Not ported yet |
 | `create_books_contact` | [createBooksContact](../../zoho-export/parsed/functions/createBooksContact.dg) | Ported |
 | `create_estimate` | [createEstimateForInquiry](../../zoho-export/parsed/functions/createEstimateForInquiry.dg) | Ported |
-| `create_receiving_from_shipment` | [createReceivingFromShipmentWidget](../../zoho-export/parsed/functions/createReceivingFromShipmentWidget.dg) | Not ported yet |
-| `create_rr_fenteng` | [createRRFenteng](../../zoho-export/parsed/functions/createRRFenteng.dg) | Not ported yet |
-| `create_rr_main` | [createRRMain](../../zoho-export/parsed/functions/createRRMain.dg) | Not ported yet |
-| `create_rr_tony` | [createRRTony](../../zoho-export/parsed/functions/createRRTony.dg) | Not ported yet |
+| `create_receiving_from_shipment` | [createReceivingFromShipmentWidget](../../zoho-export/parsed/functions/createReceivingFromShipmentWidget.dg) | Ported |
+| `create_rr_fenteng` | [createRRFenteng](../../zoho-export/parsed/functions/createRRFenteng.dg) | Ported |
+| `create_rr_main` | [createRRMain](../../zoho-export/parsed/functions/createRRMain.dg) | Ported |
+| `create_rr_tony` | [createRRTony](../../zoho-export/parsed/functions/createRRTony.dg) | Ported |
+| `fetch_customer_from_books` | fetchCustomerFromBooks | Ported |
+| `fetch_item_from_akeneo` | fetchItemFromAkeneo | Ported |
+| `search_items_akeneo` | searchItemsAkeneo | Ported |
 
 ## Forms (database tables)
 
@@ -58,7 +61,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | PR Internal Messages | 6 | [PR_Internal_Messages.json](../../zoho-export/parsed/forms/PR_Internal_Messages.json) |
 | PR Messages | 7 | [PR_Messages.json](../../zoho-export/parsed/forms/PR_Messages.json) |
 | PR Timeline | 7 | [PR_Timeline.json](../../zoho-export/parsed/forms/PR_Timeline.json) |
-| Pack | 22 | [Pack.json](../../zoho-export/parsed/forms/Pack.json) |
 | Pick | 26 | [Pick1.json](../../zoho-export/parsed/forms/Pick1.json) |
 | Policy Settings | 7 | [Policy_Settings.json](../../zoho-export/parsed/forms/Policy_Settings.json) |
 | Projects | 9 | [Projects.json](../../zoho-export/parsed/forms/Projects.json) |
@@ -242,7 +244,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Receiving | Receiving_Sync_Shipment_Arrived | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Receiving/Receiving_Sync_Shipment_A.dg) |
 | Shipments | Shipment_Generate_Number | on add | [on success](../../zoho-export/parsed/workflows/form/Shipments/Shipment_Generate_Number.dg) |
 | Pick1 | Pick1 Marked to Pack Sync | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Pick1/Pick1_Marked_to_Pack_Sync.dg) |
-| Pack | PACK SEND TO QC | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Pack/PACK_SEND_TO_QC.dg) |
 | Checker_Checklist | QC Approved sync to Crate or Order Aggregation | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Checker_Checklist/QC_Approved_sync_to_Crate.dg) |
 | Crate_Checklist | Crating Done sync to Order Aggregation | on add or edit | [on success](../../zoho-export/parsed/workflows/form/Crate_Checklist/Crating_Done_sync_to_Orde.dg) |
 | Checker_Checklist | Show/Hide Damage Detail Fields | on add or edit | [on user input of Item_to_Replace](../../zoho-export/parsed/workflows/form/Checker_Checklist/Show_Hide_Damage_Detail_F.dg) |
@@ -261,7 +262,6 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Sales_Order_Readiness_Gate | ReadinessGate_Notify_New_Record | on add | [on success](../../zoho-export/parsed/workflows/form/Sales_Order_Readiness_Gate/ReadinessGate_Notify_New_.dg) |
 | Checker_Checklist | QC_Notify_New_Record | on add | [on success](../../zoho-export/parsed/workflows/form/Checker_Checklist/QC_Notify_New_Record.dg) |
 | Pick1 | Pick1_Notify_New_Record | on add | [on success](../../zoho-export/parsed/workflows/form/Pick1/Pick1_Notify_New_Record.dg) |
-| Pack | Pack_Notify_New_Record | on add | [on success](../../zoho-export/parsed/workflows/form/Pack/Pack_Notify_New_Record.dg) |
 | Inquiry_Messages | Notify on supplier Inquiry response | on add | [on success](../../zoho-export/parsed/workflows/form/Inquiry_Messages/Notify_on_supplier_Inquir.dg) |
 | Inquiry_Form | Notify Suppliers on Inquiry Added | on add | [on success](../../zoho-export/parsed/workflows/form/Inquiry_Form/Notify_Suppliers_on_Inqui.dg) |
 | Fenteng_Lighting_Replacement_Request | Notify Fenteng on Replacement Request added | on add | [on success](../../zoho-export/parsed/workflows/form/Fenteng_Lighting_Replacement_Request/Notify_Fenteng_on_Replace.dg) |
