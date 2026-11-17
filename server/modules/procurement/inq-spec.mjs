@@ -104,6 +104,15 @@ async function afterSave({ id, record, previous, store }) {
 
 register(FORM, { beforeAdd: beforeSave, beforeUpdate: beforeSave, afterAdd: afterSave, afterUpdate: afterSave });
 
+// A supplier's answer reaches the inquiry through the server's own write (no hooks), so the steps above would wait for the buyer's next save.
+// This runs them at once: clear the price of a line that cannot be supplied (INQ-R2), then the stamps, events, hints and alerts.
+export async function refreshInquirySpec(store, id) {
+  const rec = await store.getRecordById(FORM, id, { raw: true });
+  const { rows, changed } = clearUnavailable(rec.Supplier_Quotes || []);
+  if (changed) await store.updateRecord(FORM, id, { Supplier_Quotes: rows }, { byForm: true });
+  await afterSave({ id, store });
+}
+
 // Daily: a supplier that has not quoted after inquiry_quote_days (spec: Buyer notification, DEFAULT 2 days). One alert per inquiry.
 export async function runInquiryDaily(store, { now = new Date() } = {}) {
   const settings = await loadSettings(store);

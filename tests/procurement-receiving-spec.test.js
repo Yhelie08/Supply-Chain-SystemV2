@@ -144,3 +144,16 @@ test('silence is an alert: arrived and not counted, counted and not binned (RCV-
   assert.equal(r.alerts, 1);
   assert.equal((await raw.find('App_Notifications', (n) => n.Notification_Type === 'Receiving Not Binned')).length, 1);
 });
+
+test('the receiving record shows the forecast pickable date of its shipment (it has no forecast of its own)', async () => {
+  const { rescoreShipments } = await import('../server/modules/procurement/ship-track.mjs');
+  const ship = await raw.addRecord('Shipments', { Shipment_No: 'SHP-F', Supplier: 'Tony Fan', Shipment_Mode: 'LCL', Required_Days_Lead: 20, PO_Date: ymd(addDays(todayDate(), 0)), Target_Date: ymd(addDays(todayDate(), 120)), Stage: 'production', PO_Shipments: [{ PR_No: 'PR-1', SKU: 'L-1', Shipment_QTY: 1 }] });
+  const rcv = await raw.addRecord('Receiving', { Receive_No1: 'RCV-F', Shipments: ship, Receiving_Line_Items: [{ PR_No: 'PR-1', SKU: 'L-1', Expected_Qty: 1 }] });
+  await rescoreShipments(raw, { full: true });
+  const s = await raw.getRecordById('Shipments', ship, { raw: true });
+  const r = await raw.getRecordById('Receiving', rcv, { raw: true });
+  assert.ok(s.Forecast_Pickable);
+  assert.equal(r.Rcv_Forecast_Pickable, String(s.Forecast_Pickable).slice(0, 10));
+  await store.updateRecord('Receiving', rcv, { Rcv_Forecast_Pickable: '2000-01-01' });
+  assert.notEqual((await raw.getRecordById('Receiving', rcv, { raw: true })).Rcv_Forecast_Pickable, '2000-01-01', 'a widget cannot write it');
+});

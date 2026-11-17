@@ -208,3 +208,37 @@ test('the Suppliers record resolves from either name, never from a part of a wor
   assert.equal(resolveSupplier(rows, 'Ton'), null);
   assert.equal(resolveSupplier(rows, 'Fent'), null);
 });
+
+// ---------- found by the whole-process run: what a supplier's portal answer must trigger at once ----------
+test('a portal answer on an inquiry: a Cannot Produce line loses its price at once, and the stamps, hint and alert happen without the buyer saving', async () => {
+  for (const f of ['Inquiry_Form', 'Supplier_1', 'Supplier_2', 'Stage_Events', 'App_Notifications']) await db.query(`DELETE FROM "${f}"`);
+  const t = await raw.addRecord('Suppliers', { Supplier_ID: TONY.booksId, Supplier_Name: { first_name: 'Tony Fan' } });
+  const f = await raw.addRecord('Suppliers', { Supplier_ID: FENTENG.booksId, Supplier_Name: { first_name: 'Fenteng Lighting' } });
+  const id = await store.addRecord('Inquiry_Form', { sku: 'LAMP-1', quantity: 2, unit: 'pcs', target_date: day(40), Items: item, Suppliers: [t, f] });
+  const no = (await raw.getRecordById('Inquiry_Form', id, { raw: true })).INQ_No;
+  const tc = (await raw.find('Supplier_2', (c) => c.INQ_No_Supplier === no))[0], fc = (await raw.find('Supplier_1', (c) => c.INQ_No_Supplier === no))[0];
+  const ans = (c, extra) => [{ ...c.Supplier_quotes[0], ...extra }];
+  await store.updateRecord('Supplier_2', tc.ID, { Supplier_quotes: ans(tc, { Availability_Supplier: 'Available', Initial_Price_Supplier: '100', Final_Price_Supplier: '90', Lead_Time_Supplier: '20' }), Response_Status: 'Submit Response' }, { byForm: true });
+  await store.updateRecord('Supplier_1', fc.ID, { Supplier_quotes: ans(fc, { Availability_Supplier: 'Cannot Produce', Initial_Price_Supplier: '99', Final_Price_Supplier: '99', Lead_Time_Supplier: '10' }), Response_Status: 'Submit Response' }, { byForm: true });
+  const inq = await raw.getRecordById('Inquiry_Form', id, { raw: true });
+  const fq = inq.Supplier_Quotes.find((q) => /Fenteng/.test(q.Suppliers));
+  assert.ok(!Number(fq.Final_Price) && !Number(fq.Initial_Price) && !fq.Lead_Time, 'the price of a line that cannot be supplied is cleared');
+  assert.ok(inq.First_Quote_At, 'first quote stamped without the buyer saving');
+  assert.match(inq.Feasibility_Hints, /Tony Fan: Lead 20 days/);
+  assert.equal((await raw.find('App_Notifications', (n) => n.Notification_Type === 'Inquiry Quotes Complete')).length, 1);
+});
+
+test('a supplier\'s answer on a PR: the buyer\'s PR gets its recommendation in words and its feasibility at once', async () => {
+  for (const f of FORMS) await db.query(`DELETE FROM "${f}"`);
+  await db.query('DELETE FROM "Tony_Fan_Purchase_Request"'); await db.query('DELETE FROM "Fenteng_Lighting_Purchase_Request"');
+  await raw.addRecord('Suppliers', { Supplier_ID: TONY.booksId, Supplier_Name: { first_name: 'Tony Fan' }, Handles_All: true, Max_Capacity: 10 });
+  item = await raw.addRecord('Items', { ID1: 'B2', item_name: 'Lamp', SKU: 'S-1', Rate: '0' });
+  const id = await store.addRecord('Purchase_Request1', pr({ Target_Delivery: day(120) }));
+  const no = (await read(id)).PR_No;
+  assert.match((await read(id)).Recommendation_Reason, /No supplier has quoted/);
+  const [copy] = await raw.find('Tony_Fan_Purchase_Request', (c) => c.PR_No_Supplier2 === no);
+  await store.updateRecord('Tony_Fan_Purchase_Request', copy.ID, { Response_Status: 'Submit Response', Supplier_Selected_Supplier2: [{ Suppliers_Supplier2: 'Tony Fan', Availability_Supplier2: 'Available', Initial_Price_Supplier2: 90, Negotiated_Supplier2: 85, Final_Price_Supplier2: 80, Lead_Time_Supplier2: 20 }] }, { byForm: true });
+  const after = await read(id);
+  assert.doesNotMatch(after.Recommendation_Reason, /No supplier has quoted/, 'the recommendation was worked out after the supplier answered');
+  assert.match(after.Recommendation_Reason, /Tony Fan/);
+});

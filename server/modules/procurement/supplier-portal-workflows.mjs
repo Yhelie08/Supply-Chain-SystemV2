@@ -15,6 +15,7 @@
 // and `input.edit_counter = 0` at the end of PR_Stage_Supplier_Changed*: Zoho runs it on success, where a change to the form's input is not
 // saved, so it never locked anything.
 import { applyShipmentEvent, reportShipmentDelay } from './ship-track.mjs';
+import { refreshPrSpec } from './pr-spec.mjs';
 import { loadSettings, transitDays, customsDays } from './plan.mjs';
 import { register } from '../../workflows/index.mjs';
 import { ZohoError } from '../../criteria.mjs';
@@ -146,7 +147,7 @@ for (const { form, sfx, name } of PR_FORMS) {
         changed = JSON.stringify(next) !== JSON.stringify(row);
         return next;
       });
-      if (changed) await store.updateRecord('Purchase_Request1', pr.ID, { Supplier_Selected: rows }, { byForm: true });
+      if (changed) { await store.updateRecord('Purchase_Request1', pr.ID, { Supplier_Selected: rows }, { byForm: true }); await refreshPrSpec(store, pr.ID); }
     }
   }
 }

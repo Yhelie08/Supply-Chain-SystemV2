@@ -138,6 +138,17 @@ async function afterSave({ id, record, previous, store, user }) {
   await rescorePrs(store);
 }
 
+// The supplier's answer reaches the buyer's PR through the server's own write (no hooks): work out the spec fields (recommendation in words,
+// feasibility, pricing status, state) at once, not at the buyer's next save.
+export async function refreshPrSpec(store, id) {
+  const previous = await store.getRecordById(PR, id, { raw: true });
+  const input = {};
+  await beforeSave({ input, previous, id, store, user: '' });
+  const diff = Object.fromEntries(Object.entries(input).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(previous[k])));
+  if (Object.keys(diff).length) await store.updateRecord(PR, id, diff, { byForm: true });
+  await rescorePrs(store);
+}
+
 register(PR, {
   beforeAdd: beforeSave,
   beforeUpdate: beforeSave,

@@ -367,6 +367,8 @@ export async function rescoreShipments(store, { today = todayDate(), full = fals
   }
   // the PO list by category: each PO takes the most urgent category of its shipments (spec 03, PO list)
   await rollupPoCategories(store, rows.map(({ s, scored, item }) => ({ poId: idOf(s.PO_No), category: scored.category, rank: ranks.get(item.id), reason: scored.priority_reason, forecast: forecast_of(rows, s), done: ['received'].includes(effectiveStage(s)) })));
+  // the receiving records show the forecast pickable of their shipment
+  await (await import('./receiving-spec.mjs')).rescoreReceivings(store);
   // the replacement requests: their rank and the forecast of their replacement shipment
   await rollupRr(store, rows.map((r) => ({ ...r.s, Forecast_Pickable: r.forecast ? ymd(r.forecast.pickable) : '' })));
   // decisions the engine prepares, and the ones that went stale (spec 05/06 AQ-4)

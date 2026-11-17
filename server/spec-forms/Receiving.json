@@ -80,6 +80,12 @@
       "label": "Arrived on (gate log)",
       "type": "text",
       "helpText": "Write-only: yyyy-MM-dd or yyyy-MM-dd HH:mm. The server stamps Arrived with when it happened and when we were told."
+    },
+    {
+      "name": "Rcv_Forecast_Pickable",
+      "label": "Forecast Pickable",
+      "type": "date",
+      "helpText": "The forecast pickable date of the shipment this receiving belongs to (Ship & Track). Server-written."
     }
   ]
 }

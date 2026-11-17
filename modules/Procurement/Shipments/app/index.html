@@ -1281,7 +1281,12 @@ function forecastCell(r) {
   var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
   var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
 
-  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+  if (!raw && !status) {
+    /* The delivery forecast above is written only by the Forecast_Stamp_Daily schedule (01:00), so a new shipment has none until the next
+       morning. Until then show the forecast pickable date of Ship & Track (worked out at once, spec 03), in grey, so the column is never blank. */
+    if (r.Forecast_Pickable) return '<span title="Forecast pickable (Ship & Track). The delivery forecast is stamped every day at 01:00." style="white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569">pickable ' + fcEsc(forecastDateText(r.Forecast_Pickable)) + '</span>';
+    return '<span style="color:#cbd5e1">—</span>';
+  }
 
   var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
   var date = raw ? fcEsc(forecastDateText(raw)) : "—";

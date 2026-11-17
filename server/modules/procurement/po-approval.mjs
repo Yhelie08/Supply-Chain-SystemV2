@@ -139,6 +139,13 @@ export async function shipmentAndReceivingFor(store, ctx, S, poNo, shipExtra = {
     }
   }
   await store.updateRecord('Shipments', ship.ID, { ...shipPatch, PO_Shipments: shipLines }, { byForm: true });
+  { // spec v1.4: the planned dates (PO date + 1 + production + ...), the order date and the rank are set now, not at the next scoring
+    const st = await import('./ship-track.mjs'), pl = await import('./plan.mjs');
+    const fresh = await store.getRecordById('Shipments', ship.ID, { raw: true });
+    const plan = await st.planPatch(store, fresh, await pl.loadSettings(store));
+    if (Object.keys(plan).length) await store.updateRecord('Shipments', ship.ID, plan, { byForm: true });
+    await st.rescoreShipments(store);
+  }
   if (isNewShipment && S.ship) { // HC System (local) has no supplier copy of the shipment
     await store.addRecord(S.ship, {
       Shipment_No: ship.Shipment_No, Parent_Shipment_ID: String(ship.ID),

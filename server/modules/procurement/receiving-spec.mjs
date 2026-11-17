@@ -21,7 +21,7 @@ const n = (v) => (blank(v) ? 0 : toNum(v));
 const toDay = (v) => { const w = parseWhen(v); return w ? new Date(w.date.getFullYear(), w.date.getMonth(), w.date.getDate()) : parseDate(v); };
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const dm = (d) => `${d.getDate()} ${MON[d.getMonth()]}`;
-const SERVER_ONLY = ['Order_Date', 'Arrived_At', 'Counted_At', 'Binned_At', 'Available_At', 'Rcv_State', 'Days_Waiting', 'Queue_Rank', 'Priority_Reason', 'Suggested_Action', 'Line_Stamps'];
+const SERVER_ONLY = ['Order_Date', 'Arrived_At', 'Counted_At', 'Binned_At', 'Available_At', 'Rcv_State', 'Days_Waiting', 'Queue_Rank', 'Priority_Reason', 'Suggested_Action', 'Line_Stamps', 'Rcv_Forecast_Pickable'];
 const lineKey = (l) => `${text(l.PR_No)}|${text(l.SKU)}`;
 const counted = (l) => n(l.Accepted_Qty) + n(l.Damage_Qty) + n(l.Missing_Qty) > 0;
 const fullyCounted = (l) => n(l.Expected_Qty) > 0 && n(l.Accepted_Qty) + n(l.Damage_Qty) + n(l.Missing_Qty) >= n(l.Expected_Qty);
@@ -138,7 +138,7 @@ export async function rescoreReceivings(store, { today = todayDate() } = {}) {
     if (prNos.length) for (const p of await store.find('Purchase_Request1', (x) => prNos.includes(text(x.PR_No)), { criteria: `(${prNos.map((k) => `PR_No == ${JSON.stringify(k)}`).join(' || ')})` })) { const d = toDay(p.Order_Date); if (d && (!order || d < order)) order = d; }
     if (!order && text(ship?.Order_Date)) order = toDay(ship.Order_Date);
     const planned = toDay(ship?.Receive_Planned || ship?.Arrival_Planned);
-    rows.push({ r, state, waiting, order, planned });
+    rows.push({ r, state, waiting, order, planned, forecast: text(ship?.Forecast_Pickable).slice(0, 10) });
   }
   const live = rows.filter((x) => x.state !== 'available');
   const ordered = [...live].sort((a, b) => (STATE_RANK[a.state] - STATE_RANK[b.state]) || ((a.order?.getTime() ?? Infinity) - (b.order?.getTime() ?? Infinity)) || String(a.r.Receive_No1).localeCompare(String(b.r.Receive_No1), undefined, { numeric: true }));
@@ -148,7 +148,7 @@ export async function rescoreReceivings(store, { today = todayDate() } = {}) {
     const reasonParts = [x.order ? `SO dated ${dm(x.order)} (${dayDiff(today, x.order)} days)` : 'no order date'];
     reasonParts.push(x.state === 'expected' ? `expected ${x.planned ? dm(x.planned) : 'date not known'}` : x.state === 'arrived' ? `arrived${x.waiting != null ? ` ${x.waiting} day(s) ago` : ''}, not counted` : x.state === 'counted' ? `counted${x.waiting != null ? ` ${x.waiting} day(s) ago` : ''}, not binned` : x.state === 'binned' ? 'binned, becoming available' : 'available');
     const action = text(x.r.Suggested_Action) || (x.state === 'arrived' ? 'Count and inspect it' : x.state === 'counted' ? 'Write the bin location' : '');
-    const want = { Rcv_State: x.state, Days_Waiting: x.waiting ?? '', Queue_Rank: x.state === 'available' ? '' : rank.get(String(x.r.ID)) ?? '', Priority_Reason: reasonParts.join(' · '), Suggested_Action: action, Order_Date: x.order ? ymd(x.order) : '' };
+    const want = { Rcv_State: x.state, Days_Waiting: x.waiting ?? '', Queue_Rank: x.state === 'available' ? '' : rank.get(String(x.r.ID)) ?? '', Rcv_Forecast_Pickable: x.forecast, Priority_Reason: reasonParts.join(' · '), Suggested_Action: action, Order_Date: x.order ? ymd(x.order) : '' };
     const diff = Object.fromEntries(Object.entries(want).filter(([k, v]) => text(v) !== text(x.r[k])));
     if (!Object.keys(diff).length) continue;
     await store.updateRecord(RCV, x.r.ID, diff, { byForm: true });

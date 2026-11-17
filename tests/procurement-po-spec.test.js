@@ -266,3 +266,16 @@ test('a held or cancelled PR cannot be added to a PO: it is skipped and named in
   assert.match(r.message, /Skipped .*PR-2 \(On Hold\)/);
   assert.notEqual((await prOf('PR-2')).PR_Approved, true);
 });
+
+test('Create PO for the supplier: the new shipment has its planned dates, its order date and its rank at once (not at the next scoring)', async () => {
+  await base();
+  await raw.addRecord('Sales_Order_Fulfillment', { SO_No: 'SO-A', SO_Created_Date: day(-9) });
+  await pr('PR-1', 'SO-A');
+  await approvePOMain({ soNo: 'SO-A' }, raw);
+  await approveSupplierPO('Tony', { soNo: 'SO-A' }, raw);
+  const [ship] = await raw.find('Shipments');
+  assert.ok(ship.Production_Start_Planned && ship.Production_End_Planned && ship.Shipout_Planned && ship.Arrival_Planned && ship.Receive_Planned);
+  assert.equal(ship.Production_Start_Planned, day(1), 'PO date + 1');
+  assert.equal(ship.Order_Date, day(-9));
+  assert.ok(ship.Category && ship.Queue_Rank, 'scored at once');
+});
