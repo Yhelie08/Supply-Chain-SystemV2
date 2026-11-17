@@ -242,6 +242,48 @@
       "label": "Forecast Status",
       "type": "text",
       "required": false
+    },
+    {
+      "name": "Category",
+      "label": "Category",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Blocked_Reason",
+      "label": "Blocked Reason",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Queue_Rank",
+      "label": "Queue Rank",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Priority_Reason",
+      "label": "Priority Reason",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Suggested_Action",
+      "label": "Suggested Action",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "Suggested_Release",
+      "label": "Suggested Release",
+      "type": "checkbox",
+      "required": false
+    },
+    {
+      "name": "Scored_At",
+      "label": "Scored At",
+      "type": "text",
+      "required": false
     }
   ]
 }
