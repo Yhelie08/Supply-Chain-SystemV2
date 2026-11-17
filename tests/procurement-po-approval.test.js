@@ -206,3 +206,31 @@ test('Create RR (Tony): the copy takes the number of its main RR, once, and stam
 test('Create RR: an exception that does not exist is refused', async () => {
   assert.equal((await createRRMain({ exceptionId: '99999999' }, store)).message, 'Exception not found.');
 });
+
+// ---------- Approve_P_O_H_C: the local (HC System) POs ----------
+import { approvePOHC } from '../server/modules/procurement/po-approval.mjs';
+
+test('Create PO, local (HC System): the PO of the Local PRs gets one Pending shipment and one Receiving record with its lines, and is Confirmed; no supplier copy; once', async () => {
+  await seed('HC System');
+  for (const p of await prs()) await store.updateRecord('Purchase_Request1', p.ID, { Sourcing_Type: 'Local' }, { byForm: true });
+  await approvePOMain({ soNo: 'SO-A' }, store);
+  const res = await approvePOHC({ soNo: 'SO-A' }, store);
+  assert.deepEqual([res.status, res.processed], ['success', 1], JSON.stringify(res));
+  const [po] = await store.find('Purchase_Order');
+  assert.equal(po.PO_Status, 'Confirmed');
+  const [ship] = await store.find('Shipments');
+  assert.deepEqual([ship.Supplier, ship.Shipment_Status, ship.PO_Shipments.map((l) => l.PR_No)], ['HC System', 'Pending', ['PR-1', 'PR-2']]);
+  const [rcv] = await store.find('Receiving');
+  assert.deepEqual([rcv.Supplier, rcv.PO_No, rcv.Receive_Status, rcv.Receiving_Line_Items.map((l) => [l.PR_No, Number(l.Expected_Qty)])],
+    ['HC System', 'PO-00001', 'Pending', [['PR-1', 2], ['PR-2', 1]]]);
+  await approvePOHC({ soNo: 'SO-A' }, store);
+  for (const [form, n] of [['Shipments', 1], ['Receiving', 1], ['Tony_Shipment', 0], ['Fenteng_Shipment', 0]]) assert.equal((await store.find(form)).length, n, form);
+  assert.equal((await store.find('Shipments'))[0].PO_Shipments.length, 2, 'no line twice');
+});
+
+test('Create PO, local: PRs that are not Local are left to the supplier functions', async () => {
+  await seed();
+  await approvePOMain({ soNo: 'SO-A' }, store);
+  assert.equal((await approvePOHC({ soNo: 'SO-A' }, store)).processed, 0);
+  assert.equal((await store.find('Shipments')).length, 0);
+});

@@ -5,7 +5,7 @@ import { create_estimate } from './estimates.mjs';
 import { search_items_akeneo, fetch_item_from_akeneo } from './akeneo-apis.mjs';
 import { create_receiving_from_shipment } from './receiving-buttons.mjs';
 import { clone_shipment_for_replacement } from './clone-shipment.mjs';
-import { approve_po_main, approve_po_tony, approve_po_fenteng } from './po-approval.mjs';
+import { approve_po_main, approve_po_tony, approve_po_fenteng, Approve_P_O_H_C } from './po-approval.mjs';
 import { create_rr_main, create_rr_tony, create_rr_fenteng } from './replacement-requests.mjs';
 
 // Custom API name -> the Deluge function it runs (zoho-export/parsed/functions/).
@@ -33,5 +33,5 @@ export const functions = {
 export const apis = withPlaceholders(functions, {
   add_item_by_id, create_books_contact, create_estimate, fetch_customer_from_books, search_items_akeneo, fetch_item_from_akeneo,
   create_receiving_from_shipment, clone_shipment_for_replacement,
-  approve_po_main, approve_po_tony, approve_po_fenteng, create_rr_main, create_rr_tony, create_rr_fenteng,
+  approve_po_main, approve_po_tony, approve_po_fenteng, Approve_P_O_H_C, create_rr_main, create_rr_tony, create_rr_fenteng,
 });

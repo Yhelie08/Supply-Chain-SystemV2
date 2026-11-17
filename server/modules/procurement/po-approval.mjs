@@ -2,6 +2,7 @@
 //   approvePOMain      (custom API approve_po_main)    the approved PRs of one sales order become lines of the PURCHASE ORDER
 //   approvePOTony / approvePOFenteng (approve_po_tony / approve_po_fenteng)
 //                      the same lines go to the supplier's own copy of the PO, the shipment is made, and the Receiving record
+//   approvePOHC        (Approve_P_O_H_C)               the local (HC System) POs: shipment + Receiving, PO Confirmed
 // Not ported: the second half of the Tony / Fenteng functions, which books the PO in Zoho Books (on hold). Everything before it is here.
 // The handlers write with the raw store (no workflow hooks), as the Deluge functions do, so the totals, numbers and dates are worked
 // out here, in the same order as the scripts.
@@ -202,7 +203,7 @@ export async function shipmentAndReceivingFor(store, ctx, S, poNo, shipExtra = {
     }
   }
   await store.updateRecord('Shipments', ship.ID, { ...shipPatch, PO_Shipments: shipLines }, { byForm: true });
-  if (isNewShipment) {
+  if (isNewShipment && S.ship) { // HC System (local) has no supplier copy of the shipment
     await store.addRecord(S.ship, {
       Shipment_No: ship.Shipment_No, Parent_Shipment_ID: String(ship.ID),
       [S.grid]: shipLines.map((l) => ({ SKU: l.SKU, Item_Name: l.Item_Name, PR_No: l.PR_No, RR_No: '' })),
@@ -229,6 +230,25 @@ export async function shipmentAndReceivingFor(store, ctx, S, poNo, shipExtra = {
   await store.updateRecord('Receiving', rcv.ID, { ...rcvPatch, ...totals, Receiving_Line_Items: lines }, { byForm: true });
 }
 
+// ---------------- approvePOHC (custom API Approve_P_O_H_C): the local (HC System) POs ----------------
+// Every PO linked to an approved Local PR of the sales order gets its shipment (a Pending one is re-used) and its Receiving record,
+// with the lines that are not there yet, and the PO becomes Confirmed. No supplier copy: HC System is our own sourcing.
+export async function approvePOHC({ soNo }, store, ctx = {}) {
+  soNo = text(soNo);
+  if (soNo === '') return fail('soNo is required.');
+  const prs = await store.find(PR, (p) => text(p.Sales_Order) === soNo && truthy(p.PR_Approved) && text(p.Link_PO_No) !== '' && text(p.Sourcing_Type) === 'Local', { criteria: crit('Sales_Order', soNo) });
+  let processed = 0;
+  for (const poNo of [...new Set(prs.map((p) => text(p.Link_PO_No)))]) {
+    const [apo] = await store.find(PO, (p) => text(p.PO_No) === poNo, { criteria: crit('PO_No', poNo) });
+    if (!apo) continue; // Zoho would stop with an error on a missing PO; here it is skipped
+    await shipmentAndReceivingFor(store, ctx, { name: 'HC System' }, poNo);
+    await store.updateRecord(PO, apo.ID, { PO_Status: 'Confirmed' }, { byForm: true });
+    processed++;
+  }
+  return { status: 'success', processed, message: `${processed} HC System PO(s) synced` };
+}
+
+export const Approve_P_O_H_C = (payload, store, ctx) => approvePOHC(payload || {}, store, ctx);
 export const approve_po_main = (payload, store, ctx) => approvePOMain(payload || {}, store, ctx);
 export const approve_po_tony = (payload, store, ctx) => approveSupplierPO('Tony', payload || {}, store, ctx);
 export const approve_po_fenteng = (payload, store, ctx) => approveSupplierPO('Fenteng', payload || {}, store, ctx);
