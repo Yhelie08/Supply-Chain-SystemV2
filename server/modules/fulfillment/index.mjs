@@ -6,6 +6,7 @@ import './pipeline.mjs';
 import './qc-routing.mjs';
 import './crate-dispatch.mjs';
 import './exception-recheck.mjs';
+import './sorter-hooks.mjs';
 
 export default {
   label: 'Fulfillment',

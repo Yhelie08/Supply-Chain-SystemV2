@@ -7,6 +7,7 @@ import { createStore } from '../server/pg/store.mjs';
 import { createHookedStore } from '../server/workflows/index.mjs';
 import { workflows } from '../server/workflows/all.mjs';
 import { rescoreOne, rescoreAll } from '../server/modules/fulfillment/sorter.mjs';
+import '../server/modules/fulfillment/sorter-hooks.mjs';
 
 const SOF = 'Sales_Order_Fulfillment';
 let db, raw, store;
@@ -50,4 +51,21 @@ test('rescoreOne: rescores only the named SO, but still re-ranks everything else
   const bySo = Object.fromEntries(rows.map((r) => [r.SO_No, r]));
   assert.ok(bySo['SO-1'].Category);
   assert.ok(bySo['SO-2'].Category); // ranking is global even when only one SO's inputs changed
+});
+
+test('saving a Sales_Order_Fulfillment record scores it automatically (no manual rescore call)', async () => {
+  const id = await store.addRecord(SOF, { SO_No: 'SO-9', Fulfillment_Stage: 'Order Readiness', order_type: 'Normal', SO_Created_Date: '2026-11-01', target_delivery_date: '2026-12-15', Shipping_Address: '1 Main St', Item_Details1: [{ Quantity: '1' }] });
+  const row = await raw.getRecordById(SOF, id, { raw: true });
+  assert.equal(row.Category, 'on_time');
+  assert.ok(row.Scored_At);
+});
+
+test('an unpaid Readiness Gate save re-scores the package it belongs to (Blocked flips to a workable category)', async () => {
+  const id = await store.addRecord(SOF, { SO_No: 'SO-10', Fulfillment_Stage: 'Order Readiness', order_type: 'Normal', Package: 'PAC-10', SO_Created_Date: '2026-11-01', target_delivery_date: '2026-12-15', Shipping_Address: '1 Main St', Item_Details1: [{ Quantity: '1' }] });
+  const gateId = await store.addRecord('Sales_Order_Readiness_Gate', { sales_order_number: 'SO-10', Package_Order: 'PAC-10', payment_status: 'Partial', Has_Credit_Terms: false });
+  let row = await raw.getRecordById(SOF, id, { raw: true });
+  assert.equal(row.Category, 'blocked');
+  await store.updateRecord('Sales_Order_Readiness_Gate', gateId, { payment_status: 'Yes' }, { byForm: true });
+  row = await raw.getRecordById(SOF, id, { raw: true });
+  assert.equal(row.Category, 'on_time');
 });
