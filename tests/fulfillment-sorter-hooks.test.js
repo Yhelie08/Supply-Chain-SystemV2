@@ -8,6 +8,7 @@ import { createHookedStore } from '../server/workflows/index.mjs';
 import { workflows } from '../server/workflows/all.mjs';
 import { rescoreOne, rescoreAll } from '../server/modules/fulfillment/sorter.mjs';
 import '../server/modules/fulfillment/sorter-hooks.mjs';
+import { apis } from '../server/modules/fulfillment/apis.mjs';
 
 const SOF = 'Sales_Order_Fulfillment';
 let db, raw, store;
@@ -68,4 +69,11 @@ test('an unpaid Readiness Gate save re-scores the package it belongs to (Blocked
   await store.updateRecord('Sales_Order_Readiness_Gate', gateId, { payment_status: 'Yes' }, { byForm: true });
   row = await raw.getRecordById(SOF, id, { raw: true });
   assert.equal(row.Category, 'on_time');
+});
+
+test('recalculate_fulfillment_queue custom API rescored everything and reports a count', async () => {
+  await store.addRecord(SOF, { SO_No: 'SO-20', Fulfillment_Stage: 'Order Readiness', order_type: 'Normal', Shipping_Address: '1 Main St', Item_Details1: [{ Quantity: '1' }] });
+  const result = await apis.recalculate_fulfillment_queue({}, raw, {});
+  assert.equal(result.status, 'success');
+  assert.equal(result.scored, 1);
 });

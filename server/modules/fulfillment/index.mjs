@@ -2,6 +2,7 @@
 import './workflows.mjs';
 import { apis, functions } from './apis.mjs';
 import { runForecastStampDaily, runBackfillPreOrder } from '../../forecast/schedule.mjs';
+import { rescoreAll } from './sorter.mjs';
 import './pipeline.mjs';
 import './qc-routing.mjs';
 import './crate-dispatch.mjs';
@@ -24,5 +25,6 @@ export default {
   schedules: [
     { name: 'Forecast_Stamp_Daily', at: '01:00', timeZone: 'Asia/Manila', run: (store, ctx) => runForecastStampDaily(store, ctx) },
     { name: 'Backfill_PreOrder_Forecas', at: '01:00', timeZone: 'Asia/Manila', run: (store, ctx) => runBackfillPreOrder(store, ctx) },
+    { name: 'Recalculate_Fulfillment_Queue', at: '05:00', timeZone: 'Asia/Manila', run: (store) => rescoreAll(store) },
   ],
 };
