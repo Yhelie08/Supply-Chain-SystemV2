@@ -6,6 +6,7 @@ import { blank } from '../../workflows/deluge.mjs';
 import { needsPaymentApproval } from './workflows.mjs';
 import { zohoNow, today } from '../../criteria.mjs';
 import { policyReader } from '../delivery-management/scheduling.mjs';
+import { STAGE_ORDER } from './pipeline.mjs';
 
 const SOF_NAME = 'Sales_Order_Fulfillment';
 const OPEN_STAGE = (stage) => stage !== 'For Delivery';
@@ -116,29 +117,39 @@ function compare(a, b) {
   return 0;
 }
 
-export function rankAndCutLine(entries, { policy = () => null } = {}) {
+const WIP_STAGES = new Set(STAGE_ORDER.slice(STAGE_ORDER.indexOf('Picking'), STAGE_ORDER.indexOf('Order Aggregation') + 1));
+const isWip = (sof) => WIP_STAGES.has(text(sof.Fulfillment_Stage));
+
+// Cut line (05/01 §4): free capacity today = capacityBoxes minus work already in progress (released and not
+// yet aggregated). A WIP entry still gets a rank (for Kanban/dashboard display) but is never walked against
+// free capacity again (it already consumed capacity the day it was released) and never gets suggestedRelease
+// (releasing already happened for it). Only not-yet-released entries are walked down the ranked list.
+export function rankAndCutLine(entries, { capacityBoxes }) {
   const sorted = entries.slice().sort(compare);
-  const cutLine = Number(policy('fulfillment_cut_line_boxes')) || 50;
+  const wipBoxes = sorted.filter((e) => isWip(e.sof)).reduce((n, e) => n + effectiveBoxes(e.sof), 0);
+  const freeCapacity = Math.max(0, capacityBoxes - wipBoxes);
   let used = 0;
   return sorted.map((e, i) => {
+    if (isWip(e.sof)) return { ...e, queueRank: i + 1, suggestedRelease: false };
     const boxes = effectiveBoxes(e.sof);
-    const fitsBefore = used < cutLine;
+    const fitsBefore = used < freeCapacity;
     used += boxes;
     return { ...e, queueRank: i + 1, suggestedRelease: fitsBefore };
   });
 }
 
 async function scoreAllOpenPackages(store) {
-  const [sofs, gates, exceptions, policy] = await Promise.all([
+  const [sofs, gates, exceptions, policy, capacity] = await Promise.all([
     store.find(SOF_NAME, (r) => OPEN_STAGE(r.Fulfillment_Stage)),
     store.find('Sales_Order_Readiness_Gate'),
     store.find('Exception_Control1'),
     policyReader(store),
+    capacityFor(store, today()),
   ]);
   const openExceptions = exceptions.filter((e) => OPEN_EXCEPTION_STATUSES.has(text(e.Status)));
   const now = new Date();
   const entries = sofs.map((sof) => ({ sof, ...categorize(sof, { gates, openExceptions, now, policy }) }));
-  return rankAndCutLine(entries, { policy });
+  return rankAndCutLine(entries, { capacityBoxes: capacity.capacityBoxes });
 }
 
 // Writes the scored result back onto Sales_Order_Fulfillment. Suggested_Action is left blank this slice: the

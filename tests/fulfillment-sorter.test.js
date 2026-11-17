@@ -102,13 +102,13 @@ test('categorize: blocked wins over broken, broken wins over late', () => {
   assert.equal(out.category, 'blocked'); // blocked beats everything
 });
 
-function entry(so, { created, target, items = [{ Quantity: '1' }], category = 'on_time' } = {}) {
-  return { sof: { SO_No: so, SO_Created_Date: created, target_delivery_date: target, Item_Details1: items }, category, priorityReason: 'x' };
+function entry(so, { created, target, items = [{ Quantity: '1' }], category = 'on_time', stage = 'Order Readiness' } = {}) {
+  return { sof: { SO_No: so, SO_Created_Date: created, target_delivery_date: target, Item_Details1: items, Fulfillment_Stage: stage }, category, priorityReason: 'x' };
 }
 
 test('rankAndCutLine: oldest SO_Created_Date ranks first regardless of input order', () => {
   const entries = [entry('SO-2', { created: '2026-11-10' }), entry('SO-1', { created: '2026-11-01' })];
-  const out = rankAndCutLine(entries, { policy: () => null });
+  const out = rankAndCutLine(entries, { capacityBoxes: 50 });
   assert.deepEqual(out.map((e) => e.sof.SO_No), ['SO-1', 'SO-2']);
   assert.deepEqual(out.map((e) => e.queueRank), [1, 2]);
 });
@@ -118,31 +118,55 @@ test('rankAndCutLine: same created date, earlier target_delivery_date wins the t
     entry('SO-2', { created: '2026-11-01', target: '2026-12-05' }),
     entry('SO-1', { created: '2026-11-01', target: '2026-11-20' }),
   ];
-  const out = rankAndCutLine(entries, { policy: () => null });
+  const out = rankAndCutLine(entries, { capacityBoxes: 50 });
   assert.deepEqual(out.map((e) => e.sof.SO_No), ['SO-1', 'SO-2']);
 });
 
 test('rankAndCutLine: SO_No ascending is the final tiebreak', () => {
   const entries = [entry('SO-20', { created: '2026-11-01' }), entry('SO-3', { created: '2026-11-01' })];
-  const out = rankAndCutLine(entries, { policy: () => null });
+  const out = rankAndCutLine(entries, { capacityBoxes: 50 });
   assert.deepEqual(out.map((e) => e.sof.SO_No), ['SO-3', 'SO-20']);
 });
 
-test('rankAndCutLine: cut line marks suggested_release up to the box-count setting, using line-quantity sum as the box-count stand-in', () => {
+test('rankAndCutLine: cut line marks suggested_release up to free capacity, using effectiveBoxes as the box count', () => {
   const entries = [
     entry('SO-1', { created: '2026-11-01', items: [{ Quantity: '5' }] }),
     entry('SO-2', { created: '2026-11-02', items: [{ Quantity: '5' }] }),
     entry('SO-3', { created: '2026-11-03', items: [{ Quantity: '5' }] }),
   ];
-  const policy = (key) => (key === 'fulfillment_cut_line_boxes' ? '8' : null); // room for SO-1 (5) + part of SO-2 (5) = 10 > 8, so SO-1 and SO-2 both fit, SO-3 does not
-  const out = rankAndCutLine(entries, { policy });
+  // capacity 8: SO-1 (5) fits (0 < 8), SO-2 (5) fits (5 < 8), SO-3 (5) does not (10 >= 8)
+  const out = rankAndCutLine(entries, { capacityBoxes: 8 });
   assert.deepEqual(out.map((e) => [e.sof.SO_No, e.suggestedRelease]), [['SO-1', true], ['SO-2', true], ['SO-3', false]]);
+});
+
+test('rankAndCutLine: a WIP-stage entry (Picking/Pack & QC/Crate/Order Aggregation) never gets suggestedRelease and never consumes capacity twice', () => {
+  const entries = [
+    entry('SO-1', { created: '2026-11-01', items: [{ Quantity: '100' }], stage: 'Picking' }), // huge WIP box count
+    entry('SO-2', { created: '2026-11-02', items: [{ Quantity: '5' }], stage: 'Order Readiness' }),
+  ];
+  // Free capacity = 200 (capacityBoxes) - 100 (WIP) = 100, plenty of room left for SO-2's 5 boxes.
+  const out = rankAndCutLine(entries, { capacityBoxes: 200 });
+  const so1 = out.find((e) => e.sof.SO_No === 'SO-1');
+  const so2 = out.find((e) => e.sof.SO_No === 'SO-2');
+  assert.equal(so1.suggestedRelease, false); // WIP: already released, never re-suggested
+  assert.equal(so2.suggestedRelease, true); // free capacity (100) comfortably covers its 5 boxes
+  assert.ok(Number.isInteger(so1.queueRank) && Number.isInteger(so2.queueRank)); // both still ranked for display
+});
+
+test('rankAndCutLine: WIP exceeding capacity floors free capacity at 0 — nothing new is suggested, without throwing', () => {
+  const entries = [
+    entry('SO-1', { created: '2026-11-01', items: [{ Quantity: '999' }], stage: 'Crate' }),
+    entry('SO-2', { created: '2026-11-02', items: [{ Quantity: '1' }], stage: 'Order Readiness' }),
+  ];
+  const out = rankAndCutLine(entries, { capacityBoxes: 10 }); // WIP alone (999) already blows past capacity (10)
+  const so2 = out.find((e) => e.sof.SO_No === 'SO-2');
+  assert.equal(so2.suggestedRelease, false);
 });
 
 test('rankAndCutLine: determinism — two runs on the same unordered input give identical output', () => {
   const entries = [entry('SO-5', { created: '2026-11-05' }), entry('SO-1', { created: '2026-11-01' }), entry('SO-3', { created: '2026-11-03' })];
-  const a = rankAndCutLine(entries, { policy: () => null });
-  const b = rankAndCutLine(entries.slice().reverse(), { policy: () => null });
+  const a = rankAndCutLine(entries, { capacityBoxes: 50 });
+  const b = rankAndCutLine(entries.slice().reverse(), { capacityBoxes: 50 });
   assert.deepEqual(a.map((e) => e.sof.SO_No), b.map((e) => e.sof.SO_No));
   assert.deepEqual(a.map((e) => e.queueRank), b.map((e) => e.queueRank));
 });
