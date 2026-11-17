@@ -1,0 +1,31 @@
+{
+  "name": "Capacity_Days",
+  "label": "Capacity Days",
+  "successMessage": "Data Added Successfully!",
+  "fields": [
+    {
+      "name": "Date",
+      "label": "Date",
+      "type": "date",
+      "required": false
+    },
+    {
+      "name": "People",
+      "label": "People",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Boxes_Per_Hour",
+      "label": "Boxes Per Hour",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Hours_Per_Day",
+      "label": "Hours Per Day",
+      "type": "number",
+      "required": false
+    }
+  ]
+}

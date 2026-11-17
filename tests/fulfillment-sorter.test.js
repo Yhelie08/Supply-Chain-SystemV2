@@ -14,7 +14,7 @@ before(async () => {
   await ensureSchema(db);
   raw = createStore({ query: (sql, params) => db.query(sql, params), transaction: (fn) => db.transaction(fn) });
 });
-beforeEach(async () => { for (const f of [SOF, 'Sales_Order_Readiness_Gate', 'Exception_Control1', 'Customer']) await db.query(`DELETE FROM "${f}"`); });
+beforeEach(async () => { for (const f of [SOF, 'Sales_Order_Readiness_Gate', 'Exception_Control1', 'Customer', 'Capacity_Days']) await db.query(`DELETE FROM "${f}"`); });
 
 test('the six queue columns exist on Sales_Order_Fulfillment', async () => {
   const id = await raw.addRecord(SOF, { SO_No: 'SO-1', Category: 'on_time', Queue_Rank: '1', Suggested_Release: true });
@@ -29,6 +29,14 @@ test('Box_Count and Box_Count_Source columns exist on Sales_Order_Fulfillment', 
   const r = await raw.getRecordById(SOF, id, { raw: true });
   assert.equal(r.Box_Count, '7');
   assert.equal(r.Box_Count_Source, 'counted');
+});
+
+test('Capacity_Days form exists with Date/People/Boxes_Per_Hour/Hours_Per_Day', async () => {
+  const id = await raw.addRecord('Capacity_Days', { Date: '2026-11-17', People: '4', Boxes_Per_Hour: '8', Hours_Per_Day: '7' });
+  const r = await raw.getRecordById('Capacity_Days', id, { raw: true });
+  assert.equal(r.People, '4');
+  assert.equal(r.Boxes_Per_Hour, '8');
+  assert.equal(r.Hours_Per_Day, '7');
 });
 
 const NOW = new Date('2026-11-17T00:00:00Z');
