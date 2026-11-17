@@ -138,6 +138,10 @@
 
     <div id="dashboardTabView" class="flex-1 min-h-0 flex flex-col">
 
+    <!-- Capacity bar (spec 05 Shared Engines / 02 Calculators §1): today's people / boxes-per-hour / hours,
+         the resulting capacity, and how much is suggested for release today. -->
+    <div id="capacityBar" class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 mb-4 flex flex-wrap items-center gap-4 text-sm"></div>
+
     <!-- Category tabs (sorting engine: spec 03 Fulfillment / 02 Order Readiness). "Today's release" (all
          Suggested_Release=true across every category) is the default landing view. -->
     <div id="categoryTabs" class="flex flex-wrap gap-2 mb-4 shrink-0"></div>
@@ -1464,11 +1468,68 @@ function forecastCell(r) {
     return sofQueueMap.get(sofQueueKey(gateRow.sales_order_number, gateRow.Package_Order)) || {};
   }
 
+  // Capacity bar (05/02 §1). report_name "Capacity_Days" works directly: a report with no entry of its own
+  // resolves to the form of the same name (server/model.mjs's formOfReport), so no separate report exists.
+  function todayDateStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+  function fetchTodayCapacity() {
+    return ZOHO.CREATOR.DATA.getRecords({
+      app_name: CONFIG.APP_NAME, report_name: "Capacity_Days", field_config: "all", max_records: 1,
+      criteria: `(Date == "${todayDateStr()}")`,
+    }).then((response) => (response && response.data && response.data[0]) || null).catch(() => null);
+  }
+
+  function renderCapacityBar(capacityRow) {
+    const people = capacityRow ? Number(capacityRow.People) : 4;
+    const boxesPerHour = capacityRow ? Number(capacityRow.Boxes_Per_Hour) : 8;
+    const hoursPerDay = capacityRow ? Number(capacityRow.Hours_Per_Day) : 7;
+    const capacityBoxes = people * boxesPerHour * hoursPerDay;
+    const suggestedCount = allRecords.filter((r) => isTrue(sofQueueFor(r).Suggested_Release)).length;
+    document.getElementById("capacityBar").innerHTML = `
+      <label class="flex items-center gap-1.5 font-medium text-slate-600">People today:
+        <input id="capacityPeopleInput" type="number" min="0" value="${people}" class="w-16 border border-slate-200 rounded px-2 py-1 text-sm" />
+      </label>
+      <span class="text-slate-500">&times; ${boxesPerHour} boxes/hr &times; ${hoursPerDay} hrs = <strong>${capacityBoxes} boxes capacity</strong></span>
+      <span class="text-slate-500">Suggested today: <strong>${suggestedCount}</strong></span>
+    `;
+    document.getElementById("capacityPeopleInput").addEventListener("change", (ev) => {
+      const n = parseInt(ev.target.value, 10);
+      if (!Number.isFinite(n) || n < 0) return;
+      saveTodayPeople(n, capacityRow);
+    });
+  }
+
+  // A criteria matching zero rows makes updateRecords throw (server/pg/api.mjs: ZohoError 9280), it does not
+  // resolve with an empty array — so this checks for an existing row (already fetched for the bar) rather than
+  // updating first and falling back to create on failure.
+  function saveTodayPeople(n, existingRow) {
+    if (existingRow) {
+      ZOHO.CREATOR.DATA.updateRecords({
+        app_name: CONFIG.APP_NAME, report_name: "Capacity_Days",
+        payload: { criteria: `(Date == "${todayDateStr()}")`, data: { People: String(n) } },
+      }).then((response) => {
+        if (response && response.code === 3000) toast("Updated.", "success");
+        else toast("Couldn't update today's capacity.", "error");
+      });
+    } else {
+      ZOHO.CREATOR.DATA.addRecords({
+        app_name: CONFIG.APP_NAME, form_name: "Capacity_Days",
+        payload: { data: { Date: todayDateStr(), People: String(n), Boxes_Per_Hour: "8", Hours_Per_Day: "7" } },
+      }).then((response) => {
+        if (response && response.code === 3000) toast("Capacity set for today.", "success");
+        else toast("Couldn't save today's capacity.", "error");
+      });
+    }
+  }
+
   function loadLive() {
     renderCategoryTabs();
-    Promise.all([fetchAllRecords(), fetchSofQueue()]).then(([records, sofRecords]) => {
+    Promise.all([fetchAllRecords(), fetchSofQueue(), fetchTodayCapacity()]).then(([records, sofRecords, capacityRow]) => {
       allRecords = records;
       sofQueueMap = new Map(sofRecords.map((s) => [sofQueueKey(s.SO_No, s.Package), s]));
+      renderCapacityBar(capacityRow);
       return applyAutoPriority(allRecords);
     }).then(() => {
       orderedRows = computeOrderedRows(allRecords);
