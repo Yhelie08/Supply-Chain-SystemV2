@@ -484,7 +484,7 @@ const SUPPLIER_INITIAL = 'T';
    ("Tony", not "Tony Fan") — Stage_Inquiry_Changed matches rows by this exact string.
    Must be re-sent on every submit since the write is a full subform-row replace (see
    submitResponse) — omitting it wipes SupplierName blank, breaking that matching. */
-const SUPPLIER_MATCH_NAME = 'Tony';
+const SUPPLIER_MATCH_NAME = 'Tony Fan'; /* the full name since 2026-11-17 (owner): "Tony" and "Tony Fan" are one supplier */
 let REAL_APP_NAME = 'supply-chain-app';
 let ACCOUNT_OWNER = 'homecartel';
 const CHAT_REPORT = 'All_Inquiry_Messages'; /* form 'Inquiry_Messages' — see startChatPolling() NOTES */

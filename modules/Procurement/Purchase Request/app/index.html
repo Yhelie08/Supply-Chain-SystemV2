@@ -932,7 +932,7 @@
               <th>Ship Mode</th>
               <th>Target Date</th>
               <th>Priority</th>
-              <th>Delay</th>
+              <th>Feasibility</th>
               <th>PR Status</th>
               <th>PR Date</th>
               <th>Actions</th>
@@ -1350,8 +1350,8 @@
         <div class="side-card chat-panel">
           <div class="side-hdr">Conversation</div>
           <div class="chat-tabs">
-            <button class="chat-tab active" id="dChatTabFenteng" onclick="switchChatTab('Fenteng')">Fenteng</button>
-            <button class="chat-tab" id="dChatTabTony" onclick="switchChatTab('Tony')">Tony</button>
+            <button class="chat-tab active" id="dChatTabFenteng" onclick="switchChatTab('Fenteng Lighting')">Fenteng Lighting</button>
+            <button class="chat-tab" id="dChatTabTony" onclick="switchChatTab('Tony Fan')">Tony Fan</button>
           </div>
           <div class="chat-msgs" id="dChatMsgs"></div>
           <div class="chat-inputbar">
@@ -2689,6 +2689,28 @@ function getQueueData(){
   return d;
 }
 
+/* ADDED 2026-11-17 (spec v1.4, Purchase Request) — one ranking for every list (SE-5): category, then the server's rank
+   (oldest Sales Order first), then Order Date, then PR number. Nothing here decides the order: the server wrote the rank. */
+var PR_CAT_ORDER = { act_now:0, tell_customer:1, watch:2, on_track:3, blocked:4 };
+function prQueueSort(a, b){
+  var ca = PR_CAT_ORDER[a.spCategory], cb = PR_CAT_ORDER[b.spCategory];
+  ca = ca === undefined ? 9 : ca; cb = cb === undefined ? 9 : cb;
+  if(ca !== cb) return ca - cb;
+  var ra = isNaN(a.spRank) ? 1e9 : a.spRank, rb = isNaN(b.spRank) ? 1e9 : b.spRank;
+  if(ra !== rb) return ra - rb;
+  var da = a.orderDate || '9999', db = b.orderDate || '9999';
+  if(da !== db) return da < db ? -1 : 1;
+  return String(a.prNo).localeCompare(String(b.prNo), undefined, {numeric:true});
+}
+function feasCell(r){
+  var map = { feasible:['#DCFCE7','#16A34A','Feasible'], at_risk:['#FEF3C7','#D97706','At risk'], impossible:['#FEE2E2','#DC2626','Impossible'] };
+  var m = map[r.spFeas];
+  if(!m) return delayBadge(r.delay);
+  var tip = [r.spWhy, r.spAir, r.spEarliest ? 'Earliest feasible: ' + r.spEarliest : '', r.spAction ? 'Next: ' + r.spAction : ''].filter(Boolean).join(' | ');
+  var extra = r.spFeas === 'impossible' && r.spShort ? ' ' + r.spShort + 'd late' : '';
+  return '<span title="' + escapeHtml(tip) + '" style="display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;background:' + m[0] + ';color:' + m[1] + '">' + m[2] + extra + '</span>';
+}
+
 function renderQueue(){
   const data = getQueueData();
   if(data.length === 0){
@@ -2696,7 +2718,7 @@ function renderQueue(){
     $('queueFooter').innerHTML = `<span class="table-footer-info"><strong>0</strong> of <strong>${READY_PR.length}</strong> PRs ready for PO</span>`;
     return;
   }
-  data.forEach(function(r){ r.recSupplier = computeRecommendedSupplier(r.category, r.supplierQuotes); autoHealFollowedRecommendation(r); });
+  data.forEach(function(r){ r.recSupplier = r.recServer || computeRecommendedSupplier(r.category, r.supplierQuotes); autoHealFollowedRecommendation(r); });
   $('queueBody').innerHTML = data.map(r=>`
     <tr onclick="openDetailView('${r.id}')">
       <td><span class="cell-link">${r.prNo}</span></td>
@@ -2708,14 +2730,14 @@ function renderQueue(){
       <td><span class="cell-sku">${r.sku}</span></td>
       <td style="font-variant-numeric:tabular-nums">${r.qty.toLocaleString()}</td>
       <td class="cell-customer" title="${escapeHtml(r.customer)}">${r.customer}</td>
-      <td><span class="cell-supplier">${r.recSupplier}</span></td>
+      <td><span class="cell-supplier" title="${escapeHtml(r.recReason||'')}">${r.recSupplier}</span></td>
       <td><span class="cell-supplier${r.override?' override-sup':''}">${r.selectedSupplier||'—'}</span></td>
       <td>${recBadge(r.followedRec)}</td>
       <td class="cell-price"${r.priceSource==='srp'?' title="SO reference price — no supplier quote yet"':r.priceSource==='catalog'?' title="Catalog rate — auto-approved, no supplier quote yet"':r.priceSource==='srp_approved'?' title="Manually approved SRP — final, same value sent to Books"':''}>${fmtPrice(r.finalPrice, r.priceSource)}${r.priceSource==='srp'?' <span style="font-size:10px;color:var(--gray-400);font-weight:500">(SRP)</span>':r.priceSource==='catalog'?' <span style="font-size:10px;color:var(--gray-400);font-weight:500">(Catalog)</span>':r.priceSource==='srp_approved'?' <span style="font-size:10px;color:var(--gray-400);font-weight:500">(SRP Approved)</span>':''}</td>
       <td>${shipBadge(r.shipMode)}</td>
       <td style="white-space:nowrap">${targetCell(r)}</td>
       <td>${priorityHtml(r.priority)}</td>
-      <td>${delayBadge(r.delay)}</td>
+      <td>${feasCell(r)}</td>
       <td>${prStatusCell(r)}</td>
       <td>${prDateCell(r.prDate)}</td>
       <td>${actionBtns(r)}</td>
@@ -2738,8 +2760,11 @@ function renderQueue(){
 /* ════════════════════════════════
    RENDER — ALL PRs
 ════════════════════════════════ */
+/* the Dashboard links here with ?pricing=needs_manual_quote (spec 08: every number opens the list behind it) */
+var DASH_PRICING = '';
 function getAllData(){
   let d = ALL_PR;
+  if(DASH_PRICING) d = d.filter(r=>r.pricingStatus === DASH_PRICING && !isPrInactive(r));
   /* FIXED 2026-09-01: "In Progress" must also exclude already-converted PRs — a
      converted PR is done, not still in progress toward PO. */
   if(allFilter==='other') d = d.filter(r=>r.status!=='Ready for PO' && r.status!=='Converted to PO' && !isPrInactive(r));
@@ -2779,7 +2804,7 @@ function renderAllPRs(){
     $('allFooter').innerHTML = `<span class="table-footer-info"><strong>0</strong> PRs total</span>`;
     return;
   }
-  data.forEach(function(r){ r.recSupplier = computeRecommendedSupplier(r.category, r.supplierQuotes); autoHealFollowedRecommendation(r); });
+  data.forEach(function(r){ r.recSupplier = r.recServer || computeRecommendedSupplier(r.category, r.supplierQuotes); autoHealFollowedRecommendation(r); });
   $('allBody').innerHTML = data.map(r=>`
     <tr onclick="openDetailView('${r.id}')">
       <td><span class="cell-link">${r.prNo}</span></td>
@@ -2791,7 +2816,7 @@ function renderAllPRs(){
       <td><span class="cell-sku">${r.sku}</span></td>
       <td style="font-variant-numeric:tabular-nums">${r.qty.toLocaleString()}</td>
       <td class="cell-customer" title="${escapeHtml(r.customer)}">${r.customer}</td>
-      <td><span class="cell-supplier">${r.recSupplier}</span></td>
+      <td><span class="cell-supplier" title="${escapeHtml(r.recReason||'')}">${r.recSupplier}</span></td>
       <td><span class="cell-supplier${r.override?' override-sup':''}">${r.selectedSupplier||'—'}</span></td>
       <td class="cell-price"${r.priceSource==='srp'?' title="SO reference price — no supplier quote yet"':r.priceSource==='catalog'?' title="Catalog rate — auto-approved, no supplier quote yet"':r.priceSource==='srp_approved'?' title="Manually approved SRP — final, same value sent to Books"':''}>${fmtPrice(r.finalPrice, r.priceSource)}${r.priceSource==='srp'?' <span style="font-size:10px;color:var(--gray-400);font-weight:500">(SRP)</span>':r.priceSource==='catalog'?' <span style="font-size:10px;color:var(--gray-400);font-weight:500">(Catalog)</span>':r.priceSource==='srp_approved'?' <span style="font-size:10px;color:var(--gray-400);font-weight:500">(SRP Approved)</span>':''}</td>
       <td style="white-space:nowrap">${targetCell(r)}</td>
@@ -2884,17 +2909,13 @@ function buildPrGroups(){
     }).filter(Boolean);
   }
   groups.forEach(function(g){
-    g.rows.sort(function(a,b){
-      var na = parseInt(String(a.prNo).replace(/[^0-9]/g,''), 10) || 0;
-      var nb = parseInt(String(b.prNo).replace(/[^0-9]/g,''), 10) || 0;
-      return nb - na;
-    });
+    g.rows.sort(prQueueSort);
   });
+  /* oldest Sales Order first (spec D3); the same SO stays together */
   groups.sort(function(a,b){
-    var maxPrA = (a.rows[0] && (parseInt(String(a.rows[0].prNo).replace(/[^0-9]/g,''), 10) || 0)) || 0;
-    var maxPrB = (b.rows[0] && (parseInt(String(b.rows[0].prNo).replace(/[^0-9]/g,''), 10) || 0)) || 0;
-    if(maxPrB !== maxPrA) return maxPrB - maxPrA;
-    return b.soNo.localeCompare(a.soNo, undefined, {numeric:true}) || b.customer.localeCompare(a.customer);
+    var da = (a.rows[0] && a.rows[0].orderDate) || '9999', db = (b.rows[0] && b.rows[0].orderDate) || '9999';
+    if(da !== db) return da < db ? -1 : 1;
+    return a.soNo.localeCompare(b.soNo, undefined, {numeric:true}) || a.customer.localeCompare(b.customer);
   });
   return groups;
 }
@@ -3188,7 +3209,7 @@ function showView(name){
    own single thread — see those files' copy of this block.
 ════════════════════════════════ */
 let chatPollTimer = null;
-let chatActiveSupplier = 'Fenteng';
+let chatActiveSupplier = 'Fenteng Lighting';
 let chatCurrentPrNo = '';
 let chatLastSignature = '';
 let chatSelectedSupplier = ''; /* r.selectedSupplier of the PR currently open — gates which tab can actually send, see refreshChatSendGate() */
@@ -3228,16 +3249,16 @@ function startChatPolling(prNo, selectedSupplier){
   var isFenteng = chatSelectedSupplier && supplierKeyMatch(chatSelectedSupplier, 'Fenteng');
   var isTony    = chatSelectedSupplier && supplierKeyMatch(chatSelectedSupplier, 'Tony');
   if(isFenteng || isTony){
-    chatActiveSupplier = isFenteng ? 'Fenteng' : 'Tony';
+    chatActiveSupplier = isFenteng ? 'Fenteng Lighting' : 'Tony Fan';
     fTab.style.display = isFenteng ? '' : 'none';
     tTab.style.display = isTony ? '' : 'none';
   } else {
-    chatActiveSupplier = 'Fenteng';
+    chatActiveSupplier = 'Fenteng Lighting';
     fTab.style.display = '';
     tTab.style.display = '';
   }
-  fTab.classList.toggle('active', chatActiveSupplier==='Fenteng');
-  tTab.classList.toggle('active', chatActiveSupplier==='Tony');
+  fTab.classList.toggle('active', chatActiveSupplier==='Fenteng Lighting');
+  tTab.classList.toggle('active', chatActiveSupplier==='Tony Fan');
   chatLastSignature = '';
   document.getElementById('dChatInput').value = '';
   refreshChatSendGate();
@@ -3250,8 +3271,8 @@ function stopChatPolling(){
 }
 function switchChatTab(supplier){
   chatActiveSupplier = supplier;
-  document.getElementById('dChatTabFenteng').classList.toggle('active', supplier==='Fenteng');
-  document.getElementById('dChatTabTony').classList.toggle('active', supplier==='Tony');
+  document.getElementById('dChatTabFenteng').classList.toggle('active', supplier==='Fenteng Lighting');
+  document.getElementById('dChatTabTony').classList.toggle('active', supplier==='Tony Fan');
   chatLastSignature = '';
   document.getElementById('dChatInput').value = '';
   refreshChatSendGate();
@@ -3354,6 +3375,17 @@ function checkDeepLinkOpenPR(){
   _deepLinkChecked = true;
   if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams!=='function') return;
   ZOHO.CREATOR.UTIL.getQueryParams().then(function(resp){
+    if(resp && resp.pricing){
+      DASH_PRICING = String(resp.pricing);
+      var note = document.createElement('div');
+      note.style.cssText = 'margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#fef3c7;color:#92400e;font-size:12.5px';
+      note.innerHTML = 'Showing the PRs that need a manual quote. <a href="#" style="color:#92400e;font-weight:600" id="dashPricingClear">Show all</a>';
+      var host = document.getElementById('allBody'); host = host && host.closest('table') ? host.closest('table').parentNode : null;
+      if(host) host.parentNode.insertBefore(note, host);
+      var clr = document.getElementById('dashPricingClear');
+      if(clr) clr.onclick = function(e){ e.preventDefault(); DASH_PRICING = ''; note.remove(); renderAllPRs(); };
+      renderAllPRs();
+    }
     var prNo = resp && resp.openPR;
     if(!prNo) return;
     var match = ALL_PR.find(function(p){ return p.prNo === prNo; });
@@ -5159,12 +5191,12 @@ const CUSTOM_API_KEY_PO_FENTENG  = 'KpqTrk9M53PY3pyjJzUDR7aEn';
 const CUSTOM_API_KEY_PO_TONY     = 'dpTDMs1mVsVhO8OaBOmftEGOW';
 const CUSTOM_API_KEY_PO_HC       = 'fsfsFAat8RX5s5GQGzbKRvOxH';
 
-function callApprovePOApi(apiName, publicKey, soNo){
+function callApprovePOApi(apiName, publicKey, soNo, extra){
   return ZOHO.CREATOR.DATA.invokeCustomApi({
     api_name: apiName,
     http_method: 'POST',
     content_type: 'application/json',
-    payload: { soNo: soNo },
+    payload: Object.assign({ soNo: soNo }, extra || {}),
     public_key: publicKey
   }).then(function(resp){
     /* Confirmed live 2026-07-09 (via a sibling Custom API's own Summary page, same
@@ -5180,7 +5212,37 @@ function callApprovePOApi(apiName, publicKey, soNo){
   });
 }
 
-async function runApprovePOBatch(soNo, btnEl){
+function openLateChoiceDialog(soNo, btnEl, r){
+  var old = document.getElementById('lateChoiceOverlay'); if(old) old.remove();
+  var box = document.createElement('div');
+  box.id = 'lateChoiceOverlay';
+  box.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px';
+  var rows = (r.lines || []).map(function(l, i){
+    var air = l.can_air ? '<option value="air">A) Upgrade to air' + (l.air_option ? ' (' + escapeHtml(l.air_option) + ')' : '') + '</option>' : '';
+    return '<div style="border:1px solid #E2E8F0;border-radius:8px;padding:12px;margin-bottom:10px">' +
+      '<div style="font-weight:700">' + escapeHtml(l.pr_no) + ' <span style="font-weight:500;color:#64748B">&middot; ' + escapeHtml(l.supplier) + ' &middot; ' + escapeHtml(l.mode) + '</span></div>' +
+      '<div style="font-size:13px;color:#DC2626;margin:4px 0">It will be ' + escapeHtml(l.shortfall_days) + ' days late for the promise (' + escapeHtml(l.target) + '). Earliest it can be delivered: ' + escapeHtml(l.earliest_feasible_date) + '.</div>' +
+      '<select data-pr="' + escapeHtml(l.pr_no) + '" style="width:100%;height:34px;border:1.5px solid #E2E8F0;border-radius:6px;padding:0 8px"><option value="">Choose an option&hellip;</option>' + air +
+      '<option value="move_target">B) Propose a new target (' + escapeHtml(l.earliest_feasible_date) + ') &mdash; goes to Decisions, the target changes only if accepted</option>' +
+      '<option value="proceed">C) Proceed as is &mdash; the order will show in &ldquo;Tell the customer&rdquo;</option></select></div>';
+  }).join('');
+  box.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:22px">' +
+    '<h3 style="margin:0 0 6px;font-size:17px">Some lines cannot arrive in time</h3>' +
+    '<p style="font-size:13px;color:#475569;margin:0 0 14px">' + escapeHtml(r.message || '') + ' This does not block the PO: it only asks you to choose, and the choice is recorded.</p>' + rows +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button id="lcCancel" style="height:34px;padding:0 14px;border:1.5px solid #E2E8F0;background:#fff;border-radius:8px;cursor:pointer">Cancel</button>' +
+    '<button id="lcOk" style="height:34px;padding:0 16px;border:none;background:#EA580C;color:#fff;border-radius:8px;font-weight:600;cursor:pointer">Create PO</button></div></div>';
+  document.body.appendChild(box);
+  document.getElementById('lcCancel').onclick = function(){ box.remove(); };
+  document.getElementById('lcOk').onclick = function(){
+    var choices = {}, missing = false;
+    box.querySelectorAll('select[data-pr]').forEach(function(sel){ if(!sel.value) missing = true; choices[sel.getAttribute('data-pr')] = sel.value; });
+    if(missing){ showToast('Choose an option for every late line'); return; }
+    box.remove();
+    runApprovePOBatch(soNo, btnEl, choices);
+  };
+}
+
+async function runApprovePOBatch(soNo, btnEl, lateChoices){
   if(btnEl){ btnEl.disabled = true; btnEl.dataset._label = btnEl.innerHTML; btnEl.innerHTML = 'Approving…'; }
 
   if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA){
@@ -5190,7 +5252,14 @@ async function runApprovePOBatch(soNo, btnEl){
   }
 
   try{
-    const r1 = await callApprovePOApi('approve_po_main',    CUSTOM_API_KEY_PO_MAIN,    soNo);
+    const r1 = await callApprovePOApi('approve_po_main',    CUSTOM_API_KEY_PO_MAIN,    soNo, lateChoices ? { lateChoices: lateChoices } : null);
+    /* ADDED 2026-11-17 (spec v1.4, PO-R1 feasibility gate): warn and suggest, do not block. A line that cannot arrive in time needs an
+       option before anything is written; the server answers needs_choice and writes nothing until it gets one for every late line. */
+    if(r1 && r1.status==='needs_choice'){
+      if(btnEl){ btnEl.disabled=false; btnEl.innerHTML=btnEl.dataset._label||'Create PO &#8594;'; }
+      openLateChoiceDialog(soNo, btnEl, r1);
+      return;
+    }
     if(r1 && r1.status==='error'){
       showToast('Approve failed: '+(r1.message||'unknown error'));
       if(btnEl){ btnEl.disabled=false; btnEl.innerHTML=btnEl.dataset._label||'Create PO &#8594;'; }
@@ -5365,7 +5434,7 @@ function enterEditMode(){
      Supplier_Selected replace with the chosen row's Selected flag flipped true, so the
      native sync computes the SAME winner the user picked instead of reverting it. */
   if(el('dvSupplier')){
-    el('dvSupplier').innerHTML=makeSelect('ei_supplier',['Fenteng','Tony'],rawStr('Selected_Supplier'),lockAttr);
+    el('dvSupplier').innerHTML=makeSelect('ei_supplier',['Fenteng Lighting','Tony Fan'],rawStr('Selected_Supplier'),lockAttr);
     const supSel = document.getElementById('ei_supplier');
     if(supSel) supSel.addEventListener('change', function(){ syncFollowedRecFromSupplier(this.value); });
   }
@@ -5445,8 +5514,8 @@ function enterEditMode(){
 // assigning.
 function normalizeSupplierShortName(sup){
   var s = String(sup||'');
-  if(supplierKeyMatch(s,'Fenteng')) return 'Fenteng';
-  if(supplierKeyMatch(s,'Tony')) return 'Tony';
+  if(supplierKeyMatch(s,'Fenteng')) return 'Fenteng Lighting';
+  if(supplierKeyMatch(s,'Tony')) return 'Tony Fan';
   return s;
 }
 function selectSupplierFromQuotes(sup){
@@ -6174,6 +6243,20 @@ function mapPR(r, idx){
     targetOverdue:    tdOverdue,
     priority:         pri,
     delay:            delay,
+    /* ADDED 2026-11-17 (spec v1.4, Purchase Request): written by the server, never typed here */
+    spRank:           parseFloat(v('Queue_Rank')),
+    spCategory:       v('Pr_Category'),
+    spFeas:           v('Feasibility'),
+    spShort:          v('Shortfall_Days'),
+    spEarliest:       v('Earliest_Feasible_Date'),
+    spAir:            v('Air_Option'),
+    spWhy:            v('Priority_Reason'),
+    spAction:         v('Suggested_Action'),
+    spBlocked:        v('Blocked_Reason'),
+    recServer:        v('Recommended_Supplier'),
+    recReason:        v('Recommendation_Reason'),
+    orderDate:        v('Order_Date'),
+    pricingStatus:    v('Pricing_Status'),
     status:           status,
     urgent:           pri === 'HIGH',
     atRisk:           delay === 'At Risk',
@@ -6326,11 +6409,7 @@ function loadFromCreator(){
            both. Digit-extraction still sorts correctly across a year boundary (e.g.
            "PR-2026-9999" -> "PR-2027-0001") as long as the year+sequence digit width
            stays consistent, same reasoning already verified for the supplier widgets. */
-        ALL_PR.sort(function(a,b){
-          var na = parseInt(String(a.prNo).replace(/[^0-9]/g,''),10) || 0;
-          var nb = parseInt(String(b.prNo).replace(/[^0-9]/g,''),10) || 0;
-          return nb - na;
-        });
+        ALL_PR.sort(prQueueSort); /* spec SE-1..5: category, then the server's rank = oldest Sales Order first (was: newest PR number first) */
         recomputeReadyPR();
         creatorLoaded = true;
         checkDeepLinkOpenPR();

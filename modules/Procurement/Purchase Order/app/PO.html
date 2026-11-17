@@ -98,7 +98,7 @@
     .btn-sm { height: 32px; padding: 0 13px; font-size: 13px; }
 
     /* ── Summary Cards ── */
-    .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; flex-shrink: 0; }
+    .cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 20px; flex-shrink: 0; }
     @media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}}
     @media(max-width:640px){.cards{grid-template-columns:repeat(2,1fr)}}
     .card {
@@ -616,6 +616,11 @@ var PRHold = (function(){
         <div class="card-value c-purple" id="statOverrides">—</div>
         <div class="card-sub">Reasons logged</div>
       </div>
+      <div class="card">
+        <div class="card-label">Born late (4 wks)</div>
+        <div class="card-value c-orange" id="statBornLate">—</div>
+        <div class="card-sub" id="statBornLateSub">Lines late at Create PO</div>
+      </div>
     </div>
 
     <div class="list-card">
@@ -628,6 +633,15 @@ var PRHold = (function(){
           <button class="tab" data-filter="completed" data-label="Completed" onclick="filterTable('completed', this)">Completed</button>
           <button class="tab" data-filter="cancelled" data-label="Cancelled" onclick="filterTable('cancelled', this)">Cancelled</button>
         </div>
+        <div class="tabs" id="urgencyTabs" title="Urgency: the most urgent category of the PO's shipments (spec Sorting Engine)">
+          <button class="tab active" data-urg="" onclick="filterUrgency('', this)">Any urgency</button>
+          <button class="tab" data-urg="broken" onclick="filterUrgency('broken', this)">Broken <span class="urg-n"></span></button>
+          <button class="tab" data-urg="act_now" onclick="filterUrgency('act_now', this)">Act now <span class="urg-n"></span></button>
+          <button class="tab" data-urg="tell_customer" onclick="filterUrgency('tell_customer', this)">Tell customer <span class="urg-n"></span></button>
+          <button class="tab" data-urg="watch" onclick="filterUrgency('watch', this)">Watch <span class="urg-n"></span></button>
+          <button class="tab" data-urg="on_track" onclick="filterUrgency('on_track', this)">On track <span class="urg-n"></span></button>
+          <button class="tab" data-urg="blocked" onclick="filterUrgency('blocked', this)">Blocked <span class="urg-n"></span></button>
+        </div>
         <input class="search-box" type="text" placeholder="Search POs..." oninput="searchTable(this.value)" />
       </div>
 
@@ -639,6 +653,10 @@ var PRHold = (function(){
               <th>Supplier</th>
               <th>SO No.</th>
               <th>Customer</th>
+              <th>Urgency</th>
+              <th>Order Date</th>
+              <th>Target</th>
+              <th>Forecast</th>
               <th>Line Count</th>
               <th>Total PO Value</th>
               <th>Mixed Shipping</th>
@@ -695,6 +713,11 @@ var PRHold = (function(){
         </div>
       </div>
 
+      <div class="section-card" id="d-gate-card">
+        <div class="section-title">Feasibility at creation</div>
+        <div class="section-body" id="d-gate"></div>
+      </div>
+
       <div class="section-card">
         <div class="section-title" id="d-line-section-title">C · PO Line Items</div>
         <div style="overflow-x:auto;">
@@ -728,6 +751,10 @@ var PRHold = (function(){
         <div class="section-body" id="d-audit"></div>
       </div>
       <div class="section-card" style="margin-top:0;">
+        <div class="section-title">Deposit <span style="font-weight:400;font-size:12px;color:var(--gray-400)">(the supplier ladder reads it)</span></div>
+        <div class="section-body" id="d-deposit"></div>
+      </div>
+      <div class="section-card" style="margin-top:0;">
         <div class="section-title">Supplier Snapshot</div>
         <div class="section-body" id="d-snapshot"></div>
       </div>
@@ -738,8 +765,8 @@ var PRHold = (function(){
       <div class="section-card chat-panel">
         <div class="section-title">Conversation</div>
         <div class="chat-tabs">
-          <button class="chat-tab active" id="dChatTabFenteng" onclick="switchChatTab('Fenteng')">Fenteng</button>
-          <button class="chat-tab" id="dChatTabTony" onclick="switchChatTab('Tony')">Tony</button>
+          <button class="chat-tab active" id="dChatTabFenteng" onclick="switchChatTab('Fenteng Lighting')">Fenteng Lighting</button>
+          <button class="chat-tab" id="dChatTabTony" onclick="switchChatTab('Tony Fan')">Tony Fan</button>
         </div>
         <div class="chat-msgs" id="dChatMsgs"></div>
         <div class="chat-inputbar">
@@ -1068,6 +1095,19 @@ function mapPO(r){
     isLocked:         _boolVal(r,'Is_Locked'),
     notes:            _val(r,'Notes'),
     poDate:           fmtDateShort(_val(r,'PO_Date')),
+    urgency:          _val(r,'Po_Category'),
+    urgencyRank:      parseInt(_val(r,'Po_Queue_Rank'),10) || 1e9,
+    urgencyReason:    _val(r,'Po_Priority_Reason'),
+    orderDate:        _val(r,'Earliest_Order_Date'),
+    target:           _val(r,'Earliest_Target'),
+    forecast:         _val(r,'Po_Forecast_Pickable'),
+    bornLate:         _boolVal(r,'Born_Late'),
+    shortfall:        parseInt(_val(r,'Shortfall_Days')||'0',10) || 0,
+    linesRaised:      parseInt(_val(r,'Lines_Raised')||'0',10) || 0,
+    linesBornLate:    parseInt(_val(r,'Lines_Born_Late')||'0',10) || 0,
+    feasibilityNote:  _val(r,'Feasibility_Note'),
+    depositPaid:      _boolVal(r,'Deposit_Paid'),
+    depositAmount:    _val(r,'Deposit_Amount'),
     poStatus:         poStatusRaw,
     status:           derivedStatus,
     sentOn:           sentOn || '—',
@@ -1232,6 +1272,8 @@ const DETAIL_BTN = {
 let ALL_PO        = [];
 let creatorLoaded = false;
 let currentFilter = 'all';
+let currentUrgency = '';
+let currentBorn = false; /* the Dashboard's born-late link: ?born=late */
 let currentSearch = '';
 let _currentPOId  = null;
 
@@ -1301,7 +1343,7 @@ function poHoldBadge(po){
 function renderTable(){
   const tbody = $('po-tbody');
   if(!creatorLoaded){
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--gray-400)"><span class="spin"></span>Loading from Zoho Creator…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16" style="text-align:center;padding:32px;color:var(--gray-400)"><span class="spin"></span>Loading from Zoho Creator…</td></tr>`;
     return;
   }
   const q = currentSearch.toLowerCase();
@@ -1312,8 +1354,8 @@ function renderTable(){
       po.supplier.toLowerCase().includes(q) ||
       po.customer.toLowerCase().includes(q) ||
       po.soNo.toLowerCase().includes(q);
-    return matchFilter && matchSearch;
-  });
+    return matchFilter && matchSearch && (!currentUrgency || po.urgency === currentUrgency) && (!currentBorn || po.bornLate);
+  }).sort((a,b) => a.urgencyRank - b.urgencyRank); // the most urgent PO first (the sort is stable: the rest keep the list order)
 
   if(!data.length){
     tbody.innerHTML = emptyStateRow(ALL_PO.length===0 ? 'No Purchase Orders yet.' : 'No POs match this filter/search.');
@@ -1326,6 +1368,10 @@ function renderTable(){
       <td>${escapeHtml(po.supplier)}</td>
       <td>${escapeHtml(po.soNo)}</td>
       <td>${escapeHtml(po.customer)}</td>
+      <td>${urgencyBadge(po)}</td>
+      <td style="white-space:nowrap">${fmtDay(po.orderDate)}</td>
+      <td style="white-space:nowrap">${fmtDay(po.target)}</td>
+      <td style="white-space:nowrap">${fmtDay(po.forecast)}</td>
       <td style="text-align:center">${po.totalLines}</td>
       <td style="font-weight:600">${fmtCurrency(po.totalValue)}</td>
       <td>${shipPillHTML(po.mixedShipping)}</td>
@@ -1339,9 +1385,58 @@ function renderTable(){
 
 function filterTable(filter, el){
   currentFilter = filter;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.filter-bar > .tabs:first-child .tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   renderTable();
+}
+/* ── spec v1.4 additions (PO list by category, born-late rate, deposit, tracking) ── */
+const URG = { broken:['Broken','#fee2e2','#b91c1c'], act_now:['Act now','#fee2e2','#b91c1c'], tell_customer:['Tell customer','#ffedd5','#c2410c'], watch:['Watch','#fef3c7','#b45309'], on_track:['On track','#dcfce7','#15803d'], blocked:['Blocked','#e5e7eb','#374151'] };
+function urgencyBadge(po){
+  const u = URG[po.urgency];
+  if(!u) return '<span style="color:var(--gray-400)">—</span>';
+  return '<span title="'+escapeHtml(po.urgencyReason||'')+'" style="display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;background:'+u[1]+';color:'+u[2]+'">'+u[0]+'</span>';
+}
+const fmtDay = v => v ? escapeHtml(String(v).slice(0,10)) : '<span style="color:var(--gray-400)">—</span>';
+function filterUrgency(u, el){
+  currentUrgency = u;
+  document.querySelectorAll('#urgencyTabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+/* the Dashboard links here (spec 08: every number opens the list behind it): ?status=sent  ?born=late  ?urg=act_now */
+function applyDashLink(){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.UTIL || typeof ZOHO.CREATOR.UTIL.getQueryParams!=='function') return;
+  ZOHO.CREATOR.UTIL.getQueryParams().then(function(q){
+    if(!q) return;
+    if(q.status){ var b = document.querySelector('.filter-bar > .tabs:first-child .tab[data-filter="'+q.status+'"]'); if(b) filterTable(q.status, b); }
+    if(q.urg){ var u = document.querySelector('#urgencyTabs .tab[data-urg="'+q.urg+'"]'); if(u) filterUrgency(q.urg, u); }
+    if(q.born === 'late'){
+      currentBorn = true;
+      var bar = document.querySelector('.filter-bar'); var chip = document.createElement('button');
+      chip.className = 'tab active'; chip.textContent = 'Born late \u2715'; chip.title = 'Show every PO';
+      chip.onclick = function(){ currentBorn = false; chip.remove(); renderTable(); };
+      if(bar) bar.insertBefore(chip, bar.children[1] || null);
+      renderTable();
+    }
+  }).catch(function(){});
+}
+function paintUrgencyCounts(){
+  document.querySelectorAll('#urgencyTabs .tab').forEach(function(b){
+    var u = b.getAttribute('data-urg'); var n = b.querySelector('.urg-n');
+    if(n) n.textContent = '(' + ALL_PO.filter(p => p.urgency === u && p.status!=='completed' && p.status!=='cancelled').length + ')';
+  });
+}
+function poApi(name, payload){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: name, http_method: 'POST', content_type: 'application/json', payload: payload || {}, public_key: '' })
+    .then(function(r){ return (r && r.result) ? r.result : (r && r.data) ? r.data : r; });
+}
+function loadBornLate(){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  poApi('get_born_late_rate', { weeks: 4 }).then(function(r){
+    var d = (r && r.data) || r || {};
+    $('statBornLate').textContent = d.rate == null ? '—' : d.rate + '%';
+    $('statBornLateSub').textContent = d.raised ? (d.born_late + ' of ' + d.raised + ' lines late at Create PO') : 'No lines raised yet';
+  }).catch(function(){});
 }
 function searchTable(val){
   currentSearch = val;
@@ -1365,6 +1460,9 @@ function updateStats(){
   $('statFollowed').textContent = followedYes;
   $('statFollowedSub').textContent = pct + '% adherence';
   $('statOverrides').textContent = overrides;
+  paintUrgencyCounts();
+  loadBornLate();
+  if(!window._dashLinkApplied){ window._dashLinkApplied = true; applyDashLink(); }
 
   const counts = {
     all: ALL_PO.length,
@@ -1399,7 +1497,7 @@ function showList(){
    architecture rationale). Buyer sees both supplier threads tabbed, keyed by PO_No.
 ════════════════════════════════ */
 let chatPollTimer = null;
-let chatActiveSupplier = 'Fenteng';
+let chatActiveSupplier = 'Fenteng Lighting';
 let chatCurrentPoNo = '';
 let chatLastSignature = '';
 let chatSelectedSupplier = ''; /* po.supplier of the PO currently open — 'Mixed'/'—' when not single-supplier. Gates which tab can actually SEND, see refreshChatSendGate() */
@@ -1446,7 +1544,7 @@ function startChatPolling(poNo, selectedSupplier){
   stopChatPolling();
   chatCurrentPoNo = poNo || '';
   chatSelectedSupplier = selectedSupplier || '';
-  chatActiveSupplier = 'Fenteng';
+  chatActiveSupplier = 'Fenteng Lighting';
   $('dChatTabFenteng').classList.add('active');
   $('dChatTabTony').classList.remove('active');
   chatLastSignature = '';
@@ -1461,8 +1559,8 @@ function stopChatPolling(){
 }
 function switchChatTab(supplier){
   chatActiveSupplier = supplier;
-  $('dChatTabFenteng').classList.toggle('active', supplier==='Fenteng');
-  $('dChatTabTony').classList.toggle('active', supplier==='Tony');
+  $('dChatTabFenteng').classList.toggle('active', supplier==='Fenteng Lighting');
+  $('dChatTabTony').classList.toggle('active', supplier==='Tony Fan');
   chatLastSignature = '';
   $('dChatInput').value = '';
   refreshChatSendGate();
@@ -1640,7 +1738,34 @@ function loadLineThumbs(lines){
   });
 }
 
+function renderSpecCards(po){
+  // feasibility at creation (PO-R1: warn and suggest; the choice and the shortfall are recorded)
+  var g = '';
+  if(po.linesRaised){
+    g += '<div style="margin-bottom:8px">' + (po.bornLate
+      ? '<span style="background:#fee2e2;color:#b91c1c;border-radius:999px;padding:2px 10px;font-weight:600;font-size:12px">Born late</span> '+po.linesBornLate+' of '+po.linesRaised+' line(s) could not arrive in time when the PO was raised; worst shortfall '+po.shortfall+' day(s).'
+      : '<span style="background:#dcfce7;color:#15803d;border-radius:999px;padding:2px 10px;font-weight:600;font-size:12px">On time at creation</span> all '+po.linesRaised+' line(s) could arrive in time.') + '</div>';
+  } else g += '<div style="color:var(--gray-400);margin-bottom:8px">Created before the feasibility gate existed: nothing recorded.</div>';
+  if(po.feasibilityNote) g += '<div style="white-space:pre-line;font-size:13px;background:var(--gray-50);border-radius:8px;padding:8px 10px">'+escapeHtml(po.feasibilityNote)+'</div>';
+  $('d-gate').innerHTML = g;
+  // deposit (PO-R7)
+  $('d-deposit').innerHTML = '<label style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="checkbox" id="depPaid" '+(po.depositPaid?'checked':'')+' /> Deposit paid</label>'
+    + '<label style="display:block;font-size:11px;color:var(--gray-500);margin-bottom:2px">Deposit amount</label>'
+    + '<input type="number" min="0" step="0.01" id="depAmt" value="'+escapeHtml(po.depositAmount||'')+'" style="width:100%;height:34px;border:1.5px solid var(--gray-200);border-radius:6px;padding:0 8px" />'
+    + '<div style="margin-top:8px"><button class="btn btn-sm" onclick="saveDeposit()">Save deposit</button></div>';
+}
+function saveDeposit(){
+  var amt = $('depAmt').value;
+  var payload = { Deposit_Paid: $('depPaid').checked, Deposit_Amount: amt === '' ? 0 : Number(amt) };
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_NAME, id: String(_currentPOId), payload: { data: payload } }).then(function(resp){
+    if(resp && String(resp.code)==='3000'){
+      var po = ALL_PO.find(p => String(p.id)===String(_currentPOId)); if(po){ po.depositPaid = payload.Deposit_Paid; po.depositAmount = String(payload.Deposit_Amount); }
+      showToast('Deposit saved');
+    } else showToast((resp && resp.message) || 'Could not save the deposit');
+  }).catch(function(e){ showToast((e && e.message) || 'Could not save the deposit'); });
+}
 function renderDetail(po){
+  renderSpecCards(po);
   renderNextStepBanner("nsBanner", po.id, nextStepFor(po));
   $('d-topbar-title').textContent = `${po.poNo} — PO Detail`;
   const topBadge = $('d-topbar-badge');

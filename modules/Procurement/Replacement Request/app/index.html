@@ -207,11 +207,19 @@
           <tr>
             <th>RR #</th><th>EXC #</th><th>Source Type</th><th>Status</th><th>Next Step</th><th>SKU</th><th>Item</th>
             <th>Qty</th><th>Priority</th><th>Supplier</th><th>Original PO</th>
-            <th>RR Date</th><th>Supplier Ack.</th>
+            <th>RR Date</th><th>Supplier Ack.</th><th>Order Date</th><th>Target</th><th>Forecast</th>
           </tr>
         </thead>
         <tbody id="listBody"></tbody>
       </table>
+    </div>
+    <div id="rrReport" class="hidden" style="margin:18px 0;padding:14px 16px;border:1px solid var(--gray-200,#e2e8f0);border-radius:12px;background:#fff">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <b>Monthly report</b>
+        <input type="month" id="rrReportMonth" style="height:34px;border:1.5px solid #e2e8f0;border-radius:8px;padding:0 8px" onchange="loadRrReport()" />
+        <span id="rrReportTotal" style="color:#64748b;font-size:12.5px"></span>
+      </div>
+      <div id="rrReportBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;font-size:13px"></div>
     </div>
     <div id="listEmpty" class="empty-state hidden">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v18H3zM3 9h18M9 21V9"/></svg>
@@ -807,6 +815,21 @@ function excNoCell(r){
   return no ? '<span class="exc-chip">' + esc(no) + '</span>' : '<span class="exc-none">&mdash;</span>';
 }
 
+function loadRrReport(){
+  var m = document.getElementById('rrReportMonth'); if(!m) return;
+  if(!m.value){ var d = new Date(); m.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name:'get_rr_report', http_method:'POST', content_type:'application/json', payload:{ month:m.value }, public_key:'' })
+    .then(function(r){
+      var d = ((r && r.result) ? r.result : (r && r.data) ? r.data : r) || {}; d = d.data || d;
+      var block = function(title, rows){
+        return '<div><div style="font-weight:600;margin-bottom:4px">' + title + '</div>' + (rows && rows.length ? rows.map(function(x){ return '<div style="display:flex;justify-content:space-between;border-bottom:1px dashed #e2e8f0;padding:2px 0"><span>' + esc(x.name) + '</span><b>' + x.count + '</b></div>'; }).join('') : '<div style="color:#94a3b8">None</div>') + '</div>';
+      };
+      document.getElementById('rrReportTotal').textContent = (d.total || 0) + ' replacement(s) in this month' + (d.changed_supplier ? ', ' + d.changed_supplier + ' with a changed supplier' : '');
+      document.getElementById('rrReportBody').innerHTML = block('By cause', d.by_cause) + block('By fault origin', d.by_fault_origin) + block('By supplier', d.by_supplier)
+        + '<div><div style="font-weight:600;margin-bottom:4px">Rework rate</div>' + (d.rework && d.rework.rate != null ? '<b>' + d.rework.rate + '%</b> <span style="color:#64748b">(' + d.rework.replacements + ' RR + ' + d.rework.rework_jobs + ' rework jobs) / ' + d.rework.packages + ' packages</span>' : '<span style="color:#94a3b8">No packages this month</span>') + '</div>';
+    }).catch(function(){});
+}
 function renderList(){
   var q = (document.getElementById('searchInput').value || '').toLowerCase();
   var rows = ALL_ROWS.filter(function(r){
@@ -816,6 +839,12 @@ function renderList(){
     var sr = firstSummaryRow(r);
     var hay = ((r.RR_No||'') + ' ' + (r.Source_Exception_No||'') + ' ' + (sr.SKU||'') + ' ' + (sr.Original_PO_No||'')).toLowerCase();
     return hay.indexOf(q) !== -1;
+  });
+  /* spec 06 RR list: open replacements are BROKEN, oldest original Order Date first (the server ranks them: Rr_Queue_Rank); closed ones after */
+  rows.sort(function(a,b){
+    var ra = parseInt(a.Rr_Queue_Rank,10), rb = parseInt(b.Rr_Queue_Rank,10);
+    ra = isNaN(ra) ? 1e9 : ra; rb = isNaN(rb) ? 1e9 : rb;
+    return ra - rb;
   });
   var body = document.getElementById('listBody');
   var empty = document.getElementById('listEmpty');
@@ -830,7 +859,7 @@ function renderList(){
     var ack = r.Supplier_Acknowledgement1===true || r.Supplier_Acknowledgement1==='true';
     var fulfExcBadge = (r.Source_Module === 'Fulfillment EXC') ? ' <span class="badge" style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4">Fulfillment EXC</span>' : '';
     return '<tr class="row-' + statusKey(r) + '" onclick="openDetail(\'' + r.ID + '\')">' +
-      '<td><strong>' + esc(r.RR_No) + '</strong>' + fulfExcBadge + '</td>' +
+      '<td><strong>' + esc(r.RR_No) + '</strong>' + (r.Rr_Category === 'broken' ? ' <span class="badge" style="background:#fee2e2;color:#b91c1c" title="A replacement is first in every queue">Broken</span>' : '') + fulfExcBadge + '</td>' +
       '<td>' + excNoCell(r) + '</td>' +
       '<td>' + esc(r.Source_Type) + '</td>' +
       '<td>' + statusBadge(r) + '</td>' +
@@ -839,10 +868,13 @@ function renderList(){
       '<td>' + esc(sr.Item) + '</td>' +
       '<td>' + (sr.RR_Qty||'—') + '</td>' +
       '<td>' + esc(sr.Priority || '—') + '</td>' +
-      '<td>' + esc(sr.Supplier) + '</td>' +
+      '<td>' + esc(sr.Supplier) + (r.Original_Supplier && r.Original_Supplier !== (sr.Supplier||'') ? '<div style="font-size:11px;color:#94a3b8" title="' + esc(r.Supplier_Change_Reason || '') + '">was ' + esc(r.Original_Supplier) + '</div>' : '') + '</td>' +
       '<td>' + esc(sr.Original_PO_No) + '</td>' +
       '<td>' + esc(r.RR_Date || '—') + '</td>' +
       '<td>' + (ack ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-gray">No</span>') + '</td>' +
+      '<td style="white-space:nowrap">' + esc(String(r.Order_Date || '—').slice(0,10)) + '</td>' +
+      '<td style="white-space:nowrap">' + esc(String(r.Target_Delivery || '—').slice(0,10)) + '</td>' +
+      '<td style="white-space:nowrap">' + esc(String(r.Rr_Forecast_Pickable || '—').slice(0,10)) + '</td>' +
       '</tr>';
   }).join('');
 }
@@ -899,7 +931,8 @@ function renderTabs(){
   document.getElementById('rrTabs').innerHTML =
     '<button class="rr-tab ' + (CURRENT_TAB === 'proc' ? 'active' : '') + '" onclick="setTab(&#39;proc&#39;)">Procurement<span class="cnt">' + nProc + '</span></button>' +
     '<button class="rr-tab ' + (CURRENT_TAB === 'ff' ? 'active' : '') + '" onclick="setTab(&#39;ff&#39;)">Fulfillment<span class="cnt">' + nFf + '</span></button>' +
-    '<button class="rr-tab ' + (CURRENT_TAB === 'local' ? 'active' : '') + '" onclick="setTab(&#39;local&#39;)">Local (HC System)<span class="cnt">' + n + '</span></button>';
+    '<button class="rr-tab ' + (CURRENT_TAB === 'local' ? 'active' : '') + '" onclick="setTab(&#39;local&#39;)">Local (HC System)<span class="cnt">' + n + '</span></button>' +
+    '<button class="rr-tab ' + (CURRENT_TAB === 'report' ? 'active' : '') + '" onclick="setTab(&#39;report&#39;)">Monthly report</button>';
 }
 function setTab(t){
   CURRENT_TAB = t;
@@ -910,6 +943,15 @@ function setTab(t){
 /* One dispatcher, so every existing caller of renderList() keeps working untouched. */
 var _renderAllList = renderList;
 renderList = function(){
+  /* the Monthly report tab (spec 06 RR-R6): no list, no filters, only the report */
+  var rep = (CURRENT_TAB === 'report');
+  document.getElementById('rrReport').classList.toggle('hidden', !rep);
+  document.querySelector('.filter-row').classList.toggle('hidden', rep);
+  if(rep){
+    ['allWrap','localWrap','localNote','listEmpty','localEmpty'].forEach(function(id){ var el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    loadRrReport();
+    return;
+  }
   var local = (CURRENT_TAB === 'local');
   document.getElementById('localNote').classList.toggle('hidden', !local);
   document.getElementById('filterPills').classList.toggle('hidden', local);

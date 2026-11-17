@@ -7,6 +7,7 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Inquiries | `Tony_Fan_Inquiries` | [Inquiries](Inquiries/app/index.html) | `Procurement/Supplier - Tony Fan/Widget/Tony Inq/Tony-Inquiries.zip` |
 | Purchase Request | `Tony_Fan_PR` | [Purchase Request](Purchase%20Request/app/index.html) | `Procurement/Supplier - Tony Fan/Widget/Tony PR/Tony-PR.zip` |
 | Purchase Order | `Tony_Fan_PO` | [Purchase Order](Purchase%20Order/app/index.html) | `Procurement/Supplier - Tony Fan/Widget/Tony PO/Tony-PO.zip` |
+| Production | `Tony_Production` | [Production](Production/app/index.html) | new in spec v1.4 (no Zoho source) |
 | Shipments | `Tony_Shipments` | [Shipments](Shipments/app/index.html) | `Procurement/Supplier - Tony Fan/Widget/Tony Shipment/Tony-Shipment.zip` |
 | Replacement Request | `Replacement_Request_Tony` | [Replacement Request](Replacement%20Request/app/index.html) | `Procurement/Supplier - Tony Fan/Widget/Tony Replacement Request/Tony-RR.zip` |
 

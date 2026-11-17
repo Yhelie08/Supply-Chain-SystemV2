@@ -7,6 +7,7 @@ Tabs, in app menu order. Each folder is the Zoho widget source (`app/` + `plugin
 | Inquiries | `Fenteng_Lighting_Inquiries` | [Inquiries](Inquiries/app/index.html) | `Procurement/Supplier - Fenteng/Widget/Fengteng Inq/Fenteng-Inquiries.zip` |
 | Purchase Request | `Fenteng_Lighting_PR` | [Purchase Request](Purchase%20Request/app/index.html) | `Procurement/Supplier - Fenteng/Widget/Fenteng PR/Fenteng-PR.zip` |
 | Purchase Order | `Fenteng_Lighting_PO` | [Purchase Order](Purchase%20Order/app/index.html) | `Procurement/Supplier - Fenteng/Widget/Fenteng PO/Fenteng-PO.zip` |
+| Production | `Fenteng_Production` | [Production](Production/app/index.html) | new in spec v1.4 (no Zoho source) |
 | Shipments | `Fenteng_Shipments` | [Shipments](Shipments/app/index.html) | `Procurement/Supplier - Fenteng/Widget/Fenteng Shipment/Fenteng-Shipment.zip` |
 | Replacement Request | `Replacement_Request_Fenteng` | [Replacement Request](Replacement%20Request/app/index.html) | `Procurement/Supplier - Fenteng/Widget/Fenteng Repalcement Request/Fenteng-RR.zip` |
 

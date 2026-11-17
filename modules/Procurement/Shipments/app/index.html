@@ -288,6 +288,8 @@ var PRHold = (function(){
   <div class="stat-cards" id="statCards"></div>
 
   <div class="main-card">
+    <!-- ADDED 2026-11-17 (spec v1.4 Ship & Track): the board. Category is written by the server's sorting engine, never here. -->
+    <div class="filter-row" style="padding-bottom:0"><div class="filter-pills" id="boardPills"></div></div>
     <div class="filter-row">
       <div class="filter-pills" id="filterPills"></div>
       <div class="search-wrap">
@@ -299,7 +301,8 @@ var PRHold = (function(){
       <table class="shp-table">
         <thead>
           <tr>
-            <th>Shipment #</th><th>PO #</th><th>SO #</th><th>EXC #</th><th>RR #</th><th>Customer</th><th>Supplier</th>
+            <th>Shipment #</th><th>Rank</th><th>Order Date</th><th>PO #</th><th>SO #</th><th>EXC #</th><th>RR #</th><th>Customer</th><th>Supplier</th>
+            <th>Stage</th><th>Why / Suggested action</th>
             <th>Status</th><th>Next Step</th><th>ETA</th><th>Required Days</th><th>Remaining Days</th><th>Timeline</th>
             <th>Forecast</th><th>Needs Attn.</th><th>Receiving</th>
           </tr>
@@ -347,46 +350,72 @@ var PRHold = (function(){
           <div class="info-item"><label>SO #</label><div class="val" id="infoSO">—</div></div>
           <div class="info-item"><label>Sales Owner</label><input type="text" id="fldSalesOwner" /></div>
           <div class="info-item"><label>Required Days (Lead)</label><input type="number" id="fldRequiredDays" /></div>
-          <div class="info-item"><label>Remaining Days</label><input type="number" id="fldRemainingDays" /></div>
-          <div class="info-item"><label>Shipment Days</label><input type="number" id="fldShipmentDays" /></div>
-          <div class="info-item"><label>Target Date</label><input type="date" id="fldTargetDate" /></div>
-          <div class="info-item"><label>Supplier Target Date</label><input type="date" id="fldSupplierTargetDate" /></div>
-          <div class="info-item"><label>Production Date</label><input type="date" id="fldProductionDate" /></div>
+          <div class="info-item" style="display:none"><label>Remaining Days</label><input type="number" id="fldRemainingDays" /></div>
+          <div class="info-item" style="display:none"><label>Shipment Days</label><input type="number" id="fldShipmentDays" /></div>
+          <div class="info-item"><label>Target Date</label><input type="date" id="fldTargetDate" onchange="stTargetChanged()" /></div>
+          <div class="info-item" id="targetReasonWrap" style="display:none"><label>Reason for changing the target (required)</label><input type="text" id="fldTargetReason" placeholder="Why is the promise changing?" /></div>
+          <div class="info-item" style="display:none"><label>Supplier Target Date</label><input type="date" id="fldSupplierTargetDate" /></div>
+          <div class="info-item" style="display:none"><label>Production Date</label><input type="date" id="fldProductionDate" /></div>
         </div>
-        <div id="delayBanner"></div>
+        <div id="delayBanner" style="display:none"></div>
       </div>
 
-      <div class="card">
-        <h3>Status</h3>
-        <div class="info-grid">
-          <div class="info-item">
-            <label>Shipment Status</label>
-            <select id="fldShipmentStatus">
-              <option value="Pending">Pending</option>
-              <option value="In Transit">In Transit</option>
-              <option value="Arriving in 1 Week">Arriving in 1 Week</option>
-              <option value="Delayed">Delayed</option>
-              <option value="Delivered">Delivered</option>
-            </select>
-          </div>
-          <div class="info-item"><label>Previous Status</label><div class="val" id="infoPrevStatus">—</div></div>
-          <div class="info-item">
-            <label>Risk Status</label>
-            <select id="fldRiskStatus">
-              <option value="">—</option>
-              <option value="On Track">On Track</option>
-              <option value="At Risk">At Risk</option>
-              <option value="Delayed">Delayed</option>
-            </select>
-          </div>
-          <div class="info-item"><label>Needs Attention</label><div class="val" id="infoNeedsAttn">—</div></div>
-          <div class="info-item"><label>Received Flag</label><div class="val" id="infoReceivedFlag">—</div></div>
-          <div class="info-item"><label>ETD</label><input type="date" id="fldETD" /></div>
-          <div class="info-item"><label>ETA</label><input type="date" id="fldETA" /></div>
-          <div class="info-item"><label>Ship Out Date</label><input type="date" id="fldShipOutDate" /></div>
-          <div class="info-item"><label>Estimated Warehouse Arrival</label><input type="date" id="fldEstWarehouseArrival" /></div>
-          <div class="info-item"><label>Arrival Date</label><input type="date" id="fldArrivalDate" /></div>
+      <div class="card" id="stCard">
+        <h3>Ship &amp; Track <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(planned dates are computed; actual dates come from reported events)</span></h3>
+        <div id="stSummary" style="margin-bottom:10px"></div>
+        <div class="table-wrap">
+          <table class="line-table" style="min-width:520px">
+            <thead><tr><th>Stage event</th><th>Planned</th><th>Actual</th></tr></thead>
+            <tbody id="stGrid"></tbody>
+          </table>
         </div>
+        <div class="info-grid" style="margin-top:14px">
+          <div class="info-item"><label>Forwarder</label><input type="text" id="fldForwarder" /></div>
+          <div class="info-item"><label>Tracking Reference</label><input type="text" id="fldTrackingRef" /></div>
+          <div class="info-item"><label>Shipment Mode</label>
+            <select id="fldShipMode"><option value="">&mdash;</option><option value="Airfreight">Airfreight</option><option value="LCL">LCL</option><option value="FCL">FCL</option></select>
+          </div>
+        </div>
+        <h4 style="margin:16px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-500)">Report an event</h4>
+        <div class="info-grid" id="stReportForm">
+          <div class="info-item"><label>What happened</label>
+            <select id="stEvent">
+              <option value="">Choose&hellip;</option>
+              <option value="production_started">Production started</option>
+              <option value="production_finished">Production finished</option>
+              <option value="shipped_out">Shipped out</option>
+              <option value="arrived_port">Arrived at port</option>
+              <option value="customs_cleared">Customs cleared</option>
+              <option value="arrived_warehouse">Arrived at warehouse</option>
+            </select>
+          </div>
+          <div class="info-item"><label>It happened on (blank = now)</label><input type="date" id="stWhen" /></div>
+          <div class="info-item"><label>Told to us by</label>
+            <select id="stSource"><option value="user">Our staff</option><option value="supplier">Supplier</option><option value="forwarder">Forwarder</option></select>
+          </div>
+          <div class="info-item"><label>Note</label><input type="text" id="stNote" /></div>
+        </div>
+        <div style="margin-top:8px"><button class="btn btn-orange btn-sm" id="stReportBtn" onclick="stReport()">Report event</button>
+          <span style="font-size:11.5px;color:var(--gray-400);margin-left:8px">Times are stamped by the server. Shipping out needs a production photo.</span></div>
+        <h4 style="margin:16px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-500)">Report a delay</h4>
+        <div class="info-grid" id="stDelayForm">
+          <div class="info-item"><label>New expected date</label><input type="date" id="stDelayDate" /></div>
+          <div class="info-item"><label>Reason (required)</label><input type="text" id="stDelayReason" /></div>
+        </div>
+        <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" id="stDelayBtn" onclick="stReportDelay()">Report delay</button>
+          <span style="font-size:11.5px;color:var(--gray-400);margin-left:8px" id="stDelayNow"></span></div>
+        <h4 style="margin:16px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-500)">Photos</h4>
+        <div class="info-grid">
+          <div class="info-item"><label>Production photo (required to leave Production)</label><div class="val" id="stProdPhoto">&mdash;</div>
+            <input type="file" id="stProdFile" accept="image/*,application/pdf" style="margin-top:4px" /> <button class="btn btn-ghost btn-sm" onclick="stUpload('Production_Photos','stProdFile')">Upload</button></div>
+          <div class="info-item"><label>Shipment photo (optional)</label><div class="val" id="stShipPhoto">&mdash;</div>
+            <input type="file" id="stShipFile" accept="image/*,application/pdf" style="margin-top:4px" /> <button class="btn btn-ghost btn-sm" onclick="stUpload('Shipment_Photos','stShipFile')">Upload</button></div>
+        </div>
+        <h4 style="margin:16px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-500)">Event log</h4>
+        <div class="table-wrap"><table class="line-table" style="min-width:520px">
+          <thead><tr><th>Event</th><th>Happened</th><th>We were told</th><th>Source</th><th>Visit</th></tr></thead>
+          <tbody id="stLog"><tr><td colspan="5" style="color:var(--gray-400)">&mdash;</td></tr></tbody>
+        </table></div>
       </div>
 
       <div class="card">
@@ -408,6 +437,38 @@ var PRHold = (function(){
     </div>
 
     <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="card">
+        <h3>Status</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Shipment Status</label>
+            <select id="fldShipmentStatus">
+              <option value="Pending">Pending</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Arriving in 1 Week">Arriving in 1 Week</option>
+              <option value="Delayed">Delayed</option>
+              <option value="Delivered">Delivered</option>
+            </select>
+          </div>
+          <div class="info-item"><label>Previous Status</label><div class="val" id="infoPrevStatus">—</div></div>
+          <div class="info-item">
+            <label>Risk Status</label>
+            <select id="fldRiskStatus" disabled title="Set by the system from the forecast">
+              <option value="">—</option>
+              <option value="On Track">On Track</option>
+              <option value="At Risk">At Risk</option>
+              <option value="Delayed">Delayed</option>
+            </select>
+          </div>
+          <div class="info-item"><label>Needs Attention</label><div class="val" id="infoNeedsAttn">—</div></div>
+          <div class="info-item"><label>Received Flag</label><div class="val" id="infoReceivedFlag">—</div></div>
+          <div class="info-item" style="display:none"><label>ETD</label><input type="date" id="fldETD" /></div>
+          <div class="info-item" style="display:none"><label>ETA</label><input type="date" id="fldETA" /></div>
+          <div class="info-item" style="display:none"><label>Ship Out Date</label><input type="date" id="fldShipOutDate" /></div>
+          <div class="info-item" style="display:none"><label>Estimated Warehouse Arrival</label><input type="date" id="fldEstWarehouseArrival" /></div>
+          <div class="info-item" style="display:none"><label>Arrival Date</label><input type="date" id="fldArrivalDate" /></div>
+        </div>
+      </div>
       <div class="card">
         <h3>Receiving Handoff</h3>
         <div class="info-grid">
@@ -647,7 +708,7 @@ function dispVal(field){
 function loadList(){
   /* PR On Hold (Phase 3): status only here. Marking an item to ship is done (and locked) in the supplier's own Shipment widget. */
   PRHold.load(function(){ if(ALL_ROWS && ALL_ROWS.length) renderList(); });
-  document.getElementById('listBody').innerHTML = '<tr><td colspan="16"><div class="loading-wrap"><div class="spinner"></div>Loading shipments…</div></td></tr>';
+  document.getElementById('listBody').innerHTML = '<tr><td colspan="19"><div class="loading-wrap"><div class="spinner"></div>Loading shipments…</div></td></tr>';
 
   /* Resolve the REAL app_name/owner from the SDK instead of trusting the hardcoded
      guess — same rationale/pattern as PRs/app's loadFromCreator(): addRecords (which
@@ -1119,11 +1180,15 @@ function renderList(){
     if(CURRENT_FILTER === 'attention'){ if(!needsAttn) return false; }
     else if(CURRENT_FILTER === 'shipmode_unmatched'){ if(!rowHasShipModeMismatch(r)) return false; }
     else if(CURRENT_FILTER !== 'all' && statusKey(r) !== CURRENT_FILTER) return false;
+    if(ST_BOARD !== 'all' && (r.Category || '') !== ST_BOARD) return false;
+    if(ST_STAGE_GROUP && ST_GROUP_OF[stStageOf(r)] !== ST_STAGE_GROUP) return false;
     if(!q) return true;
     var hay = ((r.Shipment_No||'') + ' ' + dispVal(r.PO_No) + ' ' + (r.Sales_Order||'') + ' ' + (r.Customer||'') + ' ' + (r.Supplier||'') + ' ' +
       trkExcFor(r).join(' ') + ' ' + trkRRFor(r).join(' ')).toLowerCase();
     return hay.indexOf(q) !== -1;
   });
+  stSortByQueue(rows); // spec SE-5: one ranking, oldest Sales Order first, written by the server
+  stRenderBoard();
   var body = document.getElementById('listBody');
   var empty = document.getElementById('listEmpty');
   if(rows.length === 0){
@@ -1140,12 +1205,16 @@ function renderList(){
     var fulfExcBadge = (r.Source_Module === 'Fulfillment EXC') ? ' <span class="badge" style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4">Fulfillment EXC</span>' : '';
     return '<tr class="row-' + sKey + '" onclick="openDetail(\'' + r.ID + '\')">' +
       '<td><strong>' + esc(r.Shipment_No) + '</strong>' + fulfExcBadge + '</td>' +
+      '<td>' + stRankCell(r) + '</td>' +
+      '<td>' + esc(r.Order_Date || '\u2014') + '</td>' +
       '<td>' + esc(dispVal(r.PO_No)) + '</td>' +
       '<td>' + esc(r.Sales_Order) + '</td>' +
       '<td>' + trkChips(trkExcFor(r), 'trk-exc') + '</td>' +
       '<td>' + trkChips(trkRRFor(r), 'trk-rr') + '</td>' +
       '<td>' + esc(r.Customer) + '</td>' +
       '<td>' + esc(r.Supplier) + '</td>' +
+      '<td>' + stStageCell(r) + '</td>' +
+      '<td>' + stWhyCell(r) + '</td>' +
       '<td>' + statusBadge(r) + shipHoldBadge(r) + '</td>' +
       '<td>' + nextStepCell(r.ID, nextStepFor(r)) + '</td>' +
       '<td>' + esc(r.ETA || '—') + '</td>' +
@@ -1332,6 +1401,8 @@ function renderDetail(){
   document.getElementById('infoRecvCreated').textContent = recvCreated ? 'Yes' : 'No';
 
   renderLineItems();
+  stRenderDetail(r); // ADDED 2026-11-17 — Ship & Track card
+  stTargetChanged();
 
   /* ADDED 2026-07-16, per user request — plain persistent Notes field (real, already-
      existing `Notes` field on the native Shipments form, just never surfaced in this
@@ -1551,6 +1622,7 @@ function syncShipmentStatusBack(savedLines){
 }
 
 function saveShipment(){
+  if(stTargetChanged() && !document.getElementById('fldTargetReason').value.trim()){ showToast('Give a reason for changing the target date.'); return; }
   var lines = getLineItems();
   var btn = document.getElementById('btnSave');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -1558,7 +1630,6 @@ function saveShipment(){
 
   var payload = {
     Shipment_Status: document.getElementById('fldShipmentStatus').value,
-    Risk_Status: document.getElementById('fldRiskStatus').value,
     Sales_Owner: document.getElementById('fldSalesOwner').value,
     Notes: document.getElementById('fldNotes').value,
     Required_Days_Lead: document.getElementById('fldRequiredDays').value,
@@ -1572,6 +1643,10 @@ function saveShipment(){
     Ship_Out_Date: fmtDateForPayload(document.getElementById('fldShipOutDate').value),
     Estimated_Warehouse_Arrival: fmtDateForPayload(document.getElementById('fldEstWarehouseArrival').value),
     Arrival_Date: fmtDateForPayload(document.getElementById('fldArrivalDate').value),
+    Target_Change_Reason: document.getElementById('fldTargetReason').value,
+    Forwarder: document.getElementById('fldForwarder').value,
+    Tracking_Ref: document.getElementById('fldTrackingRef').value,
+    Shipment_Mode: document.getElementById('fldShipMode').value,
     PO_Shipments: lines.map(function(ln){
       var ordered = parseFloat(ln.Ordered_QTY || 0);
       var shipped = parseFloat(ln.Shipment_QTY || 0);
@@ -2171,5 +2246,168 @@ function sgApplyRRMap(){
   });
 }
 </script>
+<script>
+/* ════════════════════════════════
+   SHIP & TRACK — ADDED 2026-11-17, from the HomeCartel spec v1.4 (02 Procurement / 04 Ship and Track, Engines 01, 03, 04).
+   Display + two actions. Everything the board shows (Category, Queue_Rank, Priority_Reason, Suggested_Action, planned dates,
+   actual stamps, Order_Date) is written by the server; this widget never sends them. The actions are:
+     - Report event  -> Report_Event / Report_Occurred_At / Report_Source / Report_Note (the server stamps and logs it)
+     - Upload photo  -> Production_Photos / Shipment_Photos (a production photo is required before the shipment can leave Production)
+════════════════════════════════ */
+var ST_BOARD = 'all';
+var ST_STAGE_GROUP = ''; /* the Dashboard's pipeline link: ?stage=production|shipout|transit|receive */
+var ST_GROUP_OF = { production:'production', shipped_out:'shipout', arrived_port:'transit', customs_cleared:'transit', arrived_warehouse:'receive' };
+var ST_CATS = [['broken','Broken (replacement)','badge-red'],['act_now','Act now','badge-red'],['tell_customer','Tell the customer','badge-orange'],['watch','Watch','badge-blue'],['on_track','On track','badge-green'],['blocked','Blocked','badge-gray']];
+var ST_STAGE = { production:'Production', shipped_out:'Shipped out', arrived_port:'At port', customs_cleared:'Customs cleared', arrived_warehouse:'At warehouse', received:'Received' };
+function stCat(r){ var c = r.Category || ''; for(var i=0;i<ST_CATS.length;i++){ if(ST_CATS[i][0]===c) return ST_CATS[i]; } return null; }
+function stStageOf(r){
+  if(r.Stage && ST_STAGE[r.Stage]) return r.Stage;
+  var s = (r.Shipment_Status || '');
+  if(s === 'Delivered') return 'arrived_warehouse';
+  if(s === 'In Transit' || s === 'Arriving In 1 Week' || r.Ship_Out_Date) return 'shipped_out';
+  return 'production';
+}
+function stRankCell(r){
+  var c = stCat(r);
+  if(!c) return '<span style="color:var(--gray-400)">&mdash;</span>';
+  var rank = (r.Queue_Rank !== null && r.Queue_Rank !== undefined && r.Queue_Rank !== '') ? ('#' + esc(r.Queue_Rank) + ' ') : '';
+  return '<span class="badge ' + c[2] + '" title="' + esc(r.Priority_Reason || '') + '">' + rank + c[1] + '</span>';
+}
+function stStageCell(r){
+  var late = parseFloat(r.Days_Late || 0);
+  return esc(ST_STAGE[stStageOf(r)] || '') + (late > 0 ? ' <span class="badge badge-red" style="font-size:10.5px">' + late + 'd late</span>' : '');
+}
+function stWhyCell(r){
+  var why = r.Priority_Reason || '', act = r.Suggested_Action || '';
+  if(!why && !act) return '<span style="color:var(--gray-400)">Not scored yet</span>';
+  return '<div style="font-size:12px;max-width:340px" title="' + esc(why) + '">' + esc(why) + '</div>' + (act ? '<div style="font-size:12px;font-weight:600;color:var(--orange-dark)">' + esc(act) + '</div>' : '');
+}
+function stSortByQueue(rows){
+  var order = {}; ST_CATS.forEach(function(c,i){ order[c[0]] = i; });
+  rows.sort(function(a,b){
+    var ca = order[a.Category] === undefined ? 99 : order[a.Category], cb = order[b.Category] === undefined ? 99 : order[b.Category];
+    if(ca !== cb) return ca - cb;
+    var ra = parseFloat(a.Queue_Rank), rb = parseFloat(b.Queue_Rank);
+    if(isNaN(ra)) ra = 1e9;
+    if(isNaN(rb)) rb = 1e9;
+    return ra - rb;
+  });
+}
+function stRenderBoard(){
+  var el = document.getElementById('boardPills');
+  if(!el) return;
+  var counts = {};
+  (ALL_ROWS || []).forEach(function(r){ var k = r.Category || ''; counts[k] = (counts[k] || 0) + 1; });
+  var html = '<button class="pill ' + (ST_BOARD==='all'?'active':'') + '" onclick="stSetBoard(\'all\')">All Ship &amp; Track</button>';
+  ST_CATS.forEach(function(c){ html += '<button class="pill ' + (ST_BOARD===c[0]?'active':'') + '" onclick="stSetBoard(\'' + c[0] + '\')">' + c[1] + ' (' + (counts[c[0]] || 0) + ')</button>'; });
+  if(ST_STAGE_GROUP) html += '<button class="pill active" title="Show every stage" onclick="ST_STAGE_GROUP=\'\';renderList()">Stage: ' + ST_STAGE_GROUP + ' \u2715</button>';
+  el.innerHTML = html;
+}
+function stSetBoard(c){ ST_BOARD = c; renderList(); }
+(function(){ /* the Dashboard links here with ?cat= and ?stage= (spec 08: every number opens the list behind it) */
+  var q = new URLSearchParams(location.search);
+  if(q.get('cat')) ST_BOARD = q.get('cat');
+  if(q.get('stage')) ST_STAGE_GROUP = q.get('stage');
+})();
+
+function stDate(v){ return v ? esc(String(v)) : '<span style="color:var(--gray-400)">&mdash;</span>'; }
+function stPhotoLink(v){ return v ? '<a href="' + esc(v) + '" target="_blank" rel="noopener">View</a>' : '<span style="color:var(--gray-400)">None yet</span>'; }
+function stRenderDetail(r){
+  var c = stCat(r);
+  var late = parseFloat(r.Days_Late || 0);
+  var bits = [];
+  bits.push('<span class="badge badge-gray">' + esc(ST_STAGE[stStageOf(r)]) + '</span>');
+  if(c) bits.push('<span class="badge ' + c[2] + '">' + c[1] + (r.Queue_Rank ? ' &middot; rank #' + esc(r.Queue_Rank) : '') + '</span>');
+  if(late > 0) bits.push('<span class="badge badge-red">' + late + ' day(s) late</span>');
+  var dates = '<div class="info-grid" style="margin-top:8px">' +
+    '<div class="info-item"><label>Order Date</label><div class="val">' + stDate(r.Order_Date) + '</div></div>' +
+    '<div class="info-item"><label>Date needed (pickable)</label><div class="val">' + stDate(r.Date_Needed) + '</div></div>' +
+    '<div class="info-item"><label>Forecast pickable</label><div class="val">' + stDate(r.Forecast_Pickable) + '</div></div>' +
+    '</div>';
+  var why = (r.Priority_Reason ? '<div style="font-size:12.5px;margin-top:8px">' + esc(r.Priority_Reason) + '</div>' : '') +
+            (r.Suggested_Action ? '<div style="font-size:12.5px;font-weight:600;color:var(--orange-dark);margin-top:2px">Suggested: ' + esc(r.Suggested_Action) + '</div>' : '') +
+            (r.Blocked_Reason ? '<div style="font-size:12.5px;color:var(--red);margin-top:2px">Blocked: ' + esc(r.Blocked_Reason) + '</div>' : '');
+  document.getElementById('stSummary').innerHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap">' + bits.join('') + '</div>' + dates + why;
+  var rows = [
+    ['Production start', r.Production_Start_Planned, r.Production_Started_At],
+    ['Production end', r.Production_End_Planned, r.Production_Finished_At],
+    ['Shipout', r.Shipout_Planned, r.Shipped_Out_At],
+    ['Arrival at port', r.Arrival_Planned, r.Arrived_Port_At],
+    ['Customs cleared', '', r.Customs_Cleared_At],
+    ['Arrived at warehouse / pickable', r.Receive_Planned, r.Arrived_Warehouse_At],
+    ['Received', '', r.Received_At]
+  ];
+  rows = rows.filter(function(x, i){ return i < 4 || i === 5 || x[2]; });
+  document.getElementById('stGrid').innerHTML = rows.map(function(x){ return '<tr><td>' + x[0] + '</td><td>' + stDate(x[1]) + '</td><td>' + stDate(x[2]) + '</td></tr>'; }).join('');
+  document.getElementById('fldForwarder').value = r.Forwarder || '';
+  document.getElementById('fldTrackingRef').value = r.Tracking_Ref || '';
+  document.getElementById('fldShipMode').value = r.Shipment_Mode || '';
+  document.getElementById('stProdPhoto').innerHTML = stPhotoLink(r.Production_Photos);
+  document.getElementById('stShipPhoto').innerHTML = stPhotoLink(r.Shipment_Photos);
+  document.getElementById('stEvent').value = '';
+  document.getElementById('stWhen').value = '';
+  document.getElementById('stNote').value = '';
+  document.getElementById('stWhen').max = new Date().toISOString().slice(0,10);
+  stLoadLog(r.ID);
+}
+function stLoadLog(id){
+  var body = document.getElementById('stLog');
+  ZOHO.CREATOR.DATA.getRecords({ report_name: 'Stage_Events', criteria: '(Record_Type == "shipment" && Record_Id == "' + String(id) + '")', field_config: 'all', page: 1, pageSize: 200 }).then(function(resp){
+    var list = (resp && resp.code === 3000 && resp.data) ? resp.data : [];
+    list.sort(function(a,b){ return String(a.Added_Time || '').localeCompare(String(b.Added_Time || '')) || (Number(a.ID) < Number(b.ID) ? -1 : 1); });
+    body.innerHTML = list.length ? list.map(function(e){
+      var bound = e.Occurred_Bound && e.Occurred_Bound !== 'exact' ? ' <em>(' + esc(e.Occurred_Bound) + ')</em>' : '';
+      return '<tr><td>' + esc(String(e.Event || '').replace('shipment.','').replace(/_/g,' ')) + '</td><td>' + esc(e.Occurred_At || '') + bound + '</td><td>' + esc(e.Reported_At || '') + '</td><td>' + esc(e.Source || '') + '</td><td>' + esc(e.Visit_No || '') + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="color:var(--gray-400)">No events yet</td></tr>';
+  }).catch(function(){ body.innerHTML = '<tr><td colspan="5" style="color:var(--gray-400)">Event log not available</td></tr>'; });
+}
+/* DT-4 (spec 05 Shared Engines / 03): a changed promise date needs a reason; the server logs old, new, why and who. */
+function stTargetChanged(){
+  var was = fmtDateForInput(CURRENT_RECORD && CURRENT_RECORD.Target_Date), now = document.getElementById('fldTargetDate').value;
+  var changed = !!was && now !== was;
+  document.getElementById('targetReasonWrap').style.display = changed ? '' : 'none';
+  if(!changed) document.getElementById('fldTargetReason').value = '';
+  return changed;
+}
+function stReport(){
+  var ev = document.getElementById('stEvent').value;
+  if(!ev){ showToast('Choose what happened'); return; }
+  var btn = document.getElementById('stReportBtn');
+  btn.disabled = true;
+  var payload = { Report_Event: ev, Report_Occurred_At: document.getElementById('stWhen').value, Report_Source: document.getElementById('stSource').value, Report_Note: document.getElementById('stNote').value };
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_NAME, id: String(CURRENT_RECORD.ID), payload: { data: payload } }).then(function(resp){
+    btn.disabled = false;
+    if(!(resp && String(resp.code) === '3000')){ showToast((resp && resp.message) || ('Could not report — code ' + (resp && resp.code))); return; }
+    showToast('Event reported');
+    loadList();
+    openDetail(String(CURRENT_RECORD.ID));
+  }).catch(function(err){ btn.disabled = false; showToast((err && err.message) || 'Could not report the event'); });
+}
+function stReportDelay(){
+  var d = document.getElementById('stDelayDate').value, r = document.getElementById('stDelayReason').value.trim();
+  if(!d || !r){ showToast('Give the new expected date and a reason'); return; }
+  var btn = document.getElementById('stDelayBtn');
+  btn.disabled = true;
+  var payload = { Report_Delay_Date: d, Report_Delay_Reason: r, Report_Source: document.getElementById('stSource').value };
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_NAME, id: String(CURRENT_RECORD.ID), payload: { data: payload } }).then(function(resp){
+    btn.disabled = false;
+    if(!(resp && String(resp.code) === '3000')){ showToast((resp && resp.message) || ('Could not report — code ' + (resp && resp.code))); return; }
+    showToast('Delay reported');
+    document.getElementById('stDelayDate').value = ''; document.getElementById('stDelayReason').value = '';
+    loadList();
+    openDetail(String(CURRENT_RECORD.ID));
+  }).catch(function(err){ btn.disabled = false; showToast((err && err.message) || 'Could not report the delay'); });
+}
+function stUpload(field, inputId){
+  var f = document.getElementById(inputId).files[0];
+  if(!f){ showToast('Choose a file first'); return; }
+  ZOHO.CREATOR.FILE.uploadFile({ report_name: REPORT_NAME, id: String(CURRENT_RECORD.ID), field_name: field, file: f }).then(function(ur){
+    if(!(ur && String(ur.code) === '3000')){ showToast((ur && ur.message) || 'Upload failed'); return; }
+    showToast('Photo uploaded');
+    openDetail(String(CURRENT_RECORD.ID));
+  }).catch(function(){ showToast('Upload failed'); });
+}
+</script>
+
 </body>
 </html>

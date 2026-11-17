@@ -371,6 +371,13 @@
           <input class="search-input" id="excSearch" placeholder="Search exceptions..." oninput="renderTable()" />
         </div>
       </div>
+      <div class="filter-row" id="excSpecFilters" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:-4px">
+        <span style="font-size:12px;color:var(--gray-500)">Filter:</span>
+        <select id="fltAge" onchange="renderTable()"><option value="">Any age</option><option value="3">Older than 3 days</option><option value="7">Older than 7 days</option><option value="14">Older than 14 days</option></select>
+        <select id="fltStage" onchange="renderTable()"><option value="">Any stage found</option></select>
+        <select id="fltFault" onchange="renderTable()"><option value="">Any fault origin</option></select>
+        <select id="fltOwner" onchange="renderTable()"><option value="">Any owner</option></select>
+      </div>
 
       <div class="table-wrap">
         <table class="rr-table">
@@ -390,12 +397,13 @@
               <th>Affected Qty</th>
               <th>Dept.</th>
               <th>Assigned To</th>
-              <th>Waiting On</th>
+ <th>Waiting On</th>
               <th>Due Date</th>
+              <th>Age</th>
             </tr>
           </thead>
           <tbody id="excTbody">
-            <tr><td colspan="16" class="loading-row"><span class="spin"></span>Loading from Zoho Creator…</td></tr>
+            <tr><td colspan="17" class="loading-row"><span class="spin"></span>Loading from Zoho Creator…</td></tr>
           </tbody>
         </table>
       </div>
@@ -760,6 +768,10 @@
     </div>
     <div class="rrsup-q">Where should the replacement come from?</div>
     <div id="rrsupOptions"></div>
+    <div class="rrsup-reason" id="rrsupOtherRow" style="display:none">
+      <label for="rrsupOtherName">Supplier name</label>
+      <input type="text" id="rrsupOtherName" placeholder="e.g. a Taobao seller or a one-off supplier" oninput="onSupplierChoiceChange()" style="width:100%;height:36px;border:1.5px solid #e2e8f0;border-radius:8px;padding:0 10px" />
+    </div>
     <div class="rrsup-reason" id="rrsupReasonRow" style="display:none">
       <label for="rrsupReason">Reason for changing the supplier</label>
       <textarea id="rrsupReason" placeholder="Why is this replacement moving off the original supplier?" oninput="onSupplierChoiceChange()"></textarea>
@@ -1231,6 +1243,8 @@ function mapException(r){
     photosByKey: {},
     assignedDept: _val(r,'Assigned_Department'),
     assignedTo: _val(r,'Assigned_To'),
+    foundStage: _val(r,'Found_Stage'),
+    faultOrigin: _val(r,'Fault_Origin'),
     openedOn: _val(r,'Opened_On'),
     waitingOn: _val(r,'Waiting_On'),
   };
@@ -1422,20 +1436,41 @@ function matchesSubFilter(exc){
   return exc.status===subFilter;
 }
 
+function excAgeDays(exc){
+  var t = Date.parse(String(exc.openedOn||'').slice(0,10));
+  return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000);
+}
+function fillSpecFilter(id, values){
+  var el = $(id); if(!el) return;
+  var keep = el.value, first = el.options[0].outerHTML;
+  var uniq = values.filter(function(v, i, a){ return v && a.indexOf(v) === i; }).sort();
+  el.innerHTML = first + uniq.map(function(v){ return '<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>'; }).join('');
+  el.value = uniq.indexOf(keep) >= 0 ? keep : '';
+}
 function renderTable(){
   var tbody = $('excTbody');
   if(!creatorLoaded) return;
+  fillSpecFilter('fltStage', ALL_EXC.map(function(e){ return e.foundStage; }));
+  fillSpecFilter('fltFault', ALL_EXC.map(function(e){ return e.faultOrigin; }));
+  fillSpecFilter('fltOwner', ALL_EXC.map(function(e){ return e.assignedTo; }));
 
   var q = ($('excSearch').value||'').trim().toLowerCase();
   var data = ALL_EXC.filter(function(exc){
     if(!matchesTopScope(exc) || !matchesSubFilter(exc)) return false;
+    var minAge = parseInt($('fltAge').value, 10), age = excAgeDays(exc);
+    if(minAge && !(age != null && age > minAge)) return false;
+    if($('fltStage').value && exc.foundStage !== $('fltStage').value) return false;
+    if($('fltFault').value && exc.faultOrigin !== $('fltFault').value) return false;
+    if($('fltOwner').value && exc.assignedTo !== $('fltOwner').value) return false;
     if(!q) return true;
     var hay = [exc.excNo, exc.type, exc.soNo, exc.poNo, exc.shipmentNo, exc.receiveNo, exc.skuSummary, exc.assignedTo].join(' ').toLowerCase();
     return hay.includes(q);
   });
+  /* spec 06 Exception Control: by age, the oldest open one first */
+  data.sort(function(a, b){ var ta = Date.parse(String(a.openedOn||'').slice(0,10)), tb = Date.parse(String(b.openedOn||'').slice(0,10)); return (isNaN(ta) ? 9e15 : ta) - (isNaN(tb) ? 9e15 : tb); });
 
   if(!data.length){
-    tbody.innerHTML = '<tr><td colspan="16" class="loading-row">No exceptions found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="17" class="loading-row">No exceptions found.</td></tr>';
   } else {
     tbody.innerHTML = data.map(function(exc){
       return '<tr class="'+riskRowClass(exc)+'" onclick="showDetail(\''+exc.id+'\')">'
@@ -1455,6 +1490,7 @@ function renderTable(){
         + '<td>'+escapeHtml(exc.assignedTo||'—')+'</td>'
         + '<td class="cell-waiting '+(exc.waitingOn==='Supplier'?'on-supplier':'on-internal')+'">'+escapeHtml(exc.waitingOn||'—')+'</td>'
         + '<td class="cell-target'+(isOverdue(exc)?' warn':'')+'">'+fmtDateShort(exc.dueDateRaw)+(isOverdue(exc)?' ⚠':'')+'</td>'
+        + '<td style="white-space:nowrap;font-weight:600">'+(excAgeDays(exc) == null ? '—' : (excAgeDays(exc) <= 0 ? 'today' : excAgeDays(exc)+' d'))+'</td>'
         + '</tr>';
     }).join('');
   }
@@ -2196,7 +2232,9 @@ function openSupplierChoice(){
     if(name === _rrTaggedSupplier) return;
     opts.push(optionHtml(name, name, RR_SUPPLIER_HINTS[name] || '', false));
   });
+  opts.push(optionHtml('__other__', 'Other', 'A supplier with no portal: you enter its updates yourself', false));
   $('rrsupOptions').innerHTML = opts.join('');
+  $('rrsupOtherName').value = '';
 
   /* An Exception whose originating PR was blank has no supplier tagged at all. There is
      no "same" to default to, so a pick is mandatory — same situation the Replacement
@@ -2224,15 +2262,17 @@ function onSupplierChoiceChange(){
   var chosen = selectedRRSupplier();
   var isChange = !!chosen;
   $('rrsupReasonRow').style.display = isChange ? 'block' : 'none';
+  $('rrsupOtherRow').style.display = chosen === '__other__' ? 'block' : 'none';
   var ok = $('rrsupOkBtn');
   if(chosen === null){ ok.disabled = true; return; }
-  ok.disabled = isChange && !$('rrsupReason').value.trim();
+  ok.disabled = (isChange && !$('rrsupReason').value.trim()) || (chosen === '__other__' && !$('rrsupOtherName').value.trim());
 }
 function closeSupplierChoice(){ $('rrsupOverlay').classList.remove('show'); }
 
 function confirmSupplierChoice(){
   var chosen = selectedRRSupplier();
   if(chosen === null){ showToast('Pick where the replacement should come from.'); return; }
+  if(chosen === '__other__'){ chosen = $('rrsupOtherName').value.trim(); if(!chosen){ showToast('Type the supplier name.'); return; } }
   var reason = $('rrsupReason').value.trim();
   if(chosen && !reason){ showToast('Give a reason for changing the supplier.'); return; }
   closeSupplierChoice();

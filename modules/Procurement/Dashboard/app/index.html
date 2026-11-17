@@ -274,6 +274,147 @@ function EmptyState({ text }){
   return <div className="h-full min-h-[120px] flex items-center justify-center text-[12.5px] text-slate-400">{text}</div>;
 }
 
+/* ================= SPEC v1.4 BLOCKS (02 Procurement / 08 Dashboard) =================
+   One custom API (get_procurement_dashboard) works out every block; every number here links to the list behind it
+   (#Page:<page>?<query>, read by the target widget). Added 2026-11-17. */
+function goTo(l){
+  if (!l || !l.page) return;
+  var url = "#Page:" + l.page + (l.query ? "?" + l.query : "");
+  try { ZOHO.CREATOR.UTIL.navigateParentURL({ url: url, window: "same" }); } catch (e) { window.location.hash = url; }
+}
+function Pct({ v }){ return v == null ? <span className="text-slate-300">&mdash;</span> : <span>{v}%</span>; }
+function Tile({ label, value, sub, tone, link }){
+  var tones = { red:"text-red-600", orange:"text-[#ea580c]", slate:"text-slate-800", blue:"text-blue-600", purple:"text-purple-600" };
+  return (
+    <button type="button" onClick={function(){ goTo(link); }} className="text-left bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 hover:border-slate-400 transition w-full">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</div>
+      <div className={"text-[26px] font-extrabold leading-tight " + (tones[tone] || tones.slate)}>{value}</div>
+      {sub ? <div className="text-[11.5px] text-slate-400">{sub}</div> : null}
+    </button>
+  );
+}
+function SpecBlocks(){
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState("");
+  useEffect(function(){
+    if (typeof ZOHO === "undefined" || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || !ZOHO.CREATOR.DATA.invokeCustomApi) { setErr("Not connected."); return; }
+    ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: "get_procurement_dashboard", http_method: "POST", content_type: "application/json", payload: {}, public_key: "" })
+      .then(function(r){ var x = (r && r.result) ? r.result : (r && r.data) ? r.data : r; setD((x && x.data) || x); })
+      .catch(function(e){ setErr((e && e.message) || "Could not load the dashboard blocks."); });
+  }, []);
+  if (err) return <div className="text-[12.5px] text-slate-400">{err}</div>;
+  if (!d) return <div className="text-[12.5px] text-slate-400">Loading today&hellip;</div>;
+  var t = d.today, bl = d.born_late, ot = d.on_time;
+  var maxRate = Math.max.apply(null, bl.weeks.map(function(w){ return w.rate || 0; }).concat([1]));
+  return (
+    <section id="today" className="space-y-5 scroll-mt-4">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-500 mb-1">Procurement &middot; today</p>
+        <h1 className="text-xl font-extrabold text-slate-800">What needs action today</h1>
+        <p className="text-[12.5px] text-slate-400 mt-0.5">Every number opens the list behind it.</p>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <Tile label="Act now" value={t.act_now.count} tone="red" sub="can still be changed" link={t.act_now.link} />
+        <Tile label="Tell the customer" value={t.tell_customer.count} tone="orange" sub="will miss, nothing left to change" link={t.tell_customer.link} />
+        <Tile label="Broken (replacements)" value={t.broken.count} tone="red" sub="first in every queue" link={t.broken.link} />
+        <Tile label="Decisions waiting" value={t.decisions.count} tone="purple" sub={t.decisions.air_upgrade + " air · " + t.decisions.ladder_day3 + " day-3 · " + t.decisions.forecast_promise_change + " new target"} link={t.decisions.link} />
+        <Tile label="PRs needing a manual quote" value={t.manual_quote.count} tone="blue" link={t.manual_quote.link} />
+        <Tile label="POs not acknowledged" value={t.pos_not_acknowledged.count} tone="orange" link={t.pos_not_acknowledged.link} />
+      </div>
+      {t.top.length ? (
+        <SectionCard title="First to work on">
+          <div className="divide-y divide-slate-100">
+            {t.top.map(function(x){
+              return (
+                <button key={x.id} type="button" onClick={function(){ goTo(t.act_now.link); }} className="w-full text-left py-2 flex gap-3 items-baseline hover:bg-slate-50 rounded">
+                  <span className="font-bold text-[13px] text-slate-800 w-24 shrink-0">{x.no}</span>
+                  <span className="text-[12.5px] text-slate-500 w-32 shrink-0">{x.supplier}</span>
+                  <span className="text-[12.5px] text-slate-600 flex-1">{x.reason}{x.action ? " — " + x.action : ""}</span>
+                </button>
+              );
+            })}
+          </div>
+        </SectionCard>
+      ) : null}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <SectionCard title="Born-late rate (main procurement number)" action={<button type="button" className="text-[12px] text-blue-600" onClick={function(){ goTo(bl.link); }}>Open list</button>}>
+          <div className="flex items-end gap-4 mb-3">
+            <div className="text-[34px] font-extrabold text-[#ea580c] leading-none"><Pct v={bl.rate} /></div>
+            <div className="text-[12px] text-slate-400 pb-1">{bl.born_late} of {bl.raised} lines raised with a shortfall, last 8 weeks</div>
+          </div>
+          <div className="flex items-end gap-1 h-24">
+            {bl.weeks.slice().reverse().map(function(w){
+              return (
+                <div key={w.week_start} className="flex-1 flex flex-col items-center justify-end h-full" title={w.week_start + ": " + (w.rate == null ? "no lines" : w.rate + "% (" + w.born_late + "/" + w.raised + ")")}>
+                  <div className="w-full bg-[#fdba74] rounded-t" style={{ height: ((w.rate || 0) / maxRate * 100) + "%", minHeight: w.rate ? "3px" : "0" }}></div>
+                  <div className="text-[9.5px] text-slate-400 mt-1">{w.week_start.slice(5)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+        <SectionCard title="On-time arrival" action={<button type="button" className="text-[12px] text-blue-600" onClick={function(){ goTo(ot.link); }}>Open list</button>}>
+          <div className="flex items-end gap-4 mb-3">
+            <div className="text-[34px] font-extrabold text-emerald-600 leading-none"><Pct v={ot.rate} /></div>
+            <div className="text-[12px] text-slate-400 pb-1">{ot.on_time} of {ot.lines} lines arrived by the planned arrival</div>
+          </div>
+          {ot.by_supplier.length ? ot.by_supplier.map(function(x){
+            return <div key={x.supplier} className="flex justify-between text-[12.5px] border-b border-dashed border-slate-100 py-1"><span>{x.supplier}</span><span><b><Pct v={x.rate} /></b> <span className="text-slate-400">({x.on_time}/{x.lines})</span></span></div>;
+          }) : <EmptyState text="No shipment has arrived yet." />}
+        </SectionCard>
+      </div>
+      <SectionCard title="Supplier scorecard">
+        {d.scorecard.length ? (
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: "720px" }} className="text-[12.5px]">
+              <div className="grid text-left text-slate-400 text-[11px] uppercase tracking-wide py-1" style={{ gridTemplateColumns: "1.3fr 1.6fr .8fr .8fr 1fr 1.4fr" }}>
+                <div>Supplier</div><div>Lead time planned / actual (days)</div><div>Late starts</div><div>Ladder rungs</div><div>Reporting lag (days)</div><div>Damage rate, supplier fault</div>
+              </div>
+              {d.scorecard.map(function(x){
+                return (
+                  <div key={x.supplier} className="grid border-t border-slate-100 py-1.5" style={{ gridTemplateColumns: "1.3fr 1.6fr .8fr .8fr 1fr 1.4fr" }}>
+                    <div className="font-semibold">{x.supplier}</div>
+                    <div>{x.lead_planned_days == null ? "—" : x.lead_planned_days + " / " + x.lead_actual_days}</div>
+                    <div>{x.late_starts}</div>
+                    <div>{x.ladder_rungs}</div>
+                    <div>{x.reporting_lag_days == null ? "—" : x.reporting_lag_days}</div>
+                    <div>{x.damage_rate_supplier_fault == null ? "—" : x.damage_rate_supplier_fault + "% (" + x.damage_qty + "/" + x.received_qty + ")"}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : <EmptyState text="No supplier data yet." />}
+      </SectionCard>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <SectionCard title="Pipeline: lines by stage">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {d.pipeline.map(function(x){
+              var label = { production: "Production", shipout: "Ship out", transit: "In transit", receive: "At warehouse" }[x.stage];
+              return (
+                <button key={x.stage} type="button" onClick={function(){ goTo(x.link); }} className="text-left rounded-xl border border-slate-200 px-3 py-2 hover:border-slate-400">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</div>
+                  <div className="text-[22px] font-extrabold text-slate-800 leading-tight">{x.lines}</div>
+                  <div className="text-[11px] text-slate-400">{x.oldest_order_date ? "oldest order " + x.oldest_order_date : "none"}</div>
+                </button>
+              );
+            })}
+          </div>
+        </SectionCard>
+        <SectionCard title="Replacements" action={<button type="button" className="text-[12px] text-blue-600" onClick={function(){ goTo(d.replacements.link); }}>Open list</button>}>
+          <div className="flex items-end gap-5 mb-2">
+            <div><div className="text-[26px] font-extrabold text-red-600 leading-none">{d.replacements.open}</div><div className="text-[11px] text-slate-400">open RRs</div></div>
+            <div><div className="text-[20px] font-extrabold text-slate-700 leading-none"><Pct v={d.replacements.rework.rate} /></div><div className="text-[11px] text-slate-400">rework rate this month</div></div>
+          </div>
+          {d.replacements.oldest.length ? d.replacements.oldest.map(function(r){
+            return <div key={r.no} className="flex justify-between text-[12.5px] border-b border-dashed border-slate-100 py-1"><span><b>{r.no}</b> <span className="text-slate-400">{r.supplier}</span></span><span className="text-slate-500">order {r.order_date || "—"} · target {r.target || "—"}</span></div>;
+          }) : <EmptyState text="No open replacement." />}
+        </SectionCard>
+      </div>
+    </section>
+  );
+}
+
 /* ================= MAIN CHART ================= */
 function VolumeChart({ data }){
   if (!data.some(function(d){ return d.PR>0 || d.PO>0; })) return <EmptyState text="No PR/PO activity in this window yet." />;
@@ -619,6 +760,7 @@ function App(){
   }
 
   var navItems = [
+    { key:"today", label:"Today" },
     { key:"overview", label:"Overview" },
     { key:"analytics", label:"Analytics" },
     { key:"suppliers", label:"Suppliers" },
@@ -631,6 +773,7 @@ function App(){
           <div className="h-full flex items-center justify-center text-slate-400 text-[13px]">Loading live procurement data&hellip;</div>
         ) : (
           <div className="w-full space-y-10">
+              <SpecBlocks />
               <section id="overview" className="space-y-6 scroll-mt-4">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>

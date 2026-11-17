@@ -536,7 +536,7 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th class="col-sticky">INQ No.</th><th>Quote Group</th><th>Customer</th><th>Image</th><th>Item</th><th>SKU</th><th>Description</th><th>Qty</th><th>Target Date</th><th>Status</th><th>Next Step</th><th>Estimate</th><th>Created</th>
+              <th class="col-sticky">INQ No.</th><th>Quote Group</th><th>Customer</th><th>Image</th><th>Item</th><th>SKU</th><th>Description</th><th>Qty</th><th>Target Date</th><th>Status</th><th>Next Step</th><th>Estimate</th><th>Created</th><th>Age</th>
             </tr></thead>
             <tbody id="tableBody"></tbody>
           </table>
@@ -1239,6 +1239,7 @@
             <tbody id="dQuotesEditBody"></tbody>
           </table>
           <div class="quotes-empty" id="dQuotesEmpty">No supplier quotes on this inquiry.</div>
+          <div id="dQuoteHints" style="display:none;margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--gray-50);font-size:13px;line-height:1.7;white-space:pre-line"></div>
         </div>
       </div>
 
@@ -1939,8 +1940,16 @@ function stopChatPolling(){
 /* Clicking a row in "Supplier Quotes" is the only way to open the panel — opens
    scoped to exactly that supplier, no tab to switch away with. Guarded to only the 2
    real supplier values this app's chat is scoped to. */
+/* "Tony" and "Tony Fan" are one supplier, "Fenteng" and "Fenteng Lighting" are one (owner, 2026-11-17): the chat key is always the full name. */
+function chatSupplierKey(name){
+  var n = String(name || '').toLowerCase();
+  if(/(^|[^a-z0-9])fenteng([^a-z0-9]|$)/.test(n)) return 'Fenteng Lighting';
+  if(/(^|[^a-z0-9])tony([^a-z0-9]|$)/.test(n)) return 'Tony Fan';
+  return '';
+}
 function openChatForSupplier(supplier){
-  if(supplier !== 'Fenteng' && supplier !== 'Tony') return;
+  supplier = chatSupplierKey(supplier);
+  if(!supplier) return;
   chatActiveSupplier = supplier;
   chatClosed = false;
   if(chatMinimized) toggleChatMinimize();
@@ -2538,8 +2547,13 @@ function filteredRecords(){
     return (listState.filter === 'all' || st === listState.filter) && (!q || rowSearchText(r).includes(q));
   });
   return list.sort(function(a,b){
-    return parseRecTime(b) - parseRecTime(a);
+    return parseRecTime(a) - parseRecTime(b); // oldest first (spec 01 Inquiry): the one that has waited longest is on top
   });
+}
+function ageText(r){
+  var t = parseRecTime(r); if(!t) return '—';
+  var d = Math.floor((Date.now() - t) / 86400000);
+  return d <= 0 ? 'today' : d + ' d';
 }
 function updateCounts(){
   var counts = { all:records.length, Ready:0, 'In Progress':0, 'Not Ready':0 };
@@ -2619,6 +2633,7 @@ function renderList(){
           ? '<button class="btn btn-sm btn-primary'+(boolVal(r.Estimate_Created)?'':' btn-green')+'" style="height:28px;padding:0 10px;font-size:12px" data-create-est="'+i+'">'+(boolVal(r.Estimate_Created)?'Update Estimate':'Create Estimate')+'</button>'
           : '<button class="btn btn-sm" style="height:28px;padding:0 10px;font-size:12px" disabled title="Ready for Estimates must be true first">Create Estimate</button>')+'</td>'
       +'<td style="white-space:nowrap;color:var(--gray-500);font-size:12.5px">'+escapeHtml(val(r.created_date)||'—')+'</td>'
+      +'<td style="white-space:nowrap;font-size:12.5px;font-weight:600">'+escapeHtml(ageText(r))+'</td>'
       +'</tr>';
   }).join('');
   data.forEach(function(r){
@@ -4886,12 +4901,16 @@ function renderDetail(r){
     : (quotesRaw ? [quotesRaw] : []);
   $('dQuotesEmpty').style.display = quotes.length ? 'none' : '';
   $('dQuotesTable').style.display = quotes.length ? '' : 'none';
+  /* spec INQ-R7: with a needed-by date, one feasibility hint per quote (worked out by the server) */
+  var hintsText = String(val(r.Feasibility_Hints) || '').trim();
+  $('dQuoteHints').style.display = hintsText ? '' : 'none';
+  $('dQuoteHints').innerHTML = hintsText ? '<b>Can it make the date?</b> (needed by '+escapeHtml(val(r.target_date)||'—')+')<br>'+escapeHtml(hintsText) : '';
   var selectedQ = quotes.find(function(q){ return val(q.Selected)==='Selected'||boolVal(q.Selected); });
   if(quotes.length){
     $('dQuotesBody').innerHTML = quotes.map(function(q){
       var isSel = q===selectedQ;
       var qSupplier = val(q.Suppliers)||'';
-      var clickable = (qSupplier==='Fenteng'||qSupplier==='Tony');
+      var clickable = !!chatSupplierKey(qSupplier);
       return '<tr class="'+(isSel?'row-selected':'')+(clickable?' qr-clickable':'')+'"'
         +(clickable?' onclick="openChatForSupplier(\''+qSupplier+'\')" title="Open conversation with '+qSupplier+'"':'')+'>'
         +'<td style="font-weight:'+(isSel?'600':'400')+';color:var(--gray-800)">'+escapeHtml(qSupplier||'—')+'</td>'

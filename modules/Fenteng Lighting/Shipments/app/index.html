@@ -315,6 +315,16 @@ var PRHold = (function(){
           <button class="btn btn-orange btn-submit" id="saveBtn" onclick="saveShipment()" data-i18n="shipBtn">Ship</button>
         </div>
       </div>
+
+      <div class="sec-card" id="delayCard">
+        <div class="sec-header"><span class="sec-title" data-i18n="delayTitle">Report a delay</span></div>
+        <div style="padding:4px 16px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:end">
+          <div><label style="display:block;font-size:11px;margin-bottom:4px" data-i18n="delayDateLbl">New expected date</label><input type="date" id="delayDate" style="width:100%;height:34px;border:1.5px solid #ddd;border-radius:6px;padding:0 8px" /></div>
+          <div><label style="display:block;font-size:11px;margin-bottom:4px" data-i18n="delayReasonLbl">Reason</label><input type="text" id="delayReason" style="width:100%;height:34px;border:1.5px solid #ddd;border-radius:6px;padding:0 8px" /></div>
+          <div><button class="btn btn-ghost btn-sm" id="delayBtn" onclick="reportDelay()" data-i18n="delayBtn">Report delay</button></div>
+        </div>
+        <div class="submit-note" style="padding:0 16px 14px" data-i18n="delayNote">Use this when the date you gave will not hold. Give the new date you can keep, and why. We update our plan; the date promised to the customer is not changed by this.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -426,6 +436,8 @@ const I18N = {
     /* CHANGED 2026-10-21, per user — the button now says Ship, not Save. The save-only
        wording below is still used when nothing is checked to ship, so the dialog and the
        toast stay truthful on that branch; saveShipment()/doSaveShipment() pick between them. */
+    delayTitle:'Report a delay', delayDateLbl:'New expected date', delayReasonLbl:'Reason', delayBtn:'Report delay', delaySent:'Delay reported', delayNeed:'Give the new expected date and a reason',
+    delayNote:'Use this when the date you gave will not hold. Give the new date you can keep, and why. We update our plan; the date promised to the customer is not changed by this.',
     shipBtn:'Ship', shippingBtn:'Shipping…', toastShipped:'Shipped',
     confirmTitleShip:'Ship these items?', yesShipBtn:'Yes, Ship',
     saveBtn:'Save', savingBtn:'Saving…',
@@ -452,6 +464,8 @@ const I18N = {
     detailTitle:'发货单', backToList:'← 返回列表', itemsSectionTitle:'此发货单的项目',
     thSku:'SKU', thItem:'品项', thDateShipped:'发货日期', thMode:'运输方式', thShipThis:'发运此项？', thStatus:'状态',
     submitNote:'请为今天要发运的项目勾选"发运此项？"，填写发货日期和运输方式，然后点击发货。已发货的行将被锁定，无法修改。',
+    delayTitle:'报告延误', delayDateLbl:'新的预计日期', delayReasonLbl:'原因', delayBtn:'报告延误', delaySent:'已报告延误', delayNeed:'请填写新的预计日期和原因',
+    delayNote:'如果您之前给出的日期无法保证，请在此填写您能保证的新日期和原因。我们会更新计划；这不会改变对客户承诺的日期。',
     shipBtn:'发货', shippingBtn:'发货中…', toastShipped:'已发货',
     confirmTitleShip:'确认发货？', yesShipBtn:'是，发货',
     saveBtn:'保存', savingBtn:'保存中…',
@@ -744,6 +758,18 @@ function saveShipment(){
     ? t('confirmMsgMark',{n:toSelect.length})
     : t('confirmMsgSaveOnly');
   $('confirmOverlay').classList.add('show');
+}
+/* spec v1.4 SP-R5: a delay report = the new date you can keep + a reason. The server re-plans the shipment and logs it (when you tell us). */
+function reportDelay(){
+  if(!currentId){ showToast(t('toastNoRecord')); return; }
+  var d = $('delayDate').value, r = $('delayReason').value.trim();
+  if(!d || !r){ showToast(t('delayNeed')); return; }
+  var btn = $('delayBtn'); btn.disabled = true;
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_NAME, id: currentId, payload: { data: { Delay_New_Date: d, Delay_Reason: r } } }).then(function(resp){
+    btn.disabled = false;
+    if(resp && String(resp.code)==='3000'){ showToast(t('delaySent')); $('delayDate').value=''; $('delayReason').value=''; }
+    else { showToast((resp && resp.message) || t('toastSaveFailedCode',{code:(resp && resp.code)})); }
+  }).catch(function(){ btn.disabled = false; showToast(t('toastSaveFailedConsole')); });
 }
 function closeConfirm(){
   $('confirmOverlay').classList.remove('show');

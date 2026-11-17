@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Decisions</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+    --green:#16A34A; --green-light:#DCFCE7; --green-mid:#86EFAC;
+    --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+    --red:#DC2626; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+    --orange:#EA580C; --orange-dark:#C2410C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0; --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B; --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+    --white:#FFFFFF; --radius-sm:4px; --radius:8px; --radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04); --t:150ms ease;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  button,input,select{font-family:inherit}
+  .page{padding:24px;display:flex;flex-direction:column;gap:18px;min-height:100vh}
+  .page-header h1{font-size:24px;font-weight:700;color:#1A1A2E;letter-spacing:-.02em}
+  .page-header p{font-size:13px;color:var(--gray-500);margin-top:4px}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--orange);color:var(--orange-dark)}
+  .btn-orange{background:var(--orange);color:var(--white);font-weight:600}
+  .btn-orange:hover{background:var(--orange-dark)}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .badge-gray{background:var(--gray-100);color:var(--gray-600);border-color:var(--gray-200)}
+  .badge-blue{background:var(--blue-light);color:var(--blue-dark);border-color:var(--blue-mid)}
+  .badge-amber{background:var(--amber-light);color:var(--amber);border-color:var(--amber-mid)}
+  .badge-green{background:var(--green-light);color:var(--green);border-color:var(--green-mid)}
+  .badge-red{background:var(--red-light);color:var(--red);border-color:var(--red-mid)}
+  .badge-orange{background:var(--orange-light);color:var(--orange-dark);border-color:var(--orange-mid)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{padding:6px 14px;border-radius:999px;border:1px solid var(--gray-200);background:var(--white);color:var(--gray-600);font-size:12.5px;font-weight:600;cursor:pointer}
+  .pill.active{background:var(--orange-light);border-color:var(--orange);color:var(--orange-dark)}
+  .list{display:flex;flex-direction:column;gap:12px}
+  .item{background:var(--white);border:1px solid var(--gray-200);border-left:4px solid var(--orange);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:16px 20px}
+  .item.escalated{border-left-color:var(--red)}
+  .item.done{border-left-color:var(--green-mid);opacity:.92}
+  .item.stale{border-left-color:var(--gray-300);opacity:.75}
+  .item-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .item-top .no{font-weight:700;color:var(--orange-dark)}
+  .item .sum{font-size:13.5px;line-height:1.5;color:var(--gray-700)}
+  .item .meta{font-size:12px;color:var(--gray-500);margin-top:6px}
+  .opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .opt-help{font-size:11.5px;color:var(--gray-500);margin-top:8px}
+  .note{width:100%;margin-top:10px;font-size:13px;padding:7px 10px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm)}
+  .result{margin-top:10px;padding:9px 12px;border-radius:6px;background:var(--green-light);color:#14532d;font-size:12.5px;font-weight:500}
+  .stale .result{background:var(--gray-100);color:var(--gray-600)}
+  .empty{padding:60px 20px;text-align:center;color:var(--gray-400);background:var(--white);border:1px dashed var(--gray-300);border-radius:var(--radius-lg)}
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transition:opacity .2s}
+  .toast.show{opacity:1}
+</style>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <h1>Decisions</h1>
+    <p>What the system prepared and a person has to decide. Nothing here cancels or changes anything until you pick an option.</p>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="list" id="list"><div class="empty">Loading&hellip;</div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* DECISIONS — spec v1.4 (05 Shared Engines / 06 Approval Queue, AQ-1..AQ-4).
+   Reads Approval_Queue; the only thing written from here is the chosen option (and an optional note). Who decided, when and the
+   result are stamped by the server. An item whose record changed shows as "removed by the system" (stale). */
+var REPORT = 'Approval_Queue';
+var VIEW = 'pending';
+var ROWS = [];
+var KIND = {
+  ladder_day3: { label: 'Supplier is late: decide', cls: 'badge-red' },
+  air_upgrade: { label: 'Will miss the date: air?', cls: 'badge-orange' },
+  forecast_promise_change: { label: 'Change the promise date?', cls: 'badge-blue' }
+};
+var OPTION = {
+  cancel_resource: { label: 'Cancel and re-source', help: 'Recorded for the buyer. Nothing is cancelled by the system.' },
+  hold: { label: 'Hold', help: 'Wait for the supplier.' },
+  upgrade_mode: { label: 'Upgrade to air', help: 'Changes the shipment to air and plans the dates again.' },
+  upgrade_air: { label: 'Upgrade to air', help: 'Changes the shipment to air; the extra freight cost is yours to weigh.' },
+  move_target: { label: 'Keep the mode, move the target', help: 'Sends a target change for approval. The promise only changes if it is accepted.' },
+  tell_customer: { label: 'Keep it, tell the customer', help: 'Keeps the mode and alerts whoever tells the customer.' },
+  accept_target: { label: 'Accept the new target', help: 'Changes the target date and logs it. Tell the customer.' },
+  keep_target: { label: 'Keep the target', help: 'Nothing changes.' }
+};
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function toast(m){ var t = document.getElementById('toast'); t.textContent = m; t.className = 'toast show'; clearTimeout(toast._t); toast._t = setTimeout(function(){ t.className = 'toast'; }, 3800); }
+function parseOpts(r){ try { return JSON.parse(r.Options || '[]'); } catch(e){ return []; } }
+function parseZ(v){
+  var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/i.exec(String(v || ''));
+  if(!m) return null;
+  var h = m[4] == null ? 0 : Number(m[4]);
+  if(m[7]) h = (h % 12) + (m[7].toUpperCase() === 'PM' ? 12 : 0);
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), h, Number(m[5] || 0), Number(m[6] || 0));
+}
+function ago(v){
+  var d = parseZ(v); if(!d) return '';
+  var mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if(mins < 60) return mins + ' min ago';
+  if(mins < 1440) return Math.round(mins / 60) + ' h ago';
+  return Math.round(mins / 1440) + ' day(s) ago';
+}
+function counts(){
+  var c = { pending: 0, decided: 0, stale: 0 };
+  ROWS.forEach(function(r){ c[r.Status] = (c[r.Status] || 0) + 1; });
+  return c;
+}
+function renderTabs(){
+  var c = counts();
+  var defs = [['pending', 'To decide (' + c.pending + ')'], ['decided', 'Decided (' + c.decided + ')'], ['stale', 'Removed by the system (' + c.stale + ')']];
+  document.getElementById('tabs').innerHTML = defs.map(function(d){
+    return '<button class="pill ' + (VIEW === d[0] ? 'active' : '') + '" onclick="setView(\'' + d[0] + '\')">' + d[1] + '</button>';
+  }).join('');
+}
+function setView(v){ VIEW = v; render(); }
+function render(){
+  renderTabs();
+  var rows = ROWS.filter(function(r){ return r.Status === VIEW; });
+  // oldest first: the one waiting longest is first
+  rows.sort(function(a, b){ return String(a.Added_Time || '').localeCompare(String(b.Added_Time || '')) || (Number(a.ID) - Number(b.ID)); });
+  if(VIEW !== 'pending') rows.reverse();
+  var el = document.getElementById('list');
+  if(!rows.length){ el.innerHTML = '<div class="empty">' + (VIEW === 'pending' ? 'Nothing is waiting for you.' : 'Nothing here yet.') + '</div>'; return; }
+  el.innerHTML = rows.map(function(r){
+    var k = KIND[r.Kind] || { label: r.Kind, cls: 'badge-gray' };
+    var esc_ = r.Status === 'pending' && r.Escalated_At;
+    var cls = 'item' + (esc_ ? ' escalated' : '') + (r.Status === 'decided' ? ' done' : '') + (r.Status === 'stale' ? ' stale' : '');
+    var top = '<div class="item-top"><span class="no">' + esc(r.Record_No) + '</span><span class="badge ' + k.cls + '">' + esc(k.label) + '</span>' +
+      (esc_ ? '<span class="badge badge-red">Escalated to the supervisor</span>' : '') +
+      (r.Status === 'pending' && r.Due_At ? '<span class="badge badge-gray">Decide by ' + esc(r.Due_At) + '</span>' : '') + '</div>';
+    var body = '<div class="sum">' + esc(r.Summary) + '</div>';
+    var meta = '<div class="meta">Prepared ' + esc(ago(r.Added_Time)) + ' by the system' +
+      (r.Status === 'decided' ? ' &middot; decided by ' + esc(r.Decided_By || '?') + ' (' + esc(r.Decided_By_Type || 'human') + ') on ' + esc(r.Decided_At) + ': <b>' + esc((OPTION[r.Decision] || {}).label || r.Decision) + '</b>' : '') + '</div>';
+    var opts = '', result = '';
+    if(r.Status === 'pending'){
+      var list = parseOpts(r);
+      opts = '<input class="note" id="note-' + r.ID + '" placeholder="Note (optional)" />' +
+        '<div class="opts">' + list.map(function(o){ var d = OPTION[o] || { label: o }; return '<button class="btn ' + (list.indexOf(o) === 0 ? 'btn-orange' : 'btn-ghost') + '" title="' + esc(d.help || '') + '" onclick="decide(\'' + r.ID + '\',\'' + o + '\')">' + esc(d.label) + '</button>'; }).join('') + '</div>' +
+        '<div class="opt-help">' + list.map(function(o){ var d = OPTION[o]; return d && d.help ? '<b>' + esc(d.label) + ':</b> ' + esc(d.help) : ''; }).filter(Boolean).join(' &nbsp;&middot;&nbsp; ') + '</div>';
+    }
+    if(r.Result) result = '<div class="result">' + esc(r.Result) + '</div>';
+    return '<div class="' + cls + '">' + top + body + meta + opts + result + '</div>';
+  }).join('');
+}
+function load(){
+  ZOHO.CREATOR.DATA.getRecords({ report_name: REPORT, field_config: 'all', page: 1, pageSize: 200 }).then(function(resp){
+    ROWS = (resp && String(resp.code) === '3000' && Array.isArray(resp.data)) ? resp.data : [];
+    render();
+  }).catch(function(){ ROWS = []; render(); });
+}
+function decide(id, option){
+  var noteEl = document.getElementById('note-' + id);
+  var data = { Decision: option };
+  if(noteEl && noteEl.value) data.Decision_Note = noteEl.value;
+  var btns = document.querySelectorAll('.opts button'); for(var i = 0; i < btns.length; i++) btns[i].disabled = true;
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT, id: String(id), payload: { data: data } }).then(function(resp){
+    if(!(resp && String(resp.code) === '3000')){ toast((resp && resp.message) || 'Could not save the decision'); load(); return; }
+    toast('Decision saved');
+    load();
+  }).catch(function(err){ toast((err && err.message) || 'Could not save the decision'); load(); });
+}
+load();
+</script>
+</body>
+</html>
