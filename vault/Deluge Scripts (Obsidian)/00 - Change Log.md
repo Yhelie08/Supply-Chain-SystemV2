@@ -11,6 +11,11 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-17
 
+**Deploy sa Railway (owner go): deployment `1b34b452` SUCCESS (09:45)**
+- `railway up --service supply-chain-app` mula sa `6466356` (= main + docs commit). Logs: `[pg] connected; schema ready (0 changes)`, schedules on (4: 2 forecast + 2 shipment). Live: `/login` 200, `/api/me` 401 kapag walang session.
+- **Agad tumakbo ang 2 bagong shipment schedule sa live data**, dahil lampas na ng 08:00 nang mag-start ang server (catch-up rule ng `schedules.mjs`): `Daily_Shipment_10_Day_Che` → 1 notification (Notified_10d = true sa shipment na iyon); `Shipment_Delay_Status_Dai` → 0 status na binago (ang 1 Delayed ay Delayed na dati).
+- **Hindi na-check:** ang mga widget sa live browser.
+
 **Push + HTTP smoke test ng Grupo A (bago mag-deploy)**
 - Push (owner mismo): `origin/Johncel-Dev` at `origin/main` = `2fc5de3` (fast-forward mula `2f33104`). Verified sa `git fetch`. **Hindi pa naka-deploy** sa Railway.
 - Smoke test: `dev:pg` sa scratch folder (bagong PGlite mula sa `production-2026-11-14` backup, port 4100, walang Zoho/Books keys, SCHEDULES off, temp admin `_qa_smoke`). Sa HTTP API, hindi sa widget UI. Resulta: Tony inquiry copy, kulang ang fields → refused (2001); kumpleto → saved, Stage "Final", at umakyat sa Inquiry ang Available / 90 / Final. Project bago → `PRJ-00013` (12 ang dati). `approve_po_main` sa SO-15073 → PO-00008, `approve_po_tony` → Tony copy + SHP-00012 + RCV-00012. `Approve_P_O_H_C` sa Local SO → processed 1. Warehouse Request → nakuha ang image.
