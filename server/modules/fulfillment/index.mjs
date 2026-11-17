@@ -8,6 +8,7 @@ import './qc-routing.mjs';
 import './crate-dispatch.mjs';
 import './exception-recheck.mjs';
 import './sorter-hooks.mjs';
+import './stage-events.mjs';
 
 export default {
   label: 'Fulfillment',
