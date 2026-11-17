@@ -2,14 +2,17 @@
 import './workflows.mjs';
 import { apis, functions } from './apis.mjs';
 import { runForecastStampDaily, runBackfillPreOrder } from '../../forecast/schedule.mjs';
+import { rescoreAll } from './sorter.mjs';
 import './pipeline.mjs';
 import './qc-routing.mjs';
 import './crate-dispatch.mjs';
 import './exception-recheck.mjs';
+import './sorter-hooks.mjs';
+import './stage-events.mjs';
 
 export default {
   label: 'Fulfillment',
-  forms: ['Sales_Order_Fulfillment', 'Checker_Checklist', 'Crate_Checklist', 'Sales_Order_Readiness_Gate', 'Pre_Order_FF', 'Order_Aggregation1', 'Pick1', 'Warehouse_Request', 'Transfer_Warehouse'],
+  forms: ['Sales_Order_Fulfillment', 'Checker_Checklist', 'Crate_Checklist', 'Sales_Order_Readiness_Gate', 'Pre_Order_FF', 'Order_Aggregation1', 'Pick1', 'Warehouse_Request', 'Transfer_Warehouse', 'Capacity_Days', 'Stage_Events'],
   functions,
   apis,
   // Deluge functions this module ports without a custom API of their own (read by tools/build-module-readmes.mjs). The forecast
@@ -23,5 +26,6 @@ export default {
   schedules: [
     { name: 'Forecast_Stamp_Daily', at: '01:00', timeZone: 'Asia/Manila', run: (store, ctx) => runForecastStampDaily(store, ctx) },
     { name: 'Backfill_PreOrder_Forecas', at: '01:00', timeZone: 'Asia/Manila', run: (store, ctx) => runBackfillPreOrder(store, ctx) },
+    { name: 'Recalculate_Fulfillment_Queue', at: '05:00', timeZone: 'Asia/Manila', run: (store) => rescoreAll(store) },
   ],
 };

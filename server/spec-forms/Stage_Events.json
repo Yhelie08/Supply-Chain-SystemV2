@@ -1,18 +1,33 @@
 {
   "name": "Stage_Events",
-  "label": "Stage Events",
-  "_about": "The event log (spec 05 Shared Engines 04, 01 Database section 8). One row each time a record enters a stage. Written by the server only. A record that goes back gets a new row with Visit_No + 1; the stamp on the record itself is the first one and is never overwritten.",
+  "extends": true,
+  "_about": "The shared event log (spec 05 / 04). The form itself (Record_Type, Record_Id, Event, Occurred_At, Reported_At, Source, Note) comes from the Fulfillment package log in zoho-export/parsed/forms; Procurement adds the fields below (record number, how exact the time is, who, and the visit number of a repeated event).",
   "fields": [
-    { "name": "Record_Type", "label": "Record Type", "type": "text" },
-    { "name": "Record_Id", "label": "Record ID", "type": "text" },
-    { "name": "Record_No", "label": "Record No", "type": "text", "helpText": "The number staff quote, e.g. SHP-00012." },
-    { "name": "Event", "label": "Event", "type": "text", "helpText": "e.g. shipment.shipped_out" },
-    { "name": "Occurred_At", "label": "Occurred At", "type": "datetime", "helpText": "When it happened." },
-    { "name": "Reported_At", "label": "Reported At", "type": "datetime", "helpText": "When the system was told (server time)." },
-    { "name": "Occurred_Bound", "label": "Occurred Bound", "type": "picklist", "options": ["exact", "before", "after"] },
-    { "name": "Source", "label": "Source", "type": "picklist", "options": ["user", "system", "supplier", "agent", "sync", "device", "forwarder"] },
-    { "name": "Actor", "label": "Actor", "type": "text" },
-    { "name": "Visit_No", "label": "Visit No", "type": "number" },
-    { "name": "Note", "label": "Note", "type": "text" }
+    {
+      "name": "Record_No",
+      "label": "Record No",
+      "type": "text",
+      "helpText": "The number staff quote, e.g. SHP-00012."
+    },
+    {
+      "name": "Occurred_Bound",
+      "label": "Occurred Bound",
+      "type": "picklist",
+      "options": [
+        "exact",
+        "before",
+        "after"
+      ]
+    },
+    {
+      "name": "Actor",
+      "label": "Actor",
+      "type": "text"
+    },
+    {
+      "name": "Visit_No",
+      "label": "Visit No",
+      "type": "number"
+    }
   ]
 }

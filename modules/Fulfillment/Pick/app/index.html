@@ -208,6 +208,20 @@
     </div>
   </div>
 
+  <!-- Box-count prompt (PKG-R3): shown once every item of a package has been marked picked, if the package
+       has not already been box-counted at crate. Skipping is a valid outcome, not an error. -->
+  <div id="boxCountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" style="background: var(--hc-panel, #fff);">
+      <h3 class="text-sm font-bold text-slate-900 mb-1">How many boxes?</h3>
+      <p class="text-xs text-slate-500 mb-3">This package is fully picked. Enter the box count, or skip for now (the estimate stays until it's counted).</p>
+      <input id="boxCountInput" type="number" min="0" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-4" placeholder="Number of boxes" />
+      <div class="flex items-center justify-end gap-2">
+        <button id="boxCountSkipBtn" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 transition">Skip for now</button>
+        <button id="boxCountSaveBtn" class="text-xs font-semibold bg-slate-900 text-white rounded-lg px-3 py-2 hover:bg-slate-800 transition">Save count</button>
+      </div>
+    </div>
+  </div>
+
 <div id="notifMount"></div>
 <script src="notification_component/notification.js"></script>
 <script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
@@ -485,6 +499,43 @@
     return ZOHO.CREATOR.DATA.updateRecords(config);
   }
 
+  // Box-count prompt (PKG-R3). invokeCustomApi follows this app's established pattern (see e.g.
+  // Fulfillment/Pre-Order's own copy) — the server never checks public_key, only api_name/payload matter.
+  function invokeCustomApi(apiName, publicKey, params) {
+    return ZOHO.CREATOR.DATA.invokeCustomApi({
+      app_name: CONFIG.APP_NAME, api_name: apiName, public_key: publicKey, http_method: "POST", payload: params || {},
+    }).then((resp) => (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp);
+  }
+
+  function maybePromptBoxCount(r) {
+    invokeCustomApi("package_pick_status", "not-checked", { so: r.SO, pkg: r.Package_Order }).then((result) => {
+      if (result && result.needsBoxCount) openBoxCountModal(r.SO, r.Package_Order);
+    }).catch((err) => console.error(err)); // a failed status check is not worth blocking the mark-picked flow over
+  }
+
+  function openBoxCountModal(so, pkg) {
+    const modal = document.getElementById("boxCountModal");
+    const input = document.getElementById("boxCountInput");
+    input.value = "";
+    modal.classList.remove("hidden");
+
+    const close = () => modal.classList.add("hidden");
+    document.getElementById("boxCountSkipBtn").onclick = close;
+    document.getElementById("boxCountSaveBtn").onclick = () => {
+      const n = parseInt(input.value, 10);
+      if (!Number.isFinite(n) || n < 0) { toast("Enter a number.", "error"); return; }
+      ZOHO.CREATOR.DATA.updateRecords({
+        app_name: CONFIG.APP_NAME,
+        report_name: "Sales_Order_Fulfillment_Report",
+        payload: { criteria: `(SO_No == "${so}" && Package == "${pkg}")`, data: { Box_Count: String(n), Box_Count_Source: "counted" } },
+      }).then((response) => {
+        if (response && response.code === 3000) toast("Box count saved.", "success");
+        else toast("Couldn't save the box count.", "error");
+        close();
+      });
+    };
+  }
+
   // Custom modal replacing native confirm() — inside a Zoho Creator widget
   // iframe, confirm() shows the raw embedded-page origin (*.zappsusercontent.com)
   // in the dialog chrome, which looks broken.
@@ -525,6 +576,7 @@
           // cell update.
           renderTable();
           renderStats();
+          maybePromptBoxCount(r);
           // ADDED 2026-08-03, per user — marking picked FROM the detail view
           // used to leave the officer stranded there (nothing left for them
           // to do on this record). Bounces straight back to the list. A

@@ -223,7 +223,7 @@ test('it is off unless SCHEDULES=on', () => {
   off.stop();
 });
 
-test('the modules list their schedules: the Zoho names (two forecast, two shipment) and the spec v1.4 Shipment_Ladder_Daily', () => {
+test('the modules list their schedules: the Zoho names (two forecast, two shipment), the sorting engine recalculate, and the spec v1.4 jobs (Ship & Track ladder, Receiving, Inquiry, Replacement)', () => {
   const names = modules.flatMap((m) => (m.schedules || []).map((s) => s.name));
-  assert.deepEqual(names.sort(), ['Backfill_PreOrder_Forecas', 'Daily_Shipment_10_Day_Che', 'Forecast_Stamp_Daily', 'Inquiry_Quotes_Daily', 'Receiving_Silence_Daily', 'Replacement_Daily', 'Shipment_Delay_Status_Dai', 'Shipment_Ladder_Daily']);
+  assert.deepEqual(names.sort(), ['Backfill_PreOrder_Forecas', 'Daily_Shipment_10_Day_Che', 'Forecast_Stamp_Daily', 'Inquiry_Quotes_Daily', 'Recalculate_Fulfillment_Queue', 'Receiving_Silence_Daily', 'Replacement_Daily', 'Shipment_Delay_Status_Dai', 'Shipment_Ladder_Daily']);
 });

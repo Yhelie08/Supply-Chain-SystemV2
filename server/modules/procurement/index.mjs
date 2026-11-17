@@ -10,7 +10,8 @@ import { runReceivingDaily } from './receiving-spec.mjs';
 
 export default {
   label: 'Procurement',
-  forms: ['Inquiry_Form', 'Purchase_Request1', 'Purchase_Order', 'Shipments', 'Receiving', 'Replacement_Request', 'Exceptions', 'Supplier_1', 'Supplier_2', 'Projects', 'Stage_Events', 'Ladder_Events', 'Approval_Queue', 'Procurement_Settings', 'Procurement_Settings_History', 'Target_Date_Changes'],
+  // Stage_Events is the shared event log; the Fulfillment module lists it (a form belongs to one module only). Procurement writes to it too.
+  forms: ['Inquiry_Form', 'Purchase_Request1', 'Purchase_Order', 'Shipments', 'Receiving', 'Replacement_Request', 'Exceptions', 'Supplier_1', 'Supplier_2', 'Projects', 'Ladder_Events', 'Approval_Queue', 'Procurement_Settings', 'Procurement_Settings_History', 'Target_Date_Changes'],
   functions,
   apis,
   // Scheduled workflows (run by server/schedules.mjs when SCHEDULES=on); the names are Zoho's. Both ran at 08:00 in Zoho.

@@ -328,6 +328,13 @@
           </div>
         </div>
 
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">📦 Box Count</h3>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Box Count</label>
+          <input id="f_Box_Count" type="number" min="0" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Number of boxes" />
+          <p id="boxCountSourceNote" class="text-[11px] text-slate-400 mt-1"></p>
+        </div>
+
         <div class="flex items-center justify-end gap-2 pb-8">
           <button id="cancelEditBtn2" class="text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-4 py-2 transition">Cancel</button>
           <button id="saveEditBtn2" class="text-sm font-semibold bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-800 transition">Save Changes</button>
@@ -550,6 +557,27 @@
     const status = textVal(r.Crating_Status1);
     document.getElementById("f_Status_Pending").checked = status !== "Done";
     document.getElementById("f_Status_Done").checked = status === "Done";
+
+    // Box count (PKG-R3) lives on the package (Sales_Order_Fulfillment), not on this Crate_Checklist record
+    // — fetched separately and joined by SO + Package, same pattern as Order Readiness's queue-column join.
+    document.getElementById("f_Box_Count").value = "";
+    document.getElementById("boxCountSourceNote").textContent = "";
+    fetchSofBoxCount(r.SO, r.Package_Order).then((sof) => {
+      if (!sof) return;
+      document.getElementById("f_Box_Count").value = textVal(sof.Box_Count);
+      document.getElementById("boxCountSourceNote").textContent = sof.Box_Count_Source === "counted" ? "Counted." : "Estimated from line quantities until counted.";
+    });
+  }
+
+  function fetchSofBoxCount(so, pkg) {
+    if (isBlank(so) || isBlank(pkg)) return Promise.resolve(null);
+    return ZOHO.CREATOR.DATA.getRecords({
+      app_name: CONFIG.APP_NAME,
+      report_name: "Sales_Order_Fulfillment_Report",
+      criteria: `(SO_No == "${so}" && Package == "${pkg}")`,
+      field_config: "all",
+      max_records: 1,
+    }).then((response) => (response && response.data && response.data[0]) || null).catch(() => null);
   }
 
   function collectEditFormData() {
@@ -624,6 +652,17 @@
       const response = await ZOHO.CREATOR.DATA.updateRecords(config);
       if (!response || response.code !== 3000) throw new Error("update-failed");
       Object.assign(currentEditRecord, data);
+
+      // Box count (PKG-R3: "updated at crate") — a separate write to the package, only when the field was
+      // actually changed, so a Crate save that didn't touch it never overwrites a count someone else just set.
+      const newBoxCount = document.getElementById("f_Box_Count").value.trim();
+      if (newBoxCount !== "" && !isBlank(data.SO) && !isBlank(data.Package_Order)) {
+        await ZOHO.CREATOR.DATA.updateRecords({
+          app_name: CONFIG.APP_NAME,
+          report_name: "Sales_Order_Fulfillment_Report",
+          payload: { criteria: `(SO_No == "${data.SO}" && Package == "${data.Package_Order}")`, data: { Box_Count: newBoxCount, Box_Count_Source: "counted" } },
+        }).catch((err) => console.error(err)); // box count is secondary to the crate checklist itself saving
+      }
 
       const failures = [];
 

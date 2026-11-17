@@ -138,6 +138,14 @@
 
     <div id="dashboardTabView" class="flex-1 min-h-0 flex flex-col">
 
+    <!-- Capacity bar (spec 05 Shared Engines / 02 Calculators §1): today's people / boxes-per-hour / hours,
+         the resulting capacity, and how much is suggested for release today. -->
+    <div id="capacityBar" class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 mb-4 flex flex-wrap items-center gap-4 text-sm"></div>
+
+    <!-- Category tabs (sorting engine: spec 03 Fulfillment / 02 Order Readiness). "Today's release" (all
+         Suggested_Release=true across every category) is the default landing view. -->
+    <div id="categoryTabs" class="flex flex-wrap gap-2 mb-4 shrink-0"></div>
+
     <!-- Stat cards -->
     <div id="statCards" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 shrink-0"></div>
 
@@ -164,6 +172,7 @@
               <th class="px-5 py-2.5 font-bold">Payment Status</th>
               <th class="px-3 py-2.5 font-bold">Next Step</th>
               <th class="px-3 py-2.5 font-bold">Priority</th>
+              <th class="px-3 py-2.5 font-bold">Suggested Action</th>
               <th class="px-3 py-2.5 font-bold">PAC #</th>
               <th class="px-3 py-2.5 font-bold">PR #</th>
               <th class="px-3 py-2.5 font-bold">RR #</th>
@@ -394,6 +403,10 @@
   const CONFIG = {
     APP_NAME: "supply-chain-app",
     REPORT_NAME: "Sales_Order_Readiness_Gate_Report",
+    // Sorting engine queue columns (Category/Queue_Rank/Priority_Reason/Suggested_Action/Suggested_Release/
+    // Scored_At) live on the package (Sales_Order_Fulfillment), not on the Gate rows this widget's table
+    // renders. Fetched separately and joined client-side by SO + Package (see sofQueueFor()).
+    SOF_REPORT: "Sales_Order_Fulfillment_Report",
     // ADDED 2026-08-06 — Order Readiness Dispatch Override feature (see
     // docs/superpowers/specs/2026-08-06-order-readiness-dispatch-override-
     // design.md). Client-side hide ONLY, deliberately — this app's Custom
@@ -448,12 +461,25 @@
   // below): which card, if any, the list is currently filtered to. null = no filter.
   let statFilter = null;
 
+  // Category tab (sorting engine). "suggested" = Today's release (default): every row with Suggested_Release
+  // true, across all categories, in rank order — same definition as the spec's default view.
+  let currentCategoryTab = "suggested";
+  const CATEGORY_TABS = [
+    { key: "suggested", label: "Today's release" },
+    { key: "broken", label: "Broken" },
+    { key: "late", label: "Already late" },
+    { key: "at_risk", label: "About to be late" },
+    { key: "on_time", label: "On time" },
+    { key: "blocked", label: "Blocked" },
+  ];
+
   // ADDED 2026-08-06 — Order Readiness Dispatch Override feature.
   let approveQueueRows = [];
   let approveFilter = "all";
 
   const tableBody = document.getElementById("tableBody");
   const statCards = document.getElementById("statCards");
+  const categoryTabs = document.getElementById("categoryTabs");
   const searchInput = document.getElementById("searchInput");
 
   // ---------------------------------------------------------------------
@@ -812,25 +838,51 @@
     return !(isTrue(r.Override_Approved) && r.Override_Approved_For_Status === r.payment_status);
   }
 
+  // Category tab filter: "suggested" (Today's release) = Suggested_Release true on the row's package, in any
+  // category; any other tab = that exact Category. Reads the queue fields off the joined Sales_Order_Fulfillment
+  // row (sofQueueFor), not off the Gate row itself — see the SOF_REPORT fetch/join in loadLive().
+  function matchesCategoryTab(r) {
+    const sof = sofQueueFor(r);
+    if (currentCategoryTab === "suggested") return isTrue(sof.Suggested_Release);
+    return (sof.Category || "") === currentCategoryTab;
+  }
+
   function computeOrderedRows(records) {
     const groups = new Map();
-    records.filter((r) => !isEmptyRecord(r) && !needsPaymentApproval(r)).forEach((r) => {
+    records.filter((r) => !isEmptyRecord(r) && !needsPaymentApproval(r) && matchesCategoryTab(r)).forEach((r) => {
       const key = r.sales_order_number || `__no_so_${r.ID}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(r);
     });
 
+    // Group order follows the sorting engine's rank (ascending — rank 1 first), read off each group's own
+    // package queue row; a group with no queue row yet (not scored) sorts after every ranked one.
     const groupList = Array.from(groups.values()).map((recs) => {
       recs.sort((a, b) => (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
-      const latest = recs.reduce((max, r) => Math.max(max, (parseZohoDateTime(r.Added_Time) || new Date(0)).getTime()), 0);
-      return { recs, latest };
+      const rank = Number(sofQueueFor(recs[0]).Queue_Rank);
+      return { recs, rank: Number.isFinite(rank) && rank > 0 ? rank : Infinity };
     });
-    groupList.sort((a, b) => b.latest - a.latest);
+    groupList.sort((a, b) => a.rank - b.rank);
 
     const rows = [];
     groupList.forEach(({ recs }) => recs.forEach((r) => rows.push(r)));
     return rows;
   }
+
+  function renderCategoryTabs() {
+    categoryTabs.innerHTML = CATEGORY_TABS.map(({ key, label }) => {
+      const active = currentCategoryTab === key;
+      return `<button type="button" class="category-tab-btn text-xs font-semibold rounded-full px-3 py-1.5 transition ${active ? "bg-slate-900 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}" data-tab="${key}">${escapeHtml(label)}</button>`;
+    }).join("");
+  }
+  categoryTabs.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".category-tab-btn");
+    if (!btn) return;
+    currentCategoryTab = btn.dataset.tab;
+    renderCategoryTabs();
+    orderedRows = computeOrderedRows(allRecords);
+    renderAll();
+  });
 
   // ---------------------------------------------------------------------
   // Stats
@@ -911,7 +963,7 @@
   }
 
   function groupHeaderRow(r) {
-    return `<tr><td colspan="16" class="px-5 pt-4 pb-1 text-xs font-bold text-slate-900">${escapeHtml(displayVal(r.sales_order_number))}</td></tr>`;
+    return `<tr><td colspan="17" class="px-5 pt-4 pb-1 text-xs font-bold text-slate-900">${escapeHtml(displayVal(r.sales_order_number))}</td></tr>`;
   }
 
   // Release is gated on a picker being assigned first — same pattern as
@@ -1085,12 +1137,14 @@ function forecastCell(r) {
 
   function dataRow(r) {
     const paymentCell = r.payment_status ? badgePill(PAYMENT_STATUS_LABEL[r.payment_status] || r.payment_status, PAYMENT_STATUS_COLOR[r.payment_status] || "slate") : `<span class="text-slate-300">—</span>`;
+    const sof = sofQueueFor(r);
 
     return `
-      <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}">
+      <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}" title="${escapeHtml(sof.Priority_Reason || "")}">
         <td class="px-5 py-2.5">${paymentCell}</td>
         <td class="px-3 py-2.5">${nextStepCell(r.ID, nextStepFor(r))}</td>
         <td class="px-3 py-2.5">${priorityCellHtml(r)}</td>
+        <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(sof.Suggested_Action))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Package_Order))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.pr_number))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.rr_number))}</td>
@@ -1114,7 +1168,7 @@ function forecastCell(r) {
     let html = "";
     let lastSoNumber = null;
     if (!filtered.length) {
-      html = `<tr><td colspan="16" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+      html = `<tr><td colspan="17" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
     } else {
       filtered.forEach((r) => {
         if (r.sales_order_number !== lastSoNumber) { html += groupHeaderRow(r); lastSoNumber = r.sales_order_number; }
@@ -1401,9 +1455,81 @@ function forecastCell(r) {
     return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
   }
 
+  // Sorting engine queue map: SO_No + Package -> { Category, Queue_Rank, Priority_Reason, Suggested_Action,
+  // Suggested_Release, Scored_At }, read from Sales_Order_Fulfillment and keyed the same way a Gate row's own
+  // sales_order_number + Package_Order identifies its package.
+  let sofQueueMap = new Map();
+  function sofQueueKey(soNo, pkg) { return `${soNo || ""}::${pkg || ""}`; }
+  function fetchSofQueue() {
+    const config = { app_name: CONFIG.APP_NAME, report_name: CONFIG.SOF_REPORT, field_config: "all", max_records: CONFIG.MAX_RECORDS };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+  function sofQueueFor(gateRow) {
+    return sofQueueMap.get(sofQueueKey(gateRow.sales_order_number, gateRow.Package_Order)) || {};
+  }
+
+  // Capacity bar (05/02 §1). report_name "Capacity_Days" works directly: a report with no entry of its own
+  // resolves to the form of the same name (server/model.mjs's formOfReport), so no separate report exists.
+  function todayDateStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+  function fetchTodayCapacity() {
+    return ZOHO.CREATOR.DATA.getRecords({
+      app_name: CONFIG.APP_NAME, report_name: "Capacity_Days", field_config: "all", max_records: 1,
+      criteria: `(Date == "${todayDateStr()}")`,
+    }).then((response) => (response && response.data && response.data[0]) || null).catch(() => null);
+  }
+
+  function renderCapacityBar(capacityRow) {
+    const people = capacityRow ? Number(capacityRow.People) : 4;
+    const boxesPerHour = capacityRow ? Number(capacityRow.Boxes_Per_Hour) : 8;
+    const hoursPerDay = capacityRow ? Number(capacityRow.Hours_Per_Day) : 7;
+    const capacityBoxes = people * boxesPerHour * hoursPerDay;
+    const suggestedCount = allRecords.filter((r) => isTrue(sofQueueFor(r).Suggested_Release)).length;
+    document.getElementById("capacityBar").innerHTML = `
+      <label class="flex items-center gap-1.5 font-medium text-slate-600">People today:
+        <input id="capacityPeopleInput" type="number" min="0" value="${people}" class="w-16 border border-slate-200 rounded px-2 py-1 text-sm" />
+      </label>
+      <span class="text-slate-500">&times; ${boxesPerHour} boxes/hr &times; ${hoursPerDay} hrs = <strong>${capacityBoxes} boxes capacity</strong></span>
+      <span class="text-slate-500">Suggested today: <strong>${suggestedCount}</strong></span>
+    `;
+    document.getElementById("capacityPeopleInput").addEventListener("change", (ev) => {
+      const n = parseInt(ev.target.value, 10);
+      if (!Number.isFinite(n) || n < 0) return;
+      saveTodayPeople(n, capacityRow);
+    });
+  }
+
+  // A criteria matching zero rows makes updateRecords throw (server/pg/api.mjs: ZohoError 9280), it does not
+  // resolve with an empty array — so this checks for an existing row (already fetched for the bar) rather than
+  // updating first and falling back to create on failure.
+  function saveTodayPeople(n, existingRow) {
+    if (existingRow) {
+      ZOHO.CREATOR.DATA.updateRecords({
+        app_name: CONFIG.APP_NAME, report_name: "Capacity_Days",
+        payload: { criteria: `(Date == "${todayDateStr()}")`, data: { People: String(n) } },
+      }).then((response) => {
+        if (response && response.code === 3000) toast("Updated.", "success");
+        else toast("Couldn't update today's capacity.", "error");
+      });
+    } else {
+      ZOHO.CREATOR.DATA.addRecords({
+        app_name: CONFIG.APP_NAME, form_name: "Capacity_Days",
+        payload: { data: { Date: todayDateStr(), People: String(n), Boxes_Per_Hour: "8", Hours_Per_Day: "7" } },
+      }).then((response) => {
+        if (response && response.code === 3000) toast("Capacity set for today.", "success");
+        else toast("Couldn't save today's capacity.", "error");
+      });
+    }
+  }
+
   function loadLive() {
-    fetchAllRecords().then((records) => {
+    renderCategoryTabs();
+    Promise.all([fetchAllRecords(), fetchSofQueue(), fetchTodayCapacity()]).then(([records, sofRecords, capacityRow]) => {
       allRecords = records;
+      sofQueueMap = new Map(sofRecords.map((s) => [sofQueueKey(s.SO_No, s.Package), s]));
+      renderCapacityBar(capacityRow);
       return applyAutoPriority(allRecords);
     }).then(() => {
       orderedRows = computeOrderedRows(allRecords);

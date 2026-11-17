@@ -7,6 +7,7 @@ import { ensureSchema } from '../server/pg/schema.mjs';
 import { createStore } from '../server/pg/store.mjs';
 import { createHookedStore } from '../server/workflows/index.mjs';
 import { workflows } from '../server/workflows/all.mjs';
+import { allPickedForPackage } from '../server/modules/fulfillment/pipeline.mjs';
 
 const SOF = 'Sales_Order_Fulfillment', GATE = 'Sales_Order_Readiness_Gate', PICK = 'Pick1', QC = 'Checker_Checklist';
 let db, raw, store;
@@ -228,4 +229,17 @@ test('reconcile: data written with no hook is carried all the way, with the cust
   assert.equal((await sof(paid)).Fulfillment_Stage, 'Pack & QC');
 
   assert.deepEqual(await reconcileFulfillment(raw), { gate: 0, pick: 0, qc: 0, stage: 0 }, 'nothing left to do');
+});
+
+test('allPickedForPackage: false until every Pick1 row of the package is Marked, true once they all are', async () => {
+  await addPackage();
+  const gates = await rows(GATE);
+  for (const g of gates) await store.updateRecord(GATE, g.ID, { Release: true, Assign_Picker: 'Ana' }, { byForm: true });
+  const picks = await rows(PICK);
+  assert.equal(picks.length, 2);
+  assert.equal(await allPickedForPackage(raw, 'SO-1', 'PAC-1'), false);
+  await store.updateRecord(PICK, picks[0].ID, { Marked: true }, { byForm: true });
+  assert.equal(await allPickedForPackage(raw, 'SO-1', 'PAC-1'), false); // one of two still unmarked
+  await store.updateRecord(PICK, picks[1].ID, { Marked: true }, { byForm: true });
+  assert.equal(await allPickedForPackage(raw, 'SO-1', 'PAC-1'), true);
 });

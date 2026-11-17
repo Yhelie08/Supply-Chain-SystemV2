@@ -14,7 +14,10 @@ test('the six sections of the app each have a module with a label, forms and API
   for (const m of modules) {
     assert.ok(Array.isArray(m.forms), `${m.id}: forms`);
     assert.ok(m.functions && m.apis, `${m.id}: functions and apis`);
-    assert.deepEqual(Object.keys(m.apis).sort(), Object.keys(m.functions).sort(), `${m.id}: every API has its Deluge function name and the other way round`);
+    // Every ported function has its API (functions subset of apis). The reverse does not hold any more: an
+    // API can be new to this system with no Deluge origin (e.g. Fulfillment's recalculate_fulfillment_queue,
+    // the sorting engine's manual recalculate), so it has no entry in `functions`.
+    for (const name of Object.keys(m.functions)) assert.ok(name in m.apis, `${m.id}: ${name} is in functions but not apis`);
   }
 });
 

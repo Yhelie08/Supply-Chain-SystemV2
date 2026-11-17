@@ -145,6 +145,14 @@ async function customerContact(store, so, itemName, sku) {
   }
   return out;
 }
+// True once every Pick1 row of this package (SO + Package_Order) has Marked = true. Used to know when the
+// PICK OF THE WHOLE PACKAGE is complete (PKG-R3: "entered at pick completion"), not just one item line —
+// a package usually has several Pick1 rows, one per item.
+export async function allPickedForPackage(store, so, pkg) {
+  const picks = await store.find(PICK, (p) => text(p.SO) === text(so) && text(p.Package_Order) === text(pkg), { criteria: eq('SO', so) });
+  return picks.length > 0 && picks.every((p) => truthy(p.Marked));
+}
+
 export async function pickedToQc({ record: pick, store, user }) {
   const so = text(pick.SO);
   if (!truthy(pick.Marked)) { await advanceStage(store, so, pick.Item_Name, pick.SKU, 'Picking'); return; }
