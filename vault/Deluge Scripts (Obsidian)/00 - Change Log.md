@@ -11,6 +11,12 @@ Newest first. Current picture: [[00 - Current System]]. Deluge porting: [[00 - P
 
 ## 2026-11-17
 
+**Push + HTTP smoke test ng Grupo A (bago mag-deploy)**
+- Push (owner mismo): `origin/Johncel-Dev` at `origin/main` = `2fc5de3` (fast-forward mula `2f33104`). Verified sa `git fetch`. **Hindi pa naka-deploy** sa Railway.
+- Smoke test: `dev:pg` sa scratch folder (bagong PGlite mula sa `production-2026-11-14` backup, port 4100, walang Zoho/Books keys, SCHEDULES off, temp admin `_qa_smoke`). Sa HTTP API, hindi sa widget UI. Resulta: Tony inquiry copy, kulang ang fields → refused (2001); kumpleto → saved, Stage "Final", at umakyat sa Inquiry ang Available / 90 / Final. Project bago → `PRJ-00013` (12 ang dati). `approve_po_main` sa SO-15073 → PO-00008, `approve_po_tony` → Tony copy + SHP-00012 + RCV-00012. `Approve_P_O_H_C` sa Local SO → processed 1. Warehouse Request → nakuha ang image.
+- **Napansin (mirrors Zoho):** kapag pinatakbo ulit ang `Approve_P_O_H_C` sa PO na Delivered na ang shipments, gagawa ito ng **bagong Pending shipment at Receiving** (SHP-00013 / RCV-00013), dahil Pending lang ang nire-reuse. Ganito rin ang Deluge. Pag-usapan kung gusto itong harangin.
+- Hindi nagamit ang `data/pglite` (nag-abort ang PGlite sa kopya, may naiwang `postmaster.pid`). Hindi ito ginalaw. **Hindi na-check:** ang widget UI mismo sa browser.
+
 **Grupo A ng natitirang port: Supplier copies, Projects, Warehouse Request, Fenteng PO number, shipment schedules, Approve_P_O_H_C**
 - **Fulfillment:** ni-register sa `ported.json` ang 7 workflows na naka-port na pala sa engine ni Yhel (`SO_to_Readiness`, `Release_Records_to_Pick1`, `Pick1_Marked_to_QC_Sync`, `QC_Approved_sync_to_Crate`, `Crating_Done_sync_to_Orde`, `Sync_Fulfillment_Stage_on`, `PO_to_Readiness`). Code ni Yhel, listahan lang ang binago. Bagong port: `Warehouse_Request_Item_Im` (row na walang image, kinukuha ang image ng item).
 - **Supplier_1/2:** `Mandatory_Supplier_Fields*` (on edit: refused kapag locked o kulang ang Availability/presyo/Lead Time) at part 1 ng `Stage_Supplier_Changed*` (Stage_Supplier bawat row; lock `edit_counter 0` kapag hindi Selected/Submit Response; Selected + lahat Completed + Spec Details → Completed). Dinagdagan ang reverse sync ni JV (`inquiry.mjs`) ng Stage, Similar Design Photo, at Last Edited rows; tumatakbo na rin sa add. Batayan na nagse-save ang `input.x` sa on success: ang widget mismo ay nakakakita ng "Editing is locked" galing sa live Zoho.
