@@ -61,3 +61,45 @@ export function categorize(sof, { gates = [], openExceptions = [], now = new Dat
   }
   return { category: 'on_time', blockedReason: null, priorityReason: noTargetSet ? 'On time (no target set)' : 'On time' };
 }
+
+const toNum = (v) => { const n = parseFloat(text(v)); return Number.isFinite(n) ? n : 0; };
+
+// Line-quantity sum stand-in for box count (real box count is a later slice; this matches the spec's own
+// "estimated" fallback for an uncounted package rather than inventing different behavior).
+function estimatedBoxes(sof) {
+  return (sof.Item_Details1 || []).reduce((n, row) => n + toNum(row.Quantity), 0);
+}
+
+// "SO-3" / "SO-20": compared as the number after the last run of digits, not lexicographically (lexical order
+// would put "SO-20" before "SO-3"). A record number with no digits at all sorts after every one that has them.
+function recordNumberKey(soNo) {
+  const m = /(\d+)\s*$/.exec(text(soNo));
+  return m ? Number(m[1]) : Infinity;
+}
+
+function compareKey(e) {
+  // Urgent is always false this slice (no urgency_requests table yet) — the slot is first so Slice 5 only
+  // has to fill in a real value later, not change the comparator shape.
+  const urgent = 0;
+  const created = text(e.sof.SO_Created_Date) || '9999-99-99';
+  const target = text(e.sof.target_delivery_date) || '9999-99-99';
+  return [urgent, created, target, recordNumberKey(e.sof.SO_No), text(e.sof.SO_No)];
+}
+
+function compare(a, b) {
+  const ka = compareKey(a), kb = compareKey(b);
+  for (let i = 0; i < ka.length; i++) { if (ka[i] < kb[i]) return -1; if (ka[i] > kb[i]) return 1; }
+  return 0;
+}
+
+export function rankAndCutLine(entries, { policy = () => null } = {}) {
+  const sorted = entries.slice().sort(compare);
+  const cutLine = Number(policy('fulfillment_cut_line_boxes')) || 50;
+  let used = 0;
+  return sorted.map((e, i) => {
+    const boxes = estimatedBoxes(e.sof);
+    const fitsBefore = used < cutLine;
+    used += boxes;
+    return { ...e, queueRank: i + 1, suggestedRelease: fitsBefore };
+  });
+}

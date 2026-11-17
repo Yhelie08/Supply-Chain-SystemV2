@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
 import { ensureSchema } from '../server/pg/schema.mjs';
 import { createStore } from '../server/pg/store.mjs';
-import { categorize } from '../server/modules/fulfillment/sorter.mjs';
+import { categorize, rankAndCutLine } from '../server/modules/fulfillment/sorter.mjs';
 
 const SOF = 'Sales_Order_Fulfillment';
 let db, raw;
@@ -85,4 +85,49 @@ test('categorize: blocked wins over broken, broken wins over late', () => {
   const gates = [{ sales_order_number: 'SO-1', payment_status: 'No', Has_Credit_Terms: false, Override_Approved: false }]; // also blocked
   const out = categorize(sof, { gates, openExceptions: [], now: NOW, policy });
   assert.equal(out.category, 'blocked'); // blocked beats everything
+});
+
+function entry(so, { created, target, items = [{ Quantity: '1' }], category = 'on_time' } = {}) {
+  return { sof: { SO_No: so, SO_Created_Date: created, target_delivery_date: target, Item_Details1: items }, category, priorityReason: 'x' };
+}
+
+test('rankAndCutLine: oldest SO_Created_Date ranks first regardless of input order', () => {
+  const entries = [entry('SO-2', { created: '2026-11-10' }), entry('SO-1', { created: '2026-11-01' })];
+  const out = rankAndCutLine(entries, { policy: () => null });
+  assert.deepEqual(out.map((e) => e.sof.SO_No), ['SO-1', 'SO-2']);
+  assert.deepEqual(out.map((e) => e.queueRank), [1, 2]);
+});
+
+test('rankAndCutLine: same created date, earlier target_delivery_date wins the tiebreak', () => {
+  const entries = [
+    entry('SO-2', { created: '2026-11-01', target: '2026-12-05' }),
+    entry('SO-1', { created: '2026-11-01', target: '2026-11-20' }),
+  ];
+  const out = rankAndCutLine(entries, { policy: () => null });
+  assert.deepEqual(out.map((e) => e.sof.SO_No), ['SO-1', 'SO-2']);
+});
+
+test('rankAndCutLine: SO_No ascending is the final tiebreak', () => {
+  const entries = [entry('SO-20', { created: '2026-11-01' }), entry('SO-3', { created: '2026-11-01' })];
+  const out = rankAndCutLine(entries, { policy: () => null });
+  assert.deepEqual(out.map((e) => e.sof.SO_No), ['SO-3', 'SO-20']);
+});
+
+test('rankAndCutLine: cut line marks suggested_release up to the box-count setting, using line-quantity sum as the box-count stand-in', () => {
+  const entries = [
+    entry('SO-1', { created: '2026-11-01', items: [{ Quantity: '5' }] }),
+    entry('SO-2', { created: '2026-11-02', items: [{ Quantity: '5' }] }),
+    entry('SO-3', { created: '2026-11-03', items: [{ Quantity: '5' }] }),
+  ];
+  const policy = (key) => (key === 'fulfillment_cut_line_boxes' ? '8' : null); // room for SO-1 (5) + part of SO-2 (5) = 10 > 8, so SO-1 and SO-2 both fit, SO-3 does not
+  const out = rankAndCutLine(entries, { policy });
+  assert.deepEqual(out.map((e) => [e.sof.SO_No, e.suggestedRelease]), [['SO-1', true], ['SO-2', true], ['SO-3', false]]);
+});
+
+test('rankAndCutLine: determinism — two runs on the same unordered input give identical output', () => {
+  const entries = [entry('SO-5', { created: '2026-11-05' }), entry('SO-1', { created: '2026-11-01' }), entry('SO-3', { created: '2026-11-03' })];
+  const a = rankAndCutLine(entries, { policy: () => null });
+  const b = rankAndCutLine(entries.slice().reverse(), { policy: () => null });
+  assert.deepEqual(a.map((e) => e.sof.SO_No), b.map((e) => e.sof.SO_No));
+  assert.deepEqual(a.map((e) => e.queueRank), b.map((e) => e.queueRank));
 });
