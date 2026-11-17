@@ -23,7 +23,8 @@ before(async () => {
 });
 
 test('schema: a table per form, and running it again changes nothing', async () => {
-  const { rows } = await db.query("SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'");
+  // _number_series is the numbering helper's counter table, not a form (see pg/store.mjs nextNumber).
+  const { rows } = await db.query("SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> '_number_series'");
   assert.equal(rows[0].n, Object.keys(columns).length);
   assert.equal(await ensureSchema(db), 0);
 });

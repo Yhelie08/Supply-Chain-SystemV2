@@ -14,20 +14,13 @@
 // the copy's OWN previous status (Zoho looked the id up in the main Purchase_Order form, which is a different record).
 import { register } from '../../workflows/index.mjs';
 import { blank, toNum, round2, todayDate, ymd } from '../../workflows/deluge.mjs';
+import { nextNumber } from '../../workflows/numbering.mjs';
 
 const text = (v) => (blank(v) ? '' : String(v));
 
-// The next "PREFIX-00001" after the highest number in `field` of `form`.
-export async function nextNumber(store, form, field, prefix, digits = 5) {
-  let max = 0;
-  for (const r of await store.find(form)) {
-    const raw = text(r[field]);
-    if (raw === '') continue;
-    const n = parseInt(raw.replace(prefix + '-', ''), 10);
-    if (Number.isFinite(n) && n > max) max = n;
-  }
-  return `${prefix}-${String(max + 1).padStart(digits, '0')}`;
-}
+// Record numbers come from the locked, concurrency-safe store helper (workflows/numbering.mjs -> store.nextNumber).
+// Re-exported so shipments / receiving / replacement-exceptions keep importing nextNumber from here.
+export { nextNumber };
 
 // Field names per copy of the form: the main one has plain names, Fenteng's end in _Supplier1.
 const MAIN = { number: 'PO_No', status: 'PO_Status', lines: 'PO_Line_Items', lineTotal: 'Line_Total', mode: 'Shipping_Mode', value: 'Total_PO_Value', count: 'Total_Lines', mixed: 'Mixed_Shipping', sent: 'Sent_On', done: 'Completed_On' };

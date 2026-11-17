@@ -2,6 +2,7 @@
 // data calls from the backend chosen by BACKEND (pg = Postgres, local = SQLite; Zoho Creator is not a backend),
 // and requires sign-in for everything. Users and sessions are in SQLite on local and in Postgres on pg.
 //   npm start  ->  http://localhost:4000   (env: PORT, DATA_DIR, ADMIN_EMAIL, ADMIN_PASSWORD, BACKEND, DATABASE_URL; see .env.example)
+import './tz.mjs'; // set TZ=Asia/Manila before any date helper runs (Zoho's org TZ; Railway is UTC)
 import dns from 'node:dns';
 dns.setDefaultResultOrder('ipv4first');
 import http from 'node:http';

@@ -87,7 +87,8 @@ describe('Railway Schema and Sequence Initialization (server/pg/schema.mjs)', ()
     const seqRes = await db.query("SELECT start_value FROM pg_sequences WHERE sequencename = 'record_id_seq'");
     assert.equal(String(seqRes.rows[0].start_value), SEQ_START);
 
-    const tables = await db.query("SELECT count(table_name) AS cnt FROM information_schema.tables WHERE table_schema = 'public'");
+    // _number_series is the numbering helper's counter table, not a form (see pg/store.mjs nextNumber).
+    const tables = await db.query("SELECT count(table_name) AS cnt FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> '_number_series'");
     assert.equal(Number(tables.rows[0].cnt), Object.keys(columns).length);
 
     // Verify sequence progression

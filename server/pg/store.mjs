@@ -222,6 +222,28 @@ export function createStore(db) {
       return (await records(form, rows, { raw: true })).filter(test);
     },
 
+    // Concurrency-safe "PREFIX-nnnnn": lock the series row, then take max(last issued, highest stored suffix) + 1.
+    // `prefix` INCLUDES the dash (e.g. 'PO-'); numbering.mjs adapts the dash-less callers ported from Deluge.
+    // The counter persists between calls, so two racing callers get distinct numbers even before either inserts.
+    async nextNumber(formName, field, prefix, digits = 5) {
+      const form = formByName(formName);
+      const col = q(field);
+      const tbl = q(form);
+      const n = await withTx(db, async (tx) => {
+        // Ensure the row exists and lock it (the no-op update keeps last_num); racing callers serialize here.
+        await tx.query(
+          'INSERT INTO _number_series AS s (form, field, last_num) VALUES ($1, $2, 0) ON CONFLICT (form, field) DO UPDATE SET last_num = s.last_num',
+          [form, field],
+        );
+        const r = await tx.query(
+          `UPDATE _number_series SET last_num = GREATEST(last_num, COALESCE((SELECT MAX(CAST(NULLIF(substring(${col} FROM '([0-9]+)$'), '') AS bigint)) FROM ${tbl}), 0)) + 1 WHERE form = $1 AND field = $2 RETURNING last_num`,
+          [form, field],
+        );
+        return Number(r.rows[0].last_num);
+      });
+      return `${prefix}${String(n).padStart(digits, '0')}`;
+    },
+
     async tableCounts() {
       const parts = Object.keys(columns).map((f) => `SELECT ${`'${f.replace(/'/g, "''")}'`} AS form, COUNT(*)::int AS rows FROM ${q(f)}`);
       const { rows } = await db.query(parts.join(' UNION ALL '));

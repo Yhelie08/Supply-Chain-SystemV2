@@ -670,7 +670,7 @@ export async function migrateSqliteDb(db, options = {}) {
   const parsedLimit = limit != null ? Number(limit) : null;
   const q = (n) => `"${String(n).replace(/"/g, '""')}"`;
   const existingTables = new Set(
-    db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name)
+    db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_number_series'").all().map((r) => r.name)
   );
 
   const targetForms = all ? Array.from(existingTables) : forms.filter((f) => existingTables.has(f));
@@ -773,7 +773,7 @@ export async function migratePgDb(db, options = {}) {
   const parsedLimit = limit != null ? Number(limit) : null;
   const q = (n) => `"${String(n).replace(/"/g, '""')}"`;
   const { rows: tableRows } = await db.query(
-    "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema()"
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name <> '_number_series'"
   );
   const existingTables = new Set(tableRows.map((r) => r.table_name));
 

@@ -27,6 +27,8 @@ for (const [form, cols] of Object.entries(columns)) {
 }
 // Zoho record IDs are long numbers; start ours high so they look and sort the same way.
 db.exec(`INSERT OR IGNORE INTO sqlite_sequence(name, seq) SELECT name, 4900000000000 FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN (SELECT name FROM sqlite_sequence)`);
+// Series counter for concurrency-safe record numbers (see nextNumber); one row per numbered field.
+db.exec('CREATE TABLE IF NOT EXISTS _number_series (form TEXT NOT NULL, field TEXT NOT NULL, last_num INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (form, field))');
 
 // ---------- rows <-> Zoho records ----------
 // What a lookup shows for its target form, taken from the .ds "displayformat" of the fields that
@@ -152,6 +154,23 @@ export function deleteRecord(reportName, id) {
 // Deluge-style helpers for ported functions:  find('Form', rec => ...)  /  update('Form', id, {...})
 export const find = (form, test = () => true) =>
   db.prepare(`SELECT * FROM ${q(formByName(form))} ORDER BY ID`).all().map((r) => toRecord(form, r, { raw: true })).filter(test);
+
+// Concurrency-safe "PREFIX-nnnnn" (prefix INCLUDES the dash, e.g. 'PO-'). SQLite is a single synchronous
+// writer, so this read-modify-write cannot interleave; the series row also reconciles with the highest
+// suffix already stored, so imports / explicit numbers never cause a duplicate. Mirrors pg/store.mjs.
+export function nextNumber(formName, field, prefix, digits = 5) {
+  const form = formByName(formName);
+  db.prepare('INSERT INTO _number_series (form, field, last_num) VALUES (?, ?, 0) ON CONFLICT(form, field) DO UPDATE SET last_num = _number_series.last_num').run(form, field);
+  const series = db.prepare('SELECT last_num FROM _number_series WHERE form = ? AND field = ?').get(form, field);
+  let max = 0;
+  for (const r of db.prepare(`SELECT ${q(field)} AS v FROM ${q(form)}`).all()) {
+    const m = /([0-9]+)$/.exec(String(r.v ?? ''));
+    if (m) { const n = parseInt(m[1], 10); if (n > max) max = n; }
+  }
+  const next = Math.max(Number(series.last_num), max) + 1;
+  db.prepare('UPDATE _number_series SET last_num = ? WHERE form = ? AND field = ?').run(next, form, field);
+  return `${prefix}${String(next).padStart(digits, '0')}`;
+}
 
 export function tableCounts() {
   return Object.keys(columns).map((f) => ({ form: f, rows: db.prepare(`SELECT COUNT(*) AS n FROM ${q(f)}`).get().n })).filter((x) => x.rows);

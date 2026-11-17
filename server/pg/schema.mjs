@@ -14,6 +14,9 @@ export const ownColumns = (form) => Object.entries(columns[form]).filter(([name]
 // Creates missing tables and columns so the schema follows the parsed export. Returns how many statements ran.
 export async function ensureSchema(db) {
   await db.query(`CREATE SEQUENCE IF NOT EXISTS ${SEQ} START ${SEQ_START}`);
+  // One row per numbered field (e.g. Purchase_Order.PO_No). nextNumber locks the row and bumps last_num,
+  // reconciling with the highest suffix already stored, so racing callers never get the same number.
+  await db.query('CREATE TABLE IF NOT EXISTS _number_series (form TEXT NOT NULL, field TEXT NOT NULL, last_num BIGINT NOT NULL DEFAULT 0, PRIMARY KEY (form, field))');
   const { rows } = await db.query('SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = current_schema()');
   const have = new Map();
   for (const r of rows) {

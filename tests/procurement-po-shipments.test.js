@@ -17,7 +17,7 @@ before(async () => {
   raw = createStore({ query: (sql, params) => db.query(sql, params), transaction: (fn) => db.transaction(fn) });
   store = createHookedStore(raw, workflows);
 });
-beforeEach(async () => { for (const f of FORMS) await db.query(`DELETE FROM "${f}"`); });
+beforeEach(async () => { for (const f of FORMS) await db.query(`DELETE FROM "${f}"`); await db.query('DELETE FROM _number_series'); }); // the numbering counter is state too: reset it so each test starts at -00001
 
 const rejects = async (fn, re) => { await assert.rejects(fn, (e) => re.test(e.message)); };
 

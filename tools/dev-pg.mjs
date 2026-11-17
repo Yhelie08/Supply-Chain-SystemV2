@@ -2,6 +2,7 @@
 //   npm run dev:pg        ->  http://localhost:4000
 // Starts PGlite (Postgres in WebAssembly) kept in DATA_DIR/pglite, loads the newest backup from
 // data/zoho-backup the first time (when the database is empty), then starts the server with BACKEND=pg.
+import '../server/tz.mjs'; // TZ=Asia/Manila before any date helper runs
 import fs from 'node:fs';
 import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
