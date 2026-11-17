@@ -284,6 +284,18 @@
       "label": "Scored At",
       "type": "text",
       "required": false
+    },
+    {
+      "name": "Box_Count",
+      "label": "Box Count",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "Box_Count_Source",
+      "label": "Box Count Source",
+      "type": "text",
+      "required": false
     }
   ]
 }

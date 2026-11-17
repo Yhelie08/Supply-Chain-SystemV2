@@ -24,6 +24,13 @@ test('the six queue columns exist on Sales_Order_Fulfillment', async () => {
   assert.equal(r.Suggested_Release, true);
 });
 
+test('Box_Count and Box_Count_Source columns exist on Sales_Order_Fulfillment', async () => {
+  const id = await raw.addRecord(SOF, { SO_No: 'SO-BOX-1', Box_Count: '7', Box_Count_Source: 'counted' });
+  const r = await raw.getRecordById(SOF, id, { raw: true });
+  assert.equal(r.Box_Count, '7');
+  assert.equal(r.Box_Count_Source, 'counted');
+});
+
 const NOW = new Date('2026-11-17T00:00:00Z');
 const policy = () => null; // no settings configured: every categorize() call falls back to its defaults
 
