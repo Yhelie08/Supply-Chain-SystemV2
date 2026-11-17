@@ -65,3 +65,21 @@ async function stageOnGateSave({ record: gate, store }) {
   }
 }
 register(GATE, { afterAdd: stageOnGateSave, afterUpdate: stageOnGateSave });
+
+// Warehouse_Request_Item_Im (Warehouse_Request, on add or edit, on success; zoho-export/parsed/workflows/form/Warehouse_Request):
+// an item row with no image takes the image of its item.
+async function itemImages({ id, record, store }) {
+  const empty = (v) => { const s = text(v); return s === '' || s === '{}' || s === '[]'; };
+  let changed = false;
+  const rows = [];
+  for (const row of record.Item || []) {
+    const itemId = text(row.Items?.ID ?? row.Items);
+    if (empty(row.Image) && itemId !== '') {
+      const item = await store.getRecordById('Items', itemId, { raw: true }).catch(() => null);
+      if (item && !blank(item.Image)) { rows.push({ ...row, Image: item.Image }); changed = true; continue; }
+    }
+    rows.push(row);
+  }
+  if (changed) await store.updateRecord('Warehouse_Request', text(record.ID || id), { Item: rows }, { byForm: true });
+}
+register('Warehouse_Request', { afterAdd: itemImages, afterUpdate: itemImages });
