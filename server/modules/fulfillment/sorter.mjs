@@ -138,6 +138,21 @@ export function rankAndCutLine(entries, { capacityBoxes }) {
   });
 }
 
+// backlog_days = open_boxes / (people * boxes_per_hour * hours_per_day) — the spec's Fulfillment manpower
+// calculator (05/02 §1). capacityBoxes is already people * boxesPerHour * hoursPerDay (capacityFor's own output).
+export function backlogDays(openBoxes, capacityBoxes) {
+  if (openBoxes === 0) return 0;
+  if (capacityBoxes === 0) return Infinity;
+  return openBoxes / capacityBoxes;
+}
+
+// people_needed = open_boxes_due / (boxes_per_hour * hours_per_day * days_available)
+export function peopleNeeded(openBoxesDue, perPersonDailyBoxes, daysAvailable) {
+  if (openBoxesDue === 0) return 0;
+  if (perPersonDailyBoxes === 0 || daysAvailable === 0) return Infinity;
+  return openBoxesDue / (perPersonDailyBoxes * daysAvailable);
+}
+
 async function scoreAllOpenPackages(store) {
   const [sofs, gates, exceptions, policy, capacity] = await Promise.all([
     store.find(SOF_NAME, (r) => OPEN_STAGE(r.Fulfillment_Stage)),

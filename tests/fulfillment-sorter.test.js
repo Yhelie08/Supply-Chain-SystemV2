@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
 import { ensureSchema } from '../server/pg/schema.mjs';
 import { createStore } from '../server/pg/store.mjs';
-import { categorize, rankAndCutLine, effectiveBoxes, capacityFor } from '../server/modules/fulfillment/sorter.mjs';
+import { categorize, rankAndCutLine, effectiveBoxes, capacityFor, backlogDays, peopleNeeded } from '../server/modules/fulfillment/sorter.mjs';
 
 const SOF = 'Sales_Order_Fulfillment';
 let db, raw;
@@ -213,4 +213,21 @@ test('capacityFor: no Capacity_Days row at all falls back to Policy_Settings def
   assert.equal(c.boxesPerHour, 8);
   assert.equal(c.hoursPerDay, 7);
   assert.equal(c.capacityBoxes, 224);
+});
+
+test('backlogDays: open_boxes / (people * boxes_per_hour * hours_per_day)', () => {
+  // 224 open boxes, capacity 4*8*7=224 boxes/day -> exactly 1 day
+  assert.equal(backlogDays(224, 224), 1);
+  assert.equal(backlogDays(448, 224), 2);
+});
+
+test('backlogDays: zero capacity does not throw or return Infinity silently — returns 0 when there are no open boxes, Infinity when there are', () => {
+  assert.equal(backlogDays(0, 0), 0);
+  assert.equal(backlogDays(10, 0), Infinity);
+});
+
+test('peopleNeeded: open_boxes_due / (boxes_per_hour * hours_per_day * days_available)', () => {
+  // spec's own example figures: to clear a known backlog in 3 days at 8/hr * 7hr/day
+  assert.equal(peopleNeeded(168, 8 * 7, 3), 1); // 168 / (56 * 3) = 1
+  assert.equal(peopleNeeded(672, 8 * 7, 3), 4); // 672 / (56 * 3) = 4
 });
