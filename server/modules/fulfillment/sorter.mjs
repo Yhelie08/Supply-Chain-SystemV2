@@ -4,13 +4,27 @@
 // on identical input always gives the identical answer (determinism is an explicit acceptance requirement).
 import { blank } from '../../workflows/deluge.mjs';
 import { needsPaymentApproval } from './workflows.mjs';
-import { zohoNow } from '../../criteria.mjs';
+import { zohoNow, today } from '../../criteria.mjs';
 import { policyReader } from '../delivery-management/scheduling.mjs';
 
 const SOF_NAME = 'Sales_Order_Fulfillment';
 const OPEN_STAGE = (stage) => stage !== 'For Delivery';
 
 const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
+const toNum = (v) => { const n = parseFloat(text(v)); return Number.isFinite(n) ? n : 0; };
+
+// Capacity for a date (05/02 §1): the Capacity_Days row for that date, else the most recent earlier row
+// ("or copied from yesterday"), else the Policy_Settings defaults.
+export async function capacityFor(store, date) {
+  const rows = await store.find('Capacity_Days');
+  const exact = rows.find((r) => text(r.Date) === date);
+  const row = exact || rows.filter((r) => text(r.Date) !== '' && text(r.Date) < date).sort((a, b) => (a.Date < b.Date ? 1 : -1))[0];
+  const policy = await policyReader(store);
+  const people = row ? toNum(row.People) : (Number(policy('fulfillment_default_people')) || 4);
+  const boxesPerHour = row ? toNum(row.Boxes_Per_Hour) : (Number(policy('fulfillment_boxes_per_hour')) || 8);
+  const hoursPerDay = row ? toNum(row.Hours_Per_Day) : (Number(policy('fulfillment_hours_per_day')) || 7);
+  return { people, boxesPerHour, hoursPerDay, capacityBoxes: people * boxesPerHour * hoursPerDay };
+}
 const OPEN_EXCEPTION_STATUSES = new Set(['Pending', 'In Rework']);
 const BROKEN_ORDER_TYPES = new Set(['Complaint', 'Replacement']);
 
@@ -66,8 +80,6 @@ export function categorize(sof, { gates = [], openExceptions = [], now = new Dat
   }
   return { category: 'on_time', blockedReason: null, priorityReason: noTargetSet ? 'On time (no target set)' : 'On time' };
 }
-
-const toNum = (v) => { const n = parseFloat(text(v)); return Number.isFinite(n) ? n : 0; };
 
 // Line-quantity sum: the spec's own "estimated" fallback for a package that has not been box-counted yet.
 function estimatedBoxes(sof) {

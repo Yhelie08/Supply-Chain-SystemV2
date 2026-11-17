@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
 import { ensureSchema } from '../server/pg/schema.mjs';
 import { createStore } from '../server/pg/store.mjs';
-import { categorize, rankAndCutLine, effectiveBoxes } from '../server/modules/fulfillment/sorter.mjs';
+import { categorize, rankAndCutLine, effectiveBoxes, capacityFor } from '../server/modules/fulfillment/sorter.mjs';
 
 const SOF = 'Sales_Order_Fulfillment';
 let db, raw;
@@ -165,4 +165,28 @@ test('effectiveBoxes: Box_Count_Source is "estimated" (not yet counted) also fal
 test('effectiveBoxes: Box_Count_Source is "counted" but Box_Count is blank still falls back (no real count exists yet)', () => {
   const sof = { Box_Count_Source: 'counted', Box_Count: '', Item_Details1: [{ Quantity: '5' }] };
   assert.equal(effectiveBoxes(sof), 5);
+});
+
+test('capacityFor: uses the Capacity_Days row for the exact date when one exists', async () => {
+  await raw.addRecord('Capacity_Days', { Date: '2026-11-17', People: '5', Boxes_Per_Hour: '10', Hours_Per_Day: '8' });
+  const c = await capacityFor(raw, '2026-11-17');
+  assert.equal(c.people, 5);
+  assert.equal(c.boxesPerHour, 10);
+  assert.equal(c.hoursPerDay, 8);
+  assert.equal(c.capacityBoxes, 400); // 5 * 10 * 8
+});
+
+test('capacityFor: falls back to the most recent earlier Capacity_Days row ("copied from yesterday")', async () => {
+  await raw.addRecord('Capacity_Days', { Date: '2026-11-15', People: '3', Boxes_Per_Hour: '9', Hours_Per_Day: '7' });
+  const c = await capacityFor(raw, '2026-11-17'); // no row for the 17th
+  assert.equal(c.people, 3);
+  assert.equal(c.capacityBoxes, 189); // 3 * 9 * 7
+});
+
+test('capacityFor: no Capacity_Days row at all falls back to Policy_Settings defaults (4 / 8 / 7)', async () => {
+  const c = await capacityFor(raw, '2026-11-17');
+  assert.equal(c.people, 4);
+  assert.equal(c.boxesPerHour, 8);
+  assert.equal(c.hoursPerDay, 7);
+  assert.equal(c.capacityBoxes, 224);
 });
