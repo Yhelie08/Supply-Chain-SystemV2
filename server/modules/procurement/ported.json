@@ -124,5 +124,38 @@
       "Notify_on_Created_Excepti": "inactive in Zoho"
     },
     "nativeFormOnly": []
+  },
+  "Projects": {
+    "ported": [
+      "Proj_Code_AutoNumber"
+    ],
+    "nativeFormOnly": [],
+    "notNeeded": {}
+  },
+  "Supplier_2": {
+    "ported": [
+      "Stage_Supplier_Changed",
+      "Mandatory_Supplier_Fields"
+    ],
+    "nativeFormOnly": [
+      "Disable_Item_Field_Suppli",
+      "Disable_Item_Field_Edit_S",
+      "Disable_Item_Field_Edit_S2"
+    ],
+    "notNeeded": {
+      "Notify_Tony_on_Inquiry_ad": "inactive in Zoho"
+    }
+  },
+  "Supplier_1": {
+    "ported": [
+      "Stage_Supplier_Changed1",
+      "Mandatory_Supplier_Fields1"
+    ],
+    "nativeFormOnly": [
+      "Disable_Item_Field_Suppli1",
+      "Disable_Item_Field_Edit_S1",
+      "Disable_Item_Field_Edit_S3"
+    ],
+    "notNeeded": {}
   }
 }

@@ -9,8 +9,8 @@
 // stored anything; Acknowledge_On is set by the acknowledge function (acknowledgePO*), which is not ported yet.
 //
 // The Fenteng copy of the form (Fenteng_Lighting_Purchase_Order, every field ends in _Supplier1) has the same totals / mixed /
-// timestamps scripts. Its number script is NOT ported: it counts the MAIN Purchase_Order table, and the copy is meant to carry the
-// number of the PO it was made from (set by approvePOFenteng, not ported yet). Differences on purpose: its timestamps compare with
+// timestamps scripts. Its number script counts the MAIN Purchase_Order table; the copy normally carries the number of the PO it was
+// made from (set by approve_po_fenteng, po-approval.mjs), so it is ported for a hand-made copy only (fentengNumber below). Differences on purpose: its timestamps compare with
 // the copy's OWN previous status (Zoho looked the id up in the main Purchase_Order form, which is a different record).
 import { register } from '../../workflows/index.mjs';
 import { blank, toNum, round2, todayDate, ymd } from '../../workflows/deluge.mjs';
@@ -56,4 +56,17 @@ function steps(f, { withNumber }) {
 }
 
 register('Purchase_Order', { beforeAdd: steps(MAIN, { withNumber: true }), beforeUpdate: steps(MAIN, { withNumber: false }) });
-register('Fenteng_Lighting_Purchase_Order', { beforeAdd: steps(FENTENG, { withNumber: false }), beforeUpdate: steps(FENTENG, { withNumber: false }) });
+// PO_Generate_Number2 (Fenteng copy, on add): PO_No_Supplier1 = one more than the highest PO_No of the MAIN Purchase_Order table, as in
+// Zoho. Difference on purpose: only when the add has no number. approve_po_fenteng adds the copy with the raw store (no hooks) and the
+// main PO's number, so this only runs for a Fenteng PO added by hand; it reads the highest number, it does not take one from the series.
+async function fentengNumber({ input, store }) {
+  if (!blank(input.PO_No_Supplier1)) return;
+  let max = 0;
+  for (const po of await store.find('Purchase_Order')) {
+    const n = Number(String(po.PO_No ?? '').replace('PO-', ''));
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  input.PO_No_Supplier1 = `PO-${String(max + 1).padStart(5, '0')}`;
+}
+
+register('Fenteng_Lighting_Purchase_Order', { beforeAdd: [fentengNumber, steps(FENTENG, { withNumber: false })], beforeUpdate: steps(FENTENG, { withNumber: false }) });

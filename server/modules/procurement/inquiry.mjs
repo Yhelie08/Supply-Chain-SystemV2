@@ -6,7 +6,7 @@
 //
 // Order of the hooks follows the order of the workflows in the Zoho app.
 import { register } from '../../workflows/index.mjs';
-import { zohoNow } from '../../criteria.mjs';
+import { zohoNow, ZohoError } from '../../criteria.mjs';
 import { idOf, idsOf, unbracket, truthy, blank, toNum, hasValue, sameValue, lower, inquiryNumber, round2, lit, stamp } from '../../workflows/deluge.mjs';
 import { SUPPLIERS, supplierIndex, quoteBooksId } from '../../workflows/suppliers.mjs';
 
@@ -236,6 +236,8 @@ async function syncSuppliers({ record, store }) {
 // Supplier saved, but Inquiry_Form's Supplier_Quotes stayed empty forever). Mirrors
 // PASTE_Stage_Supplier_Changed_Production.txt exactly: matched by this supplier's real Books
 // vendor id (via the Supplier_Quotes row's own Supplier_ID -> Suppliers table lookup), not by name. =====
+// 2026-11-17: also copies the row's Stage, the Similar Design Photo and the "last edited" rows, like the Zoho script
+// (part 2 of Stage_Supplier_Changed). The photo is copied as it is: Zoho wrapped it in a list, our upload field holds the path.
 async function syncBackToInquiry({ s, record, store }) {
   const inqNo = record.INQ_No_Supplier;
   if (blank(inqNo)) return;
@@ -243,11 +245,14 @@ async function syncBackToInquiry({ s, record, store }) {
   const quoteRow = (record.Supplier_quotes || [])[0];
   if (!quoteRow) return;
   for (const inq of await store.find('Inquiry_Form', (r) => r.INQ_No === inqNo)) {
+    let done = false; // Zoho stops at the first matching quote row
     const quotes = (inq.Supplier_Quotes || []).map((q) => {
-      if (quoteBooksId(q, suppliers) !== s.booksId) return q;
+      if (done || quoteBooksId(q, suppliers) !== s.booksId) return q;
+      done = true;
       return {
         ...q, Availability: quoteRow.Availability_Supplier, Initial_Price: quoteRow.Initial_Price_Supplier,
         Negotiated: quoteRow.Negotiated_Supplier, Final_Price: quoteRow.Final_Price_Supplier, Lead_Time: quoteRow.Lead_Time_Supplier,
+        Stage: quoteRow.Stage_Supplier,
       };
     });
     const patch = { Supplier_Quotes: quotes };
@@ -255,8 +260,59 @@ async function syncBackToInquiry({ s, record, store }) {
     if (inq.D_Image !== 'HideToSupplier') patch.D_Image = record.D_Image_Supplier;
     if (inq.Specification !== 'HideToSupplier') { patch.Specification = record.Specification_Supplier; patch.Specification_Details = record.Specification_Details_Supplier; }
     if (inq.Technical_Drawing !== 'HideToSupplier') patch.Technical_Drawing = record.Technical_Drawing_Supplier;
+    const photo = String(record.Similar_Design_Photo_Supplier ?? '');
+    if (!blank(record.Similar_Design_Photo_Supplier) && photo !== '{}' && photo !== '[]') patch.Similar_Design_Photo = record.Similar_Design_Photo_Supplier;
+    if ((inq.Supplier_Quotes_Last_Edited || []).length) {
+      patch.Supplier_Quotes_Last_Edited = inq.Supplier_Quotes_Last_Edited.map((le) => {
+        const sq = [...(record.Supplier_quotes || [])].reverse().find((x) => le.Suppliers_Last_Edited === x.SupplierName); // the last match wins, as in the loop
+        return sq ? { ...le, Availability_Last_Edited: sq.Availability_Supplier, Initial_Price_Last_Edited: sq.Initial_Price_Supplier,
+          Negotiated_Last_Edited: sq.Negotiated_Supplier, Final_Price_Last_Edited: sq.Final_Price_Supplier, Lead_Time_Last_Edited: sq.Lead_Time_Supplier } : le;
+      });
+    }
     await store.updateRecord('Inquiry_Form', inq.ID, patch, { byForm: true });
   }
+}
+
+// ===== Stage_Supplier_Changed, part 1 (Supplier_1/Supplier_2, on add or edit, on success) =====
+// Each quote row gets its Stage (Final when Negotiated and Final Price are both set, Negotiating when one is, else Not Selected).
+// The copy is locked (edit_counter 0) unless its Response_Status is "Selected" or "Submit Response"; a Selected copy with all
+// four collateral fields Completed and Specification Details filled in becomes "Completed" (and locked). Returns the record as saved.
+const nonZero = (v) => !blank(v) && toNum(v) !== 0;
+async function stageSupplierRows({ s, id, record, store }) {
+  const rows = (record.Supplier_quotes || []).map((q) => ({
+    ...q, Stage_Supplier: nonZero(q.Negotiated_Supplier) && nonZero(q.Final_Price_Supplier) ? 'Final'
+      : nonZero(q.Negotiated_Supplier) || nonZero(q.Final_Price_Supplier) ? 'Negotiating' : 'Not Selected',
+  }));
+  const patch = {};
+  if (rows.some((r, i) => r.Stage_Supplier !== record.Supplier_quotes[i].Stage_Supplier)) patch.Supplier_quotes = rows;
+  let status = record.Response_Status;
+  let counter = record.edit_counter;
+  if (status !== 'Selected' && status !== 'Submit Response') counter = 0;
+  if (status === 'Selected' && ['Product_Sample_Supplier', 'D_Image_Supplier', 'Specification_Supplier', 'Technical_Drawing_Supplier'].every((f) => record[f] === 'Completed')
+    && !blank(record.Specification_Details_Supplier)) { status = 'Completed'; counter = 0; }
+  if (status !== record.Response_Status) patch.Response_Status = status;
+  if (String(counter ?? '') !== String(record.edit_counter ?? '')) patch.edit_counter = counter;
+  if (Object.keys(patch).length === 0) return record;
+  await store.updateRecord(s.form, String(record.ID || id), patch, { byForm: true });
+  return { ...record, ...patch };
+}
+
+// ===== Mandatory_Supplier_Fields (Supplier_1/Supplier_2, on edit, on validate) =====
+function mandatorySupplierFields({ input, previous }) {
+  const rec = { ...(previous || {}), ...input };
+  if (!blank(rec.edit_counter) && toNum(rec.edit_counter) === 0) throw new ZohoError(2001, 'Editing is locked. Wait for inquiry update.');
+  const missing = [];
+  const STOP = ['Cannot Produce', 'Unavailable', 'Confirmed'];
+  for (const sq of rec.Supplier_quotes || []) {
+    const a = blank(sq.Availability_Supplier) ? '' : String(sq.Availability_Supplier);
+    if (a === '') missing.push('Availability');
+    if (!STOP.includes(a)) {
+      if (!nonZero(sq.Initial_Price_Supplier)) missing.push('Initial Price');
+      if (!nonZero(sq.Final_Price_Supplier)) missing.push('Final Price');
+      if (blank(sq.Lead_Time_Supplier)) missing.push('Lead Time');
+    }
+  }
+  if (missing.length) throw new ZohoError(2001, `Required fields missing: ${missing.join(', ')}`); // repeats kept, like Zoho's message
 }
 
 // ===== Item_Image_Create_Update and INQ_AutoFill_Product_Image (on add or edit, on success) =====
@@ -297,5 +353,6 @@ register('Inquiry_Form', {
 });
 
 for (const s of SUPPLIERS) {
-  register(s.form, { afterUpdate: [(args) => syncBackToInquiry({ s, ...args })] });
+  const saved = async (args) => syncBackToInquiry({ s, ...args, record: await stageSupplierRows({ s, ...args }) });
+  register(s.form, { beforeUpdate: [mandatorySupplierFields], afterAdd: [saved], afterUpdate: [saved] });
 }

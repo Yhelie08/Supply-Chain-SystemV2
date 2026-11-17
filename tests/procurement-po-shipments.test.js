@@ -44,13 +44,13 @@ test('PO: number, totals, mixed shipping and the status dates', async () => {
   assert.ok((await raw.getRecordById('Purchase_Order', b, { raw: true })).Completed_On);
 });
 
-test('Fenteng PO copy: totals and mixed shipping on its own _Supplier1 fields, no number of its own', async () => {
+test('Fenteng PO copy: totals and mixed shipping on its own _Supplier1 fields; added by hand, it gets the next main PO number', async () => {
   const id = await store.addRecord('Fenteng_Lighting_Purchase_Order', { PO_Line_Items_Supplier1: [{ Line_Total_Supplier1: 3, Shipping_Mode_Supplier1: 'Air' }, { Line_Total_Supplier1: 4, Shipping_Mode_Supplier1: 'Sea' }] });
   const po = await raw.getRecordById('Fenteng_Lighting_Purchase_Order', id, { raw: true });
   assert.equal(Number(po.Total_PO_Value_Supplier1), 7);
   assert.equal(Number(po.Total_Lines_Supplier1), 2);
   assert.equal(po.Mixed_Shipping_Supplier1 === true || po.Mixed_Shipping_Supplier1 === 'true', true);
-  assert.ok(!po.PO_No_Supplier1);
+  assert.equal(po.PO_No_Supplier1, 'PO-00001'); // PO_Generate_Number2: no main PO yet, so the first number
 });
 
 // ---------- Shipments ----------

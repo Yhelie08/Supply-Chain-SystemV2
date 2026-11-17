@@ -12,6 +12,7 @@
   },
   "Fenteng_Lighting_Purchase_Order": {
     "ported": [
+      "PO_Generate_Number2",
       "PO_Compute_Totals2",
       "PO_Detect_Mixed2",
       "PO_Status_Timestamps2"
