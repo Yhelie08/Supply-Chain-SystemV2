@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
 import { ensureSchema } from '../server/pg/schema.mjs';
 import { createStore } from '../server/pg/store.mjs';
-import { categorize, rankAndCutLine } from '../server/modules/fulfillment/sorter.mjs';
+import { categorize, rankAndCutLine, effectiveBoxes } from '../server/modules/fulfillment/sorter.mjs';
 
 const SOF = 'Sales_Order_Fulfillment';
 let db, raw;
@@ -137,4 +137,24 @@ test('rankAndCutLine: determinism — two runs on the same unordered input give 
   const b = rankAndCutLine(entries.slice().reverse(), { policy: () => null });
   assert.deepEqual(a.map((e) => e.sof.SO_No), b.map((e) => e.sof.SO_No));
   assert.deepEqual(a.map((e) => e.queueRank), b.map((e) => e.queueRank));
+});
+
+test('effectiveBoxes: counted source returns the real Box_Count, ignoring line quantities', () => {
+  const sof = { Box_Count: '12', Box_Count_Source: 'counted', Item_Details1: [{ Quantity: '1' }, { Quantity: '1' }] };
+  assert.equal(effectiveBoxes(sof), 12);
+});
+
+test('effectiveBoxes: no Box_Count_Source falls back to the line-quantity sum (the existing estimate)', () => {
+  const sof = { Item_Details1: [{ Quantity: '3' }, { Quantity: '4' }] };
+  assert.equal(effectiveBoxes(sof), 7);
+});
+
+test('effectiveBoxes: Box_Count_Source is "estimated" (not yet counted) also falls back to the line-quantity sum', () => {
+  const sof = { Box_Count_Source: 'estimated', Item_Details1: [{ Quantity: '2' }] };
+  assert.equal(effectiveBoxes(sof), 2);
+});
+
+test('effectiveBoxes: Box_Count_Source is "counted" but Box_Count is blank still falls back (no real count exists yet)', () => {
+  const sof = { Box_Count_Source: 'counted', Box_Count: '', Item_Details1: [{ Quantity: '5' }] };
+  assert.equal(effectiveBoxes(sof), 5);
 });

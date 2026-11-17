@@ -69,10 +69,17 @@ export function categorize(sof, { gates = [], openExceptions = [], now = new Dat
 
 const toNum = (v) => { const n = parseFloat(text(v)); return Number.isFinite(n) ? n : 0; };
 
-// Line-quantity sum stand-in for box count (real box count is a later slice; this matches the spec's own
-// "estimated" fallback for an uncounted package rather than inventing different behavior).
+// Line-quantity sum: the spec's own "estimated" fallback for a package that has not been box-counted yet.
 function estimatedBoxes(sof) {
   return (sof.Item_Details1 || []).reduce((n, row) => n + toNum(row.Quantity), 0);
+}
+
+// Real count when one has been entered (PKG-R3: "counted when the package is made up"), else the line-quantity
+// estimate above. Box count never affects categorize()/rankAndCutLine()'s sort order (PKG-R4) — this is the
+// only function that reads it, and only for the cut-line sum.
+export function effectiveBoxes(sof) {
+  if (text(sof.Box_Count_Source) === 'counted' && !blank(sof.Box_Count)) return toNum(sof.Box_Count);
+  return estimatedBoxes(sof);
 }
 
 // "SO-3" / "SO-20": compared as the number after the last run of digits, not lexicographically (lexical order
@@ -102,7 +109,7 @@ export function rankAndCutLine(entries, { policy = () => null } = {}) {
   const cutLine = Number(policy('fulfillment_cut_line_boxes')) || 50;
   let used = 0;
   return sorted.map((e, i) => {
-    const boxes = estimatedBoxes(e.sof);
+    const boxes = effectiveBoxes(e.sof);
     const fitsBefore = used < cutLine;
     used += boxes;
     return { ...e, queueRank: i + 1, suggestedRelease: fitsBefore };
