@@ -208,6 +208,7 @@
           <thead>
             <tr>
               <th>Order</th>
+              <th>Category</th>
               <th>Type</th>
               <th>System suggestion</th>
               <th>Team</th>
@@ -1603,8 +1604,20 @@ function to12Hour(t){
 }
 
 function pendMessage(title, hint){
-  return '<tr class="static"><td colspan="5"><div class="empty"><b>' + esc(title) + '</b>' +
+  return '<tr class="static"><td colspan="6"><div class="empty"><b>' + esc(title) + '</b>' +
     (hint ? '<span>' + esc(hint) + '</span>' : '') + '</div></td></tr>';
+}
+
+/* Sorting Engine (spec v1.4, 05/01; Delivery 02 §2), 2026-11-18 — server/modules/delivery-management/sorter.mjs
+   writes Category/Queue_Rank/Priority_Reason on every open appointment. Not yet scored (no nightly/save run since
+   this was added to an existing record) falls back to the pill the engine not having run yet, never a blank cell. */
+function categoryPill(r){
+  var cat = r.Category;
+  var label = { broken: 'Broken', late: 'Late', at_risk: 'At risk', on_time: 'On time', blocked: 'Blocked' }[cat];
+  var cls = { broken: 'p-bad', late: 'p-bad', at_risk: 'p-warn', on_time: 'p-ok', blocked: 'p-gray' }[cat];
+  if(!label) return '<span class="pill p-gray">Not scored yet</span>';
+  return '<span class="pill ' + cls + '" title="' + esc(r.Priority_Reason || '') + '">' + label +
+    (r.Queue_Rank ? ' · #' + esc(r.Queue_Rank) : '') + '</span>';
 }
 
 function suggestionText(r){
@@ -1627,7 +1640,20 @@ function renderPending(){
     if(!q) return true;
     return [r.Sales_Order, custName(r), r.Installer].join(' ').toLowerCase().indexOf(q) !== -1;
   });
+  // Sorting Engine rank (spec v1.4, 05/01): category first (Blocked is its own separate list, so it always sorts
+  // last here even though the engine numbers it starting back at 1 — Queue_Rank alone would tie it with Broken),
+  // then the engine's Queue_Rank inside that category. The old Priority-then-date order is only a fallback for a
+  // row the engine has not reached yet (should not normally happen).
+  var CAT_ORDER = { broken:0, late:1, at_risk:2, on_time:3, blocked:4 };
   rows.sort(function(a,b){
+    var ca = CAT_ORDER[a.Category]!=null ? CAT_ORDER[a.Category] : 5;
+    var cb = CAT_ORDER[b.Category]!=null ? CAT_ORDER[b.Category] : 5;
+    if(ca !== cb) return ca - cb;
+    var ra = (a.Queue_Rank!=null && a.Queue_Rank!=='') ? Number(a.Queue_Rank) : null;
+    var rb = (b.Queue_Rank!=null && b.Queue_Rank!=='') ? Number(b.Queue_Rank) : null;
+    if(ra!=null && rb!=null) return ra - rb;
+    if(ra!=null) return -1;
+    if(rb!=null) return 1;
     var pa = isTrue(a.Priority) ? 0 : 1, pb = isTrue(b.Priority) ? 0 : 1;
     if(pa !== pb) return pa - pb;
     return String(a.Suggested_Schedule_Date||'9999').localeCompare(String(b.Suggested_Schedule_Date||'9999'));
@@ -1645,6 +1671,7 @@ function renderPending(){
     var city = r.City ? (' · ' + esc(r.City)) : '';
     return '<tr tabindex="0" onclick="openApprove(\'' + r.ID + '\')" onkeydown="if(event.key===\'Enter\')openApprove(\'' + r.ID + '\')">' +
       '<td class="c-ord"><div class="ord"><div class="so">' + esc(r.Sales_Order||'—') + '</div><div class="cust">' + esc(custName(r)) + city + '</div></div></td>' +
+      '<td data-label="Category">' + categoryPill(r) + '</td>' +
       '<td data-label="Type">' + typeCell(r.Type_of_Delivery) + '</td>' +
       '<td data-label="System suggestion">' + suggestionText(r) + '</td>' +
       '<td data-label="Team">' + esc(team) + '</td>' +

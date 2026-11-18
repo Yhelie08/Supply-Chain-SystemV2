@@ -537,6 +537,10 @@ var PRHold = (function(){
 
       <div class="card" id="evidenceCard" style="display:none">
         <h3>Damage / Missing Evidence <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(photos attach immediately per row; other fields save with the top Save button)</span></h3>
+        <div id="supplierPhotosRow" style="display:none;margin-bottom:12px">
+          <label style="font-size:12px;color:var(--gray-500);display:block;margin-bottom:4px">Supplier's own photos, for comparison</label>
+          <div id="supplierPhotosThumbs" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        </div>
         <div id="evidenceBody"></div>
       </div>
 
@@ -563,7 +567,6 @@ var PRHold = (function(){
         <label style="font-size:12px;color:var(--gray-500)">Gate log: it arrived on</label>
         <input type="date" id="rcvArrivedOn" style="height:32px;border:1.5px solid var(--gray-200);border-radius:6px;padding:0 8px" />
         <button class="btn btn-ghost btn-sm" onclick="rcvReportArrived()">Record arrival</button>
-        <span id="rcvShipPhotos" style="font-size:12px;color:var(--gray-500)"></span>
       </div>
     </div>
 
@@ -2832,16 +2835,32 @@ function rcvRenderEvents(){
   var set = function(id, v){ var el = document.getElementById(id); if(el) el.textContent = v || '\u2014'; };
   set('evArrived', r.Arrived_At); set('evCounted', r.Counted_At); set('evBinned', r.Binned_At); set('evAvailable', r.Available_At);
   document.getElementById('rcvArrivedOn').max = new Date().toISOString().slice(0,10);
-  /* the supplier's production / shipment photos beside the damage photos, so the fault can be traced (spec ST-R4) */
+  /* the supplier's production / shipment photos next to the damage/missing evidence photos, so the fault can be
+     traced (spec ST-R4): real thumbnails, not just a link, and every production photo (the field now holds a
+     growing list, not just the newest one — a second supplier upload used to erase the first). */
   var shipId = r.Shipments && (r.Shipments.ID || r.Shipments);
-  var box = document.getElementById('rcvShipPhotos'); if(box) box.innerHTML = '';
-  if(shipId && box){
+  var row = document.getElementById('supplierPhotosRow'), thumbs = document.getElementById('supplierPhotosThumbs');
+  if(row) row.style.display = 'none';
+  if(thumbs) thumbs.innerHTML = '';
+  if(shipId && row && thumbs){
     ZOHO.CREATOR.DATA.getRecordById({ report_name: 'All_Shipments', id: String(shipId), field_config: 'all' }).then(function(resp){
       var sh = resp && resp.data; if(!sh) return;
-      var links = [];
-      if(sh.Production_Photos) links.push('<a href="' + esc(sh.Production_Photos) + '" target="_blank" rel="noopener">Supplier production photo</a>');
-      if(sh.Shipment_Photos) links.push('<a href="' + esc(sh.Shipment_Photos) + '" target="_blank" rel="noopener">Supplier shipment photo</a>');
-      box.innerHTML = links.length ? links.join(' &middot; ') : 'No supplier photos on the shipment.';
+      var photos = [];
+      var raw = sh.Production_Photos;
+      if(Array.isArray(raw)) photos = photos.concat(raw);
+      else if(typeof raw === 'string' && raw){ try{ var parsed = JSON.parse(raw); photos = photos.concat(Array.isArray(parsed) ? parsed : [raw]); }catch(e){ photos.push(raw); } }
+      if(sh.Shipment_Photos) photos.push(sh.Shipment_Photos);
+      if(!photos.length) return;
+      row.style.display = 'block';
+      photos.forEach(function(url, i){
+        var img = document.createElement('img');
+        img.className = 'photo-thumb';
+        img.title = 'Supplier photo ' + (i+1);
+        img.onclick = function(){ openLightbox(img.src); };
+        img.onerror = function(){ photoThumbFallback(img, '', 'photo ' + (i+1)); };
+        thumbs.appendChild(img);
+        applyEvidencePhotoImg(img, url);
+      });
     }).catch(function(){});
   }
 }

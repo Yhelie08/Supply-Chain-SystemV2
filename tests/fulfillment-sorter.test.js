@@ -71,6 +71,29 @@ test('categorize: broken for a replacement with no target date at all (never fal
   assert.match(out.priorityReason, /no target set/i);
 });
 
+test('categorize: broken when an open Replacement Request points at this Sales Order, even with a normal order type', () => {
+  const sof = { SO_No: 'SO-1', target_delivery_date: '2026-12-01', order_type: 'Normal', Shipping_Address: '1 Main St' };
+  const openRRs = [{ RR_No: 'RR-00001', RR_SO: 'SO-1', RR_Status: 'Open' }];
+  const out = categorize(sof, { gates: [], openExceptions: [], openRRs, now: NOW, policy });
+  assert.equal(out.category, 'broken');
+  assert.match(out.priorityReason, /RR-00001/);
+});
+
+test('categorize: a closed Replacement Request for this Sales Order does not make it broken', () => {
+  const sof = { SO_No: 'SO-1', target_delivery_date: '2026-12-01', order_type: 'Normal', Shipping_Address: '1 Main St' };
+  const openRRs = []; // the caller already filtered out Closed/Completed/Cancelled, like scoreAllOpenPackages does
+  const out = categorize(sof, { gates: [], openExceptions: [], openRRs, now: NOW, policy });
+  assert.equal(out.category, 'on_time');
+});
+
+test('categorize: blocked wins over an open Replacement Request too', () => {
+  const sof = { SO_No: 'SO-1', target_delivery_date: '2026-12-01', order_type: 'Normal' };
+  const gates = [{ sales_order_number: 'SO-1', payment_status: 'No', Has_Credit_Terms: false, Override_Approved: false }];
+  const openRRs = [{ RR_No: 'RR-00001', RR_SO: 'SO-1', RR_Status: 'Open' }];
+  const out = categorize(sof, { gates, openExceptions: [], openRRs, now: NOW, policy });
+  assert.equal(out.category, 'blocked');
+});
+
 test('categorize: late when today is past the target', () => {
   const sof = { SO_No: 'SO-1', target_delivery_date: '2026-11-10', order_type: 'Normal', Shipping_Address: '1 Main St' };
   const out = categorize(sof, { gates: [], openExceptions: [], now: NOW, policy });

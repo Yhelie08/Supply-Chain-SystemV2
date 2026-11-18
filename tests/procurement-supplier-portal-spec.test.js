@@ -173,7 +173,9 @@ test('Production screen: finishing needs a production photo (ST-R3); with the ph
   assert.ok(!(await ship(id)).Production_Finished_At);
   await assert.rejects(() => store.updateRecord('Tony_Shipment', copy, { Prod_Photo: '/uploads/a.exe' }), (e) => /JPG, PNG/.test(e.message));
   await store.updateRecord('Tony_Shipment', copy, { Prod_Photo: '/uploads/123_made.jpg' });
-  assert.equal((await ship(id)).Production_Photos, '/uploads/123_made.jpg', 'the photo shows on the shipment (ST-R4)');
+  assert.deepEqual(JSON.parse((await ship(id)).Production_Photos), ['/uploads/123_made.jpg'], 'the photo shows on the shipment (ST-R4)');
+  await store.updateRecord('Tony_Shipment', copy, { Prod_Photo: '/uploads/456_second.jpg' });
+  assert.deepEqual(JSON.parse((await ship(id)).Production_Photos), ['/uploads/123_made.jpg', '/uploads/456_second.jpg'], 'a second photo adds to the list, it does not replace the first');
   await store.updateRecord('Tony_Shipment', copy, { Report_Prod_Event: 'production_finished', Report_Prod_Date: day(-1) });
   const s = await ship(id);
   assert.equal(s.Production_Finished_At, day(-1));

@@ -26,8 +26,15 @@ const read = (form, id) => raw.getRecordById(form, id, { raw: true });
 
 // ----- Service_Appointment_Form -----
 const SA = 'Service_Appointment_Form';
+// A complete Site Requirements Checklist (spec v1.4, Delivery 01; server/modules/delivery-management/site-checklist.mjs),
+// so these D1 tests (about site confirmation, override, sales order display — not the checklist itself) can still
+// reach Site_Confirmation_Status = 'Confirmed'. See tests/delivery-management/site-checklist.test.js for the gate's own tests.
+const COMPLETE_CHECKLIST = [1, 2, 5, 7, 8, 9, 10].map((id) => ({ Line: id, Status: 'Yes' })).concat([
+  { Line: 3, Detail: { Required: 'No' } }, { Line: 4, Detail: { Restricted: 'No' } },
+  { Line: 6, Detail: { Meters: '2.4' } }, { Line: 11, Detail: { Start: '8:00 AM', End: '6:00 PM' } },
+]);
 const sa = (extra = {}) => ({
-  Sales_Order: 'SO-1', Type_of_Delivery: 'Delivery Only',
+  Sales_Order: 'SO-1', Type_of_Delivery: 'Delivery Only', Site_Checklist: COMPLETE_CHECKLIST,
   Suggested_Schedule_Date: '2026-09-17', Confirmed_Schedule_Date: '2026-09-17',
   Suggested_Time_Slot: '08:00:00 AM', Confirmed_Time_Slot: '08:00:00 AM', ...extra,
 });

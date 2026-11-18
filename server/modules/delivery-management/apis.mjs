@@ -1,9 +1,22 @@
 // Delivery Management custom APIs: the ported ones, and a "not ported yet" placeholder for the rest.
 import { ok, fail, withPlaceholders } from '../../custom-api-helpers.mjs';
-import { scheduleSlot } from './scheduling.mjs';
+import { SA, scheduleSlot } from './scheduling.mjs';
 import { create_shipment_order, create_sales_return_books } from './inventory-apis.mjs';
 import { pushDmsStatusToCms, pushDmsMessageToCms } from './cms-sync.mjs';
 import { withLock } from './locks.mjs';
+import { get_broken_sales_orders } from './exception-queue.mjs';
+import { rescoreAll } from './sorter.mjs';
+import { generateRotation } from './rotation.mjs';
+import { findEarliestSlot, quoteAndHold, releaseHold } from './earliest-slot.mjs';
+import { findDayPlan, reorderDayPlan, confirmStopLoading } from './day-plans.mjs';
+import { buildLoadSheet } from './load-sheet.mjs';
+import { runPreDeliveryGate, dispatchDay } from './dispatch.mjs';
+import { suggestSchedule } from './suggest-schedule.mjs';
+import { recordThirdPartyBooking, recordThirdPartyResult } from './third-party.mjs';
+import { createRedeliveryJob, forceCloseJob, getDeliveryExceptionQueue, failureReasonCodes } from './failure-redelivery.mjs';
+import { getDeliveryBacklog } from './backlog-calculator.mjs';
+import { createPulloutFromRefusal, confirmReturnReceived } from './sales-returns.mjs';
+import { recordMaintenance, markVehicleDown, markVehicleFixed } from './truck-maintenance.mjs';
 
 // functions/pushDmsStatusToCms.dg / pushDmsMessageToCms.dg: the CMS is a separate Zoho app; the push is in cms-sync.mjs and
 // is skipped ("CMS sync is off") until CMS_STATUS_URL / CMS_MESSAGE_URL are set.
@@ -16,6 +29,7 @@ export const functions = {
   dms_reschedule: 'dmsScheduleSlot',
   create_shipment_order: 'createShipmentOrder',
   create_sales_return_books: 'createSalesReturnBooks',
+  get_broken_sales_orders: 'SpecV14_GetBrokenSalesOrders',
 };
 
 // functions/confirmDmsScheduleRequest.dg
@@ -122,6 +136,154 @@ const implemented = {
 
   // functions/addDmsScheduleRequestMessage.dg is the CMS -> DMS direction; this is DMS -> CMS.
   push_dms_message_to_cms: (p) => pushDmsMessageToCms(p),
+
+  get_broken_sales_orders,
+
+  // Manual "Recalculate" trigger for the Sorting Engine (spec §05/01 §6). Not a Deluge port, like Fulfillment's own
+  // recalculate_fulfillment_queue, so it goes straight into `implemented`, not the `functions` placeholder list.
+  async recalculate_delivery_queue(_payload, data) {
+    const result = await rescoreAll(data);
+    return { status: 'success', ...result };
+  },
+
+  // Manual "Generate Month"-equivalent trigger for Team Rotation (Delivery 02 §1, TM-R1), so a dispatcher is not
+  // only waiting on the 04:00 job — same rotation.mjs the nightly job calls. Not a Deluge port.
+  async generate_team_rotation(_payload, data) {
+    const result = await generateRotation(data);
+    return { status: 'success', ...result };
+  },
+
+  // Earliest available date, with a reason (Delivery 01, "Earliest available date"). Read-only: shows the New SR
+  // screen's live answer while the sales agent is still typing, without committing to anything. Not a Deluge port.
+  async get_earliest_slot({ jobType, estMinutes, fromDate } = {}, data) {
+    const result = await findEarliestSlot(data, { jobType, estMinutes, fromDate });
+    return { status: 'success', ...result };
+  },
+
+  // Same answer, but holds the slot for soft_hold_minutes (spec default 20) so a second agent quoting in the
+  // meantime cannot be told the same last slot is free. Call release_schedule_hold once the SR is actually saved
+  // (or not at all — an unreleased hold stops counting on its own once Expires_At passes). Not a Deluge port.
+  async quote_and_hold_slot({ jobType, estMinutes, fromDate, quotedBy, srNo } = {}, data, ctx = {}) {
+    const result = await quoteAndHold(data, { jobType, estMinutes, fromDate, quotedBy: quotedBy || ctx.user || '', srNo });
+    return { status: 'success', ...result };
+  },
+
+  async release_schedule_hold({ holdId } = {}, data) {
+    await releaseHold(data, holdId);
+    return { status: 'success' };
+  },
+
+  // Day plans (Delivery 02 §4, DP-R1-R6). Not a Deluge port — this concept did not exist before this session.
+  async get_day_plan({ date, installer } = {}, data) {
+    const plan = await findDayPlan(data, date, installer);
+    return { status: 'success', plan };
+  },
+
+  async reorder_day_plan({ date, installer, version, order } = {}, data, ctx = {}) {
+    const result = await reorderDayPlan(data, { date, installer, version, order, user: ctx.user });
+    return { status: 'success', ...result };
+  },
+
+  // Load sheet (Delivery 03 §2, LS-R1-R3). Not a Deluge port.
+  async get_load_sheet({ date, installer } = {}, data) {
+    const sheet = await buildLoadSheet(data, date, installer);
+    return { status: 'success', sheet };
+  },
+
+  async confirm_stop_loading({ date, installer, saId, loadedBoxCount } = {}, data, ctx = {}) {
+    await confirmStopLoading(data, date, installer, saId, loadedBoxCount, { user: ctx.user });
+    return { status: 'success' };
+  },
+
+  // Dispatch / the pre-delivery gate (Delivery 03 §3, DS-R1-R5). Not a Deluge port.
+  async get_pre_delivery_gate({ date, installer } = {}, data) {
+    const result = await runPreDeliveryGate(data, date, installer);
+    return { status: 'success', ...result };
+  },
+
+  async dispatch_day({ date, installer, driverSignature, dispatcherSignature } = {}, data, ctx = {}) {
+    const result = await dispatchDay(data, date, installer, { user: ctx.user, driverSignature, dispatcherSignature });
+    return { status: result.ok ? 'success' : 'partial', ...result };
+  },
+
+  // Suggesting a schedule (Delivery 02 §3). Not a Deluge port.
+  async suggest_schedule({ saId, fromDate } = {}, data) {
+    const result = await suggestSchedule(data, saId, { fromDate });
+    return { status: 'success', ...result };
+  },
+
+  // Third-party bookings (Delivery 02 §5, TP-R1/TP-R4). Not a Deluge port.
+  async record_third_party_booking({ saId, provider, bookingRef, fee, pickupTime, driverName, plate, date } = {}, data, ctx = {}) {
+    const result = await recordThirdPartyBooking(data, saId, { provider, bookingRef, fee, pickupTime, driverName, plate, date, user: ctx.user });
+    return { status: 'success', ...result };
+  },
+
+  async record_third_party_result({ saId, resultQty, photo, leftAt, doneAt, customerConfirmed } = {}, data, ctx = {}) {
+    const result = await recordThirdPartyResult(data, saId, { resultQty, photo, leftAt, doneAt, customerConfirmed, user: ctx.user });
+    return { status: 'success', ...result };
+  },
+
+  // Job status chain + event log (Delivery 03 "Job statuses"; 05/04 Timestamps and Event Log). Not a Deluge port.
+  async get_job_timeline({ saId } = {}, data) {
+    const sa = await data.getRecordById(SA, saId, { raw: true });
+    if (!sa) return fail('Service Appointment not found.');
+    const events = await data.find('Stage_Events', (e) => String(e.Record_Id) === String(saId) && e.Record_Type === 'service_appointment');
+    return { status: 'success', jobStatus: sa.Job_Status || '', events: events.sort((a, b) => String(a.Occurred_At).localeCompare(String(b.Occurred_At))) };
+  },
+
+  // Failure, Redelivery and the Delivery Exception Queue (Delivery 05, FR-R1-R5). Not a Deluge port.
+  async create_redelivery_job({ saId, reasonCode, notes } = {}, data, ctx = {}) {
+    const result = await createRedeliveryJob(data, saId, { reasonCode, notes, user: ctx.user });
+    return { status: 'success', ...result };
+  },
+
+  async force_close_job({ saId, outcome, reason } = {}, data, ctx = {}) {
+    const result = await forceCloseJob(data, saId, { outcome, reason, user: ctx.user });
+    return { status: 'success', ...result };
+  },
+
+  async get_delivery_exception_queue(_payload, data) {
+    const items = await getDeliveryExceptionQueue(data);
+    return { status: 'success', items };
+  },
+
+  async get_failure_reason_codes(_payload, data) {
+    const codes = await failureReasonCodes(data);
+    return { status: 'success', codes };
+  },
+
+  // Delivery backlog calculator (05 Shared Engines / 02 Calculators §2). Not a Deluge port.
+  async get_delivery_backlog({ daysAvailable } = {}, data) {
+    const result = await getDeliveryBacklog(data, daysAvailable ? { daysAvailable } : {});
+    return { status: 'success', ...result };
+  },
+
+  // Sales Returns (Delivery 07 §1, RT-R1/R3). Not a Deluge port.
+  async create_pullout_from_refusal({ saId, reason, subReason } = {}, data, ctx = {}) {
+    const result = await createPulloutFromRefusal(data, saId, { reason, subReason, user: ctx.user });
+    return { status: 'success', ...result };
+  },
+
+  async confirm_return_received({ returnId, condition, notes } = {}, data, ctx = {}) {
+    await confirmReturnReceived(data, returnId, { condition, notes, user: ctx.user });
+    return { status: 'success' };
+  },
+
+  // Truck Maintenance (Delivery 08 §2, TK-R2-R4). Not a Deluge port.
+  async record_vehicle_maintenance({ vehicle, type, date, km, shop, cost, receipts } = {}, data, ctx = {}) {
+    await recordMaintenance(data, { vehicle, type, date, km, shop, cost, receipts, user: ctx.user });
+    return { status: 'success' };
+  },
+
+  async mark_vehicle_down({ vehicle, reason } = {}, data, ctx = {}) {
+    const result = await markVehicleDown(data, vehicle, { reason, user: ctx.user });
+    return { status: 'success', ...result };
+  },
+
+  async mark_vehicle_fixed({ vehicle } = {}, data, ctx = {}) {
+    const result = await markVehicleFixed(data, vehicle, { user: ctx.user });
+    return { status: 'success', ...result };
+  },
 };
 
 export const apis = withPlaceholders(functions, implemented);

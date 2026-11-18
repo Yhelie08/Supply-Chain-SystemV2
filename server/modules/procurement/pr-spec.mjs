@@ -23,7 +23,7 @@ const dm = (d) => `${d.getDate()} ${MON[d.getMonth()]}`;
 
 // What only the server may write.
 export const PR_SERVER_ONLY = ['Order_Date', 'Pr_State', 'Pricing_Status', 'Feasibility', 'Shortfall_Days', 'Earliest_Feasible_Date', 'Air_Option', 'Recommended_Supplier_Id',
-  'Recommendation_Reason', 'Recommended_Supplier', 'Selected_Supplier_Id', 'Pr_Category', 'Blocked_Reason', 'Queue_Rank', 'Priority_Reason', 'Suggested_Action', 'Scored_At'];
+  'Recommendation_Reason', 'Recommended_Supplier', 'Selected_Supplier_Id', 'Pr_Category', 'Blocked_Reason', 'Queue_Rank', 'Priority_Reason', 'Suggested_Action', 'Scored_At', 'Pr_Forecast_Pickable'];
 
 export const prState = (r) => (text(r.Hold_Status) === 'Cancelled' ? 'cancelled' : text(r.PR_Status) === 'Converted to PO' ? 'converted' : text(r.Hold_Status) === 'On Hold' ? 'on_hold' : truthy(r.PR_READY_FOR_PO) ? 'ready_for_po' : 'open');
 
@@ -216,4 +216,31 @@ export async function rescorePrs(store, { today = todayDate() } = {}) {
     changed++;
   }
   return { scored: scored.length, changed };
+}
+
+// An arrival/ladder update on a shipment re-forecasts the whole shipment, but a shipment can carry lines of several
+// Sales Orders (several PRs grouped onto one PO, PO-R4). Spec 05 Shared Engines 03: the forecast must reach every
+// Sales Order behind the shipment, not just the shipment record, so it also lands on each PR named in the shipment's
+// PO_Shipments lines (PR_No). When a PR's lines are split across more than one shipment, the latest pickable date wins
+// (the same "worst case shown" rule rollupPoCategories already uses for a PO's own shipments).
+export async function rollupPrForecast(store, ships) {
+  const byPr = new Map();
+  for (const s of ships) {
+    const forecast = text(s.Forecast_Pickable).slice(0, 10);
+    if (!forecast) continue;
+    for (const l of s.PO_Shipments || []) {
+      const prNo = text(l.PR_No);
+      if (!prNo) continue;
+      if (!byPr.has(prNo) || byPr.get(prNo) < forecast) byPr.set(prNo, forecast);
+    }
+  }
+  if (!byPr.size) return 0;
+  let changed = 0;
+  for (const p of await store.find(PR, (x) => byPr.has(text(x.PR_No)), { criteria: `(${[...byPr.keys()].map((k) => `PR_No == ${JSON.stringify(k)}`).join(' || ')})` })) {
+    const forecast = byPr.get(text(p.PR_No)) ?? '';
+    if (text(p.Pr_Forecast_Pickable) === forecast) continue;
+    await store.updateRecord(PR, p.ID, { Pr_Forecast_Pickable: forecast }, { byForm: true });
+    changed++;
+  }
+  return changed;
 }

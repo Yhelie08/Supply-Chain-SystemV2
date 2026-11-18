@@ -32,6 +32,19 @@ export const SERVER_ONLY = [
   'Forecast_Pickable', 'Slack_Days', 'Days_Late', 'Scored_At', 'Risk_Status', 'Supplier_Expected_Date', 'Delay_Reason',
 ];
 const TRANSIENT = ['Report_Event', 'Report_Occurred_At', 'Report_Source', 'Report_Note', 'Target_Change_Reason', 'Report_Delay_Date', 'Report_Delay_Reason'];
+
+// Production_Photos held one path, so a second upload (ours or the supplier's) silently erased the first (review
+// item: "one file per field for now"). Every write now appends instead: a widget still sends one new path at a
+// time, this turns it into the growing list (damage photos already work this way through Evidence_Photos).
+export function photosOf(v) {
+  if (v == null || v === '') return [];
+  if (Array.isArray(v)) return v;
+  try { const p = JSON.parse(v); return Array.isArray(p) ? p : [String(v)]; } catch { return [String(v)]; }
+}
+export function appendPhoto(existing, url) {
+  const list = photosOf(existing);
+  return list.includes(url) ? list : [...list, url];
+}
 const targetPending = new Map(); // shipment id -> { old, new, reason } to log after the save
 
 // The legacy Shipment_Status values the Zoho widgets still use, kept in step with the stage.
@@ -220,6 +233,7 @@ async function beforeSave({ input, previous, id, store, user }) {
   const delay = { date: text(input.Report_Delay_Date), reason: text(input.Report_Delay_Reason) };
   for (const f of SERVER_ONLY) delete input[f];
   for (const f of TRANSIENT) if (f in input) input[f] = '';
+  if (typeof input.Production_Photos === 'string' && input.Production_Photos !== '') input.Production_Photos = appendPhoto(previous?.Production_Photos, input.Production_Photos);
 
   const rec = { ...(previous || {}), ...input };
   if (adding) input.Stage = 'production';
@@ -370,7 +384,12 @@ export async function rescoreShipments(store, { today = todayDate(), full = fals
   // the receiving records show the forecast pickable of their shipment
   await (await import('./receiving-spec.mjs')).rescoreReceivings(store);
   // the replacement requests: their rank and the forecast of their replacement shipment
-  await rollupRr(store, rows.map((r) => ({ ...r.s, Forecast_Pickable: r.forecast ? ymd(r.forecast.pickable) : '' })));
+  const shipsWithForecast = rows.map((r) => ({ ...r.s, Forecast_Pickable: r.forecast ? ymd(r.forecast.pickable) : '' }));
+  await rollupRr(store, shipsWithForecast);
+  // every Sales Order behind the shipment gets its own forecast too, through its PR (spec 05 Shared Engines 03).
+  // A dynamic import, like receiving-spec.mjs above: a static one would load pr-spec.mjs through this file before
+  // purchase-request.mjs (via receiving.mjs -> ship-track.mjs), inverting their required hook order on Purchase_Request1.
+  await (await import('./pr-spec.mjs')).rollupPrForecast(store, shipsWithForecast);
   // decisions the engine prepares, and the ones that went stale (spec 05/06 AQ-4)
   const prepared = await syncAirUpgradeItems(store, settings, rows, today);
   const stale = await markStaleItems(store, new Map(rows.map((r) => [String(r.s.ID), { ...r.s, Category: r.scored.category }])), effectiveStage);

@@ -12,7 +12,7 @@ import { register } from '../../workflows/index.mjs';
 import { ZohoError, zohoNow } from '../../criteria.mjs';
 import { blank, idOf } from '../../workflows/deluge.mjs';
 import { occurredFrom, logEvent } from './events.mjs';
-import { applyShipmentEvent, effectiveStage, refreshSupplierView } from './ship-track.mjs';
+import { applyShipmentEvent, effectiveStage, refreshSupplierView, appendPhoto } from './ship-track.mjs';
 
 const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
 const refuse = (m) => { throw new ZohoError(2001, m); };
@@ -57,7 +57,7 @@ for (const form of COPIES) {
       const date = text(record.Report_Prod_Date);
       if (newPhoto) {
         // the photo shows on the shipment, on Receiving and on any exception later (ST-R4)
-        await store.updateRecord('Shipments', parent.ID, { Production_Photos: photo, Last_Supplier_Update_At: zohoNow() }, { byForm: true });
+        await store.updateRecord('Shipments', parent.ID, { Production_Photos: appendPhoto(parent.Production_Photos, photo), Last_Supplier_Update_At: zohoNow() }, { byForm: true });
         await logEvent(store, { recordType: 'shipment', recordId: parent.ID, recordNo: parent.Shipment_No, event: 'shipment.production_photo', occurredAt: zohoNow(), source: 'supplier', note: photo.split('/').pop() });
       }
       if (ev !== '') {

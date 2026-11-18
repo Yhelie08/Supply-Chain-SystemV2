@@ -95,16 +95,13 @@ test('a Local PR uses HC System, with no lead time and no freight', async () => 
   assert.deepEqual([rec.Selected_Supplier, rec.Required_Days_Lead, rec.Shipping_mode_selected], ['HC System', '0', true]);
 });
 
-test('mirrors Zoho: readiness is worked out before the shipment mode is set, so a new PR is ready one save later', async () => {
+test('spec v1.4 PR-R5 (review item, 2026-11-18): an auto-priced PR reaches Ready for PO on its first save, no second touch needed', async () => {
   const id = await store.addRecord('Purchase_Request1', pr({ SRP_Approved_PR: 100, Supplier_Selected: [{ Supplier_ID: tony, Suppliers: 'Tony', Selected: true, Final_Price: 90, Lead_Time: 5 }] }));
-  let rec = await read(id);
+  const rec = await read(id);
   assert.deepEqual([rec.Selected_Supplier1, rec.Final_price_confirmed, rec.Target_date_exists], [true, true, true]);
-  assert.equal(rec.Shipment_Mode, 'LCL', 'the mode was set in this save');
-  assert.equal(rec.Shipping_mode_selected, false, 'but readiness looked at it before');
-  assert.equal(rec.PR_READY_FOR_PO, false);
-  await store.updateRecord('Purchase_Request1', id, { description: 'touched' }, { byForm: true });
-  rec = await read(id);
-  assert.deepEqual([rec.Shipping_mode_selected, rec.PR_READY_FOR_PO], [true, true]);
+  assert.equal(rec.Shipment_Mode, 'LCL', 'the mode was defaulted in this save');
+  assert.equal(rec.Shipping_mode_selected, true, 'readiness now sees the mode this save set, not a stale blank one');
+  assert.equal(rec.PR_READY_FOR_PO, true, 'no person, and no extra save, needed to reach Ready for PO');
 });
 
 test('price confirmed: approved SRP, SRP rate, an inquiry, the catalog rate, or a supplier cost', async () => {

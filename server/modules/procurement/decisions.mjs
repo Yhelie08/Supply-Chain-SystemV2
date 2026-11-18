@@ -8,7 +8,7 @@ import { register } from '../../workflows/index.mjs';
 import { ZohoError, zohoNow } from '../../criteria.mjs';
 import { blank } from '../../workflows/deluge.mjs';
 import { loadSettings } from './plan.mjs';
-import { prepareItem, notify } from './decisions-core.mjs';
+import { prepareItem, notify, salesAgentRecipient } from './decisions-core.mjs';
 import { planPatch, rescoreShipments } from './ship-track.mjs';
 import { logEvent } from './events.mjs';
 
@@ -50,6 +50,8 @@ async function applyPr(store, item) {
   if (item.Decision === 'accept_target' && payload.proposed_target) {
     await store.updateRecord('Purchase_Request1', pr.ID, { Target_Delivery: payload.proposed_target }, { byForm: true });
     await store.addRecord('Target_Date_Changes', { Record_Type: 'pr', Record_Id: String(pr.ID), Record_No: pr.PR_No, Old_Date: text(pr.Target_Delivery), New_Date: payload.proposed_target, Reason: 'Accepted a proposed change from Create PO', Changed_By: item.Decided_By, Customer_Told: false, Changed_At: zohoNow(), Via: 'approval_queue' });
+    const settings = await loadSettings(store);
+    await notify(store, settings, { ship: { Shipment_No: pr.PR_No, ID: pr.ID }, type: 'Tell The Customer', message: `${pr.PR_No}: the target changed to ${payload.proposed_target}. Tell the customer.`, page: 'Purchase_Request1', to: salesAgentRecipient(settings) });
     return `Target changed to ${payload.proposed_target}. Tell the customer.`;
   }
   return 'Target kept.';
@@ -57,6 +59,11 @@ async function applyPr(store, item) {
 
 async function apply(store, item) {
   if (item.Record_Type === 'pr') return applyPr(store, item);
+  // Not ours: Approval_Queue is the shared 05/06 engine, and Delivery also prepares items on it (Record_Type
+  // 'service_appointment' — schedule_shortfall, third_party_booking, force_close). Before this guard, any
+  // Delivery item that got decided fell through to the Shipments lookup below and wrongly stamped "The
+  // shipment no longer exists." Its own afterUpdate hook (approval-decisions.mjs) handles those instead.
+  if (item.Record_Type !== 'shipment') return '';
   const settings = await loadSettings(store);
   const ship = await store.getRecordById('Shipments', item.Record_Id, { raw: true }).catch(() => null);
   if (!ship) return 'The shipment no longer exists.';
@@ -80,13 +87,14 @@ async function apply(store, item) {
         result = 'Kept the mode. A target change was sent for approval.';
       } else result = 'Kept the mode. There is no forecast date to propose yet.';
     } else {
-      await notify(store, settings, { ship, type: 'Tell The Customer', message: `${ship.Shipment_No}: keep the mode and tell the customer it will be late (pickable about ${payload.air_pickable || 'later'} by air, later by sea).` });
-      result = 'Kept the mode. The alert recipient was asked to tell the customer.';
+      await notify(store, settings, { ship, type: 'Tell The Customer', message: `${ship.Shipment_No}: keep the mode and tell the customer it will be late (pickable about ${payload.air_pickable || 'later'} by air, later by sea).`, to: salesAgentRecipient(settings) });
+      result = 'Kept the mode. The sales agent alert recipient was asked to tell the customer.';
     }
   } else if (item.Kind === 'forecast_promise_change') {
     if (item.Decision === 'accept_target' && payload.proposed_target) {
       await store.updateRecord('Shipments', ship.ID, { Target_Date: payload.proposed_target }, { byForm: true });
       await store.addRecord('Target_Date_Changes', { Record_Type: 'shipment', Record_Id: String(ship.ID), Record_No: ship.Shipment_No, Old_Date: text(ship.Target_Date), New_Date: payload.proposed_target, Reason: 'Accepted a proposed change from the forecast', Changed_By: who, Customer_Told: false, Changed_At: zohoNow(), Via: 'approval_queue' });
+      await notify(store, settings, { ship, type: 'Tell The Customer', message: `${ship.Shipment_No}: the target changed to ${payload.proposed_target}. Tell the customer.`, to: salesAgentRecipient(settings) });
       result = `Target changed to ${payload.proposed_target}. Tell the customer.`;
     } else result = 'Target kept.';
   }

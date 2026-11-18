@@ -26,8 +26,14 @@ beforeEach(async () => { for (const f of FORMS) await db.query(`DELETE FROM "${f
 
 const team = (installer, extra = {}) => raw.addRecord('Daily_Team_Availability', { Availability_Date: today, Installer: installer, Driver: `${installer}-driver`, Availability_Status: 'Full Day', Max_Capacity_Hours: 8, ...extra });
 const customer = { first_name: 'Maria', last_name: 'Santos' };
+// A complete Site Requirements Checklist (spec v1.4, Delivery 01), so site() below can reach Site_Confirmation_Status
+// = 'Confirmed' through the hooked store. See tests/delivery-management/site-checklist.test.js for the gate's own tests.
+const COMPLETE_CHECKLIST = [1, 2, 5, 7, 8, 9, 10].map((id) => ({ Line: id, Status: 'Yes' })).concat([
+  { Line: 3, Detail: { Required: 'No' } }, { Line: 4, Detail: { Restricted: 'No' } },
+  { Line: 6, Detail: { Meters: '2.4' } }, { Line: 11, Detail: { Start: '8:00 AM', End: '6:00 PM' } },
+]);
 // A record whose site is confirmed, ready for the engine.
-const site = (extra = {}) => ({ Sales_Order: 'SO-1', Type_of_Delivery: 'Delivery Only', Customer_Name: customer, Customer_Address: '1 Main St', City: 'Quezon City', Site_Confirmation_Status: 'Confirmed', Confirmation_Method: 'Call', Site_Confirmation_Notes: 'ok', ...extra });
+const site = (extra = {}) => ({ Sales_Order: 'SO-1', Type_of_Delivery: 'Delivery Only', Customer_Name: customer, Customer_Address: '1 Main St', City: 'Quezon City', Site_Confirmation_Status: 'Confirmed', Confirmation_Method: 'Call', Site_Confirmation_Notes: 'ok', Site_Checklist: COMPLETE_CHECKLIST, ...extra });
 // A record that already has a suggestion (written without hooks), to be confirmed through the hooked store.
 const suggested = (extra = {}) => raw.addRecord(SA, { Sales_Order: 'SO-2', Type_of_Delivery: 'Delivery Only', Customer_Name: customer, Customer_Address: '1 Main St', City: 'Quezon City', Installer: 'A', Assigned_to_Driver: 'A-driver', Fleet_Assignment: 'Hino', Suggested_Schedule_Date: today, Suggested_Time_Slot: '08:00:00 AM', Estimated_Duration: 2, Appointment_Status: 'Queued', ...extra });
 const read = (id) => raw.getRecordById(SA, id, { raw: true });

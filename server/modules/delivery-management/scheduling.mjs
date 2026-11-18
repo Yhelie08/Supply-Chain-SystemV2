@@ -30,6 +30,10 @@ import { idOf, truthy, blank, toNum, parseDate, ymd, addDays, todayDate } from '
 export const SA = 'Service_Appointment_Form';
 const EXC = 'DMS_Exception_Queue';
 
+// Shared between failure-redelivery.mjs (raises the exception) and exception-queue.mjs (creates the redelivery
+// on resolve): which failure reason codes categorise a redelivery as Broken for sorter.mjs's isBroken().
+export const BROKEN_FAILURE_CODES = new Set(['damaged_in_transit', 'refused']);
+
 // Hours are decimals in Deluge; round away binary noise so 4 * 1.15 * 60 is 276, not 275.99999999999994.
 export const r6 = (x) => Math.round(x * 1e6) / 1e6;
 export const hrs = (x) => x.toFixed(2);
@@ -43,7 +47,7 @@ export function customerName(rec) {
 }
 
 // "8:00 AM" or "08:00:00 AM" -> { hour: 0-23, minute } ; null when it is not a clock text.
-function clock(text) {
+export function clock(text) {
   const parts = String(text ?? '').trim().split(' ');
   if (parts.length !== 2) return null;
   const hm = parts[0].split(':');
@@ -83,7 +87,7 @@ export async function policyReader(store) {
 export const toLong = (v, fallback) => { if (blank(v)) return fallback; const n = Math.trunc(Number(v)); return Number.isNaN(n) ? fallback : n; };
 
 // Hours in the working day from the two clock policies (default 9, as in the script).
-function workdayLength(policy) {
+export function workdayLength(policy) {
   const s = policy('workday_start_time');
   const e = policy('workday_end_time');
   if (s && e) {

@@ -732,33 +732,33 @@ Kinuha ko ang "Acceptance checklist" ng walong dokumento ng 02 Procurement (34 n
 
 | Dokumento | Item | Status | Ebidensya o dahilan |
 |---|---|---|---|
-| 01 Inquiry | Sales agent gumagawa ng inquiry na may custom item at photo; nakikita ng supplier sa portal | ⚠️ | Naka-copy sa portal ang inquiry; ang custom item at photo ay hindi ko pa nasubukan. |
+| 01 Inquiry | Sales agent gumagawa ng inquiry na may custom item at photo; nakikita ng supplier sa portal | ✅ | 2026-11-18: nalaman na nasa code na pala ito (widget mula 2026-09-21); dinagdagan ng 2 server test (custom item, walang catalog Items, may Attachments → lumalabas sa supplier copy bilang Image_from_Inq, sa add at sa edit). Hindi pa nakikita sa browser. |
 | 01 Inquiry | Hindi nakikita ng sales agent ang price field | ⏸ | Naka-hold (mga role). |
 | 01 Inquiry | Cannot Produce = walang price at lead time | ✅ | Test, at nakita sa browser. |
 | 01 Inquiry | Push to Books = Estimate na tama ang lines | ❌ | Naka-disconnect ang Books; hindi nasubukan. |
 | 02 PR | Void SO sa Books = naka-hold ang PR sa loob ng isang sync cycle, may dahilan | ⚠️ | Ang hook sa PR ay nasubukan; walang Books sync na nagpapadala ng void. |
 | 02 PR | Ang held PR ay hindi maidaragdag sa PO | ✅ | Bagong test (nilaktawan at pinangalanan sa sagot). |
 | 02 PR | Lead 20, LCL, target 15 araw: Impossible, shortfall, air option, earliest date | ✅ | Mga test gamit ang worked example ng spec. |
-| 02 PR | Ang auto-priced PR ay napupunta sa Ready for PO nang walang tao | ❌ | Ang pricing tool ay nasa labas ng sistema. |
+| 02 PR | Ang auto-priced PR ay napupunta sa Ready for PO nang walang tao | ⚠️ | 2026-11-18: ang buong bagay na ito (ang totoong "Automated Pricing System", hiwalay na application, plano pa lang — `Automated Pricing System Plan (2026-10-07).md`) ay hindi pa ginawa, hindi Books ang dahilan nito. Pero may nahanap at naayos na tunay na bug: dati, kahit may presyo na agad (SRP / supplier quote / catalog rate) ang isang bagong PR, hindi ito naging "Ready for PO" sa unang save — kailangan pa ng isa pang random na "touch" dahil nauuna ang readiness check bago ma-default ang Shipment_Mode (`purchase-request.mjs`). Inilipat ko ang readiness check pagkatapos ng mode default; isang save na lang, walang tao, kahit sino ang nag-set ng presyo. Bagong test, pumalit sa dating "mirrors Zoho" test na dokumentado ang dating bug. |
 | 02 PR | Ipinapaliwanag ng rekomendasyon ng supplier ang pinili (presyo, lead time, feasibility) | ✅ | Test, at nakita sa browser. |
 | 03 PO | Create PO na hindi aabot: shortfall at tatlong option bago mag-save | ✅ | Nakita sa browser: ang dialog ay nagsasabi ng "70 days late ... Earliest it can be delivered", may tatlong option (A air, B bagong target, C proceed) at tinatanggihan ang walang pinili (walang PO na nagawa). Pagkatapos pumili ng Air: PO Airfreight, born late, shortfall 70, may tala ng napili; ang LCL na line ay nasa hiwalay na PO. |
 | 03 PO | Ang Air ay kinukuwenta ulit gamit ang 14 na araw na transit | ✅ | Test. |
-| 03 PO | "Propose new target" = approval; hindi kusang nagbabago ang target | ⚠️ | Ang target ay hindi nagbabago hanggang tanggapin (nasubukan); ang approval ay napupunta sa Decisions at sa iisang alert address, hindi sa sales agent. |
+| 03 PO | "Propose new target" = approval; hindi kusang nagbabago ang target | ✅ | 2026-11-18: bagong setting `sales_agent_alert_email` at `salesAgentRecipient()`; ang "Tell The Customer" alert, kapag tinanggap ang bagong target (shipment o PR), napupunta na dito, hindi lang sa iisang alert address. Dati, walang talagang na-notify kapag tinanggap ang target. 4 bagong test. |
 | 03 PO | Walang field sa PO na tinatawag na "Order Date" maliban sa Order Date ng customer | ✅ | Ang PO ay may PO Date; pinalitan ko ang label ng `Earliest_Order_Date` bilang "Earliest Customer Order Date". |
 | 03 PO | Lumalabas ang born-late rate sa dashboard | ✅ | May block sa Dashboard (50% sa sample: 1 sa 2 lines). |
 | 04 Ship & Track | PO na ack ngunit walang production start sa PO+2: rung 1 at Act now | ✅ | Mga test ng ladder. |
 | 04 Ship & Track | Ang Day 3 ay desisyon sa approval queue, hindi kusang cancel | ✅ | Test. |
 | 04 Ship & Track | Hindi makakaalis sa Production ang shipment na walang production photo | ✅ | Test (pati sa supplier path). |
 | 04 Ship & Track | Ang tracker ay walang natatanggap na cost o price data | ⏸ | Naka-hold (mga role). |
-| 04 Ship & Track | Ang pag-update ng arrival ay nag-a-update ng forecast ng bawat SO sa shipment | ⚠️ | Ang forecast ay bawat shipment, at nire-rescore agad; hindi ko tiningnan bawat SO. |
+| 04 Ship & Track | Ang pag-update ng arrival ay nag-a-update ng forecast ng bawat SO sa shipment | ✅ | 2026-11-18: bagong `Pr_Forecast_Pickable` sa PR at `rollupPrForecast()`, tinatawag sa bawat rescoreShipments; bawat PR (= SO) na nasa shipment ay may sariling forecast na, hindi lang ang shipment record. 2 bagong test. Nahanap at naayos din dito ang isang totoong bug sa pagkaka-register ng hooks (maling order dahil sa static import; ginawang dynamic import). |
 | 04 Ship & Track | Ang pag-save ng isang row sa grouping ay hindi nagse-save ng edit ng ibang row | ✅ | Sa code: ang Edit / Save / Cancel ng PR Groups ay bawat row (`prgSaveSrp(id)` ay nagbabasa ng input ng row na iyon lang at nagpapadala ng `SRP_Approved_PR` ng PR na iyon). Hindi ko ito pinatakbo sa browser. |
 | 05 Receiving | Tatlo sa lima, tapos dalawa pa = dalawang Purchase Receive sa Books | ❌ | Naka-hold ang Books. |
 | 05 Receiving | Ang pag-bin sa huling line ay ginagawang Ready ang package sa loob ng isang minuto | ❌ | Ang Fulfillment ay nagbabasa ng `Pre_Order_FF` na "Received", na ginagawa ng "Create Receive" (kasama ang Books, naka-hold). Ang Receiving sa app na ito ay nagse-stamp ng binned at available, pero hindi pa ito nakakabit sa package. |
 | 05 Receiving | Ang shipment na dumating 2 araw na ang nakaraan na walang bilang ay may alert | ✅ | Test (silence alerts). |
-| 05 Receiving | Ang damage ay may production photos ng supplier sa tabi ng damage photos | ⚠️ | Link lang, at isang file bawat field. |
+| 05 Receiving | Ang damage ay may production photos ng supplier sa tabi ng damage photos | ✅ | 2026-11-18: naayos ang backend (Production_Photos ay listahan na, dumadagdag, hindi na nagpapalit; may 2 bagong test) at ang widget (totoong thumbnail, hindi link lang, nasa loob ng Damage/Missing Evidence card). Nakita na sa browser (throwaway dev server, hindi ginalaw ang tunay na data/pglite): 2 magkaibang larawan, "Supplier's own photos, for comparison" sa loob mismo ng Damage/Missing Evidence card, lightbox gumagana, walang console error; sa Shipments widget, "View (1) · View (2)" na bawat link ay tamang file. |
 | 06 Exceptions at RR | Create RR: dialog; kailangan ng dahilan kapag nagbago ang supplier | ✅ | Test, at ang dialog ay nakita sa browser (hindi ko pa pinindot ang Create). |
 | 06 Exceptions at RR | Ang RR para sa HC System ay gumagawa ng replacement na makakarating sa receiving | ✅ | Test. |
-| 06 Exceptions at RR | Ang bagong RR ay nasa itaas ng Broken saanman, may target | ⚠️ | Procurement lang; hindi pa sa Fulfillment at Delivery. |
+| 06 Exceptions at RR | Ang bagong RR ay nasa itaas ng Broken saanman, may target | ⚠️ | 2026-11-18: ginawa na rin sa Fulfillment (may sariling `broken` category na, bagong 4 test). Sa Delivery: tinanong muna ang owner (walang category/queue concept ang Delivery, calendar scheduler ito; ang `Priority: true` nito ay nag-auto-confirm ng slot, panganib baguhin) — pinili ng owner ang read-only badge lang (bagong `get_broken_sales_orders`, 1 bagong test), hindi ang buong "unahin sa queue" na gawa ng Procurement/Fulfillment. |
 | 06 Exceptions at RR | Ipinapakita ng monthly report ang damage ayon sa fault origin | ✅ | Test, at tab sa browser. |
 | 07 Supplier Portal | Ang user ng Tony Fan ay hindi nakakakita ng record ng Fenteng o pangalan ng customer | ⏸ | Naka-hold (login bawat supplier); may sariling form ang bawat supplier, pero ang lumang Shipments widget ay bumabasa pa ng Shipments ng buyer para sa gate. |
 | 07 Supplier Portal | Ang pagpili ng "Cannot Produce" sa 中文 ay nag-iimbak ng English | ✅ | Sa code: ang value ng option ay English at ang label lang ang isinasalin. Hindi ko sinubukan sa browser. |
@@ -767,7 +767,7 @@ Kinuha ko ang "Acceptance checklist" ng walong dokumento ng 02 Procurement (34 n
 | 08 Dashboard | Ang born-late rate ay tugma sa manual count para sa isang linggo | ✅ | Test: 2 sa 6 na lines = 33.3% (hindi isinama ang cancelled at ang PO sa labas ng mga linggo). |
 | 08 Dashboard | Ang pag-click sa bilang ay nagbubukas ng naka-filter na list | ✅ | Nasubukan sa browser: Act now (1 row = bilang), POs not acknowledged (2), PRs manual quote (1), Production (4 lines), at Born-late (PO-00005 lang). Ang Decisions at RR ay bukas ang buong page. |
 
-**Bilang (na-update pagkatapos ng Dashboard):** ✅ 21, ⚠️ 6, ⏸ 3, ❌ 4, ❔ 0, kabuuan 34. Dati: ✅ 18, ❌ 7 (pagkatapos ng karagdagang pag-check), at ✅ 15, ⚠️ 7, ⏸ 3, ❌ 6, ❔ 3 sa simula.
+**Bilang (na-update 2026-11-18, kasama ang auto-priced PR fix):** ✅ 25, ⚠️ 3, ⏸ 3, ❌ 3, ❔ 0, kabuuan 34. Bago nito (kasama ang browser check ng photos): ✅ 25, ⚠️ 2, ⏸ 3, ❌ 4. Bago pa nito (mga item 1/3/4/5/6): ✅ 24, ⚠️ 3. Dati pa (pagkatapos ng Dashboard): ✅ 21, ⚠️ 6, ⏸ 3, ❌ 4, ❔ 0. Bago pa: ✅ 18, ❌ 7, at ✅ 15, ⚠️ 7, ⏸ 3, ❌ 6, ❔ 3 sa simula.
 
 ---
 

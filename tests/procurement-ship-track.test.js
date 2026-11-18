@@ -217,6 +217,28 @@ test('rescore: the board columns are written, the oldest order is ranked first, 
   assert.match(n.Blocked_Reason, /PR-2/);
 });
 
+test('rescore reaches every Sales Order behind the shipment: its own PR gets the same forecast pickable, not only the shipment', async () => {
+  await raw.addRecord('Purchase_Request1', { PR_No: 'PR-1', Sales_Order: 'SO-100' });
+  await raw.addRecord('Purchase_Request1', { PR_No: 'PR-9', Sales_Order: 'SO-OTHER' }); // not on any shipment: untouched
+  const ship = await shipment({ target: 60 });
+  await rescoreShipments(raw);
+  const s = await get(ship.id);
+  const pr1 = (await raw.find('Purchase_Request1', (p) => p.PR_No === 'PR-1'))[0];
+  const pr9 = (await raw.find('Purchase_Request1', (p) => p.PR_No === 'PR-9'))[0];
+  assert.ok(s.Forecast_Pickable);
+  assert.equal(pr1.Pr_Forecast_Pickable, s.Forecast_Pickable.slice(0, 10));
+  assert.equal(pr9.Pr_Forecast_Pickable, '');
+});
+
+test('a PR cannot have its own forecast pickable typed; it only follows the shipment', async () => {
+  await raw.addRecord('Purchase_Request1', { PR_No: 'PR-1', Sales_Order: 'SO-100' });
+  await shipment({ target: 60 });
+  await rescoreShipments(raw);
+  const pr = (await raw.find('Purchase_Request1', (p) => p.PR_No === 'PR-1'))[0];
+  await store.updateRecord('Purchase_Request1', pr.ID, { Pr_Forecast_Pickable: '2001-01-01' });
+  assert.notEqual((await raw.getRecordById('Purchase_Request1', pr.ID, { raw: true })).Pr_Forecast_Pickable, '2001-01-01');
+});
+
 // ---------- the supplier ladder (Ship & Track) ----------
 test('ladder: late = production not started by PO + 1; one rung per day, each only once, day 3 is a prepared decision and never a cancel', async () => {
   const { id } = await shipment({ poDays: -2 }); // PO + 1 was yesterday: 1 day late

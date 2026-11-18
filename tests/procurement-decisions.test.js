@@ -191,6 +191,28 @@ test('"move the target" sends a forecast_promise_change; accepting it changes th
   assert.equal((await get(id)).Target_Date, proposed);
   const [ch] = await raw.find('Target_Date_Changes');
   assert.deepEqual([ch.Old_Date, ch.New_Date, ch.Changed_By, ch.Via], [oldTarget, proposed, 'sales@x', 'approval_queue']);
+  const [notice] = await raw.find('App_Notifications', (n) => n.Notification_Type === 'Tell The Customer');
+  assert.ok(notice, 'accepting a new target actually alerts someone to tell the customer');
+});
+
+test('the "tell the customer" alert goes to the sales-agent setting, not the general procurement one', async () => {
+  await raw.addRecord('Procurement_Settings', { Setting_Key: 'procurement_alert_email', Value: 'general@example.test' });
+  await raw.addRecord('Procurement_Settings', { Setting_Key: 'sales_agent_alert_email', Value: 'sales@example.test' });
+  const id = await shipment({ target: 30 });
+  const [air] = await items('air_upgrade');
+  await store.updateRecord('Approval_Queue', air.ID, { Decision: 'tell_customer' }, as('buyer@x'));
+  const [notice] = await raw.find('App_Notifications', (n) => n.Notification_Type === 'Tell The Customer');
+  assert.equal(notice.Recipient_Email, 'sales@example.test');
+  assert.ok(id);
+});
+
+test('with no sales-agent setting, "tell the customer" falls back to the general alert recipient', async () => {
+  await raw.addRecord('Procurement_Settings', { Setting_Key: 'procurement_alert_email', Value: 'general@example.test' });
+  await shipment({ target: 30 });
+  const [air] = await items('air_upgrade');
+  await store.updateRecord('Approval_Queue', air.ID, { Decision: 'tell_customer' }, as('buyer@x'));
+  const [notice] = await raw.find('App_Notifications', (n) => n.Notification_Type === 'Tell The Customer');
+  assert.equal(notice.Recipient_Email, 'general@example.test');
 });
 
 test('ladder day 3: the decision is recorded on the rung; "cancel and re-source" cancels nothing by itself', async () => {

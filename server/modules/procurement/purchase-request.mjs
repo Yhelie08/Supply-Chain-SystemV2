@@ -5,8 +5,9 @@
 // PR1_Forecast_Stamp (the forecast of a PR) lives in server/forecast/pr-hooks.mjs, imported by this module's workflows.mjs.
 //
 // All the "on validate" scripts share Zoho's one `input`, and each reads what the one before it wrote, so they run as
-// steps of one function in the order of the workflows in Zoho. Quirks are kept: for example the readiness check runs
-// before the default status and the shipment mode are set, so it sees them as they were before this save.
+// steps of one function in the order of the workflows in Zoho. Most quirks are kept, but PR_Check_Readiness was moved
+// after PR_Set_Shipment_Mode (spec v1.4 PR-R5, review item, 2026-11-18): in Zoho it ran before the shipment mode
+// default, so a brand-new priced PR needed an unrelated second save before Ready for PO turned on.
 import { register } from '../../workflows/index.mjs';
 import { ZohoError, zohoNow } from '../../criteria.mjs';
 import { idOf, truthy, blank, toNum, sameValue, lower, round2, lit, parseDate, ymd, addDays, dayDiff, todayDate } from '../../workflows/deluge.mjs';
@@ -127,21 +128,6 @@ async function validate({ input, previous, store }) {
     }
   }
 
-  // --- PR_Check_Readiness: the four conditions and their AND ---
-  set('Selected_Supplier1', !blank(rec.Selected_Supplier));
-  let hasPrice = false;
-  if (!blank(rec.SRP_Approved_PR) && toNum(rec.SRP_Approved_PR) !== 0) hasPrice = true;
-  else if (!blank(rec.SRP_Rate_PR) && toNum(rec.SRP_Rate_PR) !== 0) hasPrice = true;
-  else if (!blank(rec.inquiry_reference)) hasPrice = true;
-  else {
-    const [item] = blank(rec.sku) ? [] : await store.getRecords('Items', { criteria: `SKU == ${lit(rec.sku)}`, pageSize: 1 });
-    hasPrice = toNum(item?.Rate) !== 0 || toNum(rec.Selcted_Final_Cost) > 0;
-  }
-  set('Final_price_confirmed', hasPrice);
-  set('Shipping_mode_selected', rec.Sourcing_Type === 'Local' || !blank(rec.Shipment_Mode));
-  set('Target_date_exists', !blank(rec.Target_Delivery));
-  set('PR_READY_FOR_PO', rec.Selected_Supplier1 && rec.Final_price_confirmed && rec.Shipping_mode_selected && rec.Target_date_exists);
-
   // --- PR_Set_Default_Status ---
   set('PR_Status', blank(rec.Link_PO_No) ? 'Open' : 'Converted to PO');
 
@@ -189,6 +175,26 @@ async function validate({ input, previous, store }) {
       set('Shipment_Days', rec.Shipment_Mode === 'Airfreight' ? 14 : 30);
     }
   }
+
+  // --- PR_Check_Readiness: the four conditions and their AND ---
+  // Spec v1.4 (02 Procurement / 02, PR-R5): an auto-priced PR reaches Ready for PO without a person waiting on an
+  // extra save. Moved below PR_Set_Shipment_Mode (review item, 2026-11-18) so a brand-new PR with a price, a
+  // supplier and a target already sees its own just-defaulted Shipment_Mode in the same save, instead of the stale
+  // blank one from before this save (which needed an unrelated second touch to flip Ready for PO on). Nothing
+  // between here and the old position reads these four fields or PR_READY_FOR_PO, so the reorder is safe.
+  set('Selected_Supplier1', !blank(rec.Selected_Supplier));
+  let hasPrice = false;
+  if (!blank(rec.SRP_Approved_PR) && toNum(rec.SRP_Approved_PR) !== 0) hasPrice = true;
+  else if (!blank(rec.SRP_Rate_PR) && toNum(rec.SRP_Rate_PR) !== 0) hasPrice = true;
+  else if (!blank(rec.inquiry_reference)) hasPrice = true;
+  else {
+    const [item] = blank(rec.sku) ? [] : await store.getRecords('Items', { criteria: `SKU == ${lit(rec.sku)}`, pageSize: 1 });
+    hasPrice = toNum(item?.Rate) !== 0 || toNum(rec.Selcted_Final_Cost) > 0;
+  }
+  set('Final_price_confirmed', hasPrice);
+  set('Shipping_mode_selected', rec.Sourcing_Type === 'Local' || !blank(rec.Shipment_Mode));
+  set('Target_date_exists', !blank(rec.Target_Delivery));
+  set('PR_READY_FOR_PO', rec.Selected_Supplier1 && rec.Final_price_confirmed && rec.Shipping_mode_selected && rec.Target_date_exists);
 
   // --- PR_Compute_Priority ---
   let score = 0;

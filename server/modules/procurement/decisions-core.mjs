@@ -11,9 +11,13 @@ const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
 // schedules used.
 export const alertRecipient = (settings) => text(settings?.procurement_alert_email) || process.env.PROCUREMENT_ALERT_EMAIL || 'homecartelpacker@gmail.com';
 
-export function notify(store, settings, { ship, type, message, page = 'Decisions' }) {
+// Same fallback pattern, scoped to "tell the customer" alerts: a separate address can be set until roles exist
+// (spec: this should reach the sales agent, not whoever reads the general procurement alert).
+export const salesAgentRecipient = (settings) => text(settings?.sales_agent_alert_email) || process.env.SALES_AGENT_ALERT_EMAIL || alertRecipient(settings);
+
+export function notify(store, settings, { ship, type, message, page = 'Decisions', to }) {
   return store.addRecord('App_Notifications', {
-    Recipient_Email: alertRecipient(settings), Notification_Type: type, Message: message, Created_On: zohoNow(), Read: false,
+    Recipient_Email: to || alertRecipient(settings), Notification_Type: type, Message: message, Created_On: zohoNow(), Read: false,
     Target_URL: `${process.env.APP_BASE_URL || ''}/#Page:${page}`, Source_Record_No: ship?.Shipment_No ?? '', Source_Record_ID: ship?.ID ?? '',
   });
 }

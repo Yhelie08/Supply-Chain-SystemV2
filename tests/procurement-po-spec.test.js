@@ -94,6 +94,21 @@ test('option B, propose a new target: the PO is made, a target change goes to De
   const [ch] = await raw.find('Target_Date_Changes');
   assert.deepEqual([ch.Record_Type, ch.Old_Date, ch.New_Date, ch.Changed_By, ch.Via], ['pr', day(20), day(61), 'agent@x', 'approval_queue']);
   assert.ok(id);
+  const [notice] = await raw.find('App_Notifications', (n) => n.Notification_Type === 'Tell The Customer');
+  assert.ok(notice, 'the sales agent is actually told, not just a result on the Decisions row');
+  assert.match(notice.Message, /PR-1/);
+});
+
+test('option B, accepted: the "tell the customer" alert goes to the sales-agent setting, not the general one', async () => {
+  await base();
+  await raw.addRecord('Procurement_Settings', { Setting_Key: 'procurement_alert_email', Value: 'general@example.test' });
+  await raw.addRecord('Procurement_Settings', { Setting_Key: 'sales_agent_alert_email', Value: 'sales@example.test' });
+  await pr('PR-1', 'SO-A', { Target_Delivery: day(20) });
+  await approvePOMain({ soNo: 'SO-A', lateChoices: { 'PR-1': 'move_target' } }, raw);
+  const [it] = await raw.find('Approval_Queue', (i) => i.Kind === 'forecast_promise_change');
+  await store.updateRecord('Approval_Queue', it.ID, { Decision: 'accept_target' }, { user: 'agent@x' });
+  const [notice] = await raw.find('App_Notifications', (n) => n.Notification_Type === 'Tell The Customer');
+  assert.equal(notice.Recipient_Email, 'sales@example.test');
 });
 
 test('one PO = one supplier = one mode: other modes get their own PO; Sales Orders can share a PO; the PO keeps the earliest order date and target (PO-R4, DT-1)', async () => {

@@ -20,6 +20,7 @@
     { "name": "Queue_Rank", "label": "Queue Rank", "type": "number" },
     { "name": "Priority_Reason", "label": "Priority Reason", "type": "text" },
     { "name": "Suggested_Action", "label": "Suggested Action", "type": "text" },
-    { "name": "Scored_At", "label": "Scored At", "type": "datetime" }
+    { "name": "Scored_At", "label": "Scored At", "type": "datetime" },
+    { "name": "Pr_Forecast_Pickable", "label": "Forecast Pickable", "type": "date", "helpText": "The forecast pickable date of this PR's own shipment(s), not only the shipment record itself (2026-11-18)." }
   ]
 }

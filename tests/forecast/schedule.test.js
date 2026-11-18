@@ -223,7 +223,7 @@ test('it is off unless SCHEDULES=on', () => {
   off.stop();
 });
 
-test('the modules list their schedules: the Zoho names (two forecast, two shipment), the sorting engine recalculate, and the spec v1.4 jobs (Ship & Track ladder, Receiving, Inquiry, Replacement)', () => {
+test('the modules list their schedules: the Zoho names (two forecast, two shipment), the sorting engine recalculates (Fulfillment and Delivery), Team Rotation, and the spec v1.4 jobs (Ship & Track ladder, Receiving, Inquiry, Replacement)', () => {
   const names = modules.flatMap((m) => (m.schedules || []).map((s) => s.name));
-  assert.deepEqual(names.sort(), ['Backfill_PreOrder_Forecas', 'Daily_Shipment_10_Day_Che', 'Forecast_Stamp_Daily', 'Inquiry_Quotes_Daily', 'Recalculate_Fulfillment_Queue', 'Receiving_Silence_Daily', 'Replacement_Daily', 'Shipment_Delay_Status_Dai', 'Shipment_Ladder_Daily']);
+  assert.deepEqual(names.sort(), ['Archive_Delivery_Jobs_Daily', 'Backfill_PreOrder_Forecas', 'Confirm_Cutoff_Daily', 'Daily_Shipment_10_Day_Che', 'Forecast_Stamp_Daily', 'Inquiry_Quotes_Daily', 'Maintenance_Due_Daily', 'Recalculate_Delivery_Queue', 'Recalculate_Fulfillment_Queue', 'Receiving_Silence_Daily', 'Redelivery_Silence_Daily', 'Replacement_Daily', 'Rotate_Delivery_Teams_Daily', 'Shipment_Delay_Status_Dai', 'Shipment_Ladder_Daily']);
 });

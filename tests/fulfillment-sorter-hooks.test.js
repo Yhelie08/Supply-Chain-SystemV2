@@ -19,7 +19,7 @@ before(async () => {
   raw = createStore({ query: (sql, params) => db.query(sql, params), transaction: (fn) => db.transaction(fn) });
   store = createHookedStore(raw, workflows);
 });
-beforeEach(async () => { for (const f of [SOF, 'Sales_Order_Readiness_Gate', 'Exception_Control1', 'Customer', 'Policy_Settings']) await db.query(`DELETE FROM "${f}"`); });
+beforeEach(async () => { for (const f of [SOF, 'Sales_Order_Readiness_Gate', 'Exception_Control1', 'Customer', 'Policy_Settings', 'Replacement_Request']) await db.query(`DELETE FROM "${f}"`); });
 
 const addPackage = (extra) => raw.addRecord(SOF, { SO_No: 'SO-1', Fulfillment_Stage: 'Order Readiness', order_type: 'Normal', Shipping_Address: '1 Main St', Item_Details1: [{ Quantity: '1' }], ...extra });
 
@@ -69,6 +69,18 @@ test('an unpaid Readiness Gate save re-scores the package it belongs to (Blocked
   await store.updateRecord('Sales_Order_Readiness_Gate', gateId, { payment_status: 'Yes' }, { byForm: true });
   row = await raw.getRecordById(SOF, id, { raw: true });
   assert.equal(row.Category, 'on_time');
+});
+
+test('rescoreAll: an open Replacement_Request on this Sales Order makes the package Broken, read straight from the database', async () => {
+  await addPackage({ SO_No: 'SO-11', SO_Created_Date: '2026-11-01', target_delivery_date: '2026-12-15' });
+  await raw.addRecord('Replacement_Request', { RR_No: 'RR-00001', RR_SO: 'SO-11', RR_Status: 'Open' });
+  await rescoreAll(raw);
+  const [row] = await raw.find(SOF, (r) => r.SO_No === 'SO-11');
+  assert.equal(row.Category, 'broken');
+  await raw.updateRecord('Replacement_Request', (await raw.find('Replacement_Request'))[0].ID, { RR_Status: 'Closed' }, { byForm: true });
+  await rescoreAll(raw);
+  const [after] = await raw.find(SOF, (r) => r.SO_No === 'SO-11');
+  assert.equal(after.Category, 'on_time');
 });
 
 test('recalculate_fulfillment_queue custom API rescored everything and reports a count', async () => {

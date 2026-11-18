@@ -2316,7 +2316,12 @@ function stSetBoard(c){ ST_BOARD = c; renderList(); }
 })();
 
 function stDate(v){ return v ? esc(String(v)) : '<span style="color:var(--gray-400)">&mdash;</span>'; }
-function stPhotoLink(v){ return v ? '<a href="' + esc(v) + '" target="_blank" rel="noopener">View</a>' : '<span style="color:var(--gray-400)">None yet</span>'; }
+function stPhotoLink(v){
+  // Production_Photos now accumulates every upload (a list), not just the newest one; Shipment_Photos is still one value.
+  var urls = Array.isArray(v) ? v : (function(){ if(typeof v !== 'string' || !v) return v ? [v] : []; try{ var p = JSON.parse(v); return Array.isArray(p) ? p : [v]; }catch(e){ return [v]; } })();
+  if(!urls.length) return '<span style="color:var(--gray-400)">None yet</span>';
+  return urls.map(function(u, i){ return '<a href="' + esc(u) + '" target="_blank" rel="noopener">View' + (urls.length > 1 ? ' (' + (i+1) + ')' : '') + '</a>'; }).join(' &middot; ');
+}
 function stRenderDetail(r){
   var c = stCat(r);
   var late = parseFloat(r.Days_Late || 0);

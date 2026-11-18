@@ -49,6 +49,7 @@ export const SETTING_DEFS = [
   { key: 'receiving_available_window_hours', label: 'Hours from binned to available', type: 'hours', default: 2, min: 1, max: 72, group: 'Receiving alerts', affects: 'When binned goods that are still not available raise an alert (something in the readiness step is broken).' },
   { key: 'approval_sla_hours', label: 'Hours to decide before it escalates', type: 'hours', default: 24, min: 1, max: 168, group: 'Decisions and alerts', affects: 'A decision not made in this time is escalated to the supervisor.' },
   { key: 'procurement_alert_email', label: 'Alert recipient (until roles exist)', type: 'text', default: '', group: 'Decisions and alerts', affects: 'Who receives the in-app alerts of the ladder, the overdue arrival and the escalation. Blank = the address the old shipment schedules used.' },
+  { key: 'sales_agent_alert_email', label: 'Sales agent alert recipient (until roles exist)', type: 'text', default: '', group: 'Decisions and alerts', affects: 'Who receives the "tell the customer" alert when a target date is kept late or a new target is accepted. Blank = the same address as the general alert recipient.' },
 ];
 
 export const DEFS = Object.fromEntries(SETTING_DEFS.map((d) => [d.key, d]));
