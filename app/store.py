@@ -7,6 +7,7 @@
 import json
 import re
 import time
+from contextlib import asynccontextmanager
 
 from app.model import COLUMNS, LOOKUP_DISPLAY, display_from_format, form_of_report, form_by_name
 from app.criteria import ZohoError, zoho_now, compile_criteria
@@ -62,6 +63,21 @@ def encode(form: str, data: dict | None, existing_extra=None) -> dict:
             out[k] = None if v is None else (json.dumps(v) if isinstance(v, (dict, list)) else str(v))
     extra_json = json.dumps(extra) if extra else None
     return {"out": out, "extra": extra_json}
+
+
+@asynccontextmanager
+async def _with_tx(db):
+    """Runs the block on one connection with a transaction open. `db` is an asyncpg Connection in
+    tests (SET search_path already applied, used as-is) or a Pool in production -- a Pool call
+    acquires a fresh connection per query, which would run each statement in its own transaction, so
+    a real connection is checked out here instead, matching server/pg/store.mjs's withTx."""
+    if hasattr(db, "acquire"):
+        async with db.acquire() as conn:
+            async with conn.transaction():
+                yield conn
+    else:
+        async with db.transaction():
+            yield db
 
 
 def create_store(db):
@@ -187,13 +203,13 @@ def create_store(db):
 
         async def add_record(self, form_name: str, data: dict, user: str = "") -> str:
             form = form_by_name(form_name)
-            async with db.transaction():
+            async with _with_tx(db) as tx:
                 input_ = dict(data)
                 auto = [(k, c) for k, c in own_columns(form) if c["type"] == "autonumber" and (input_.get(k) is None or input_.get(k) == "")]
                 if auto:
-                    await db.execute("SELECT pg_advisory_xact_lock(hashtext($1))", form)
+                    await tx.execute("SELECT pg_advisory_xact_lock(hashtext($1))", form)
                 for k, _ in auto:
-                    r = await db.fetchrow(f"SELECT COALESCE(MAX({q(k)}), 0) + 1 AS n FROM {q(form)}")
+                    r = await tx.fetchrow(f"SELECT COALESCE(MAX({q(k)}), 0) + 1 AS n FROM {q(form)}")
                     input_[k] = r["n"]
                 enc = encode(form, input_)
                 out, extra = enc["out"], enc["extra"]
@@ -202,7 +218,7 @@ def create_store(db):
                 vals = [now, now, user, extra, *out.values()]
                 casts = ["", "", "", "::jsonb", *[_CAST[COLUMNS[form][k]["kind"]] for k in out]]
                 placeholders = ", ".join(f"${i + 1}{casts[i]}" for i in range(len(names)))
-                row = await db.fetchrow(
+                row = await tx.fetchrow(
                     f'INSERT INTO {q(form)} ({", ".join(q(n) for n in names)}) VALUES ({placeholders}) RETURNING "ID"::text AS id',
                     *vals,
                 )
@@ -251,13 +267,13 @@ def create_store(db):
             form = form_by_name(form_name)
             col = q(field)
             tbl = q(form)
-            async with db.transaction():
-                await db.execute(
+            async with _with_tx(db) as tx:
+                await tx.execute(
                     "INSERT INTO _number_series AS s (form, field, last_num) VALUES ($1, $2, 0) "
                     "ON CONFLICT (form, field) DO UPDATE SET last_num = s.last_num",
                     form, field,
                 )
-                row = await db.fetchrow(
+                row = await tx.fetchrow(
                     f"UPDATE _number_series SET last_num = GREATEST(last_num, "
                     f"COALESCE((SELECT MAX(CAST(NULLIF(substring({col} FROM '([0-9]+)$'), '') AS bigint)) FROM {tbl}), 0)) + 1 "
                     f"WHERE form = $1 AND field = $2 RETURNING last_num",
