@@ -25,6 +25,9 @@ from app.custom_apis import invoke_custom_api
 from app.schema import ensure_schema
 from app.store import create_store
 from app.workflows import create_hooked_store
+import app.fulfillment  # noqa: F401 -- side effect: registers every Fulfillment hook and custom API
+from app.fulfillment.apis import recalculate_fulfillment_queue, package_pick_status  # noqa: F401 -- names used below to gate the reconcile catch-up
+from app.fulfillment.pipeline import reconcile_fulfillment
 
 ROOT = Path(__file__).resolve().parent.parent
 WIDGETS = ROOT / "modules"
@@ -419,6 +422,14 @@ def _register_routes(app: FastAPI) -> None:
 
             if op_name == "invokeCustomApi":
                 result = await invoke_custom_api(body.get("api_name"), body.get("payload"), raw_store, {"user": user})
+                # A custom API's writes do not fire the workflow hooks, so what a Fulfillment one
+                # wrote is carried on here (Readiness, Pick, QC) -- matches server/pg/api.mjs's own
+                # catch-up after any Fulfillment custom API call.
+                if body.get("api_name") in ("recalculate_fulfillment_queue", "package_pick_status", "check_payment_status", "create_package_ff"):
+                    try:
+                        await reconcile_fulfillment(raw_store)
+                    except Exception as e:
+                        print(f"[fulfillment] catch-up failed: {e}")
                 response = {"code": 3000, "result": result}
             else:
                 response = await _run_op(op_name, body, user, hooked_store)
