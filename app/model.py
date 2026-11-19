@@ -2,6 +2,7 @@
 # form without being wiped by a future npm run parse-ds re-export) into FORMS/COLUMNS. Ported from
 # server/model.mjs — same two-pass structure: base forms, then spec-forms merge.
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -63,9 +64,59 @@ def _build_columns(forms: dict) -> dict:
     return columns
 
 
+def _build_lookup_display(forms: dict) -> dict:
+    # How Zoho shows a record of each form when another form looks it up, e.g. Items -> "[item_name]",
+    # Suppliers -> `[" " + Supplier_Name.first_name]` (the form's lookup fields all agree on one format).
+    lookup_display: dict[str, str] = {}
+    for form in forms.values():
+        for f in form.get("fields", []):
+            lookup = f.get("lookup")
+            if isinstance(lookup, dict) and f.get("displayformat"):
+                lookup_display.setdefault(lookup["form"], f["displayformat"])
+    return lookup_display
+
+
 FORMS = _load_forms()
 REPORTS = _load_reports()
 COLUMNS = _build_columns(FORMS)
+LOOKUP_DISPLAY = _build_lookup_display(FORMS)
+
+_DISPLAY_TOKEN = re.compile(r"""\s*(?:"((?:[^"\\]|\\.)*)"|([A-Za-z_]\w*(?:\.\w+)*)|(\+))""")
+
+
+def display_from_format(fmt: str | None, row: dict) -> str:
+    """Evaluates a display format such as `[customer_name]` or `[" " + Supplier_Name.first_name]`
+    on a stored row. Only field names (with a dotted part for name/address fields), string literals
+    and + are understood; anything else gives '' so the caller can fall back."""
+    inner = str(fmt or "").strip()
+    inner = re.sub(r"^\[", "", inner)
+    inner = re.sub(r"\]$", "", inner)
+    out = ""
+    expect_value = True
+    pos = 0
+    while pos < len(inner):
+        m = _DISPLAY_TOKEN.match(inner, pos)
+        if not m:
+            return ""
+        pos = m.end()
+        if m.group(3):  # '+'
+            if expect_value:
+                return ""
+            expect_value = True
+            continue
+        if not expect_value:
+            return ""
+        expect_value = False
+        if m.group(1) is not None:
+            out += re.sub(r"\\(.)", r"\1", m.group(1))
+        else:
+            parts = m.group(2).split(".")
+            field, path = parts[0], parts[1:]
+            v = row.get(field)
+            for p in path:
+                v = v.get(p) if isinstance(v, dict) else None
+            out += "" if v is None or isinstance(v, (dict, list)) else str(v)
+    return "" if expect_value else out
 
 
 def form_of_report(report_name: str) -> tuple[str, str | None]:

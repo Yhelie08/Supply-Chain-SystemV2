@@ -6,6 +6,16 @@ def test_simple_equality_translates_to_a_parameterized_condition():
     assert result is not None
     assert "$1" in result["sql"]
     assert result["params"] == ["Yes"]
+    # Equality must be NOT DISTINCT FROM (NULL-safe "equals"), not DISTINCT FROM (NULL-safe "not
+    # equals") -- caught as a real inverted bug during Task 5, where the same text-field branch was
+    # exercised through store.find() and returned the row that did NOT match instead of the one that did.
+    assert "IS NOT DISTINCT FROM" in result["sql"]
+
+def test_simple_inequality_translates_to_distinct_from_without_not():
+    result = criteria_to_sql('(Status != "Yes")', "Sales_Order_Fulfillment", {}, 0)
+    assert result is not None
+    assert "IS DISTINCT FROM" in result["sql"]
+    assert "IS NOT DISTINCT FROM" not in result["sql"]
 
 
 def test_offset_shifts_the_placeholder_numbers():
@@ -81,6 +91,7 @@ def test_boolean_field_equality():
     assert result is not None
     assert "::boolean" in result["sql"]
     assert result["params"] == [True]
+    assert " = " in result["sql"] and " <> " not in result["sql"]
 
 
 def test_numeric_field_equality():
@@ -88,6 +99,7 @@ def test_numeric_field_equality():
     assert result is not None
     assert "::numeric" in result["sql"]
     assert result["params"] == ["5"]
+    assert "IS NOT DISTINCT FROM" in result["sql"]
 
 
 def test_negation_wraps_in_not():

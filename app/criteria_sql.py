@@ -114,13 +114,13 @@ def criteria_to_sql(src: str | None, form: str, ctx: dict | None = None, offset:
                 if b["lit"] == "null":
                     return f"{'' if eq else 'NOT '}({col} IS NULL OR {col} = '')"
                 if b["lit"] == "string" and b["value"] != "":
-                    return f"{col} IS {'NOT ' if not eq else ''}DISTINCT FROM {param(b['value'])}"
+                    return f"{col} IS {'NOT ' if eq else ''}DISTINCT FROM {param(b['value'])}"
                 return _no()
             if kind == "num":
                 if b["lit"] == "null":
                     return f"{col} IS {'' if eq else 'NOT '}NULL"
                 if b["lit"] == "number":
-                    return f"{col} IS {'NOT ' if not eq else ''}DISTINCT FROM {param(b['value'])}::numeric"
+                    return f"{col} IS {'NOT ' if eq else ''}DISTINCT FROM {param(b['value'])}::numeric"
                 return _no()
             if kind == "bool" and b["lit"] == "bool":
                 return f"COALESCE({col}, FALSE) {'=' if eq else '<>'} {param(b['value'])}::boolean"
