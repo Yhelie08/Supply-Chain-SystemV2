@@ -14,7 +14,10 @@ import { runPreDeliveryGate, dispatchDay } from './dispatch.mjs';
 import { suggestSchedule } from './suggest-schedule.mjs';
 import { recordThirdPartyBooking, recordThirdPartyResult } from './third-party.mjs';
 import { createRedeliveryJob, forceCloseJob, getDeliveryExceptionQueue, failureReasonCodes } from './failure-redelivery.mjs';
-import { getDeliveryBacklog } from './backlog-calculator.mjs';
+import { getDeliveryBacklog, getBacklogTrend } from './backlog-calculator.mjs';
+import { getShipToSrGap } from './ship-to-sr-gap.mjs';
+import { getDamageByCategory } from './damage-by-category.mjs';
+import { getSettings, previewSetting, getRoster, seedRoster } from './settings.mjs';
 import { createPulloutFromRefusal, confirmReturnReceived } from './sales-returns.mjs';
 import { recordMaintenance, markVehicleDown, markVehicleFixed } from './truck-maintenance.mjs';
 
@@ -196,13 +199,13 @@ const implemented = {
   },
 
   // Dispatch / the pre-delivery gate (Delivery 03 §3, DS-R1-R5). Not a Deluge port.
-  async get_pre_delivery_gate({ date, installer } = {}, data) {
-    const result = await runPreDeliveryGate(data, date, installer);
+  async get_pre_delivery_gate({ date, installer } = {}, data, ctx = {}) {
+    const result = await runPreDeliveryGate(data, date, installer, { books: ctx.books });
     return { status: 'success', ...result };
   },
 
   async dispatch_day({ date, installer, driverSignature, dispatcherSignature } = {}, data, ctx = {}) {
-    const result = await dispatchDay(data, date, installer, { user: ctx.user, driverSignature, dispatcherSignature });
+    const result = await dispatchDay(data, date, installer, { user: ctx.user, driverSignature, dispatcherSignature, books: ctx.books });
     return { status: result.ok ? 'success' : 'partial', ...result };
   },
 
@@ -255,6 +258,38 @@ const implemented = {
   // Delivery backlog calculator (05 Shared Engines / 02 Calculators §2). Not a Deluge port.
   async get_delivery_backlog({ daysAvailable } = {}, data) {
     const result = await getDeliveryBacklog(data, daysAvailable ? { daysAvailable } : {});
+    return { status: 'success', ...result };
+  },
+
+  // Control Panel, Delivery group (spec 05/08) and the team roster (Delivery 02, TM-R4). Not Deluge ports.
+  async get_delivery_settings(_payload, data) {
+    return ok('Delivery settings.', await getSettings(data));
+  },
+  async preview_delivery_setting({ key, value } = {}, data) {
+    return previewSetting(data, key, value);
+  },
+  async get_delivery_roster(_payload, data) {
+    return ok('Delivery roster.', await getRoster(data));
+  },
+  async seed_delivery_roster(_payload, data, ctx = {}) {
+    const r = await seedRoster(data, ctx.user);
+    return ok(r.seeded ? `The roster is now editable (${r.seeded} rows).` : 'The roster is already editable.', r);
+  },
+
+  async get_delivery_backlog_trend({ weeks } = {}, data) {
+    const result = await getBacklogTrend(data, weeks ? { weeks } : {});
+    return { status: 'success', ...result };
+  },
+
+  // Delivery Analytics key number #3, damage rate by item category (Delivery 09). Not a Deluge port.
+  async get_damage_by_category({ days } = {}, data) {
+    const result = await getDamageByCategory(data, days ? { days } : {});
+    return { status: 'success', ...result };
+  },
+
+  // Delivery Analytics key number #7, Ship -> Service Request gap (Delivery 09). Not a Deluge port.
+  async get_ship_to_sr_gap(_payload, data) {
+    const result = await getShipToSrGap(data);
     return { status: 'success', ...result };
   },
 

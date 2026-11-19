@@ -19,7 +19,9 @@ before(async () => {
   raw = createStore({ query: (sql, params) => db.query(sql, params), transaction: (fn) => db.transaction(fn) });
   store = createHookedStore(raw, workflows);
 });
-beforeEach(async () => { for (const f of [SA, 'Day_Plan', 'DMS_Exception_Queue']) await db.query(`DELETE FROM "${f}"`); });
+beforeEach(async () => { for (const f of [SA, 'Day_Plan', 'DMS_Exception_Queue', 'Dispatch_Checklist']) await db.query(`DELETE FROM "${f}"`); });
+// G5 (2026-11-19): every job needs a DR number on its Dispatch checklist, third-party jobs included.
+const withDr = (saId) => raw.addRecord('Dispatch_Checklist', { Service_Appointment_ID: String(saId), DR_No: 'DR-0001' });
 
 test('TP-R1: records provider, booking ref, fee, pickup time and driver/plate, and confirms a not-yet-scheduled job', async () => {
   const id = await raw.addRecord(SA, { Sales_Order: 'SO-1', Type_of_Delivery: 'Delivery Only', Customer_Name: { first_name: 'Ana', last_name: 'Reyes' } });
@@ -84,6 +86,7 @@ test('G8 (TP-R2): a third-party job passes the gate with its booking reference, 
     Site_Checklist: COMPLETE_CHECKLIST, Confirmed_Schedule_Date: '2027-09-01', Appointment_Status: 'Scheduled', Calendar_Entry_Created: true, Installer: 'CJ',
   });
   await recordThirdPartyBooking(raw, id, { provider: 'Lalamove', bookingRef: 'LLM-1' });
+  await withDr(id);
   await confirmStopLoading(raw, '2027-09-01', 'CJ', id, 2);
   const gate = await runPreDeliveryGate(raw, '2027-09-01', 'CJ');
   assert.equal(gate.ok, true);
@@ -115,6 +118,7 @@ test('G8: a day mixing an own-team job and a third-party job still needs a drive
     Site_Checklist: COMPLETE_CHECKLIST, Confirmed_Schedule_Date: '2027-09-02', Confirmed_Time_Slot: '09:00:00 AM', Appointment_Status: 'Scheduled', Calendar_Entry_Created: true, Installer: 'CJ',
   });
   await recordThirdPartyBooking(raw, tp, { provider: 'Lalamove', bookingRef: 'LLM-2' });
+  await withDr(own); await withDr(tp);
   await confirmStopLoading(raw, '2027-09-02', 'CJ', own, 1);
   await confirmStopLoading(raw, '2027-09-02', 'CJ', tp, 1);
   const noDriver = await dispatchDay(raw, '2027-09-02', 'CJ', { dispatcherSignature: 'e' });

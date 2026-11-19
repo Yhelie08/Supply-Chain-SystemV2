@@ -1,0 +1,8 @@
+{
+  "name": "Policy_Settings",
+  "extends": true,
+  "_about": "Control Panel, Delivery group (spec 05 Shared Engines / 08). The catalogue of Delivery settings (label, default, min, max, what it affects) lives in server/modules/delivery-management/settings-defs.mjs; a row here only stores a changed value. No row = the default. Every change of a catalogue key is written to Delivery_Settings_History by server/modules/delivery-management/settings.mjs.",
+  "fields": [
+    { "name": "Change_Reason", "label": "Reason for the change", "type": "text", "helpText": "Optional. Kept in the Delivery Settings history. Only used for a key from the Delivery catalogue." }
+  ]
+}

@@ -125,3 +125,25 @@ test('removeStop (DS-R4 support) takes a job off an unlocked plan', async () => 
   const plan = await findDayPlan(raw, '2027-04-01', 'CJ');
   assert.deepEqual(stopIds(plan), []);
 });
+
+// ---------- DP-R5: once a job is on site it cannot move to another day plan ----------
+test('DP-R5: a job that has arrived on site cannot be moved to another date or team; the same values, other fields and a finished job are fine', async () => {
+  const id = await store.addRecord(SA, scheduled());
+  await raw.updateRecord(SA, id, { Job_Arrived_At: '2027-04-01 10:05:00 AM' }, { byForm: true });
+  await assert.rejects(store.updateRecord(SA, id, { Confirmed_Schedule_Date: '2027-04-02' }, { byForm: true }), (e) => /on site: it cannot be moved/.test(e.message));
+  await assert.rejects(store.updateRecord(SA, id, { Installer: 'Edmon' }, { byForm: true }), (e) => /on site: it cannot be moved/.test(e.message));
+  // not a move: the same date, the same team, an unrelated field
+  await store.updateRecord(SA, id, { Confirmed_Schedule_Date: '2027-04-01', Installer: 'CJ', Logistic_Notes: 'gate code 1234' }, { byForm: true });
+  assert.equal((await raw.getRecordById(SA, id, { raw: true })).Confirmed_Schedule_Date, '2027-04-01');
+  assert.deepEqual(stopIds(await findDayPlan(raw, '2027-04-01', 'CJ')), [String(id)], 'still on its plan');
+
+  // once done, it is free again (a redelivery is a new job, but a manual correction must not be blocked)
+  await store.updateRecord(SA, id, { Appointment_Status: 'Completed' }, { byForm: true });
+  await store.updateRecord(SA, id, { Confirmed_Schedule_Date: '2027-04-05' }, { byForm: true });
+});
+
+test('DP-R5: a job that has not arrived yet can still be moved', async () => {
+  const id = await store.addRecord(SA, scheduled());
+  await store.updateRecord(SA, id, { Confirmed_Schedule_Date: '2027-04-02' }, { byForm: true });
+  assert.ok(await findDayPlan(raw, '2027-04-02', 'CJ'));
+});

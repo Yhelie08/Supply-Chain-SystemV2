@@ -2,6 +2,8 @@
 import './workflows.mjs';
 import './approval-decisions.mjs';
 import './auto-handoff.mjs';
+import './settings.mjs';
+import './time-window.mjs';
 import { apis, functions } from './apis.mjs';
 import { upsertDmsScheduleRequest, addDmsScheduleRequestMessage } from './cms-sync.mjs';
 import { teamScoping } from './scoping.mjs';
@@ -16,7 +18,7 @@ export { teamScoping };
 
 export default {
   label: 'Delivery Management',
-  forms: ['Service_Appointment_Form', 'Field_Work', 'Delivery_Scheduling', 'Service_Request1', 'DMS_Exception_Queue', 'DMS_Schedule_Request', 'Service_Request', 'Schedule_Holds', 'Day_Plan', 'Delivery_Failure_Reasons', 'Sales_Returns_Form', 'Vehicle_Status', 'Vehicle_Maintenance_Log'],
+  forms: ['Service_Appointment_Form', 'Field_Work', 'Delivery_Scheduling', 'Service_Request1', 'DMS_Exception_Queue', 'DMS_Schedule_Request', 'Service_Request', 'Schedule_Holds', 'Day_Plan', 'Delivery_Failure_Reasons', 'Sales_Returns_Form', 'Vehicle_Status', 'Vehicle_Maintenance_Log', 'Delivery_Settings_History', 'Delivery_Roster'],
   teamScoping,
   functions,
   apis,

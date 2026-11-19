@@ -5,7 +5,7 @@ import path from 'node:path';
 import { teamScoping as defaultScoping } from './modules/delivery-management/scoping.mjs';
 
 // Policy Settings: the form its widget writes to and the report it reads. Compared in lower case.
-const ADMIN_ONLY_FORMS = ['Policy_Settings', 'All_Policy_Settings', 'Procurement_Settings', 'Procurement_Settings_History']; // the Procurement settings page (spec Control Panel) is admin-only too
+const ADMIN_ONLY_FORMS = ['Policy_Settings', 'All_Policy_Settings', 'Procurement_Settings', 'Procurement_Settings_History', 'Delivery_Settings_History', 'Delivery_Roster']; // the Delivery Settings page (Control Panel, Delivery group): its history and roster are admin-only too; the Procurement settings page (spec Control Panel) is admin-only too
 // SDK operation -> the body field that names the form or report it touches.
 const WRITE_OPS = { addRecords: 'form_name', updateRecordById: 'report_name', updateRecords: 'report_name', deleteRecordById: 'report_name' };
 

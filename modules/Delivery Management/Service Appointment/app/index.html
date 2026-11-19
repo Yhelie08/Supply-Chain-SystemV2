@@ -1068,6 +1068,24 @@ function setFilter(f){
   });
   renderList();
 }
+/* Delivery 03 (2026-11-19): the customer is promised a WINDOW (Time_Window, made by the server), not the minute; the
+   exact start the engine booked is kept small for the dispatcher. Below it, whether the customer has confirmed
+   (AP-R2: Appointment_Confirmed_At, set by the "Confirm appointment" button or, later, by their reply). */
+function windowCell(r){
+  var win = r.Time_Window ? '<div class="sub2">' + esc(r.Time_Window) + (r.Confirmed_Time_Slot ? ' · starts ' + esc(String(r.Confirmed_Time_Slot).replace(/:00 (AM|PM)$/, ' $1')) : '') + '</div>' : '';
+  var conf = r.Appointment_Confirmed_At ? '<div class="sub2"><span class="pill p-ok">Customer confirmed</span></div>' : '<div class="sub2"><span class="pill p-warn">Not confirmed yet</span></div>';
+  return win + conf;
+}
+/* AP-R2: "Confirm_Appointment" is a trigger; the server stamps Appointment_Confirmed_At once (confirmation.mjs). */
+function confirmAppointment(id){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){ showToast('Widget SDK not available', 'bad'); return; }
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_SA, id: String(id), payload: { data: { Confirm_Appointment: true } } }).then(function(resp){
+    if(!(resp && (resp.code===3000 || String(resp.code)==='3000'))){ showToast('Could not mark it confirmed', 'bad'); console.error('[ServiceAppointment] confirm error', resp); return; }
+    showToast('Appointment marked confirmed'); announce('Appointment marked confirmed');
+    loadAll();
+  }).catch(function(e){ showToast('Could not mark it confirmed', 'bad'); console.error('[ServiceAppointment] confirm error', e); });
+}
+
 function renderList(){
   var q = (document.getElementById('searchInput').value||'').toLowerCase().trim();
   var rows = ALL_SA.filter(function(r){
@@ -1106,12 +1124,13 @@ function renderList(){
     return '<tr tabindex="0" onclick="openChecklist(\'' + r.ID + '\')" onkeydown="if(event.key===\'Enter\')openChecklist(\'' + r.ID + '\')">' +
       '<td class="c-ord"><div class="ord"><div class="so">' + esc(r.Sales_Order||'—') + '</div><div class="cust">' + esc(custName(r)) + city + '</div></div></td>' +
       '<td data-label="Type">' + typeCell(r.Type_of_Delivery) + '</td>' +
-      '<td data-label="Confirmed date">' + esc(r.Confirmed_Schedule_Date || '—') + '</td>' +
+      '<td data-label="Confirmed date">' + esc(r.Confirmed_Schedule_Date || '—') + windowCell(r) + '</td>' +
       '<td data-label="Team">' + esc(team) + '</td>' +
       '<td data-label="Packages">' + pkgPill + '</td>' +
       '<td data-label="Dispatch gate">' + gatePill + '</td>' +
       '<td data-label="Forecast">' + forecastCell(r) + '</td>' +
       '<td class="c-act" onclick="event.stopPropagation()"><div class="acts">' +
+        (r.Appointment_Confirmed_At ? '' : '<button class="btn sm" title="The customer replied, or you called and they confirmed" onclick="confirmAppointment(\'' + r.ID + '\')">Confirm appointment</button>') +
         '<button class="btn sm" onclick="openChecklist(\'' + r.ID + '\')">Dispatch Checklist</button>' +
       '</div></td>' +
     '</tr>';

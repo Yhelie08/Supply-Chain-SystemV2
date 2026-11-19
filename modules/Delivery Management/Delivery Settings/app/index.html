@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delivery Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dms-tokens.css">
+<link rel="stylesheet" href="dms-shell.css">
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<style>
+  .row{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:6px 20px;padding:14px 16px;border-bottom:1px solid var(--border);align-items:center}
+  .row:last-child{border-bottom:none}
+  .row .lbl{font-weight:600;font-size:var(--fs-lg)}
+  .row .key{font-size:var(--fs-xs);color:var(--faint);font-family:Consolas,monospace}
+  .row .aff{font-size:var(--fs-sm);color:var(--muted);margin-top:2px}
+  .row .meta{font-size:var(--fs-xs);color:var(--faint);margin-top:3px}
+  .val{display:flex;gap:6px;align-items:center;justify-content:flex-end}
+  .val input{width:104px;height:34px;padding:0 10px;border:1px solid var(--border-strong);border-radius:9px;font-size:var(--fs-base);font-weight:600;text-align:right;background:var(--surface);color:var(--text)}
+  .val input:focus{outline:none;border-color:var(--accent)}
+  .unit{font-size:var(--fs-xs);color:var(--faint);min-width:34px}
+  .effect{grid-column:1/-1;background:var(--accent-soft);border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:var(--fs-md)}
+  .effect.bad{background:var(--bad-soft);color:var(--bad)}
+  .effect .btns{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
+  .effect input{height:32px;padding:0 10px;border:1px solid var(--border-strong);border-radius:9px;font-size:var(--fs-md);min-width:240px;background:var(--surface);color:var(--text)}
+  .moves{font-size:var(--fs-sm);margin-top:6px;color:var(--text)}
+  .tally{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:var(--fs-sm)}
+  .rowbtns{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+  .row.problem{background:var(--warn-soft)}
+  .hint2{font-size:var(--fs-sm);color:var(--muted);padding:12px 16px}
+  .roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;padding:14px 16px}
+  .role{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .role h3{margin:0;padding:9px 12px;font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--surface-2)}
+  .rr{display:grid;grid-template-columns:minmax(0,1fr) 54px auto;gap:6px;padding:7px 10px;border-top:1px solid var(--border);align-items:center}
+  .rr input[type=text]{height:30px;padding:0 8px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--text);min-width:0}
+  .rr input[type=number]{height:30px;width:54px;padding:0 6px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--text)}
+  .rr.off input[type=text]{opacity:.55;text-decoration:line-through}
+  .rr .acts{display:flex;gap:4px;align-items:center}
+  .rr label{font-size:var(--fs-xs);color:var(--muted);display:flex;gap:3px;align-items:center}
+  .toast2{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:10px;background:var(--text);color:var(--surface);font-size:var(--fs-md);box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transition:opacity .2s;max-width:420px;pointer-events:none}
+  .toast2.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="main-in">
+  <div class="top">
+    <div class="title">
+      <h1>Delivery Settings</h1>
+      <p>Every number the Delivery screens use, and the team roster. Before you save a number you see what it would do. Every change is kept in the history below. Admin only.</p>
+    </div>
+  </div>
+  <div id="groups"><div class="hint2">Loading&hellip;</div></div>
+  <div class="panel">
+    <div class="panel-head"><h2>Team roster</h2><span class="hint">The people and vehicles the nightly team rotation pairs up. A change is used from the next nightly rotation; team rows that already exist are never changed.</span><span class="spacer"></span><button class="btn" id="rotateNow" onclick="rotateNow()">Run the rotation now</button></div>
+    <div id="roster"><div class="hint2">Loading&hellip;</div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Change history</h2></div>
+    <div id="history"><div class="hint2">Loading&hellip;</div></div>
+  </div>
+</div>
+<div class="toast2" id="toast"></div>
+<script>
+/* DELIVERY SETTINGS -- spec v1.4 (05 Shared Engines / 08 Control Panel, Delivery group) and TM-R4 (editable roster).
+   Admin only. The catalogue (label, default, limits, what it affects) comes from the server (get_delivery_settings);
+   a change writes ONE Policy_Settings row (the same table every Delivery module already reads), and the server checks it
+   and keeps the history. The effect is previewed first (preview_delivery_setting writes nothing). */
+var CAT = [];
+var DRAFT = {};
+var ROLES = [['installer', 'Installers'], ['driver', 'Drivers'], ['vehicle', 'Vehicles']];
+var UNIT = { percent: '%', days: 'days', hours: 'hours', minutes: 'min', km: 'km', count: '', time: '' };
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function toast(m){ var t = $('toast'); t.textContent = m; t.className = 'toast2 show'; clearTimeout(toast._t); toast._t = setTimeout(function(){ t.className = 'toast2'; }, 4200); }
+function api(name, payload){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: name, http_method: 'POST', content_type: 'application/json', payload: payload || {}, public_key: '' })
+    .then(function(r){ return (r && r.result) ? r.result : (r && r.data) ? r.data : r; });
+}
+function okCode(r){ return r && String(r.code) === '3000'; }
+function errText(e, fallback){ return (e && (e.message || (e.responseText))) || fallback; }
+
+/* ---------- the numbers ---------- */
+function loadCatalogue(){
+  return api('get_delivery_settings', {}).then(function(r){ CAT = (r && r.settings) || []; renderGroups(); })
+    .catch(function(){ $('groups').innerHTML = '<div class="hint2">The settings could not be loaded.</div>'; });
+}
+function find(key){ for(var i = 0; i < CAT.length; i++) if(CAT[i].key === key) return CAT[i]; return null; }
+function renderGroups(){
+  var groups = []; CAT.forEach(function(s){ if(groups.indexOf(s.group) < 0) groups.push(s.group); });
+  $('groups').innerHTML = groups.map(function(g){
+    return '<div class="panel"><div class="panel-head"><h2>' + esc(g) + '</h2></div>' + CAT.filter(function(s){ return s.group === g; }).map(rowHtml).join('') + '</div>';
+  }).join('');
+}
+function shownDefault(s){ return s.default === '' ? 'none' : s.default; }
+function rowHtml(s){
+  var cur = DRAFT[s.key] !== undefined ? DRAFT[s.key] : s.value;
+  var limits = s.type === 'time' ? '' : ' &middot; allowed ' + s.min + ' to ' + s.max + (s.optional ? ' (or blank for none)' : '');
+  var meta = (s.source === 'saved' ? 'Changed' : 'In use') + ' &middot; default ' + esc(shownDefault(s)) +
+    (s.source === 'saved' ? ' &middot; last changed by ' + esc(s.last_changed_by || '?') + ' ' + esc(s.last_changed_at || '') : '') + limits +
+    (s.shared ? ' &middot; ' + esc(s.shared) + ' reads this number too' : '');
+  var badge = s.source === 'saved' ? ' <span class="pill p-warn">changed</span>' : '';
+  var warn = s.problem ? '<div class="aff" style="color:var(--bad)">The saved value does not meet the limits: ' + esc(s.problem) + ' Save a new one or go back to the default.</div>' : '';
+  var k = ' data-key="' + s.key + '"';
+  var ph = s.optional ? ' placeholder="no limit"' : '';
+  var input = '<input id="in-' + s.key + '"' + k + ph + ' value="' + esc(cur) + '" oninput="setDraft(this)" onkeydown="if(event.key===\'Enter\')review(this.dataset.key)" />';
+  return '<div class="row' + (s.problem ? ' problem' : '') + '" id="row-' + s.key + '"><div><div class="lbl">' + esc(s.label) + badge + '</div><div class="key">' + s.key + '</div><div class="aff">' + esc(s.affects) + '</div>' + warn + '<div class="meta">' + meta + '</div></div>' +
+    '<div class="val">' + input + '<span class="unit">' + (UNIT[s.type] || '') + '</span></div>' +
+    '<div class="effect" id="fx-' + s.key + '" style="display:none"></div>' +
+    '<div class="rowbtns"><button class="btn"' + k + ' onclick="review(this.dataset.key)">Review the change</button>' +
+    (s.row_id ? '<button class="btn"' + k + ' onclick="resetToDefault(this.dataset.key)">Back to the default</button>' : '') + '</div></div>';
+}
+function setDraft(el){ DRAFT[el.dataset.key] = el.value; }
+function tallyHtml(label, t){
+  var names = { broken: 'Broken', late: 'Late', at_risk: 'At risk', on_time: 'On time', blocked: 'Blocked' };
+  return '<div><b>' + label + '</b> ' + Object.keys(names).map(function(c){ return names[c] + ' ' + (t[c] || 0); }).join(' &middot; ') + '</div>';
+}
+function review(key){
+  var s = find(key); var v = $('in-' + key).value;
+  var fx = $('fx-' + key); fx.style.display = 'block'; fx.className = 'effect'; fx.innerHTML = 'Checking&hellip;';
+  if(String(v).trim() === String(s.value) && s.source === 'saved'){ fx.innerHTML = 'No change.'; return; }
+  api('preview_delivery_setting', { key: key, value: v }).then(function(r){
+    if(!r || r.status !== 'success'){ fx.className = 'effect bad'; fx.innerHTML = esc((r && r.message) || 'Not accepted.'); return; }
+    var extra = '';
+    if(r.before && r.after) extra += '<div class="tally" style="flex-direction:column;gap:2px">' + tallyHtml('Now:', r.before) + tallyHtml('With this number:', r.after) + '</div>';
+    if(r.moved && r.moved.length) extra += '<div class="moves">' + r.moved.map(function(m){ return esc(m.no) + ': ' + esc(m.from) + ' &rarr; ' + esc(m.to); }).join('<br>') + '</div>';
+    fx.innerHTML = '<b>' + esc(s.label) + ': ' + esc(s.value === '' ? 'none' : s.value) + ' &rarr; ' + esc(v === '' ? 'none' : v) + '</b><br>' + esc(r.message) + extra +
+      '<div class="btns"><input id="why-' + key + '" placeholder="Why? (optional)" /><button class="btn primary" data-key="' + key + '" onclick="save(this.dataset.key)">Save the change</button><button class="btn" data-key="' + key + '" onclick="cancel(this.dataset.key)">Cancel</button></div>';
+  }).catch(function(){ fx.className = 'effect bad'; fx.innerHTML = 'Could not check the effect.'; });
+}
+function cancel(key){ delete DRAFT[key]; renderGroups(); }
+function save(key){
+  var s = find(key); var v = $('in-' + key).value.trim(); var why = ($('why-' + key) || {}).value || '';
+  var p = s.row_id
+    ? ZOHO.CREATOR.DATA.updateRecordById({ report_name: 'All_Policy_Settings', id: s.row_id, payload: { data: { Value: v, Change_Reason: why } } })
+    : ZOHO.CREATOR.DATA.addRecords({ form_name: 'Policy_Settings', payload: { data: { Policy_Key: key, Value: v, Change_Reason: why } } });
+  p.then(function(r){
+    if(!okCode(r)){ toast(errText(r, 'Not saved')); return; }
+    toast('Saved.'); delete DRAFT[key]; loadAll();
+  }).catch(function(e){ toast(errText(e, 'Not saved')); });
+}
+function resetToDefault(key){
+  var s = find(key); if(!s || !s.row_id) return;
+  ZOHO.CREATOR.DATA.deleteRecordById({ report_name: 'All_Policy_Settings', id: s.row_id }).then(function(){ toast('Back to the default'); delete DRAFT[key]; loadAll(); }).catch(function(e){ toast(errText(e, 'Not done')); });
+}
+
+/* ---------- the roster (TM-R4) ---------- */
+var ROSTER_ROWS = [];
+function loadRoster(){
+  return api('get_delivery_roster', {}).then(function(info){
+    if(!info || !info.editable){
+      $('roster').innerHTML = '<div class="hint2">The rotation uses the built-in list:<br>' + ROLES.map(function(r){ return '<b>' + r[1] + ':</b> ' + esc(((info && info[r[0] + 's']) || []).join(', ')); }).join('<br>') +
+        '<br><br><button class="btn primary" onclick="seedRoster()">Make the roster editable</button> (copies this list into rows you can add to, reorder and switch off)</div>';
+      return;
+    }
+    return ZOHO.CREATOR.DATA.getRecords({ report_name: 'Delivery_Roster', field_config: 'all', page: 1, pageSize: 200 }).then(function(r){
+      ROSTER_ROWS = (okCode(r) && r.data) ? r.data : [];
+      renderRoster();
+    });
+  }).catch(function(){ $('roster').innerHTML = '<div class="hint2">The roster could not be loaded.</div>'; });
+}
+function isOn(r){ return r.Active === true || r.Active === 'true'; }
+function renderRoster(){
+  $('roster').innerHTML = '<div class="roles">' + ROLES.map(function(role){
+    var rows = ROSTER_ROWS.filter(function(r){ return r.Role === role[0]; }).sort(function(a, b){ return (Number(a.Sort_Order) || 0) - (Number(b.Sort_Order) || 0); });
+    return '<div class="role"><h3>' + role[1] + '</h3>' + rows.map(function(r){
+      return '<div class="rr' + (isOn(r) ? '' : ' off') + '"><input type="text" id="rn-' + r.ID + '" value="' + esc(r.Name) + '" maxlength="60" />' +
+        '<input type="number" id="ro-' + r.ID + '" value="' + esc(r.Sort_Order || '') + '" title="Order" />' +
+        '<div class="acts"><label><input type="checkbox" id="ra-' + r.ID + '"' + (isOn(r) ? ' checked' : '') + ' /> on</label>' +
+        '<button class="btn" data-id="' + r.ID + '" onclick="saveRoster(this.dataset.id)">Save</button>' +
+        '<button class="btn" data-id="' + r.ID + '" onclick="deleteRoster(this.dataset.id)">Delete</button></div></div>';
+    }).join('') +
+      '<div class="rr"><input type="text" id="new-' + role[0] + '" placeholder="Add a ' + role[0] + '" maxlength="60" /><span></span><div class="acts"><button class="btn primary" data-role="' + role[0] + '" onclick="addRoster(this.dataset.role)">Add</button></div></div></div>';
+  }).join('') + '</div>';
+}
+function seedRoster(){
+  api('seed_delivery_roster', {}).then(function(r){ toast((r && r.message) || 'Done'); loadAll(); }).catch(function(e){ toast(errText(e, 'Not done')); });
+}
+function addRoster(role){
+  var name = $('new-' + role).value.trim(); if(!name){ toast('Enter a name.'); return; }
+  var max = 0; ROSTER_ROWS.forEach(function(r){ if(r.Role === role) max = Math.max(max, Number(r.Sort_Order) || 0); });
+  ZOHO.CREATOR.DATA.addRecords({ form_name: 'Delivery_Roster', payload: { data: { Role: role, Name: name, Active: true, Sort_Order: max + 1 } } }).then(function(r){
+    if(!okCode(r)){ toast(errText(r, 'Not added')); return; } toast('Added.'); loadAll();
+  }).catch(function(e){ toast(errText(e, 'Not added')); });
+}
+function saveRoster(id){
+  var data = { Name: $('rn-' + id).value.trim(), Sort_Order: $('ro-' + id).value, Active: $('ra-' + id).checked };
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: 'Delivery_Roster', id: String(id), payload: { data: data } }).then(function(r){
+    if(!okCode(r)){ toast(errText(r, 'Not saved')); return; } toast('Saved.'); loadAll();
+  }).catch(function(e){ toast(errText(e, 'Not saved')); });
+}
+function deleteRoster(id){
+  ZOHO.CREATOR.DATA.deleteRecordById({ report_name: 'Delivery_Roster', id: String(id) }).then(function(r){
+    if(!okCode(r)){ toast(errText(r, 'Not deleted')); return; } toast('Deleted.'); loadAll();
+  }).catch(function(e){ toast(errText(e, 'Not deleted')); });
+}
+function rotateNow(){
+  var b = $('rotateNow'); b.disabled = true;
+  api('generate_team_rotation', {}).then(function(r){ b.disabled = false; toast(r && r.status === 'success' ? ('Rotation: ' + r.added + ' team row(s) added, ' + r.planned + ' planned.') : ((r && r.message) || 'Not done')); })
+    .catch(function(){ b.disabled = false; toast('Could not run the rotation'); });
+}
+
+/* ---------- history ---------- */
+function labelOf(key){
+  if(key.indexOf('roster:') === 0) return 'Roster (' + key.slice(7) + ')';
+  return (find(key) || {}).label || key;
+}
+function loadHistory(){
+  ZOHO.CREATOR.DATA.getRecords({ report_name: 'Delivery_Settings_History', field_config: 'all', page: 1, pageSize: 100 }).then(function(r){
+    var rows = okCode(r) && r.data ? r.data : [];
+    rows.sort(function(a, b){ return a.ID < b.ID ? 1 : (a.ID > b.ID ? -1 : 0); });
+    rows.sort(function(a, b){ return String(a.Changed_At) < String(b.Changed_At) ? 1 : (String(a.Changed_At) > String(b.Changed_At) ? -1 : 0); });
+    $('history').innerHTML = rows.length ? '<div class="tbl-wrap"><table class="q"><thead><tr><th>When</th><th>Setting</th><th>Old</th><th>New</th><th>By</th><th>Why / effect</th></tr></thead><tbody>' + rows.slice(0, 40).map(function(h){
+      return '<tr><td>' + esc(h.Changed_At) + '</td><td>' + esc(labelOf(h.Setting_Key)) + '</td><td>' + esc(h.Old_Value) + '</td><td><b>' + esc(h.New_Value) + '</b></td><td>' + esc(h.Changed_By) + '</td><td>' + esc([h.Reason, h.Effect].filter(Boolean).join(' · ')) + '</td></tr>';
+    }).join('') + '</tbody></table></div>' : '<div class="hint2">No change yet: everything is at its default.</div>';
+  }).catch(function(){ $('history').innerHTML = '<div class="hint2">History not available.</div>'; });
+}
+function loadAll(){ loadCatalogue().then(function(){ loadHistory(); }); loadRoster(); }
+window.addEventListener('load', function(){
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){ $('groups').innerHTML = '<div class="hint2">Widget SDK not available — see console.</div>'; return; }
+  loadAll();
+});
+</script>
+</body>
+</html>

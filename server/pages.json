@@ -337,6 +337,13 @@
         "entry": "index.html"
       },
       {
+        "page": "Delivery_Settings",
+        "label": "Delivery Settings",
+        "widget": "Delivery Management/Delivery Settings",
+        "entry": "index.html",
+        "adminOnly": true
+      },
+      {
         "page": "Policy_Setting",
         "label": "Policy Settings",
         "widget": "Delivery Management/Policy Settings",

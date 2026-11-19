@@ -36,13 +36,9 @@ branch `yhelie-update` (check the latest commit message for the exact hash).
   (touched earlier in this round, check the Change Log for which part). No other Delivery widget was changed —
   most of this round's work is server-side only, with no UI yet (see "Not done" below).
 
-## Not done yet — the 2 items left on the owner's own priority list
-These were the last 2 of a 4-item list the owner picked from directly (the other 2, Site Checklist/SR gates and
-the Delivery Exception Queue widget + backlog calculator, are done — see the Change Log):
-1. **Engines 08 (Control Panel) Delivery settings group** — no Delivery capacity settings group exists in the
-   Control Panel at all (the existing Procurement Settings tab is Procurement-only). Related: TM-R4 (team roster
-   is still hardcoded, not an editable setting), TM-R5's `day_buffer_pct`/`max_jobs`.
-2. **Books write-back wiring** — `create_shipment_order`/`create_sales_return_books` exist in `inventory-apis.mjs`
+## Not done yet — 1 item left on the owner's own priority list (updated 2026-11-19)
+These were the last 2 of a 4-item list the owner picked from directly. Site Checklist/SR gates and the Delivery Exception Queue widget + backlog calculator were done on 2026-11-18. **Engines 08 (Control Panel) Delivery settings group is done 2026-11-19** (Delivery Settings page, validation, history, preview, editable roster; see the Change Log and checklist item 50). Still not done there: TM-R5's `day_buffer_pct`/`max_jobs` (no spec text in the repo, no code reads them).
+1. **Books write-back wiring** — `create_shipment_order`/`create_sales_return_books` exist in `inventory-apis.mjs`
    but nothing auto-triggers them when a job is marked done (no "job done" event wired to Books yet), and neither
    has been run against live Books (OAuth not configured — see `Checklist - Delivery Missing Functions.md` item 2).
 
@@ -62,26 +58,16 @@ the Delivery Exception Queue widget + backlog calculator, are done — see the C
   `server/modules/delivery-management/auto-handoff.mjs`. The literal QC-pass trigger itself is not built.
 
 ## Not done, no decision needed yet (smaller gaps, found along the way)
-- **Delivery Analytics' 9 Key Numbers**: #3 (damage rate by category) needs per-item quantity data that does not
-  exist (same root cause as the Field App gap). #7 (Ship → Service Request gap) needs a Fulfillment-owned
-  timestamp (`package.order_aggregation` in the shared Stage_Events log) that is not a field Delivery's own
-  report carries — a real cross-module join, not attempted.
-- **No widget shows**: the 12-line Site Checklist, `Site_Hours_Warning`, `Suggested_Crew_Size`, the Job status
-  chain's own timeline, or the Delivery backlog calculator's weekly trend. All server-side/field-only so far.
-- `force_close`'s own "Confirm"/"Reopen" Approval_Queue apply logic (not part of the Exception Queue widget's
-  merge, so nothing decides one yet — deciding one today just stamps no Result rather than the wrong one it used
-  to get).
-- "Book third party" (in the Exception Queue widget's decide buttons) only points the dispatcher at
-  `record_third_party_booking` — it does not open that form inline.
-- RT-R2 (sales return field-app flow), RT-R4 (Books write should be draft, not posted — a live-Books behavior
-  change, owner's call), RT-R5 (replacement/package link into Procurement's `Replacement_Request`).
-- Pre-delivery gate G1 (needs Fulfillment's package/line data), G3 (live Books payment re-check — needs OAuth),
-  G5 (DR number — no field exists anywhere in this app).
+- **Delivery Analytics (updated 2026-11-19):** all the code is done: #3 damage rate by category, #7 Ship → Service Request gap, the backlog weekly trend and an editable "days available" are built (see the Change Log, 2026-11-19). Only data/deploy waits remain: on-time % has only 3 measurable jobs on the Production backup (needs 20 real jobs with `Job_Done_At`), and #7 has nothing to measure until the Fulfillment deploy creates `Stage_Events` in Production. The Zoho-era status "Delivered" counts as Completed in Analytics only (owner's call).
+- **Done 2026-11-19:** the 12-line Site Checklist, `Site_Hours_Warning`, `Suggested_Crew_Size` and the Job status timeline now show in the Service Request drawer (with a 12-line editor). Nothing else is missing a widget from this list; many other server-side pieces (earliest slot, day plan, load sheet, `dispatch_day`, `suggest_schedule`, truck maintenance) still have no widget calling them.
+- **Done 2026-11-19:** `force_close` Confirm / Reopen is applied and shows in the Exception Queue.
+- **Done 2026-11-19:** "Book third party" opens the booking form in the Exception Queue widget.
+- RT-R2 (sales return field-app flow), RT-R5 (link into Procurement's `Replacement_Request`) and TM-R5 (`day_buffer_pct`/`max_jobs`): not built; no spec text in the repo and the field app was reverted. RT-R4 (Books write should be draft): left as it is (the return is created and received at once, like the old Zoho script); owner said follow the current rule.
+- **Done 2026-11-19 (with limits):** pre-delivery gates G1 (job lines vs Fulfillment package), G3 (Books payment; assumed response shape, never run against live Books) and G5 (DR number from the Dispatch checklist). Known limit: the server's `dispatch_day` flow has no step that creates the DR number, so G5 fails there unless the Dispatch checklist exists.
 - SR-R1 (auto-SR) carries `Priority_Level`/`Scheduled_by` blank (nobody to ask when it fires automatically — both
   were already optional) and skips the old widget's external SKU/contact lookup fallback (only mattered for
   pre-chain legacy records).
-- On-time % (Delivery Analytics #1 and the Delivery 09 acceptance checklist item) is computed and arithmetic-
-  verified against synthetic data, but never checked against 20 real jobs — no production data available for that.
+- On-time %: see the Delivery Analytics line above. On the 2026-11-17 Production backup only 3 of 10 Completed jobs can be measured, so the 20-job check is still waiting for data.
 
 ## Things worth knowing
 - `procurement/decisions.mjs`'s generic `apply()` had a real, already-live bug: it assumed every `Approval_Queue`

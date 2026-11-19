@@ -144,7 +144,7 @@ export async function quoteAndHold(store, { jobType, estMinutes, fromDate, quote
     Installer: result.installer, Hold_Date: result.date, Hours: hours,
     Expires_At: zohoNow(new Date(now.getTime() + holdMinutes * 60000)), Quoted_By: quotedBy, Service_Request_No: srNo, Released: false,
   });
-  return { ...result, holdId: String(holdId) };
+  return { ...result, holdId: String(holdId), holdMinutes };
 }
 
 // Converting a hold into a real appointment, or giving up on it, both just mean it stops counting (SR-R... the

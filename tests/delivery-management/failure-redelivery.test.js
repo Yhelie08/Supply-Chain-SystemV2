@@ -137,6 +137,7 @@ test('forceCloseJob (FR-R5): sets the outcome, flags Force_Closed, and prepares 
   assert.equal(item.Kind, 'force_close');
   assert.deepEqual(JSON.parse(item.Options), ['Confirm', 'Reopen']);
   assert.equal(item.Status, 'pending');
+  assert.equal(JSON.parse(item.Payload).previousStatus, 'Scheduled', 'what Reopen puts the job back to');
 });
 
 test('forceCloseJob: refuses a bad outcome or a blank reason', async () => {
@@ -159,8 +160,40 @@ test('getDeliveryExceptionQueue: merges open exceptions, pending schedule_shortf
 
   const items = await getDeliveryExceptionQueue(raw);
   assert.deepEqual(items.map((i) => i.kind), ['exception', 'schedule_shortfall', 'awaiting_redelivery']);
+  await raw.addRecord(AQ, { Kind: 'force_close', Record_Id: String(atRisk), Status: 'pending', Summary: 'SO-RISK was force-closed as Failed: x', Options: JSON.stringify(['Confirm', 'Reopen']) });
+  assert.ok((await getDeliveryExceptionQueue(raw)).some((i) => i.kind === 'force_close' && i.options.join() === 'Confirm,Reopen'), 'a pending force_close review shows in the queue');
   assert.deepEqual(items.map((i) => i.saId), [broken, lateJob, atRisk]);
   assert.deepEqual(items.map((i) => i.so), ['SO-BROKEN', 'SO-LATE', 'SO-RISK']);
   assert.deepEqual(items[1].options, ['Add a team-day (overtime, extra installer)', 'Tell the customer (proposed new date)']);
   assert.equal(items[0].options, undefined, 'only approval-kind rows carry options');
+});
+
+// ---------- permits still Pending, close to the job's date (review: "permits pending malapit sa target") ----------
+const PERMIT_PENDING = [{ Line: 3, Detail: { Required: 'Yes', ObtainedStatus: 'Pending' } }];
+const PERMIT_OBTAINED = [{ Line: 3, Detail: { Required: 'Yes', ObtainedStatus: 'Obtained' } }];
+
+test('getDeliveryExceptionQueue: a Pending permit shows when the job is within permit_warn_days (default 2) or past its date; not before, not once obtained, not once done', async () => {
+  const now = new Date(2027, 5, 10, 9, 0, 0); // 2027-06-10
+  const mk = (so, date, extra = {}) => raw.addRecord(SA, { Sales_Order: so, Type_of_Delivery: 'With Installation', Appointment_Status: 'Scheduled', Confirmed_Schedule_Date: date, Site_Checklist: PERMIT_PENDING, ...extra });
+  const soon = await mk('SO-SOON', '2027-06-12');       // 2 days: inside
+  await mk('SO-TODAY', '2027-06-10');                    // today: inside
+  await mk('SO-PAST', '2027-06-08');                     // 2 days past: inside, says so
+  await mk('SO-FAR', '2027-06-20');                      // 10 days: not yet
+  await mk('SO-OBTAINED', '2027-06-11', { Site_Checklist: PERMIT_OBTAINED });
+  await mk('SO-DONE', '2027-06-11', { Appointment_Status: 'Completed' });
+  await mk('SO-NODATE', '', {});
+  const items = (await getDeliveryExceptionQueue(raw, { now })).filter((i) => i.kind === 'permit_pending');
+  assert.deepEqual(items.map((i) => i.so).sort(), ['SO-PAST', 'SO-SOON', 'SO-TODAY']);
+  const byNo = Object.fromEntries(items.map((i) => [i.so, i.summary]));
+  assert.match(byNo['SO-SOON'], /in 2 day\(s\) \(2027-06-12\)/);
+  assert.match(byNo['SO-TODAY'], /the job is today/);
+  assert.match(byNo['SO-PAST'], /2 day\(s\) past its date/);
+  assert.equal(items.find((i) => i.so === 'SO-SOON').saId, soon);
+});
+
+test('permit_warn_days is read from the settings: with 14 the far job shows too', async () => {
+  const now = new Date(2027, 5, 10, 9, 0, 0);
+  await raw.addRecord('Policy_Settings', { Policy_Key: 'permit_warn_days', Value: '14' });
+  await raw.addRecord(SA, { Sales_Order: 'SO-FAR', Type_of_Delivery: 'With Installation', Appointment_Status: 'Scheduled', Confirmed_Schedule_Date: '2027-06-20', Site_Checklist: PERMIT_PENDING });
+  assert.equal((await getDeliveryExceptionQueue(raw, { now })).filter((i) => i.kind === 'permit_pending').length, 1);
 });

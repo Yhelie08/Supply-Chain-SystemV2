@@ -14,7 +14,9 @@ import { blank, ymd } from '../../workflows/deluge.mjs';
 import { SA, policyReader, day } from './scheduling.mjs';
 
 const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
-const OPEN_STATUS = (status) => !['Completed', 'Failed'].includes(text(status));
+// "Delivered" is a Zoho-era status still on one Production job; for Analytics it counts as done, like Completed
+// (owner's call, 2026-11-19). Only these Analytics numbers change; scheduling treats statuses as before.
+const OPEN_STATUS = (status) => !['Completed', 'Delivered', 'Failed'].includes(text(status));
 const SITE_TYPES = new Set(['With Installation', 'Delivery Only']);
 const DUE_CATEGORIES = new Set(['late', 'at_risk']);
 
@@ -44,9 +46,48 @@ async function openJobsFor(store) {
   return store.find(SA, (r) => OPEN_STATUS(r.Appointment_Status) && SITE_TYPES.has(text(r.Type_of_Delivery)) && text(r.Fleet_Decision) !== '3rd Party');
 }
 
-// Read-only. `now`/`daysAvailable` let a test fix "today" and the crew-sizing window without faking the clock.
-export async function getDeliveryBacklog(store, { now = new Date(), daysAvailable = 3 } = {}) {
+// Weekly trend (the spec's "weekly trend" line, Delivery 09). Nothing is stored: the backlog at the end of an
+// earlier day is rebuilt from the jobs themselves -- a job was open then if it was created on or before that day
+// (Added_Time) and not finished by the end of it (finish day = Job_Done_At, or Actual_Delivery_Date carried over
+// from Zoho; NOT Modified_Time, which on migrated jobs is the migration time). Today's point is simply every job
+// that is open right now, so it always equals the live calculator. teams_per_day is that day's
+// Daily_Team_Availability. Honest limits, all reported back, never guessed: third-party is judged by the job's
+// CURRENT Fleet_Decision; a day with no availability rows has no teams number so its backlog is null; jobs
+// migrated from Zoho have no Added_Time (`noCreatedDate`) and finished jobs may have no finish date
+// (`noDoneDate`), so EARLIER weeks undercount by about that many jobs.
+const parseDay = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(text(v)); return m ? `${m[1]}-${m[2]}-${m[3]}` : ''; };
+const finishDay = (r) => parseDay(r.Job_Done_At) || parseDay(r.Actual_Delivery_Date);
+
+export async function getBacklogTrend(store, { now = new Date(), weeks = 8 } = {}) {
   const policy = await policyReader(store);
+  const sitesPerTeamPerDay = Number(policy('delivery_sites_per_team_per_day')) || 3;
+  const jobs = await store.find(SA, (r) => SITE_TYPES.has(text(r.Type_of_Delivery)) && text(r.Fleet_Decision) !== '3rd Party');
+  const noCreatedDate = jobs.filter((r) => !parseDay(r.Added_Time)).length;
+  const noDoneDate = jobs.filter((r) => !OPEN_STATUS(r.Appointment_Status) && !finishDay(r)).length;
+  const points = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i * 7);
+    const date = ymd(d);
+    const open = i === 0
+      ? jobs.filter((r) => OPEN_STATUS(r.Appointment_Status)).length
+      : jobs.filter((r) => {
+        const created = parseDay(r.Added_Time);
+        if (!created || created > date) return false;
+        if (OPEN_STATUS(r.Appointment_Status)) return true;
+        const finished = finishDay(r);
+        return !!finished && finished > date; // finished with no date: cannot be placed, counted in noDoneDate
+      }).length;
+    const rows = await store.find('Daily_Team_Availability', (r) => day(r.Availability_Date) === date);
+    const teams = rows.length ? await teamsPerDayFor(store, date, policy) : null;
+    const bd = teams == null ? null : backlogDays(open, teams, sitesPerTeamPerDay);
+    points.push({ date, openJobs: open, teamsPerDay: teams, backlogDays: bd === Infinity ? null : bd }); // open jobs but no team = no number, not "infinite"
+  }
+  return { weeks, sitesPerTeamPerDay, points, noCreatedDate, noDoneDate };
+}
+
+// Read-only. `now`/`daysAvailable` let a test fix "today" and the crew-sizing window without faking the clock.
+export async function getDeliveryBacklog(store, { now = new Date(), daysAvailable = 3, overrides = {} } = {}) {
+  const policy = await policyReader(store, overrides); // overrides: previews only (Control Panel)
   const sitesPerTeamPerDay = Number(policy('delivery_sites_per_team_per_day')) || 3;
   const jobs = await openJobsFor(store);
   const dropoffs = jobs.filter((r) => text(r.Type_of_Delivery) === 'Delivery Only');

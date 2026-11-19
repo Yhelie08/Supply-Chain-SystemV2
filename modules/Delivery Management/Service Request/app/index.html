@@ -898,6 +898,7 @@ function askSiteConfirm(o){
   showModal(
     '<header><h3>Mark site confirmed</h3><p>' + esc(o.srNo || o.sr || o.so || '—') + ' · ' + esc(o.customer || '—') + '</p></header>' +
     '<form novalidate>' +
+      (isTrue(sa.Checklist_Complete) ? '' : '<div class="notice"><span><b>Hindi pa kumpleto ang site checklist</b> — hindi ito tatanggapin ng server hanggang masagot ang lines 1–11' + (txt(sa.Checklist_Missing_Lines) ? ' (' + esc(txt(sa.Checklist_Missing_Lines)) + ')' : '') + '. <button type="button" class="btn sm" data-act="checklist" data-id="' + esc(o.id) + '">Fill in the checklist</button></span></div>') +
       '<div class="notice"><span>Pagkatapos nito, hahanap na ang sistema ng slot — mag-aanchor ito sa <b>initial schedule</b> (' +
         esc(o.deliveryDate ? fmtDate(o.deliveryDate) : 'wala pang petsa') + ').</span></div>' +
       '<div class="form-sec">' +
@@ -918,6 +919,163 @@ function askSiteConfirm(o){
       return false;
     }
   );
+}
+
+function isTrue(v){ return v === true || v === 'true'; }
+/* ---------------- Site requirements checklist, warnings, crew size and the job timeline ----------------
+   Added 2026-11-19 (spec v1.4, Delivery 01 SR-R1b..R6; Delivery 03 job statuses). These were server-only until now.
+   The 12 lines live on the appointment (Service_Appointment_Form.Site_Checklist, a grid of { Line, Status, Notes, Photo,
+   Detail }). The SERVER works out Checklist_Complete, Checklist_Missing_Lines, Site_Hours_Warning and Suggested_Crew_Size
+   on every save (site-checklist.mjs); this only collects the answers and shows what the server worked out. "Mark site
+   confirmed" is refused by the server until lines 1-11 are answered, so the confirm modal now says what is missing. */
+var CHECKLIST_LINES = [
+  { id: 1, label: 'Electrical wiring ready at the mounting points', kind: 'yn' },
+  { id: 2, label: 'Support to mount fixtures on', kind: 'yn' },
+  { id: 3, label: 'Work permit / gate pass', kind: 'permit' },
+  { id: 4, label: 'Noisy-work hours', kind: 'noisy' },
+  { id: 5, label: 'Mirror involved at site', kind: 'yn' },
+  { id: 6, label: 'Ceiling height', kind: 'meters' },
+  { id: 7, label: 'Ceiling / wall material where mounted', kind: 'text' },
+  { id: 8, label: 'Someone on site to assist', kind: 'yn' },
+  { id: 9, label: 'Plan / blueprint showing positions', kind: 'yn' },
+  { id: 10, label: 'Parking', kind: 'text' },
+  { id: 11, label: 'Site working hours', kind: 'hours' },
+  { id: 12, label: 'Boxes to deliver and lift available', kind: 'boxes' }
+];
+var YES_NO = ['Yes', 'No', 'N/A'];
+var PERMIT_STATES = ['Obtained', 'Pending'];
+
+function checklistRows(sa){
+  var g = sa && sa.Site_Checklist;
+  if(typeof g === 'string'){ try { g = JSON.parse(g); } catch(_){ g = []; } }
+  return Array.isArray(g) ? g : [];
+}
+function lineRow(rows, id){ for(var i = 0; i < rows.length; i++) if(Number(rows[i].Line) === id) return rows[i]; return null; }
+function lineDetail(row){
+  var d = row && row.Detail;
+  if(typeof d === 'string'){ try { d = JSON.parse(d); } catch(_){ d = null; } }
+  return (d && typeof d === 'object') ? d : {};
+}
+function lineAnswer(L, row){
+  if(!row) return '';
+  var d = lineDetail(row);
+  if(L.kind === 'permit') return d.Required ? (d.Required === 'Yes' ? 'Required (' + (d.ObtainedStatus || 'status not set') + ')' : 'Not required') : '';
+  if(L.kind === 'noisy') return d.Restricted ? (d.Restricted === 'Yes' ? 'Restricted ' + (d.From || '?') + ' to ' + (d.To || '?') : 'No restriction') : '';
+  if(L.kind === 'meters') return d.Meters ? d.Meters + ' m' : '';
+  if(L.kind === 'hours') return (d.Start && d.End) ? d.Start + ' to ' + d.End : '';
+  if(L.kind === 'boxes') return d.BoxCount ? d.BoxCount + ' box(es), lift: ' + (d.Lift || '—') : '';
+  return txt(row.Status);
+}
+/* "8:00 AM" <-> "08:00" (the <input type=time> value). The server reads "H:MM AM/PM" (scheduling.mjs clock()). */
+function t12of(v24){
+  var m = /^(\d{1,2}):(\d{2})/.exec(String(v24 || '')); if(!m) return '';
+  var h = Number(m[1]); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  return h + ':' + m[2] + ' ' + ap;
+}
+function t24of(v12){
+  var m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(String(v12 || '').trim()); if(!m) return '';
+  var h = Number(m[1]) % 12; if(m[3].toUpperCase() === 'PM') h += 12;
+  return (h < 10 ? '0' : '') + h + ':' + m[2];
+}
+
+/* The read-only summary in the drawer: status, the two server-made hints, the permit/wiring warnings, the 12 answers. */
+function checklistSection(o, sa){
+  var rows = checklistRows(sa);
+  var complete = isTrue(sa.Checklist_Complete);
+  var missing = txt(sa.Checklist_Missing_Lines);
+  var pills = '<span class="pill ' + (complete ? 'p-ok' : 'p-warn') + '">' + (complete ? 'Lines 1–11 complete' : (rows.length ? 'Incomplete' : 'Not started')) + '</span>';
+  if(txt(sa.Suggested_Crew_Size)) pills += ' <span class="pill p-gray" title="From lines 8 and 12">Suggested crew: ' + esc(txt(sa.Suggested_Crew_Size)) + '</span>';
+  var warns = '';
+  if(txt(sa.Site_Hours_Warning)) warns += '<div class="notice"><span><b>Site hours:</b> ' + esc(txt(sa.Site_Hours_Warning)) + '</span></div>';
+  var permit = lineDetail(lineRow(rows, 3));
+  if(permit.Required === 'Yes' && permit.ObtainedStatus === 'Pending') warns += '<div class="notice"><span><b>Work permit still Pending.</b> Dispatch is blocked until it is obtained.</span></div>';
+  var wiring = lineRow(rows, 1);
+  var installTypes = ['With Installation', 'Full-Day Install', 'Multi-Day Install'];
+  if(wiring && txt(wiring.Status) === 'No' && installTypes.indexOf(txt(sa.Type_of_Delivery)) >= 0) warns += '<div class="notice"><span><b>Wiring is not ready.</b> This installation cannot be confirmed yet; a drop-off of the goods can still be scheduled.</span></div>';
+  var table = '<div class="tbl-wrap"><table class="q"><thead><tr><th>#</th><th>Line</th><th>Answer</th><th>Notes</th></tr></thead><tbody>' +
+    CHECKLIST_LINES.map(function(L){
+      var row = lineRow(rows, L.id); var ans = lineAnswer(L, row);
+      return '<tr><td>' + L.id + '</td><td>' + esc(L.label) + '</td><td>' + (ans ? esc(ans) : '<span class="muted">' + (L.id <= 11 ? 'Not answered' : '—') + '</span>') + '</td><td>' + esc(row ? txt(row.Notes) : '') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+  return '<div class="dr-sec"><h4>Site requirements checklist</h4><p>' + pills + '</p>' + warns +
+    (missing && !complete ? '<p class="muted">Still to answer: ' + esc(missing) + '.</p>' : '') + table +
+    '<div class="acts" style="margin-top:12px"><button class="btn sm primary" data-act="checklist" data-id="' + esc(o.id) + '">' + (rows.length ? 'Edit the checklist' : 'Fill in the checklist') + '</button></div></div>';
+}
+
+/* The 12-line editor. Lines with no answer are left out of the grid, so the server lists them as missing. */
+function openChecklist(o){
+  var sa = saOf(o);
+  if(!sa){ toast('No appointment yet — the Service Request has no Service Appointment ID.', 'bad'); return; }
+  var rows = checklistRows(sa);
+  var body = CHECKLIST_LINES.map(function(L){
+    var row = lineRow(rows, L.id); var d = lineDetail(row); var n = 'l' + L.id;
+    var inner = '';
+    if(L.kind === 'yn') inner = fSelect('Answer', n, YES_NO, row ? txt(row.Status) : '', { blank: 'Not answered' });
+    else if(L.kind === 'text') inner = fInput('Answer', n, row ? txt(row.Status) : '', {});
+    else if(L.kind === 'meters') inner = fInput('Ceiling height (meters)', n + '_m', d.Meters || '', { type: 'number' });
+    else if(L.kind === 'permit') inner = '<div class="row2">' + fSelect('Permit required?', n + '_req', ['Yes', 'No'], d.Required || '', { blank: 'Not answered' }) +
+      fSelect('If required: status', n + '_obt', PERMIT_STATES, d.ObtainedStatus || '', { blank: '—' }) + '</div>';
+    else if(L.kind === 'noisy') inner = '<div class="row3">' + fSelect('Restricted?', n + '_res', ['Yes', 'No'], d.Restricted || '', { blank: 'Not answered' }) +
+      fInput('From', n + '_from', t24of(d.From), { type: 'time' }) + fInput('To', n + '_to', t24of(d.To), { type: 'time' }) + '</div>';
+    else if(L.kind === 'hours') inner = '<div class="row2">' + fInput('Opens', n + '_start', t24of(d.Start), { type: 'time' }) + fInput('Closes', n + '_end', t24of(d.End), { type: 'time' }) + '</div>';
+    else if(L.kind === 'boxes') inner = '<div class="row2">' + fInput('Boxes to deliver', n + '_box', d.BoxCount || '', { type: 'number' }) +
+      fSelect('Lift available?', n + '_lift', ['Yes', 'No'], d.Lift || '', { blank: 'Not answered' }) + '</div>';
+    return '<div class="form-sec"><h4 style="margin:0 0 6px;font-size:var(--fs-md)">' + L.id + '. ' + esc(L.label) + (L.id === 12 ? ' <span class="muted">(not required to confirm)</span>' : '') + '</h4>' +
+      inner + fInput('Notes', n + '_notes', row ? txt(row.Notes) : '', {}) + '</div>';
+  }).join('');
+  showModal(
+    '<header><h3>Site requirements checklist</h3><p>' + esc(o.srNo || o.sr || o.so || '—') + ' · ' + esc(o.customer || '—') + '</p></header>' +
+    '<form novalidate>' +
+      '<div class="notice"><span>Lines 1–11 must be answered before the site can be confirmed. Line 12 only sets the suggested crew size.</span></div>' +
+      body +
+      '<div class="m-foot"><button type="button" class="btn" data-cancel>Cancel</button><button class="btn primary">Save checklist</button></div>' +
+    '</form>',
+    function(d){
+      var out = [];
+      for(var i = 0; i < CHECKLIST_LINES.length; i++){
+        var L = CHECKLIST_LINES[i]; var n = 'l' + L.id; var prev = lineRow(rows, L.id);
+        var row = { Line: L.id, Status: '', Notes: String(d[n + '_notes'] || '').trim(), Detail: {} };
+        if(prev && prev.Photo) row.Photo = prev.Photo;
+        if(L.kind === 'yn' || L.kind === 'text') row.Status = String(d[n] || '').trim();
+        else if(L.kind === 'meters') row.Detail = { Meters: String(d[n + '_m'] || '').trim() };
+        else if(L.kind === 'permit'){
+          row.Status = d[n + '_req'] || '';
+          row.Detail = { Required: d[n + '_req'] || '', ObtainedStatus: d[n + '_req'] === 'Yes' ? (d[n + '_obt'] || '') : '' };
+          if(d[n + '_req'] === 'Yes' && !d[n + '_obt']){ toast('Line 3: say whether the permit is Obtained or Pending.', 'bad'); return false; }
+        } else if(L.kind === 'noisy'){
+          row.Status = d[n + '_res'] || '';
+          row.Detail = { Restricted: d[n + '_res'] || '', From: t12of(d[n + '_from']), To: t12of(d[n + '_to']) };
+          if(d[n + '_res'] === 'Yes' && (!row.Detail.From || !row.Detail.To)){ toast('Line 4: enter the From and To times of the restriction.', 'bad'); return false; }
+        } else if(L.kind === 'hours'){
+          row.Detail = { Start: t12of(d[n + '_start']), End: t12of(d[n + '_end']) };
+          if((row.Detail.Start && !row.Detail.End) || (!row.Detail.Start && row.Detail.End)){ toast('Line 11: enter both the opening and closing time.', 'bad'); return false; }
+        } else if(L.kind === 'boxes') row.Detail = { BoxCount: String(d[n + '_box'] || '').trim(), Lift: d[n + '_lift'] || '' };
+        var det = row.Detail; var detAny = false; for(var k in det) if(det[k] !== '' && det[k] != null) detAny = true;
+        if(row.Status || detAny || row.Notes) out.push(row);
+      }
+      saveToAppointment(o.saId, { Site_Checklist: out }, 'Checklist saved');
+      return false;
+    }
+  );
+}
+
+/* The job's timeline (Job_Status chain + Stage_Events log, job-status.mjs): get_job_timeline. Best-effort. */
+function jobTimelineSection(sa){
+  var label = txt(sa.Job_Status) ? '<span class="pill p-vio">' + esc(txt(sa.Job_Status).replace(/_/g, ' ')) + '</span>' : '<span class="muted">not started</span>';
+  return '<div class="dr-sec"><h4>Job status</h4><p>' + label + '</p><div id="jobTimeline" class="muted">Loading the timeline…</div></div>';
+}
+function loadJobTimeline(saId){
+  var box = $('#jobTimeline'); if(!box) return;
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi !== 'function'){ box.textContent = ''; return; }
+  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: 'get_job_timeline', http_method: 'POST', content_type: 'application/json', payload: { saId: String(saId) }, public_key: '' })
+    .then(function(resp){
+      var out = (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp);
+      var el = $('#jobTimeline'); if(!el) return;
+      var ev = (out && out.events) || [];
+      el.innerHTML = ev.length ? '<table class="q"><tbody>' + ev.map(function(e){
+        return '<tr><td>' + esc(txt(e.Occurred_At)) + '</td><td>' + esc(txt(e.Event).replace(/^job\./, '').replace(/_/g, ' ')) + '</td></tr>';
+      }).join('') + '</tbody></table>' : 'No status change has been logged for this job yet.';
+    }).catch(function(e){ console.error('[ServiceRequest] get_job_timeline error', e); var el = $('#jobTimeline'); if(el) el.textContent = 'The timeline could not be loaded.'; });
 }
 
 /* 2. Approve — copy the suggestion into Confirmed, unchanged.
@@ -1141,12 +1299,56 @@ function payloadFrom(d){
   return p;
 }
 
+/* Earliest available date (Delivery 01, find_earliest_slot / quote_and_hold_slot; server: earliest-slot.mjs).
+   While the agent fills the new request, one button asks the server for the earliest team-day that fits this kind of
+   job, with the reason ("19 Nov: 17 Nov no team scheduled, 18 Nov full"), and HOLDS that capacity for a short time so
+   a second agent is not quoted the same last slot. "Use this date" fills Initial Schedule Date. Saving the request
+   releases the hold (the real appointment counts from then on); closing the form just lets the hold expire. */
+var EARLIEST_HOLD = '';
+function earliestBoxHtml(){
+  return '<div class="form-sec"><div class="field"><label>Earliest available date</label>' +
+    '<div id="earliestBox" class="muted">Tell the customer a date only after checking it here. It also holds the slot for a few minutes.</div>' +
+    '<div style="margin-top:8px"><button type="button" class="btn sm" id="btnEarliest" onclick="checkEarliest()">Check the earliest date</button></div></div></div>';
+}
+function checkEarliest(){
+  var box = $('#earliestBox'); var btn = $('#btnEarliest');
+  if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi !== 'function'){ box.textContent = 'Not available here.'; return; }
+  var typeEl = document.querySelector('#modal [name="deliveryType"]'); var srEl = document.querySelector('#modal [name="sr"]');
+  var type = typeEl ? typeEl.value.trim() : '';
+  btn.disabled = true; box.textContent = 'Checking the teams…';
+  if(EARLIEST_HOLD) ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: 'release_schedule_hold', http_method: 'POST', content_type: 'application/json', payload: { holdId: EARLIEST_HOLD }, public_key: '' }).catch(function(){}); /* a new check replaces the old hold */
+  EARLIEST_HOLD = '';
+  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: 'quote_and_hold_slot', http_method: 'POST', content_type: 'application/json', payload: { jobType: type || 'Delivery Only', srNo: srEl ? srEl.value.trim() : '' }, public_key: '' })
+    .then(function(resp){
+      btn.disabled = false;
+      var out = (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp);
+      if(!out || out.status !== 'success'){ box.textContent = (out && out.message) || 'Could not check.'; return; }
+      if(!out.found){ box.innerHTML = '<b>No team-day found.</b> ' + esc(out.reason || ''); return; }
+      EARLIEST_HOLD = out.holdId || '';
+      box.innerHTML = '<b>Earliest: ' + esc(fmtDate(out.date)) + '</b> · team ' + esc(out.installer || '—') + (out.driver ? ' / ' + esc(out.driver) : '') +
+        '<div class="muted">' + esc(out.reason || '') + '</div>' +
+        '<div class="muted">' + (type ? '' : 'No Delivery Type typed: checked as a drop-off. ') + 'Held for you for ' + esc(out.holdMinutes || 20) + ' minutes.</div>' +
+        '<div style="margin-top:6px"><button type="button" class="btn sm primary" onclick="useEarliest(\'' + esc(out.date) + '\')">Use this date</button></div>';
+    }).catch(function(e){ btn.disabled = false; console.error('[ServiceRequest] quote_and_hold_slot error', e); box.textContent = 'Could not check the earliest date.'; });
+}
+function useEarliest(iso){
+  var el = document.querySelector('#modal [name="deliveryDate"]');
+  if(el){ el.value = iso; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+}
+function releaseEarliestHold(){
+  if(!EARLIEST_HOLD) return;
+  var id = EARLIEST_HOLD; EARLIEST_HOLD = '';
+  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: 'release_schedule_hold', http_method: 'POST', content_type: 'application/json', payload: { holdId: id }, public_key: '' }).catch(function(e){ console.error('[ServiceRequest] release_schedule_hold error', e); });
+}
+
 function askNew(){
+  EARLIEST_HOLD = '';
   showModal(
     '<header><h3>New service request</h3><p>Bagong record sa Service Request Form</p></header>' +
-    requestForm(null) +
+    requestForm(null) + earliestBoxHtml() +
     '<div class="m-foot"><button type="button" class="btn" data-cancel>Cancel</button><button class="btn primary">Add request</button></div></form>',
     function(d){
+      releaseEarliestHold(); /* the request replaces the quote's hold */
       var data = payloadFrom(d);
       /* A hand-made request joins the chain too, so SR_Created_Make_Appointment
          builds it an appointment exactly like a handed-off one. */
@@ -1258,6 +1460,7 @@ function openRecord(o){
         '<div class="dr-sec"><h4>Auto-scheduling</h4>' + sched +
           (rowActions(o) ? '<div class="acts" style="margin-top:12px">' + rowActions(o) + '</div>' : '') +
         '</div>' +
+        (sa ? checklistSection(o, sa) + jobTimelineSection(sa) : '') +
         '<div class="dr-sec"><h4>Chain</h4><div class="kv-grid">' +
           kv('SR Status', o.srStatus) +
           kv('Order Aggregation ID', o.oaId) +
@@ -1288,6 +1491,7 @@ function openRecord(o){
         '</div></div>' +
       '</div>'
     );
+    if(sa) loadJobTimeline(sa.ID); /* the Job status timeline fills in after the drawer is open */
   };
 
   if(o.hydrated){
@@ -1356,6 +1560,7 @@ document.addEventListener('click', function(e){
     if(act === 'open') openRecord(o);
     else if(act === 'edit') askEdit(o);
     else if(act === 'siteconfirm') askSiteConfirm(o);
+    else if(act === 'checklist') openChecklist(o);
     else if(act === 'approve') askApprove(o);
     else if(act === 'override') askOverride(o);
     else if(act === 'engine') runAutoSchedule(o);

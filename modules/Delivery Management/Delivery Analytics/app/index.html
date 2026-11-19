@@ -109,6 +109,8 @@
       <h2 class="an-sec-h">Delivery Backlog Calculator (spec v1.4, 05/02 §2)</h2>
       <div class="kpis" id="statsBacklog"></div>
       <div class="kpis" id="statsBacklogDue"></div>
+      <p class="muted" style="margin:0 0 6px;font-size:var(--fs-xs)"><label>Days available to clear the due jobs: <input type="number" id="backlogDays" min="1" max="30" value="3" style="width:56px"></label></p>
+      <div class="chart-card" data-title="Backlog Trend (Weekly, Last 8 Weeks)" data-subtitle="Own-team backlog in days, as at the end of each day shown" id="chBacklogTrend"></div>
       <p class="muted" id="backlogNote" style="margin:0;font-size:var(--fs-xs)"></p>
     </section>
     <section class="an-sec">
@@ -116,9 +118,12 @@
       <div class="kpis" id="statsKeyNumbers"></div>
       <div class="kpis" id="statsKeyNumbersTeamDay"></div>
       <div class="kpis" id="statsKeyNumbersFleet"></div>
+      <p class="muted" id="keyNumbersNote" style="margin:0 0 6px;font-size:var(--fs-xs)"></p>
       <div class="chart-card" data-title="#4 Failure Reasons (This Month)" data-subtitle="By Failure_Reason_Code" id="chFailureReasons"></div>
-      <div class="notice" style="margin-top:4px">#3 Damage rate by category: not shown — needs delivered/damaged <strong>quantity</strong> per item category, and this app has no per-item outcome model (the Field App that would have recorded this was built, then reverted, 2026-11-18).</div>
-      <div class="notice" style="margin-top:8px">#7 Ship → Service Request gap: not shown — "aggregated" is a Fulfillment timestamp (<code>package.order_aggregation</code> in the shared Stage_Events log, keyed by a package ID), not a field this report carries or a join this dashboard makes.</div>
+      <div class="chart-card" data-title="#3 Damage Rate by Item Category (Last 90 Days)" data-subtitle="Damaged quantity ÷ quantity handled" id="chDamageCategory"></div>
+      <p class="muted" id="damageNote" style="margin:0;font-size:var(--fs-xs)"></p>
+      <div class="kpis" id="statsShipToSr"></div>
+      <p class="muted" id="shipToSrNote" style="margin:0;font-size:var(--fs-xs)"></p>
     </section>
     <section class="an-sec">
       <h2 class="an-sec-h">Exceptions</h2>
@@ -219,7 +224,11 @@ function fetchAll(reportName){
 /* ==================== DATE HELPERS ==================== */
 function parseAnyDate(s){
   if(!s) return null;
-  var d = new Date(s);
+  /* A date-only "YYYY-MM-DD" is a calendar day, read as LOCAL midnight. new Date("2026-11-18") would be UTC
+     midnight, which is 8:00 AM in Manila and the evening before in the Americas: every comparison with a finish time
+     was off by that much (found 2026-11-19 with sample data: on-time read 15% instead of 70% in UTC). */
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s).trim());
+  var d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
 function isToday(d){
@@ -414,35 +423,44 @@ function groupAvgRating(rows, field){
    sorting -- a job with no promised date has no defined on-time/late answer, so it is excluded rather than
    guessed at (not sent to Policy_Settings for the fallback, to avoid duplicating that business rule here).
 
-   "Delivered date" = Job_Done_At, falling back to Modified_Time when blank -- the same fallback
-   archiveOldJobs() already uses server-side (job-status.mjs) for jobs that finished before the Job status
-   chain existed and have not been resaved since, so Job_Done_At was never backfilled onto them.
+   "Delivered date" = Job_Done_At, falling back to Actual_Delivery_Date (a real date carried over from Zoho
+   for jobs finished before the Job status chain existed). NOT Modified_Time (changed 2026-11-19): on jobs
+   migrated from Zoho it is the migration time (2026-11-17 on the Production backup), which made every old
+   job look 43 days late. A Completed job with neither date cannot be measured and is left out; the screen
+   says how many (#keyNumbersNote).
 
    NOT built, by number (both explained on-screen too, see the two .notice divs):
-     #3 Damage rate by category -- needs delivered/damaged QUANTITY per item category; no per-item outcome
-        model exists (the same FA-R1 gap noted throughout this review -- a Field App that would have
-        recorded this was built, then reverted, 2026-11-18).
-     #7 Ship -> Service Request gap -- "aggregated" is a Fulfillment timestamp (Stage_Events
-        package.order_aggregation, server/modules/fulfillment/stage-events.mjs), keyed by a package ID, not
-        a field this report carries -- a correct join needs Fulfillment's own data, not a client-side guess.
+     (#3 Damage rate by category is now built, 2026-11-19: server-side in damage-by-category.mjs, shown by
+        loadDamageByCategory() below. Quantities come from the job lines and Sales Returns; the "damaged in
+        transit" failure reason is whole-job, so that part is an approximation, said on screen.)
+     (#7 Ship -> Service Request gap is now built, 2026-11-19: server-side join in ship-to-sr-gap.mjs, shown
+        by loadShipToSr() below -- not computed from `sa`, since it needs Fulfillment's Stage_Events.)
    #6's "damage %" is a PROXY (order count with Failure_Reason_Code "damaged_in_transit" ÷ done jobs in that
    fleet group), not the qty-based number the spec defines -- same limitation as #3, labelled on screen. */
 function targetOf(r){ return parseAnyDate(r.Requested_Delivery_Date); }
-function doneDateOf(r){ return parseAnyDate(r.Job_Done_At) || parseAnyDate(r.Modified_Time); }
-function daysBetween(a, b){ return Math.round((a - b) / 86400000); }
+function doneDateOf(r){ return parseAnyDate(r.Job_Done_At) || parseAnyDate(r.Actual_Delivery_Date); }
+/* Whole CALENDAR days from b to a. Not the gap between the two instants: a job finished at 9 PM on its promised day is
+   on time, not "late by 0.9 of a day, rounded up to 1". (Rounding absorbs the 1-hour jump of a daylight-saving change.) */
+function daysBetween(a, b){
+  var da = new Date(a.getFullYear(), a.getMonth(), a.getDate()), db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((da - db) / 86400000);
+}
 function isFirstAttempt(r){ return !r.Rescheduled_From_SA; }
-function isFullDelivery(r){ return r.Appointment_Status==='Completed' && !r.Failure_Reason_Code; }
+/* "Delivered" is a Zoho-era status (one Production job); for these numbers it counts as Completed
+   (owner's call, 2026-11-19). */
+function isCompletedStatus(r){ return r.Appointment_Status==='Completed' || r.Appointment_Status==='Delivered'; }
+function isFullDelivery(r){ return isCompletedStatus(r) && !r.Failure_Reason_Code; }
 function pct(n, d){ return d>0 ? Math.round((n/d)*1000)/10 : null; }
 function avg(nums){ return nums.length ? Math.round((nums.reduce(function(a,b){return a+b;},0)/nums.length)*10)/10 : null; }
 function fmtPct(v){ return v==null ? '—' : v+'%'; }
 function fmtDays(v){ return v==null ? '—' : (v>0?'+':'')+v+'d'; }
 
 function renderKeyNumbers(sa){
-  var done = sa.filter(function(r){ return r.Appointment_Status==='Completed' || r.Appointment_Status==='Failed'; });
+  var done = sa.filter(function(r){ return isCompletedStatus(r) || r.Appointment_Status==='Failed'; });
 
   /* #1 On-time delivery % -- Completed on or before target, of Completed jobs that have both a target and a
      delivered date. */
-  var completedWithTarget = done.filter(function(r){ return r.Appointment_Status==='Completed' && targetOf(r) && doneDateOf(r); });
+  var completedWithTarget = done.filter(function(r){ return isCompletedStatus(r) && targetOf(r) && doneDateOf(r); });
   var onTimeCount = completedWithTarget.filter(function(r){ return daysBetween(doneDateOf(r), targetOf(r)) <= 0; }).length;
   var onTimePct = pct(onTimeCount, completedWithTarget.length);
 
@@ -471,7 +489,7 @@ function renderKeyNumbers(sa){
   /* #6 Own team vs third party -- count, on-time %, damage % (proxy, see header note). */
   function fleetGroup(isThirdParty){
     var group = done.filter(function(r){ return (r.Fleet_Decision==='3rd Party') === isThirdParty; });
-    var groupOnTimeBase = group.filter(function(r){ return r.Appointment_Status==='Completed' && targetOf(r) && doneDateOf(r); });
+    var groupOnTimeBase = group.filter(function(r){ return isCompletedStatus(r) && targetOf(r) && doneDateOf(r); });
     var groupOnTime = groupOnTimeBase.filter(function(r){ return daysBetween(doneDateOf(r), targetOf(r))<=0; }).length;
     var damaged = group.filter(function(r){ return r.Failure_Reason_Code==='damaged_in_transit'; }).length;
     return { count: group.length, onTimePct: pct(groupOnTime, groupOnTimeBase.length), damagePct: pct(damaged, group.length) };
@@ -505,6 +523,13 @@ function renderKeyNumbers(sa){
     { label:'#6 3rd Party — Damage % (proxy)', value: fmtPct(thirdParty.damagePct) }
   ]);
   renderBarChart('chFailureReasons', failureReasons);
+
+  /* What was left out, said plainly: Completed jobs with no delivered date or no promised date cannot be
+     measured (typical for jobs migrated from Zoho), so #1/#6/#8/#9 are over the measurable jobs only. */
+  var completed = done.filter(isCompletedStatus);
+  var noDelivered = completed.filter(function(r){ return !doneDateOf(r); }).length;
+  var noTarget = completed.filter(function(r){ return !targetOf(r); }).length;
+  document.getElementById('keyNumbersNote').textContent = 'Based on ' + completedWithTarget.length + ' of ' + completed.length + ' Completed jobs. Left out: ' + noDelivered + ' with no delivered date and ' + noTarget + ' with no promised date (usually jobs migrated from Zoho).';
 }
 
 /* ==================== Delivery Backlog Calculator (05/02 §2) — ADDED 2026-11-18 ====================
@@ -534,11 +559,72 @@ function renderBacklog(b){
 }
 function loadBacklog(){
   if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
-  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: 'get_delivery_backlog', http_method: 'POST', content_type: 'application/json', payload: {}, public_key: '' })
+  var days = parseInt(document.getElementById('backlogDays').value, 10);
+  if(!(days>=1 && days<=30)) days = 3;
+  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: 'get_delivery_backlog', http_method: 'POST', content_type: 'application/json', payload: { daysAvailable: days }, public_key: '' })
     .then(function(resp){
       var out = (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp);
       if(out && out.status==='success') renderBacklog(out);
     }).catch(function(e){ console.error('[DeliveryAnalytics] get_delivery_backlog error', e); });
+}
+
+/* #7 Ship -> Service Request gap (Delivery 09). Server-side join (ship-to-sr-gap.mjs) of Fulfillment's
+   package.order_aggregation event and Service_Request1.Added_Time. Best-effort like the backlog calculator. */
+function fmtHours(v){
+  if(v==null) return '—';
+  return v >= 48 ? round1(v/24) + 'd' : v + 'h';
+}
+function renderShipToSr(g){
+  renderStatRow('statsShipToSr', [
+    { label:'#7 Ship → Service Request: Average', value: fmtHours(g.avgHours) },
+    { label:'#7 Median', value: fmtHours(g.medianHours) },
+    { label:'#7 Longest', value: fmtHours(g.maxHours) },
+    { label:'#7 Service Requests Measured', value: g.count }
+  ]);
+  document.getElementById('shipToSrNote').textContent = 'Time from the package reaching To Ship (Order Aggregation) to its Service Request being created; a Service Request with several packages counts from the last one. Left out: ' + g.unmatched + ' with no matching aggregation record (made before the event log, or manual) and ' + g.negative + ' created before their package was aggregated.';
+}
+/* Shared best-effort custom API call: a failure here never blocks the rest of the dashboard. */
+function callApi(name, payload, onOk){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: name, http_method: 'POST', content_type: 'application/json', payload: payload || {}, public_key: '' })
+    .then(function(resp){
+      var out = (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp);
+      if(out && out.status==='success') onOk(out);
+    }).catch(function(e){ console.error('[DeliveryAnalytics] ' + name + ' error', e); });
+}
+
+/* #3 Damage rate by item category (Delivery 09), in quantity. Server-side (damage-by-category.mjs): needs the
+   Items category, the job lines and the Sales Returns, none of which this page fetches. */
+function renderDamageByCategory(d){
+  renderBarChart('chDamageCategory', d.categories.filter(function(c){ return c.ratePct!=null; }).map(function(c){
+    return { label: c.category + ' (' + c.damaged + '/' + c.handled + ')', value: c.ratePct };
+  }), { suffix:'%' });
+  document.getElementById('damageNote').textContent = (d.undated ? d.undated + ' finished job(s) with no delivered date are left out. ' : '') + 'Overall ' + fmtPct(d.overallPct) + ' (' + d.damaged + ' of ' + d.handled + ' units). Handled = units on finished delivery jobs. Damaged = every unit on a job that failed as "damaged in transit" (the app records that reason for the whole job, not per line), plus units on returns received as Damaged. Items with no category show as Uncategorized.';
+}
+function loadDamageByCategory(){ callApi('get_damage_by_category', {}, renderDamageByCategory); }
+
+/* Backlog weekly trend (spec "weekly trend" line): rebuilt from the jobs themselves, nothing stored. */
+function renderBacklogTrend(t){
+  var withData = t.points.filter(function(p){ return p.backlogDays!=null; });
+  renderBarChart('chBacklogTrend', withData.map(function(p){ return { label: p.date + ' (' + p.openJobs + ' open, ' + p.teamsPerDay + ' teams)', value: round1(p.backlogDays) }; }), { suffix:'d' });
+  var missing = t.points.length - withData.length;
+  if(missing>0){
+    var card = document.getElementById('chBacklogTrend');
+    card.insertAdjacentHTML('beforeend', '<div class="ch-sub" style="margin-top:6px">' + missing + ' week(s) not shown: no team availability recorded that day, or open jobs with no team.</div>');
+  }
+  if(t.noCreatedDate || t.noDoneDate){
+    document.getElementById('chBacklogTrend').insertAdjacentHTML('beforeend', '<div class="ch-sub" style="margin-top:6px">Earlier weeks undercount: ' + t.noCreatedDate + ' job(s) have no created date and ' + t.noDoneDate + ' finished job(s) have no finish date (usually migrated from Zoho). The latest week counts every job open today.</div>');
+  }
+}
+function loadBacklogTrend(){ callApi('get_delivery_backlog_trend', { weeks: 8 }, renderBacklogTrend); }
+
+function loadShipToSr(){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: 'get_ship_to_sr_gap', http_method: 'POST', content_type: 'application/json', payload: {}, public_key: '' })
+    .then(function(resp){
+      var out = (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp);
+      if(out && out.status==='success') renderShipToSr(out);
+    }).catch(function(e){ console.error('[DeliveryAnalytics] get_ship_to_sr_gap error', e); });
 }
 
 /* ==================== LOAD ==================== */
@@ -549,6 +635,10 @@ window.addEventListener('load', function(){
     return;
   }
   loadBacklog();
+  loadShipToSr();
+  loadDamageByCategory();
+  loadBacklogTrend();
+  document.getElementById('backlogDays').addEventListener('change', loadBacklog);
   Promise.all([fetchAll(REPORT_SA), fetchAll(REPORT_FW), fetchAll(REPORT_EXC)]).then(function(results){
     renderAll(results[0], results[1], results[2]);
     document.getElementById('loadingWrap').classList.add('hidden');
@@ -558,7 +648,7 @@ window.addEventListener('load', function(){
 
 function renderAll(sa, fw, exc){
   exc = exc || [];
-  var COMPLETED_STATUSES = ['Completed'];
+  var COMPLETED_STATUSES = ['Completed', 'Delivered']; /* "Delivered" = Zoho-era Completed, owner's call 2026-11-19 */
   var isCompleted = function(r){ return COMPLETED_STATUSES.indexOf(r.Appointment_Status)>=0; };
   var isAssigned = function(r){ return !!r.Installer; };
   var isPendingAssigned = function(r){ return isAssigned(r) && !isCompleted(r) && r.Appointment_Status!=='Failed'; };

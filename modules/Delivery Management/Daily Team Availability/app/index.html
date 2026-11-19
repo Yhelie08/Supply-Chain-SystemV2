@@ -713,6 +713,22 @@ var GEN_DRIVERS    = ['Judy', 'Norman', 'Patrick', 'Petz', 'Zaldy'];
    the form but never go out on a delivery, so the rotation must not hand them to
    a team. With three vehicles, three is also the ceiling on teams per day. */
 var GEN_VEHICLES   = ['Traviz (NIB-3823)', 'Hino (NBX-1446)', 'Traviz (NKI-4969)'];
+/* 2026-11-19 (TM-R4): the lists above are only the fallback. When the roster has been made editable in the
+   Control Panel (Delivery Settings), the nightly job uses those rows, so this button reads the same lists
+   (get_delivery_roster) and the two always agree. Any failure here keeps the lists above. */
+window.addEventListener('load', function(){
+  try {
+    if(typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi !== 'function') return;
+    ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: 'get_delivery_roster', http_method: 'POST', content_type: 'application/json', payload: {}, public_key: '' })
+      .then(function(resp){
+        var out = (resp && resp.result) ? resp.result : ((resp && resp.data) ? resp.data : resp);
+        if(!out || out.status !== 'success') return;
+        if(out.installers && out.installers.length) GEN_INSTALLERS = out.installers;
+        if(out.drivers && out.drivers.length) GEN_DRIVERS = out.drivers;
+        if(out.vehicles && out.vehicles.length) GEN_VEHICLES = out.vehicles;
+      }).catch(function(e){ console.error('[DailyTeamAvailability] get_delivery_roster error', e); });
+  } catch(e) { console.error('[DailyTeamAvailability] roster', e); }
+});
 var GEN_AUTO_TAG   = 'Auto rotation';
 var DAY_NAMES      = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 var GEN_MONTH_ROWS = [];

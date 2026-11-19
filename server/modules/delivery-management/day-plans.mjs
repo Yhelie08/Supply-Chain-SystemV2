@@ -10,11 +10,10 @@
 // DP-R4: reorder is always a pure permutation of the same stop IDs — adding or removing a job is a separate call
 // (addStopManually / removeStop), so "a driver can reorder but not add or remove" is true by construction, with
 // no extra role check needed.
-// DP-R5 (once a job is on-site it cannot move to another day plan) is NOT enforced here: this app has no
-// "arrived" / on-site status in its job chain (Appointment_Status is still the old Queued/Scheduled/Confirmed/
-// Completed/Failed set — see "Delivery vs Spec v1.4 - para sa review.md" §4.3). A Completed or Failed job is
-// simply never re-synced by the hook below (Appointment_Status is neither of those), so it is left on whichever
-// plan it was last on, which is the closest honest approximation.
+// DP-R5 (once a job is on-site it cannot move to another day plan), enforced since 2026-11-19: the job status chain
+// now has an on_site stamp (Job_Arrived_At, from Field_Work "Started", job-status.mjs), so a job that has arrived
+// and is not done cannot have its date or team changed (guardOnSite below). A Completed or Failed job is simply
+// never re-synced by the hook below (Appointment_Status is neither of those), so it stays on the plan it was last on.
 import { register } from '../../workflows/index.mjs';
 import { ZohoError, zohoNow } from '../../criteria.mjs';
 import { blank, truthy, toNum } from '../../workflows/deluge.mjs';
@@ -146,8 +145,17 @@ export async function lockDayPlan(store, date, installer, { user = '', driverSig
   return store.getRecordById(FORM, plan.ID, { raw: true });
 }
 
+// DP-R5: a job that has arrived on site (and is not done) cannot be moved to another date or team, i.e. to another day plan.
+async function guardOnSite({ input, previous }) {
+  if (!previous || blank(previous.Job_Arrived_At)) return;
+  if (['Completed', 'Failed'].includes(text(previous.Appointment_Status))) return;
+  const movedDate = 'Confirmed_Schedule_Date' in input && day(input.Confirmed_Schedule_Date) !== day(previous.Confirmed_Schedule_Date);
+  const movedTeam = 'Installer' in input && text(input.Installer) !== text(previous.Installer);
+  if (movedDate || movedTeam) refuse('This job is on site: it cannot be moved to another day plan.');
+}
+
 async function onSave({ id, store, user }) {
   await syncStopForAppointment(store, id, { user });
 }
 // Registered after scheduling-engine.mjs (see workflows.mjs) so the fresh read above sees its Scheduled write.
-register(SA, { afterAdd: onSave, afterUpdate: onSave });
+register(SA, { beforeUpdate: guardOnSite, afterAdd: onSave, afterUpdate: onSave });

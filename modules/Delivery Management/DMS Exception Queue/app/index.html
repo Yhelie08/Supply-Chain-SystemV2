@@ -351,7 +351,8 @@ function loadFailureCodes(){
   invokeApi(CUSTOM_API_FAILURE_CODES).then(function(out){ FAILURE_CODES = (out && out.codes) || []; }).catch(function(e){ console.error('[DMSExceptionQueue] get_failure_reason_codes error', e); });
 }
 
-var KIND_LABEL = { schedule_shortfall: 'No slot found', third_party_booking: 'Third-party suggested', awaiting_redelivery: 'Failed — no redelivery yet' };
+var KIND_LABEL = { schedule_shortfall: 'No slot found', third_party_booking: 'Third-party suggested', awaiting_redelivery: 'Failed — no redelivery yet', force_close: 'Force-closed — please review', permit_pending: 'Permit still pending' };
+var CUSTOM_API_THIRD_PARTY = 'record_third_party_booking';
 
 /* data-id/data-opt, not an inline JS string literal: an option's text (e.g. "Keep own team on 2027-01-05") would
    otherwise have to be escaped twice over (HTML, then the onclick attribute's own JS string) -- reading it back
@@ -363,7 +364,10 @@ function dmsQueueRow(item){
     acts = '<button class="btn sm primary" data-sa="' + esc(item.saId) + '" onclick="openCreateRedelivery(this.dataset.sa)">Create redelivery</button>';
   } else if(Array.isArray(item.options)){
     acts = item.options.map(function(o){
-      return '<button class="btn sm" data-id="' + esc(item.id) + '" data-opt="' + esc(o) + '" onclick="decideApproval(this.dataset.id, this.dataset.opt)">' + esc(o) + '</button>';
+      /* "Book third party" opens the booking form (provider, reference...) instead of only recording the choice;
+         the choice is recorded once the booking is saved. */
+      var handler = (item.kind === 'third_party_booking' && /^Book third party/.test(o)) ? 'openBookThirdParty' : 'decideApproval';
+      return '<button class="btn sm" data-id="' + esc(item.id) + '" data-opt="' + esc(o) + '" onclick="' + handler + '(this.dataset.id, this.dataset.opt)">' + esc(o) + '</button>';
     }).join('');
   }
   return '<tr>'
@@ -395,6 +399,44 @@ function decideApproval(id, option){
     showToast('Decision recorded');
     loadDeliveryQueue();
   }).catch(function(e){ showToast(saveError(e), 'bad'); });
+}
+
+/* TP-R1 (third-party.mjs): the "Book third party" form. Saves the booking first (record_third_party_booking:
+   provider and reference are required, the server refuses without them), and only then records the decision on
+   the approval item, so a failed booking leaves the item in the queue to try again. */
+function openBookThirdParty(itemId, option){
+  var item = null;
+  DMS_QUEUE_ITEMS.forEach(function(i){ if(String(i.id) === String(itemId)) item = i; });
+  if(!item){ showToast('That item is no longer in the queue', 'bad'); return; }
+  showModal(
+    'Book a third party',
+    esc(item.so || '') + ' — enter the courier’s booking. The job then moves to the third-party fleet.',
+      '<div class="field"><label for="tpProvider">Provider <span class="req">*</span></label><input id="tpProvider" placeholder="e.g. Lalamove"></div>'
+    + '<div class="field"><label for="tpRef">Booking reference <span class="req">*</span></label><input id="tpRef"></div>'
+    + '<div class="row2"><div class="field"><label for="tpDate">Pickup date</label><input id="tpDate" type="date"></div>'
+    + '<div class="field"><label for="tpTime">Pickup time</label><input id="tpTime" placeholder="e.g. 10:00 AM"></div></div>'
+    + '<div class="row2"><div class="field"><label for="tpFee">Delivery fee</label><input id="tpFee" type="number" min="0" step="0.01"></div>'
+    + '<div class="field"><label for="tpPlate">Vehicle plate</label><input id="tpPlate"></div></div>'
+    + '<div class="field"><label for="tpDriver">Driver name</label><input id="tpDriver"></div>',
+    'Save booking',
+    function(){
+      var provider = document.getElementById('tpProvider').value.trim();
+      var ref = document.getElementById('tpRef').value.trim();
+      if(!provider){ showToast('Enter the provider', 'bad'); return false; }
+      if(!ref){ showToast('Enter the booking reference', 'bad'); return false; }
+      var fee = document.getElementById('tpFee').value;
+      invokeApi(CUSTOM_API_THIRD_PARTY, {
+        saId: item.saId, provider: provider, bookingRef: ref, date: document.getElementById('tpDate').value,
+        pickupTime: document.getElementById('tpTime').value.trim(), fee: fee === '' ? undefined : Number(fee),
+        plate: document.getElementById('tpPlate').value.trim(), driverName: document.getElementById('tpDriver').value.trim()
+      }).then(function(out){
+        if(!(out && out.status === 'success')){ showToast((out && out.message) || 'Could not save the booking', 'bad'); return; }
+        closeModal();
+        decideApproval(itemId, option); // records the decision and reloads the queue
+      }).catch(function(e){ showToast(saveError(e), 'bad'); });
+      return false; // closes itself above, same as the redelivery modal
+    }
+  );
 }
 
 /* FR-R1-R5 (failure-redelivery.mjs): raises one Dispatch exception. The redelivery itself is only created once

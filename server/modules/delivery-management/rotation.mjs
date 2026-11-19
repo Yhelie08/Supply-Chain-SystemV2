@@ -11,8 +11,8 @@
 //
 // TM-R3/TM-R1 together: this never overwrites or deletes an existing row, auto-generated or hand-edited — it only
 // fills a (date, installer) slot that is still empty, the same "Keep" rule the widget's own generator uses. TM-R4
-// (drivers/installers/vehicles edited any time in a Control Panel) is not done here: the roster is the same
-// hardcoded list the widget already uses. Moving it into an editable setting is a separate follow-up.
+// (drivers/installers/vehicles edited any time in a Control Panel) is done since 2026-11-19: rosterFrom() below reads
+// the Delivery_Roster rows (Delivery Settings page), with the built-in list as the fallback.
 import { policyReader } from './scheduling.mjs';
 import { blank, toNum, todayDate } from '../../workflows/deluge.mjs';
 
@@ -28,6 +28,19 @@ export const ROSTER = {
   drivers: ['Judy', 'Norman', 'Patrick', 'Petz', 'Zaldy'],
   vehicles: ['Traviz (NIB-3823)', 'Hino (NBX-1446)', 'Traviz (NKI-4969)'],
 };
+// TM-R4: the roster is editable in the Control Panel (Delivery_Roster rows, settings.mjs). No rows at all, or no
+// active row for a role, = the built-in list above for that role, so the nightly job can never run with an empty
+// roster. Rows are walked in Sort_Order, then by ID.
+export async function rosterFrom(store) {
+  const rows = await store.find('Delivery_Roster', (r) => !blank(r.Name));
+  const out = {};
+  for (const [key, role] of [['installers', 'installer'], ['drivers', 'driver'], ['vehicles', 'vehicle']]) {
+    const mine = rows.filter((r) => text(r.Role) === role && String(r.Active) !== 'false')
+      .sort((a, b) => (toNum(a.Sort_Order) || 0) - (toNum(b.Sort_Order) || 0) || (BigInt(a.ID) < BigInt(b.ID) ? -1 : 1));
+    out[key] = mine.length ? mine.map((r) => text(r.Name)) : ROSTER[key];
+  }
+  return out;
+}
 const WORK_DAYS = [1, 2, 3, 4, 5, 6]; // Mon-Sat, same default the widget's own "Generate Month" modal ticks
 
 // The day index: year*366 + day-of-year, deliberately not "days since an epoch" — this has to reproduce
@@ -85,14 +98,14 @@ export function plannedRows(from, days, teamsPerDay, { workDays = WORK_DAYS, ros
 
 // TM-R1: fills team-days ahead of time (`rotation_days_ahead`, default 14). TM-R3: never touches a row that
 // already exists for that (date, installer) slot, auto-generated earlier or hand-edited by the dispatcher.
-export async function generateRotation(store, { today = todayDate(), days, teamsPerDay, hours, maxSo } = {}) {
+export async function generateRotation(store, { today = todayDate(), days, teamsPerDay, hours, maxSo, roster } = {}) {
   const policy = await policyReader(store);
   const aheadDays = days ?? (toNum(policy('rotation_days_ahead')) || 14);
   const teams = teamsPerDay ?? (toNum(policy('rotation_teams_per_day')) || 3);
   const maxHours = hours ?? (toNum(policy('rotation_max_hours')) || 8);
   const soCap = maxSo ?? toNum(policy('rotation_max_so_capacity'));
 
-  const planned = plannedRows(today, aheadDays, teams);
+  const planned = plannedRows(today, aheadDays, teams, { roster: roster ?? await rosterFrom(store) });
   if (!planned.length) return { planned: 0, added: 0 };
 
   const windowEnd = ymd(new Date(today.getFullYear(), today.getMonth(), today.getDate() + aheadDays));

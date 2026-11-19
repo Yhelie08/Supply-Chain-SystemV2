@@ -10,13 +10,14 @@
 //
 // Not built here: FR-R3's "only the lines still owed" (no per-line quantity model exists on an appointment, the
 // same gap noted for the Load Sheet's Box_Count — a redelivery copies every line, same simplification as the
-// old EXC_Resolve_Sync requeue already makes); the Delivery Exception Queue's unsigned-remote-delivery and
-// permit-pending-near-target rows (no remote signature flow, and permit status lives inside Site_Checklist's
-// grid, not a queryable field — left for later, see getDeliveryExceptionQueue's own note).
+// old EXC_Resolve_Sync requeue already makes); the Delivery Exception Queue's unsigned-remote-delivery row (no
+// remote signature flow). The permit-pending-near-target row was added 2026-11-19 (read from the Site_Checklist
+// grid in getDeliveryExceptionQueue, window = permit_warn_days).
 import { zohoNow, ZohoError } from '../../criteria.mjs';
 import { blank } from '../../workflows/deluge.mjs';
 import { SA, raiseException, policyReader, toLong, BROKEN_FAILURE_CODES } from './scheduling.mjs';
 import { stampJobStatus } from './job-status.mjs';
+import { permitPending } from './site-checklist.mjs';
 
 const EXC = 'DMS_Exception_Queue';
 const AQ = 'Approval_Queue';
@@ -130,7 +131,8 @@ export async function forceCloseJob(store, saId, { outcome, reason, user = '' } 
     kind: 'force_close', sa,
     summary: `${text(sa.Sales_Order)} was force-closed as ${outcome}: ${reason}`,
     options: ['Confirm', 'Reopen'],
-    payload: { outcome, reason, closedBy: user },
+    // previousStatus: what "Reopen" puts the job back to (approval-decisions.mjs).
+    payload: { outcome, reason, closedBy: user, previousStatus: text(sa.Appointment_Status) },
   });
   return { approvalId: String(approvalId) };
 }
@@ -141,10 +143,10 @@ export async function forceCloseJob(store, saId, { outcome, reason, user = '' } 
 // Approval_Queue items of Kind schedule_shortfall/third_party_booking ("Urgent - no slot" / third-party
 // decisions). NOT included: unsigned remote deliveries (no remote-signature flow exists) and permits pending
 // close to the date (permit status lives inside Site_Checklist's grid, not a field this can query cheaply).
-export async function getDeliveryExceptionQueue(store) {
+export async function getDeliveryExceptionQueue(store, { now = new Date() } = {}) {
   const [exceptions, approvals, appointments] = await Promise.all([
     store.find(EXC, (r) => r.Status === 'Open'),
-    store.find(AQ, (r) => r.Status === 'pending' && ['schedule_shortfall', 'third_party_booking'].includes(r.Kind)),
+    store.find(AQ, (r) => r.Status === 'pending' && ['schedule_shortfall', 'third_party_booking', 'force_close'].includes(r.Kind)),
     store.find(SA),
   ]);
   const byId = new Map(appointments.map((r) => [String(r.ID), r]));
@@ -166,6 +168,23 @@ export async function getDeliveryExceptionQueue(store) {
     const redone = appointments.some((r) => String(r.Rescheduled_From_SA) === String(sa.ID));
     if (redone || openExceptionFor.has(String(sa.ID))) continue; // already showing as an 'exception' row above
     items.push({ kind: 'awaiting_redelivery', id: String(sa.ID), saId: sa.ID, so: text(sa.Sales_Order), category: sa.Category || '', orderDate: sa.Order_Date || '', summary: `Failed (${sa.Failure_Reason_Code}), no redelivery yet` });
+  }
+  // A work permit / gate pass that is Required and still Pending, with the job close (permit_warn_days, default 2)
+  // or already past its date. The checklist keeps it inside the Site_Checklist grid, so it is read from there.
+  const policy = await policyReader(store);
+  const warnDays = toLong(policy('permit_warn_days'), 2);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  for (const sa of appointments) {
+    if (DONE_STATUSES.has(text(sa.Appointment_Status)) || !blank(sa.Job_Archived_At) || !permitPending(sa.Site_Checklist)) continue;
+    const date = text(sa.Confirmed_Schedule_Date || sa.Suggested_Schedule_Date).slice(0, 10);
+    const when = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date) ? new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))) : null;
+    if (!when) continue; // no date yet: nothing to be close to
+    const daysAway = Math.round((when - today) / 86400000);
+    if (daysAway > warnDays) continue;
+    items.push({
+      kind: 'permit_pending', id: `permit-${sa.ID}`, saId: sa.ID, so: text(sa.Sales_Order), category: sa.Category || '', orderDate: sa.Order_Date || '',
+      summary: `Work permit / gate pass still Pending; the job is ${daysAway < 0 ? `${-daysAway} day(s) past its date` : daysAway === 0 ? 'today' : `in ${daysAway} day(s)`} (${date}). Dispatch is blocked until it is obtained.`,
+    });
   }
   const CATEGORY_ORDER = { broken: 0, late: 1, at_risk: 2, on_time: 3, blocked: 4, '': 5 };
   items.sort((a, b) => (CATEGORY_ORDER[a.category] ?? 5) - (CATEGORY_ORDER[b.category] ?? 5) || text(a.orderDate).localeCompare(text(b.orderDate)));

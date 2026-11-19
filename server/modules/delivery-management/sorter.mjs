@@ -119,15 +119,19 @@ export function rank(entries) {
   return out;
 }
 
-async function scoreAllOpenJobs(store) {
+// `overrides` ({ key: value }) is for previews only (Control Panel "what would this setting do"): see policyReader.
+async function scoreAllOpenJobs(store, overrides = {}) {
   const [sas, policy] = await Promise.all([
     store.find(SA, (r) => OPEN_STATUS(r.Appointment_Status)),
-    policyReader(store),
+    policyReader(store, overrides),
   ]);
   const now = new Date();
   const entries = sas.map((sa) => ({ sa, ...categorize(sa, { now, policy }) }));
   return rank(entries);
 }
+
+// Read-only: the categories every open job WOULD get with these trial settings. Writes nothing.
+export const previewCategories = (store, overrides) => scoreAllOpenJobs(store, overrides);
 
 // Writes the scored result back onto Service_Appointment_Form. A widget write to these fields is dropped (see the
 // spec-forms overlay); only this function may set them.

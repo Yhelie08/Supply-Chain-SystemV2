@@ -80,9 +80,15 @@ export function slotText(startText, usedHours) {
 }
 
 // Policy_Settings by key: the first record's value, or null when missing or empty.
-export async function policyReader(store) {
+// `overrides` ({ key: value }) is for "what would this setting do?" previews only (Control Panel, settings.mjs): the
+// given keys answer with the trial value, every other key reads the table as usual. Nothing is written.
+export async function policyReader(store, overrides = {}) {
   const rows = await store.find('Policy_Settings');
-  return (key) => { const r = rows.find((p) => p.Policy_Key === key); return r && !blank(r.Value) ? String(r.Value) : null; };
+  return (key) => {
+    if (key in overrides) return blank(overrides[key]) ? null : String(overrides[key]);
+    const r = rows.find((p) => p.Policy_Key === key);
+    return r && !blank(r.Value) ? String(r.Value) : null;
+  };
 }
 export const toLong = (v, fallback) => { if (blank(v)) return fallback; const n = Math.trunc(Number(v)); return Number.isNaN(n) ? fallback : n; };
 
