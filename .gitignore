@@ -18,3 +18,7 @@ gitToken
 
 # old pre-migration Zoho Creator codebase, kept locally for reference only
 ZohoCreatorVersionOLD/
+
+__pycache__/
+*.egg-info/
+.pytest_cache/
