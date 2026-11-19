@@ -100,12 +100,18 @@ def test_add_record_then_get_records_round_trips_through_the_http_layer(client):
 def test_update_record_by_id_round_trips(client):
     _login(client)
     record_id = client.post("/api/addRecords", json={"form_name": "Sales_Order_Fulfillment", "data": {"SO_No": "SO-HTTP-2"}}).json()["data"]["ID"]
-    upd_resp = client.post("/api/updateRecordById", json={"report_name": "Sales_Order_Fulfillment_Report", "id": record_id, "data": {"Fulfillment_Stage": "Order Readiness"}})
+    # Fulfillment_Stage itself is not asserted here: once app.fulfillment.workflows is imported
+    # anywhere in the same test process (it is, by other test files sharing this pytest run), its
+    # payment-approval stage rule governs that field for real on every save -- a bare
+    # "Order Readiness" with no Package/Status is correctly overridden back to
+    # "Waiting For Package", which is Fulfillment-specific behavior this Foundation-level test
+    # should not assert on either way. Package is a plain field the rule does not touch.
+    upd_resp = client.post("/api/updateRecordById", json={"report_name": "Sales_Order_Fulfillment_Report", "id": record_id, "data": {"Package": "PAC-HTTP-2"}})
     assert upd_resp.status_code == 200
     assert upd_resp.json()["message"] == "Data Updated Successfully!"
 
     get_resp = client.post("/api/getRecordById", json={"report_name": "Sales_Order_Fulfillment_Report", "id": record_id})
-    assert get_resp.json()["data"]["Fulfillment_Stage"] == "Order Readiness"
+    assert get_resp.json()["data"]["Package"] == "PAC-HTTP-2"
 
 
 def test_delete_record_by_id_removes_it(client):

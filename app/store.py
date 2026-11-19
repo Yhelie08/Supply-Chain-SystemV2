@@ -56,7 +56,11 @@ def encode(form: str, data: dict | None, existing_extra=None) -> dict:
                 out[k] = None
             else:
                 try:
-                    out[k] = str(float(v))
+                    n = float(v)
+                    # Matches Node's String(Number(v)): JS has no int/float string distinction, so a
+                    # whole number prints without a trailing ".0" (Python's str(float(...)) always
+                    # keeps it).
+                    out[k] = str(int(n)) if n == int(n) else str(n)
                 except (TypeError, ValueError):
                     out[k] = None
         else:
