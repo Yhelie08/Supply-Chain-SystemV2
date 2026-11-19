@@ -5,6 +5,7 @@ from app.schema import ensure_schema
 from app.store import create_store
 from app.workflows import create_hooked_store
 import app.fulfillment.workflows  # noqa: F401
+import app.fulfillment.pipeline  # noqa: F401 -- so_to_readiness creates the Gate records this file reads
 
 SOF = "Sales_Order_Fulfillment"
 GATE = "Sales_Order_Readiness_Gate"
