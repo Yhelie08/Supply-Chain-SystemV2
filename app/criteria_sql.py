@@ -10,13 +10,7 @@
 import re
 
 from app.criteria import TOKEN, today
-
-# quote_ident is properly owned by app.schema (Task 4), which app.criteria_sql should import from --
-# matching the Node source's own direction (criteria-sql.mjs imports q from schema.mjs). Task 3 runs
-# before Task 4 in this plan, so this local copy exists only until Task 4 lands; it is removed and
-# replaced with `from app.schema import quote_ident as _q` as soon as app/schema.py exists.
-def _q(name: str) -> str:
-    return '"' + str(name).replace('"', '""') + '"'
+from app.schema import quote_ident as _q
 
 
 _WHITESPACE_ONLY = re.compile(r"^\s+$")
