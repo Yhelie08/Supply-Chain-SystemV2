@@ -1,4 +1,6 @@
 // Tony Fan / Fenteng portal workflows (server/modules/procurement/supplier-portal-workflows.mjs), run on PGlite with the hooked store.
+import { loadSettings } from '../server/modules/procurement/plan.mjs';
+import { addDays, ymd, parseDate } from '../server/workflows/deluge.mjs';
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
@@ -30,7 +32,9 @@ test('ticked lines get a shipment id, go to the parent shipment In Transit, date
   let p = await raw.getRecordById('Shipments', parent, { raw: true });
   assert.deepEqual(p.Supplier_Shipment_Details.map((r) => [r.Shipment_ID, r.PR_No, r.Status, r.Shipment_Mode]), [['SHP-AIR-00001', 'PR-1', 'In Transit', 'Airfreight']]);
   assert.equal(p.Ship_Out_Date, '2026-12-01');
-  assert.equal(p.Estimated_Warehouse_Arrival, '2026-12-13', 'airfreight: +12 days');
+  const cfgAir = await loadSettings(raw); // the days to the warehouse are the settings' (transit + customs + receiving), not a fixed 12
+  const air = cfgAir.transit_air_days + cfgAir.customs_air_days + cfgAir.receiving_days;
+  assert.equal(p.Estimated_Warehouse_Arrival, ymd(addDays(parseDate('2026-12-01'), air)), `airfreight: ship date + ${air} days from the settings`);
   assert.equal(p.PO_Shipments.find((l) => l.SKU === 'L-1').Shipment_Mode_When_Received, 'Airfreight');
   const s = await raw.getRecordById('Tony_Shipment', sup, { raw: true });
   assert.equal(s.Supplier2_Shipment_Details.find((r) => r.SKU === 'L-1').Synced === true || s.Supplier2_Shipment_Details.find((r) => r.SKU === 'L-1').Synced === 'true', true);
@@ -43,7 +47,9 @@ test('ticked lines get a shipment id, go to the parent shipment In Transit, date
   await store.updateRecord('Tony_Shipment', sup, { Supplier2_Shipment_Details: rows });
   p = await raw.getRecordById('Shipments', parent, { raw: true });
   assert.deepEqual(p.Supplier_Shipment_Details.map((r) => r.Shipment_ID), ['SHP-AIR-00001', 'SHP-LCL-00001']);
-  assert.equal(p.Estimated_Warehouse_Arrival, '2027-02-07', 'LCL: +67 days');
+  const cfg = await loadSettings(raw); // the days to the warehouse are the settings' (transit + customs + receiving), not a fixed 67
+  const sea = cfg.transit_lcl_days + cfg.customs_lcl_days + cfg.receiving_days;
+  assert.equal(p.Estimated_Warehouse_Arrival, ymd(addDays(parseDate('2026-12-02'), sea)), `LCL: ship date + ${sea} days from the settings`);
   const [counter] = await raw.find('Shipment_ID_Counter');
   assert.deepEqual([counter.Air_Counter, counter.LCL_Counter, counter.FCL_Counter].map(Number), [2, 2, 1]);
 });

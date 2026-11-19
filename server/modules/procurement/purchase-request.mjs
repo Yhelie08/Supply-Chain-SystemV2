@@ -5,17 +5,23 @@
 // PR1_Forecast_Stamp (the forecast of a PR) lives in server/forecast/pr-hooks.mjs, imported by this module's workflows.mjs.
 //
 // All the "on validate" scripts share Zoho's one `input`, and each reads what the one before it wrote, so they run as
-// steps of one function in the order of the workflows in Zoho. Quirks are kept: for example the readiness check runs
-// before the default status and the shipment mode are set, so it sees them as they were before this save.
+// steps of one function in the order of the workflows in Zoho. Most quirks are kept, but PR_Check_Readiness was moved
+// after PR_Set_Shipment_Mode (spec v1.4 PR-R5, review item, 2026-11-18): in Zoho it ran before the shipment mode
+// default, so a brand-new priced PR needed an unrelated second save before Ready for PO turned on.
 import { register } from '../../workflows/index.mjs';
 import { ZohoError, zohoNow } from '../../criteria.mjs';
 import { idOf, truthy, blank, toNum, sameValue, lower, round2, lit, parseDate, ymd, addDays, dayDiff, todayDate } from '../../workflows/deluge.mjs';
-import { SUPPLIERS, supplierIndex, quoteBooksId } from '../../workflows/suppliers.mjs';
+import { SUPPLIERS, supplierIndex, quoteBooksId, portalOf } from '../../workflows/suppliers.mjs';
+import { parseLeadDays } from './plan.mjs';
 
 const text = (v) => (blank(v) ? '' : String(v));
 const num = (v) => (blank(v) ? null : Number(v));
 // The pieces that differ per supplier portal copy: Tony's fields end in _Supplier2, Fenteng's in _Supplier1.
 const COPIES = SUPPLIERS.map((s) => ({ ...s, sfx: `_Supplier${s.n}` }));
+
+// Spec v1.4 SP-R1 (review C11): the supplier's copy never carries our selling price. The portal only needs to know that a reference
+// price exists (a Confirmed answer may then skip the initial price), so the copy gets Yes / No and never the amount.
+export const refPriceKnown = (rec) => (!blank(rec.SRP_Rate_PR) && toNum(rec.SRP_Rate_PR) !== 0 ? 'Yes' : 'No');
 
 // ===== on validate: everything the Zoho scripts compute before the save =====
 async function validate({ input, previous, store }) {
@@ -113,7 +119,7 @@ async function validate({ input, previous, store }) {
     if (winner) {
       set('Selected_Supplier', winner.Suppliers);
       if (toNum(winner.Final_Price) > 0) set('Selcted_Final_Cost', toNum(winner.Final_Price));
-      set('Required_Days_Lead', toNum(winner.Lead_Time));
+      set('Required_Days_Lead', parseLeadDays(winner.Lead_Time) || toNum(winner.Lead_Time));
     } else {
       set('Selected_Supplier', '');
       set('Selcted_Final_Cost', 0);
@@ -121,21 +127,6 @@ async function validate({ input, previous, store }) {
       set('Followed_Recommendation', '');
     }
   }
-
-  // --- PR_Check_Readiness: the four conditions and their AND ---
-  set('Selected_Supplier1', !blank(rec.Selected_Supplier));
-  let hasPrice = false;
-  if (!blank(rec.SRP_Approved_PR) && toNum(rec.SRP_Approved_PR) !== 0) hasPrice = true;
-  else if (!blank(rec.SRP_Rate_PR) && toNum(rec.SRP_Rate_PR) !== 0) hasPrice = true;
-  else if (!blank(rec.inquiry_reference)) hasPrice = true;
-  else {
-    const [item] = blank(rec.sku) ? [] : await store.getRecords('Items', { criteria: `SKU == ${lit(rec.sku)}`, pageSize: 1 });
-    hasPrice = toNum(item?.Rate) !== 0 || toNum(rec.Selcted_Final_Cost) > 0;
-  }
-  set('Final_price_confirmed', hasPrice);
-  set('Shipping_mode_selected', rec.Sourcing_Type === 'Local' || !blank(rec.Shipment_Mode));
-  set('Target_date_exists', !blank(rec.Target_Delivery));
-  set('PR_READY_FOR_PO', rec.Selected_Supplier1 && rec.Final_price_confirmed && rec.Shipping_mode_selected && rec.Target_date_exists);
 
   // --- PR_Set_Default_Status ---
   set('PR_Status', blank(rec.Link_PO_No) ? 'Open' : 'Converted to PO');
@@ -177,11 +168,33 @@ async function validate({ input, previous, store }) {
   if (rec.PR_Status !== 'Converted to PO') {
     const target = parseDate(rec.supplier_target_date);
     if (target) {
-      const far = dayDiff(target, today) >= 30;
-      set('Shipment_Mode', far ? 'LCL' : 'Airfreight');
-      set('Shipment_Days', far ? 30 : 14);
+      // Spec v1.4 (02 Procurement / 03, PO-R1; review C4): the mode is the BUYER's choice. It is only defaulted when it is blank, and the
+      // default is sea: when sea cannot make the date the PR shows `impossible` with the air option, and the buyer decides at Create PO.
+      // (The Zoho script switched to air by itself, on every save, whenever the target was under 30 days away.)
+      if (blank(rec.Shipment_Mode)) set('Shipment_Mode', 'LCL');
+      set('Shipment_Days', rec.Shipment_Mode === 'Airfreight' ? 14 : 30);
     }
   }
+
+  // --- PR_Check_Readiness: the four conditions and their AND ---
+  // Spec v1.4 (02 Procurement / 02, PR-R5): an auto-priced PR reaches Ready for PO without a person waiting on an
+  // extra save. Moved below PR_Set_Shipment_Mode (review item, 2026-11-18) so a brand-new PR with a price, a
+  // supplier and a target already sees its own just-defaulted Shipment_Mode in the same save, instead of the stale
+  // blank one from before this save (which needed an unrelated second touch to flip Ready for PO on). Nothing
+  // between here and the old position reads these four fields or PR_READY_FOR_PO, so the reorder is safe.
+  set('Selected_Supplier1', !blank(rec.Selected_Supplier));
+  let hasPrice = false;
+  if (!blank(rec.SRP_Approved_PR) && toNum(rec.SRP_Approved_PR) !== 0) hasPrice = true;
+  else if (!blank(rec.SRP_Rate_PR) && toNum(rec.SRP_Rate_PR) !== 0) hasPrice = true;
+  else if (!blank(rec.inquiry_reference)) hasPrice = true;
+  else {
+    const [item] = blank(rec.sku) ? [] : await store.getRecords('Items', { criteria: `SKU == ${lit(rec.sku)}`, pageSize: 1 });
+    hasPrice = toNum(item?.Rate) !== 0 || toNum(rec.Selcted_Final_Cost) > 0;
+  }
+  set('Final_price_confirmed', hasPrice);
+  set('Shipping_mode_selected', rec.Sourcing_Type === 'Local' || !blank(rec.Shipment_Mode));
+  set('Target_date_exists', !blank(rec.Target_Delivery));
+  set('PR_READY_FOR_PO', rec.Selected_Supplier1 && rec.Final_price_confirmed && rec.Shipping_mode_selected && rec.Target_date_exists);
 
   // --- PR_Compute_Priority ---
   let score = 0;
@@ -227,7 +240,7 @@ async function populateCopies({ record, store, user }) {
       [`PR_No${c.sfx}`]: record.PR_No, [`PR_Date${c.sfx}`]: record.PR_Date, [`Items${c.sfx}`]: record.Items, [`sku${c.sfx}`]: record.sku,
       [`quantity${c.sfx}`]: record.quantity, [`Description1${c.sfx}`]: record.Description1, [`description${c.sfx}`]: record.description,
       [`unit${c.sfx}`]: record.unit, [`category${c.sfx}`]: record.category, [`Target_Delivery${c.sfx}`]: record.Target_Delivery,
-      [`Priority_PR${c.sfx}`]: record.Priority, [`SRP_Rate_PR${c.sfx}`]: record.SRP_Rate_PR, [`inquiry_reference${c.sfx}`]: inqNo,
+      [`Priority_PR${c.sfx}`]: record.Priority, [`Ref_Price_Known${c.sfx}`]: refPriceKnown(record), [`inquiry_reference${c.sfx}`]: inqNo,
       Response_Status: q ? 'Selected' : 'Waiting', edit_counter: 1,
       [`Supplier_Selected${c.sfx}`]: [q
         ? { [`Suppliers${c.sfx}`]: c.name, [`Availability${c.sfx}`]: q.Availability, [`Initial_Price${c.sfx}`]: q.Initial_Price, [`Negotiated${c.sfx}`]: q.Negotiated,
@@ -251,7 +264,7 @@ async function changedCopies({ id, record, store }) {
     for (const copy of await store.find(c.prForm, (r) => r[`PR_No${c.sfx}`] === record.PR_No)) {
       const hasChanges = !sameValue(copy[`sku${c.sfx}`], record.sku) || !sameValue(copy[`quantity${c.sfx}`], record.quantity)
         || !sameValue(copy[`Target_Delivery${c.sfx}`], record.Target_Delivery) || !sameValue(copy[`Description1${c.sfx}`], record.Description1);
-      const thisSelected = rows.some((r) => truthy(r.Selected) && lower(r.Suppliers).includes(c.nameToken));
+      const thisSelected = rows.some((r) => truthy(r.Selected) && portalOf(r.Suppliers)?.key === c.key);
       const inquiryQuote = (inq?.Supplier_Quotes || []).find((q) => truthy(q.Selected) && quoteBooksId(q, suppliers) === c.booksId);
       let status = copy.Response_Status;
       let counter = blank(copy.edit_counter) ? 0 : Number(copy.edit_counter);
@@ -261,7 +274,7 @@ async function changedCopies({ id, record, store }) {
       const patch = {
         Response_Status: status, edit_counter: counter,
         [`PR_Date${c.sfx}`]: record.PR_Date, [`sku${c.sfx}`]: record.sku, [`quantity${c.sfx}`]: record.quantity, [`Description1${c.sfx}`]: record.Description1,
-        [`description${c.sfx}`]: record.description, [`Target_Delivery${c.sfx}`]: record.Target_Delivery, [`SRP_Rate_PR${c.sfx}`]: record.SRP_Rate_PR,
+        [`description${c.sfx}`]: record.description, [`Target_Delivery${c.sfx}`]: record.Target_Delivery, [`Ref_Price_Known${c.sfx}`]: refPriceKnown(record),
         [`inquiry_reference${c.sfx}`]: record.inquiry_reference,
       };
       if (inquiryQuote) {

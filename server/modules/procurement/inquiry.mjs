@@ -5,10 +5,11 @@
 // Selected_Uncheck_Others (on user input), Notify_Suppliers_on_Inquiry (inactive), Log_Updated_Item (no script).
 //
 // Order of the hooks follows the order of the workflows in the Zoho app.
+import { refreshInquirySpec } from './inq-spec.mjs';
 import { register } from '../../workflows/index.mjs';
 import { zohoNow, ZohoError } from '../../criteria.mjs';
 import { idOf, idsOf, unbracket, truthy, blank, toNum, hasValue, sameValue, lower, inquiryNumber, round2, lit, stamp } from '../../workflows/deluge.mjs';
-import { SUPPLIERS, supplierIndex, quoteBooksId } from '../../workflows/suppliers.mjs';
+import { SUPPLIERS, supplierIndex, quoteBooksId, portalOf } from '../../workflows/suppliers.mjs';
 
 export { SUPPLIERS };
 
@@ -188,8 +189,10 @@ async function syncSuppliers({ record, store }) {
         Color_Temperature_Supplier: record.Color_Temperature, Type_of_Bulb_Supplier: record.Type_of_Bulb };
       if (r.Response_Status !== 'Completed') {
         const mine = quotes.map((q) => {
-          const byName = lower(q.Suppliers).includes(s.nameToken);
-          return { q, mine: byName || quoteBooksId(q, suppliers) === s.booksId };
+          // spec INQ-R6: a quote row that has a supplier ID is matched by that ID alone; the name is only for old rows without one
+          const id = quoteBooksId(q, suppliers);
+          const mine = id !== '' ? id === s.booksId : portalOf(q.Suppliers)?.key === s.key;
+          return { q, mine };
         });
         const anySelected = quotes.some((q) => truthy(q.Selected));
         const thisSelected = mine.some((m) => m.mine && truthy(m.q.Selected));
@@ -270,6 +273,7 @@ async function syncBackToInquiry({ s, record, store }) {
       });
     }
     await store.updateRecord('Inquiry_Form', inq.ID, patch, { byForm: true });
+    await refreshInquirySpec(store, inq.ID); // spec v1.4: the stamps, hints, alerts and the cleared price of a quote that cannot be supplied
   }
 }
 

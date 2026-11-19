@@ -106,6 +106,21 @@
       </div>
     </section>
     <section class="an-sec">
+      <h2 class="an-sec-h">Delivery Backlog Calculator (spec v1.4, 05/02 §2)</h2>
+      <div class="kpis" id="statsBacklog"></div>
+      <div class="kpis" id="statsBacklogDue"></div>
+      <p class="muted" id="backlogNote" style="margin:0;font-size:var(--fs-xs)"></p>
+    </section>
+    <section class="an-sec">
+      <h2 class="an-sec-h">The 9 Key Numbers (spec v1.4, Delivery 09)</h2>
+      <div class="kpis" id="statsKeyNumbers"></div>
+      <div class="kpis" id="statsKeyNumbersTeamDay"></div>
+      <div class="kpis" id="statsKeyNumbersFleet"></div>
+      <div class="chart-card" data-title="#4 Failure Reasons (This Month)" data-subtitle="By Failure_Reason_Code" id="chFailureReasons"></div>
+      <div class="notice" style="margin-top:4px">#3 Damage rate by category: not shown — needs delivered/damaged <strong>quantity</strong> per item category, and this app has no per-item outcome model (the Field App that would have recorded this was built, then reverted, 2026-11-18).</div>
+      <div class="notice" style="margin-top:8px">#7 Ship → Service Request gap: not shown — "aggregated" is a Fulfillment timestamp (<code>package.order_aggregation</code> in the shared Stage_Events log, keyed by a package ID), not a field this report carries or a join this dashboard makes.</div>
+    </section>
+    <section class="an-sec">
       <h2 class="an-sec-h">Exceptions</h2>
       <div class="kpis" id="statsExceptions"></div>
       <div class="kpis" id="statsExceptionsOpen"></div>
@@ -387,6 +402,145 @@ function groupAvgRating(rows, field){
   return Object.keys(sums).map(function(k){ return { label:k, value: Math.round((sums[k]/counts[k])*10)/10 }; }).sort(function(a,b){ return b.value-a.value; });
 }
 
+/* ==================== SPEC v1.4 "9 KEY NUMBERS" (Delivery 09) — ADDED 2026-11-18 ====================
+   Computed from the same `sa` (Service_Appointment report, field_config:'all') this dashboard already
+   fetches -- field_config:'all' returns every field on Service_Appointment_Form regardless of the report's
+   own declared column list (confirmed in server/pg/store.mjs's getRecords: it selects the whole form), so
+   every overlay field this session added (Failure_Reason_Code, Forecast_Delivery, Job_Done_At,
+   Rescheduled_From_SA, Fleet_Decision) is already here -- no new fetch needed.
+
+   "Target Delivery" = Requested_Delivery_Date (what was actually promised to the customer), NOT the
+   Order_Date + default_promise_days fallback sorter.mjs's own effectiveTarget() uses internally for queue
+   sorting -- a job with no promised date has no defined on-time/late answer, so it is excluded rather than
+   guessed at (not sent to Policy_Settings for the fallback, to avoid duplicating that business rule here).
+
+   "Delivered date" = Job_Done_At, falling back to Modified_Time when blank -- the same fallback
+   archiveOldJobs() already uses server-side (job-status.mjs) for jobs that finished before the Job status
+   chain existed and have not been resaved since, so Job_Done_At was never backfilled onto them.
+
+   NOT built, by number (both explained on-screen too, see the two .notice divs):
+     #3 Damage rate by category -- needs delivered/damaged QUANTITY per item category; no per-item outcome
+        model exists (the same FA-R1 gap noted throughout this review -- a Field App that would have
+        recorded this was built, then reverted, 2026-11-18).
+     #7 Ship -> Service Request gap -- "aggregated" is a Fulfillment timestamp (Stage_Events
+        package.order_aggregation, server/modules/fulfillment/stage-events.mjs), keyed by a package ID, not
+        a field this report carries -- a correct join needs Fulfillment's own data, not a client-side guess.
+   #6's "damage %" is a PROXY (order count with Failure_Reason_Code "damaged_in_transit" ÷ done jobs in that
+   fleet group), not the qty-based number the spec defines -- same limitation as #3, labelled on screen. */
+function targetOf(r){ return parseAnyDate(r.Requested_Delivery_Date); }
+function doneDateOf(r){ return parseAnyDate(r.Job_Done_At) || parseAnyDate(r.Modified_Time); }
+function daysBetween(a, b){ return Math.round((a - b) / 86400000); }
+function isFirstAttempt(r){ return !r.Rescheduled_From_SA; }
+function isFullDelivery(r){ return r.Appointment_Status==='Completed' && !r.Failure_Reason_Code; }
+function pct(n, d){ return d>0 ? Math.round((n/d)*1000)/10 : null; }
+function avg(nums){ return nums.length ? Math.round((nums.reduce(function(a,b){return a+b;},0)/nums.length)*10)/10 : null; }
+function fmtPct(v){ return v==null ? '—' : v+'%'; }
+function fmtDays(v){ return v==null ? '—' : (v>0?'+':'')+v+'d'; }
+
+function renderKeyNumbers(sa){
+  var done = sa.filter(function(r){ return r.Appointment_Status==='Completed' || r.Appointment_Status==='Failed'; });
+
+  /* #1 On-time delivery % -- Completed on or before target, of Completed jobs that have both a target and a
+     delivered date. */
+  var completedWithTarget = done.filter(function(r){ return r.Appointment_Status==='Completed' && targetOf(r) && doneDateOf(r); });
+  var onTimeCount = completedWithTarget.filter(function(r){ return daysBetween(doneDateOf(r), targetOf(r)) <= 0; }).length;
+  var onTimePct = pct(onTimeCount, completedWithTarget.length);
+
+  /* #2 First-attempt full-delivery % -- of first visits (Rescheduled_From_SA blank) that reached a done
+     state; "full" approximated as Completed with no Failure_Reason_Code (no per-line short/partial data
+     exists to check "no short, damaged, refused, failed" the literal spec way). */
+  var firstVisitsDone = done.filter(isFirstAttempt);
+  var firstFullPct = pct(firstVisitsDone.filter(isFullDelivery).length, firstVisitsDone.length);
+
+  /* #4 Failure reasons (This Month), by code -- bucketed by the delivered/fallback date, the closest proxy
+     this schema has for "when the failure was recorded" (there is no separate Failure_Logged_At stamp). */
+  var failureReasons = groupCount(sa.filter(function(r){ return r.Failure_Reason_Code && isThisMonth(doneDateOf(r) || addedDate(r)); }), 'Failure_Reason_Code');
+
+  /* #5 Jobs per team-day, Installation and drop-off separately -- avg jobs per distinct (Installer,
+     Confirmed_Schedule_Date) pair. Reads Service_Appointment_Form directly rather than Day_Plan: the same
+     grouping, one fewer fetch. */
+  function perTeamDay(typeMatch){
+    var buckets = {};
+    sa.filter(function(r){ return r.Installer && r.Confirmed_Schedule_Date && typeMatch(r.Type_of_Delivery); })
+      .forEach(function(r){ var k = r.Installer + '|' + String(r.Confirmed_Schedule_Date).slice(0,10); buckets[k] = (buckets[k]||0) + 1; });
+    return avg(Object.keys(buckets).map(function(k){ return buckets[k]; }));
+  }
+  var jobsPerDayInstall = perTeamDay(function(t){ return t==='With Installation'; });
+  var jobsPerDayDropoff = perTeamDay(function(t){ return t==='Delivery Only'; });
+
+  /* #6 Own team vs third party -- count, on-time %, damage % (proxy, see header note). */
+  function fleetGroup(isThirdParty){
+    var group = done.filter(function(r){ return (r.Fleet_Decision==='3rd Party') === isThirdParty; });
+    var groupOnTimeBase = group.filter(function(r){ return r.Appointment_Status==='Completed' && targetOf(r) && doneDateOf(r); });
+    var groupOnTime = groupOnTimeBase.filter(function(r){ return daysBetween(doneDateOf(r), targetOf(r))<=0; }).length;
+    var damaged = group.filter(function(r){ return r.Failure_Reason_Code==='damaged_in_transit'; }).length;
+    return { count: group.length, onTimePct: pct(groupOnTime, groupOnTimeBase.length), damagePct: pct(damaged, group.length) };
+  }
+  var ownTeam = fleetGroup(false), thirdParty = fleetGroup(true);
+
+  /* #8 Forecast error (avg days, delivered minus last forecast). Positive = later than forecast. */
+  var forecastErrDays = avg(done.filter(function(r){ return r.Forecast_Delivery && doneDateOf(r); })
+    .map(function(r){ return daysBetween(doneDateOf(r), parseAnyDate(r.Forecast_Delivery)); }));
+
+  /* #9 Late delivery days -- average, for jobs that were actually late (not every completed job). */
+  var lateJobs = completedWithTarget.filter(function(r){ return daysBetween(doneDateOf(r), targetOf(r)) > 0; });
+  var lateDays = avg(lateJobs.map(function(r){ return daysBetween(doneDateOf(r), targetOf(r)); }));
+
+  renderStatRow('statsKeyNumbers', [
+    { label:'#1 On-Time Delivery %', value: fmtPct(onTimePct) },
+    { label:'#2 First-Attempt Full-Delivery %', value: fmtPct(firstFullPct) },
+    { label:'#8 Avg Forecast Error', value: fmtDays(forecastErrDays) },
+    { label:'#9 Avg Days Late (late jobs only)', value: lateDays==null ? '—' : lateDays + 'd' }
+  ]);
+  renderStatRow('statsKeyNumbersTeamDay', [
+    { label:'#5 Avg Jobs/Team-Day — Installation', value: jobsPerDayInstall==null ? '—' : jobsPerDayInstall },
+    { label:'#5 Avg Jobs/Team-Day — Drop-off', value: jobsPerDayDropoff==null ? '—' : jobsPerDayDropoff }
+  ]);
+  renderStatRow('statsKeyNumbersFleet', [
+    { label:'#6 Own Team — Count', value: ownTeam.count },
+    { label:'#6 Own Team — On-Time %', value: fmtPct(ownTeam.onTimePct) },
+    { label:'#6 Own Team — Damage % (proxy)', value: fmtPct(ownTeam.damagePct) },
+    { label:'#6 3rd Party — Count', value: thirdParty.count },
+    { label:'#6 3rd Party — On-Time %', value: fmtPct(thirdParty.onTimePct) },
+    { label:'#6 3rd Party — Damage % (proxy)', value: fmtPct(thirdParty.damagePct) }
+  ]);
+  renderBarChart('chFailureReasons', failureReasons);
+}
+
+/* ==================== Delivery Backlog Calculator (05/02 §2) — ADDED 2026-11-18 ====================
+   Unlike every other number on this dashboard, teams_per_day needs Daily_Team_Availability and
+   delivery_sites_per_team_per_day/delivery_max_teams need Policy_Settings -- neither report is already
+   fetched here, so this is a custom API call (get_delivery_backlog, server/modules/delivery-management/
+   backlog-calculator.mjs) rather than another client-side aggregation of REPORT_SA. Best-effort: a failure
+   here never blocks the rest of the dashboard, same pattern as the Exception Queue widget's own
+   loadBrokenSos(). */
+function round1(v){ return Number.isFinite(v) ? Math.round(v*10)/10 : v; }
+function fmtDaysNum(v){ return v===Infinity ? '∞' : (round1(v) + 'd'); }
+function fmtCount(v){ return v===Infinity ? '∞' : round1(v); }
+function renderBacklog(b){
+  renderStatRow('statsBacklog', [
+    { label:'Backlog (Own Team)', value: fmtDaysNum(b.backlogDays) },
+    { label:'Backlog If Drop-Offs Outsourced', value: fmtDaysNum(b.backlogDaysIfDropoffsOutsourced) },
+    { label:'Open Jobs', value: b.openJobs },
+    { label:'Open Drop-Offs', value: b.openDropoffs + ' (' + Math.round(b.dropoffShare*100) + '%)' }
+  ]);
+  renderStatRow('statsBacklogDue', [
+    { label:'Teams Available Today', value: b.teamsPerDay },
+    { label:'Sites/Team/Day', value: b.sitesPerTeamPerDay },
+    { label:'Open Jobs Due (Late/At-Risk)', value: b.openJobsDue },
+    { label:'Teams Needed (clear in ' + b.daysAvailable + 'd)', value: fmtCount(b.teamsNeeded) }
+  ]);
+  document.getElementById('backlogNote').textContent = 'A "site" is one visit, drop-off or installation; third-party jobs are excluded (own-team capacity only). "Due" = late or at-risk by the Sorting Engine’s own category.';
+}
+function loadBacklog(){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: 'get_delivery_backlog', http_method: 'POST', content_type: 'application/json', payload: {}, public_key: '' })
+    .then(function(resp){
+      var out = (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp);
+      if(out && out.status==='success') renderBacklog(out);
+    }).catch(function(e){ console.error('[DeliveryAnalytics] get_delivery_backlog error', e); });
+}
+
 /* ==================== LOAD ==================== */
 window.addEventListener('load', function(){
   if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA){
@@ -394,6 +548,7 @@ window.addEventListener('load', function(){
     console.error('[DeliveryAnalytics] SDK not available');
     return;
   }
+  loadBacklog();
   Promise.all([fetchAll(REPORT_SA), fetchAll(REPORT_FW), fetchAll(REPORT_EXC)]).then(function(results){
     renderAll(results[0], results[1], results[2]);
     document.getElementById('loadingWrap').classList.add('hidden');
@@ -513,6 +668,8 @@ function renderAll(sa, fw, exc){
     { label:'Outstanding (All Undelivered)', value: sa.filter(isOutstanding).length },
     { label:'Appointments Flagged as Exception', value: sa.filter(isFlagged).length }
   ]);
+
+  renderKeyNumbers(sa);
 
   /* Outcome split for the month - the one place Completed, Failed and
      still-outstanding are shown against each other. */

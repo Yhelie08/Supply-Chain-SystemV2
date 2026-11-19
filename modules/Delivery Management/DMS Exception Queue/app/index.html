@@ -115,6 +115,17 @@
       <div id="listBody"></div>
     </section>
 
+    <!-- The Delivery Exception Queue's merge (getDeliveryExceptionQueue, 2026-11-18): pending scheduling
+         decisions and done-but-unredelivered jobs. The 'exception' kind it also returns is the exact same rows
+         already in the table above (same DMS_Exception_Queue report), so it is never shown twice here. -->
+    <section class="panel" style="margin-top:16px">
+      <div class="panel-head">
+        <h2>Also waiting on someone</h2>
+        <span class="hint">Scheduling decisions and done jobs with no redelivery yet — not in the table above because nothing raised an exception for them.</span>
+      </div>
+      <div id="dmsQueueBody"></div>
+    </section>
+
   </div>
 </main>
 
@@ -126,6 +137,11 @@
 <script>
 /* ==================== CONFIG — unchanged from the previous version ==================== */
 const REPORT_NAME = 'All_DMS_Exception_Queue';
+const CUSTOM_API_BROKEN_SOS = 'get_broken_sales_orders';
+const CUSTOM_API_DELIVERY_QUEUE = 'get_delivery_exception_queue';
+const CUSTOM_API_FAILURE_CODES = 'get_failure_reason_codes';
+const CUSTOM_API_CREATE_REDELIVERY = 'create_redelivery_job';
+const AQ_REPORT = 'Approval_Queue'; // same bare form name the Procurement Decisions widget writes to
 
 /* E.4 Exception Queue Board View — severity drives both the colour and the
    resolution deadline. days:0 means "must be resolved same day". */
@@ -139,11 +155,22 @@ const ASSIGNEES = ['Delivery Officer', 'Dispatcher', 'Scheduler', 'Warehouse'];
 
 /* ==================== STATE ==================== */
 var ALL_ROWS = [];
+/* Sales Order -> true, for Sales Orders with an open Replacement Request in Procurement (read-only badge;
+   see get_broken_sales_orders in server/modules/delivery-management/exception-queue.mjs, 2026-11-18). Never
+   changes scheduling or Priority — it only tells the dispatcher a replacement is already in motion. */
+var BROKEN_SOS = {};
 var CURRENT_FILTER = 'open';
 var EDITING_ID = null;
 var LAST_FOCUS = null;
+/* The merged Delivery Exception Queue (get_delivery_exception_queue, 2026-11-18) and the failure reason
+   codes (get_failure_reason_codes) its "Create redelivery" modal needs. */
+var DMS_QUEUE_ITEMS = [];
+var FAILURE_CODES = [];
 
 window.addEventListener('load', loadList);
+window.addEventListener('load', loadBrokenSos);
+window.addEventListener('load', loadDeliveryQueue);
+window.addEventListener('load', loadFailureCodes);
 
 /* ==================== HELPERS — kept verbatim ==================== */
 function esc(s){
@@ -289,6 +316,119 @@ function loadList(){
   });
 }
 
+/* Best-effort: a stale or missing broken-SO list only means the badge is absent, never a loading failure. */
+function loadBrokenSos(){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: CUSTOM_API_BROKEN_SOS, http_method: 'POST', content_type: 'application/json', payload: {}, public_key: '' })
+    .then(function(resp){
+      var out = (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp);
+      var nums = (out && out.soNumbers) || [];
+      BROKEN_SOS = {};
+      nums.forEach(function(so){ BROKEN_SOS[so] = true; });
+      renderList();
+    }).catch(function(e){ console.error('[DMSExceptionQueue] get_broken_sales_orders error', e); });
+}
+
+/* ==================== DELIVERY EXCEPTION QUEUE MERGE (2026-11-18) ==================== */
+function invokeApi(apiName, payload){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: apiName, http_method: 'POST', content_type: 'application/json', payload: payload || {}, public_key: '' })
+    .then(function(resp){ return (resp && resp.data) ? resp.data : ((resp && resp.result) ? resp.result : resp); });
+}
+
+function loadDeliveryQueue(){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  invokeApi(CUSTOM_API_DELIVERY_QUEUE).then(function(out){
+    DMS_QUEUE_ITEMS = (out && out.items) ? out.items.filter(function(i){ return i.kind !== 'exception'; }) : [];
+    renderDeliveryQueue();
+  }).catch(function(e){
+    console.error('[DMSExceptionQueue] get_delivery_exception_queue error', e);
+    document.getElementById('dmsQueueBody').innerHTML = '<div class="empty"><strong>Could not load — see console.</strong></div>';
+  });
+}
+
+function loadFailureCodes(){
+  if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function') return;
+  invokeApi(CUSTOM_API_FAILURE_CODES).then(function(out){ FAILURE_CODES = (out && out.codes) || []; }).catch(function(e){ console.error('[DMSExceptionQueue] get_failure_reason_codes error', e); });
+}
+
+var KIND_LABEL = { schedule_shortfall: 'No slot found', third_party_booking: 'Third-party suggested', awaiting_redelivery: 'Failed — no redelivery yet' };
+
+/* data-id/data-opt, not an inline JS string literal: an option's text (e.g. "Keep own team on 2027-01-05") would
+   otherwise have to be escaped twice over (HTML, then the onclick attribute's own JS string) -- reading it back
+   off the dataset avoids that entirely. */
+function dmsQueueRow(item){
+  var label = KIND_LABEL[item.kind] || item.kind;
+  var acts = '';
+  if(item.kind === 'awaiting_redelivery'){
+    acts = '<button class="btn sm primary" data-sa="' + esc(item.saId) + '" onclick="openCreateRedelivery(this.dataset.sa)">Create redelivery</button>';
+  } else if(Array.isArray(item.options)){
+    acts = item.options.map(function(o){
+      return '<button class="btn sm" data-id="' + esc(item.id) + '" data-opt="' + esc(o) + '" onclick="decideApproval(this.dataset.id, this.dataset.opt)">' + esc(o) + '</button>';
+    }).join('');
+  }
+  return '<tr>'
+    + '<td data-label="Order"><div class="so mono">' + esc(item.so || '—') + '</div></td>'
+    + '<td data-label="What"><span class="pill plain p-gray">' + esc(label) + '</span>'
+      + '<div class="cust clip" title="' + esc(item.summary || '') + '">' + esc(item.summary || '') + '</div></td>'
+    + '<td data-label="Order Date">' + fmtDate(item.orderDate) + '</td>'
+    + '<td class="c-act" data-label="Actions"><div class="acts">' + acts + '</div></td>'
+    + '</tr>';
+}
+
+function renderDeliveryQueue(){
+  var body = document.getElementById('dmsQueueBody');
+  if(!DMS_QUEUE_ITEMS.length){
+    body.innerHTML = '<div class="empty"><strong>Nothing here needs anyone right now</strong></div>';
+    return;
+  }
+  body.innerHTML = '<div class="tbl-wrap"><table class="q"><thead><tr>'
+    + '<th>Order</th><th>What</th><th>Order Date</th><th class="ta-r">Actions</th>'
+    + '</tr></thead><tbody>' + DMS_QUEUE_ITEMS.map(dmsQueueRow).join('') + '</tbody></table></div>';
+}
+
+/* Deciding a schedule_shortfall/third_party_booking item: the server's own apply (approval-decisions.mjs)
+   stamps a plain Result -- "exactly what the option says and nothing more", same rule Procurement's own
+   Decisions screen follows. Nothing here books a courier or adds capacity by itself. */
+function decideApproval(id, option){
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: AQ_REPORT, id: String(id), payload: { data: { Decision: option } } }).then(function(resp){
+    if(!(resp && (resp.code===3000 || String(resp.code)==='3000'))){ showToast(saveError(resp), 'bad'); return; }
+    showToast('Decision recorded');
+    loadDeliveryQueue();
+  }).catch(function(e){ showToast(saveError(e), 'bad'); });
+}
+
+/* FR-R1-R5 (failure-redelivery.mjs): raises one Dispatch exception. The redelivery itself is only created once
+   that exception is Resolved in the table above -- this modal does not create a redelivery by itself. */
+function openCreateRedelivery(saId){
+  var codeOpts = FAILURE_CODES.length ? FAILURE_CODES : ['other'];
+  showModal(
+    'Create a redelivery',
+    'Raises a Dispatch exception; the redelivery is created once that is resolved above.',
+      '<div class="field"><label for="rdCode">Failure reason <span class="req">*</span></label>'
+    + selectHtml('rdCode', codeOpts, '') + '</div>'
+    + '<div class="field"><label for="rdNotes">Notes</label>'
+    + '<textarea id="rdNotes" rows="3" placeholder="Required for “other”"></textarea></div>',
+    'Raise exception',
+    function(){
+      var code = document.getElementById('rdCode').value;
+      var notes = document.getElementById('rdNotes').value.trim();
+      if(!code){ showToast('Pick a failure reason', 'bad'); return false; }
+      if(code === 'other' && !notes){ showToast('Notes are required for "other"', 'bad'); return false; }
+      invokeApi(CUSTOM_API_CREATE_REDELIVERY, { saId: saId, reasonCode: code, notes: notes }).then(function(out){
+        if(out && out.status === 'success'){
+          showToast('Exception raised — resolve it above to create the redelivery');
+          closeModal();
+          loadList();
+          loadDeliveryQueue();
+        } else {
+          showToast((out && out.message) || 'Could not raise the exception', 'bad');
+        }
+      }).catch(function(e){ showToast(saveError(e), 'bad'); });
+      return false; // the modal's own OK/disable flow is for saveFields; this path closes itself above
+    }
+  );
+}
+
 function setFilter(f){
   CURRENT_FILTER = f;
   /* 'high' and 'overdue' have no chip, so no chip lights up for them -- the stat
@@ -382,6 +522,7 @@ function exRow(r){
       + '<div style="margin-top:4px">' + stageChip(r) + '</div></td>'
     + '<td class="ord" data-label="Order">'
       + '<div class="so' + (so ? ' mono' : '') + '">' + (so ? esc(so) : '—') + '</div>'
+      + (so && BROKEN_SOS[so] ? '<div class="sub2" style="color:var(--bad)" title="Procurement has an open Replacement Request for this Sales Order">&#9888; Broken — replacement open</div>' : '')
       + (r.Customer_Name ? '<div class="cust clip" title="' + esc(r.Customer_Name) + '">' + esc(r.Customer_Name) + '</div>' : '')
     + '</td>'
     + '<td data-label="Raised"><div>' + fmtDate(raisedDate(r)) + '</div>'

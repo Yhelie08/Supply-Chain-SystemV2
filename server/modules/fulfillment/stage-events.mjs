@@ -23,7 +23,7 @@ async function logStageEvent(store, id, stage) {
   if (slug === '') return; // no stage set yet: nothing to log
   const stamp = zohoNow();
   await store.addRecord(EVENTS, {
-    Record_Type: 'package', Record_ID: text(id), Event: `package.${slug}`,
+    Record_Type: 'package', Record_Id: text(id), Event: `package.${slug}`,
     Occurred_At: stamp, Reported_At: stamp, Source: 'system',
   });
 }

@@ -1,0 +1,12 @@
+{
+  "name": "Sales_Returns_Form",
+  "extends": true,
+  "_about": "Fields added by the HomeCartel spec v1.4 Sales Returns status chain (Delivery 07 §1, RT-R1/R3/R6). server/modules/delivery-management/sales-returns.mjs computes Return_Status from the linked pullout appointment and this form's own received/credit-note fields — it never replaces the existing Sales_Order/Item_Details/RMA/Books_SalesReturn_No fields the widget already reads.",
+  "fields": [
+    { "name": "Source_SA_ID", "label": "Source Service Appointment", "type": "text", "helpText": "RT-R1: the delivery appointment a refused line came from, if this return started that way. Blank for a manual/complaint-driven return." },
+    { "name": "Pullout_Appointment_ID", "label": "Pullout Appointment", "type": "text", "helpText": "RT-R1/R2: the Service_Appointment (Type_of_Delivery = Pullout) created to collect the goods. Server-only." },
+    { "name": "Received_Condition", "label": "Received Condition", "type": "picklist", "options": ["Good", "Damaged"], "helpText": "RT-R3: set when the warehouse receiver confirms the return." },
+    { "name": "Received_At", "label": "Received At", "type": "datetime", "helpText": "RT-R3. First write wins. Server-only." },
+    { "name": "Return_Status", "label": "Return Status", "type": "picklist", "options": ["requested", "scheduled", "picked_up", "received_back", "credit_note_issued", "closed"], "helpText": "RT-R6, computed server-only. 'closed' follows 'credit_note_issued' immediately — this app has no separate closing action for a return once the credit note exists." }
+  ]
+}

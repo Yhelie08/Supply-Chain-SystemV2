@@ -17,6 +17,7 @@
 //
 // Differences from Zoho, on purpose: all the tables are read once into memory and indexed (Zoho re-queries per row, which is
 // why its schedule is slow); the stamps are written only where a value differs (as in Zoho). "Today" is the server's date.
+import { forecastSettings } from '../modules/procurement/forecast-settings.mjs';
 import { computeForecast, settingsFrom, bucketOf, finish } from './engine.mjs';
 import { toDate, txt } from './stamp.mjs';
 import { todayDate } from '../workflows/deluge.mjs';
@@ -48,7 +49,7 @@ async function put(store, form, rows, f) {
 }
 
 export async function runForecastStampDaily(store, { today: given, log = () => {} } = {}) {
-  const settings = settingsFrom((await store.find('Forecast_Settings'))[0] ?? null);
+  const settings = await forecastSettings(store); // the Procurement Settings page, over the old Forecast_Settings record
   let today = given ?? todayDate();
   for (const s of await store.find('Schedule_Test_Settings')) if (!blank(s.Test_Current_Date)) today = toDate(s.Test_Current_Date) ?? today;
 

@@ -1,0 +1,33 @@
+{
+  "name": "Stage_Events",
+  "extends": true,
+  "_about": "The shared event log (spec 05 / 04). The form itself (Record_Type, Record_Id, Event, Occurred_At, Reported_At, Source, Note) comes from the Fulfillment package log in zoho-export/parsed/forms; Procurement adds the fields below (record number, how exact the time is, who, and the visit number of a repeated event).",
+  "fields": [
+    {
+      "name": "Record_No",
+      "label": "Record No",
+      "type": "text",
+      "helpText": "The number staff quote, e.g. SHP-00012."
+    },
+    {
+      "name": "Occurred_Bound",
+      "label": "Occurred Bound",
+      "type": "picklist",
+      "options": [
+        "exact",
+        "before",
+        "after"
+      ]
+    },
+    {
+      "name": "Actor",
+      "label": "Actor",
+      "type": "text"
+    },
+    {
+      "name": "Visit_No",
+      "label": "Visit No",
+      "type": "number"
+    }
+  ]
+}

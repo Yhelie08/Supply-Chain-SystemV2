@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tony Fan — Production</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --green:#16A34A; --green-light:#DCFCE7; --amber:#D97706; --amber-light:#FEF3C7; --red:#DC2626; --red-light:#FEE2E2;
+    --orange:#EA580C; --orange-light:#FFF7ED; --blue:#2563EB; --blue-light:#EFF6FF;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0; --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B; --gray-700:#334155; --gray-800:#1E293B;
+    --radius:8px; --radius-lg:12px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  .page{max-width:980px;margin:0 auto;padding:16px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font-size:20px;font-weight:700}
+  .head p{font-size:12.5px;color:var(--gray-500);margin-top:2px}
+  .head-right{display:flex;align-items:center;gap:10px}
+  .lang-toggle{border:1.5px solid var(--gray-200);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
+  .lang-opt.on{font-weight:700;color:var(--orange)}
+  .pill-supplier{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray-200);border-radius:999px;padding:4px 12px 4px 4px;font-weight:600;font-size:13px}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .f{border:1.5px solid var(--gray-200);background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;cursor:pointer}
+  .f.on{background:var(--orange);border-color:var(--orange);color:#fff;font-weight:600}
+  .f .n{opacity:.75;margin-left:4px}
+  .card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .card-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+  .ship-no{font-weight:700;font-size:15px}
+  .po{color:var(--gray-500);font-size:12.5px;margin-left:8px}
+  .badge{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600}
+  .b-gray{background:var(--gray-100);color:var(--gray-700)} .b-blue{background:var(--blue-light);color:var(--blue)}
+  .b-green{background:var(--green-light);color:var(--green)} .b-amber{background:var(--amber-light);color:var(--amber)} .b-red{background:var(--red-light);color:var(--red)}
+  .items{margin:10px 0;padding:10px 12px;background:var(--gray-50);border-radius:var(--radius);font-size:13px;line-height:1.6;white-space:pre-line}
+  .dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px}
+  .dates label{display:block;font-size:11px;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+  .dates div{font-weight:600}
+  .act{border-top:1px dashed var(--gray-200);padding-top:10px;margin-top:10px}
+  .act h4{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-500);margin-bottom:6px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input[type=date],input[type=text]{height:38px;border:1.5px solid var(--gray-200);border-radius:var(--radius);padding:0 10px;font:inherit;background:#fff;min-width:0}
+  input[type=text]{flex:1;min-width:160px}
+  input[type=file]{font:inherit;font-size:12.5px;max-width:100%}
+  .btn{height:38px;padding:0 16px;border:none;border-radius:var(--radius);font:inherit;font-weight:600;font-size:13.5px;cursor:pointer;background:var(--orange);color:#fff}
+  .btn.ghost{background:#fff;color:var(--gray-700);border:1.5px solid var(--gray-300)}
+  .btn.green{background:var(--green)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .hint{font-size:12px;color:var(--gray-500)}
+  .photo a{color:var(--blue);font-weight:600}
+  .empty{text-align:center;color:var(--gray-500);padding:40px 10px;background:#fff;border-radius:var(--radius-lg);border:1px dashed var(--gray-300)}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--gray-800);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+  .toast.show{opacity:1}
+  @media(max-width:600px){.page{padding:10px}.btn{width:100%}.row input[type=date]{flex:1}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1 data-i="title">Production</h1>
+      <p data-i="subtitle">For each shipment: tell us when production starts and finishes, add a photo of what you made, and report a delay with a new date.</p>
+    </div>
+    <div class="head-right">
+      <button class="lang-toggle" onclick="toggleLang()" title="Switch language / 切换语言"><span class="lang-opt" id="lEn">EN</span> / <span class="lang-opt" id="lZh">中</span></button>
+      <div class="pill-supplier"><span class="avatar">T</span><span>Tony Fan</span></div>
+    </div>
+  </div>
+  <div class="filters" id="filters"></div>
+  <div id="list"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* The Production screen of the supplier portal (spec v1.4, 02 Procurement / 07 Supplier Portal). The supplier only ever works on its own copy
+   of the shipment (REPORT_NAME): no customer, no sales order, no price. Stored values stay English whatever language is shown (SP-R3).
+   A production report stores the day the supplier enters (when it happened) and the server time (when they told us) (SP-R4). */
+const REPORT_NAME = 'Tony_Shipment_Report';
+const PO_REPORT = 'Tony_Fan_Purchase_Order_Report';
+const PO_NO_FIELD = 'PO_No_Supplier2';
+const PO_STATUS_FIELD = 'PO_Status_Supplier2';
+const MAX_BYTES = 10 * 1024 * 1024;
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+
+const I18N = {
+  en: {
+    title:'Production', subtitle:'For each shipment: tell us when production starts and finishes, add a photo of what you made, and report a delay with a new date.',
+    fToStart:'Not started', fInProd:'In production', fFinished:'Finished', fAll:'All',
+    sNot:'Not started', sIn:'In production', sFin:'Finished — waiting to ship', sShip:'Shipped', late:'Late', dueStart:'Should have started',
+    plStart:'Planned start', plEnd:'Planned end', started:'Started', finished:'Finished', expected:'New expected date',
+    items:'Items', actStart:'Production started', actPhoto:'Production photo', actFinish:'Production finished', actDelay:'Report a delay',
+    dayHappened:'Day it happened', btnStart:'Production started', btnUpload:'Upload photo', btnFinish:'Production finished', btnDelay:'Report delay',
+    reason:'Reason', newDate:'New expected date', needPhoto:'Add a photo first, then you can report production finished.', photoOk:'Photo added', noPhoto:'No photo yet',
+    viewPhoto:'View photo', chooseFile:'Choose a photo first', tooBig:'The file is bigger than 10 MB', badType:'Use a JPG, PNG, HEIC, WebP or PDF file',
+    delayNeed:'Give the new expected date and a reason', done:'Saved', uploaded:'Photo uploaded', failed:'Could not save', empty:'Nothing here.', loading:'Loading…',
+    po:'PO', blankIsToday:'Blank date = today'
+  },
+  zh: {
+    title:'生产', subtitle:'针对每个发运单：告诉我们生产何时开始和完成，上传产品照片，并在延误时报告新的日期。',
+    fToStart:'未开始', fInProd:'生产中', fFinished:'已完成', fAll:'全部',
+    sNot:'未开始', sIn:'生产中', sFin:'已完成 — 等待发货', sShip:'已发货', late:'延误', dueStart:'应已开始',
+    plStart:'计划开始', plEnd:'计划结束', started:'已开始', finished:'已完成', expected:'新的预计日期',
+    items:'产品', actStart:'生产已开始', actPhoto:'生产照片', actFinish:'生产已完成', actDelay:'报告延误',
+    dayHappened:'发生日期', btnStart:'生产已开始', btnUpload:'上传照片', btnFinish:'生产已完成', btnDelay:'报告延误',
+    reason:'原因', newDate:'新的预计日期', needPhoto:'请先上传照片，然后才能报告生产已完成。', photoOk:'已添加照片', noPhoto:'还没有照片',
+    viewPhoto:'查看照片', chooseFile:'请先选择照片', tooBig:'文件超过 10 MB', badType:'请使用 JPG、PNG、HEIC、WebP 或 PDF 文件',
+    delayNeed:'请填写新的预计日期和原因', done:'已保存', uploaded:'照片已上传', failed:'保存失败', empty:'这里没有内容。', loading:'加载中…',
+    po:'采购单', blankIsToday:'日期留空 = 今天'
+  }
+};
+let LANG = 'en'; try { LANG = localStorage.getItem('supplierPortalLang') || 'en'; } catch (e) {}
+const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+function applyLang(){
+  document.querySelectorAll('[data-i]').forEach((el) => { el.textContent = t(el.getAttribute('data-i')); });
+  $('lEn').classList.toggle('on', LANG === 'en'); $('lZh').classList.toggle('on', LANG === 'zh');
+  document.documentElement.lang = LANG === 'zh' ? 'zh' : 'en';
+  render();
+}
+function toggleLang(){ LANG = LANG === 'en' ? 'zh' : 'en'; try { localStorage.setItem('supplierPortalLang', LANG); } catch (e) {} applyLang(); }
+function toast(msg){ const el = $('toast'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2800); }
+
+const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const day = (v) => String(v || '').slice(0, 10);
+let ROWS = [], FILTER = 'toStart', STICKY = '';
+
+function normalise(r){
+  return { id: String(r.ID), shipNo: r.Shipment_No || '', po: r.Prod_Po_No || '', status: r.Prod_Status || 'not_started',
+    start: day(r.Prod_Planned_Start), end: day(r.Prod_Planned_End), startedOn: day(r.Prod_Started_On), finishedOn: day(r.Prod_Finished_On),
+    expected: day(r.Prod_Expected_Date), lines: r.Prod_Lines || '', photo: r.Prod_Photo || '' };
+}
+/* SP-R2: a shipment shows only after its PO is acknowledged (a shipment with no PO shows at once). Read from this supplier's own PO copy. */
+function gate(rows){
+  if (typeof ZOHO === 'undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA) return Promise.resolve(rows);
+  return ZOHO.CREATOR.DATA.getRecords({ report_name: PO_REPORT, page: 1, pageSize: 200, field_config: 'all' }).catch(() => null).then((resp) => {
+    const status = {};
+    if (resp && String(resp.code) === '3000' && Array.isArray(resp.data)) resp.data.forEach((p) => { status[String(p[PO_NO_FIELD] || '')] = String(p[PO_STATUS_FIELD] || ''); });
+    return rows.filter((r) => r.po === '' || /^Confirmed/.test(status[r.po] || ''));
+  });
+}
+function load(){
+  $('list').innerHTML = '<div class="empty">' + esc(t('loading')) + '</div>';
+  ZOHO.CREATOR.DATA.getRecords({ report_name: REPORT_NAME, page: 1, pageSize: 200, field_config: 'all' })
+    .then((resp) => (resp && String(resp.code) === '3000' && Array.isArray(resp.data) ? resp.data : []), () => [])
+    .then((data) => gate(data.map(normalise)))
+    .then((rows) => {
+      ROWS = rows;
+      // after an action, follow the card to the group it moved to (Not started -> In production -> Finished) so it does not seem to vanish
+      const moved = STICKY && ROWS.find((r) => r.id === STICKY); STICKY = '';
+      if (moved && FILTER !== 'all') FILTER = moved.status === 'shipped' ? 'all' : groupOf(moved);
+      render();
+    });
+}
+const isLate = (r) => (r.status === 'in_production' || r.status === 'not_started') && r.end && r.end < todayIso();
+const groupOf = (r) => (r.status === 'not_started' ? 'toStart' : r.status === 'in_production' ? 'inProd' : 'finished');
+
+function render(){
+  const count = (g) => ROWS.filter((r) => r.status !== 'shipped' && groupOf(r) === g).length;
+  const defs = [['toStart', 'fToStart', count('toStart')], ['inProd', 'fInProd', count('inProd')], ['finished', 'fFinished', count('finished')], ['all', 'fAll', ROWS.length]];
+  $('filters').innerHTML = defs.map((d) => '<button class="f' + (FILTER === d[0] ? ' on' : '') + '" data-f="' + d[0] + '">' + esc(t(d[1])) + '<span class="n">' + d[2] + '</span></button>').join('');
+  $('filters').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { FILTER = b.getAttribute('data-f'); render(); }));
+  // oldest first: the planned start that passed longest ago is at the top
+  const rows = ROWS.filter((r) => (FILTER === 'all' ? true : r.status !== 'shipped' && groupOf(r) === FILTER)).sort((a, b) => (a.start || '9999').localeCompare(b.start || '9999'));
+  if (!rows.length) { $('list').innerHTML = '<div class="empty">' + esc(t('empty')) + '</div>'; return; }
+  $('list').innerHTML = rows.map(cardHtml).join('');
+  $('list').querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => act(b.getAttribute('data-act'), b.getAttribute('data-id'))));
+}
+
+function cardHtml(r){
+  const label = { not_started: t('sNot'), in_production: t('sIn'), finished: t('sFin'), shipped: t('sShip') }[r.status];
+  const cls = { not_started: 'b-gray', in_production: 'b-blue', finished: 'b-green', shipped: 'b-green' }[r.status];
+  const lateBadge = isLate(r) ? ' <span class="badge b-red">' + esc(t('late')) + '</span>'
+    : (r.status === 'not_started' && r.start && r.start < todayIso() ? ' <span class="badge b-amber">' + esc(t('dueStart')) + '</span>' : '');
+  const id = esc(r.id);
+  let acts = '';
+  if (r.status === 'not_started') {
+    acts += '<div class="act"><h4>' + esc(t('actStart')) + '</h4><div class="row"><input type="date" id="d-start-' + id + '" max="' + todayIso() + '" />'
+      + '<button class="btn" data-act="start" data-id="' + id + '">' + esc(t('btnStart')) + '</button></div><div class="hint">' + esc(t('blankIsToday')) + '</div></div>';
+  }
+  if (r.status === 'not_started' || r.status === 'in_production') {
+    acts += '<div class="act"><h4>' + esc(t('actPhoto')) + '</h4><div class="row"><input type="file" id="f-photo-' + id + '" accept=".jpg,.jpeg,.png,.heic,.webp,.pdf,image/*" />'
+      + '<button class="btn ghost" data-act="upload" data-id="' + id + '">' + esc(t('btnUpload')) + '</button></div>'
+      + '<div class="hint photo">' + (r.photo ? '✔ ' + esc(t('photoOk')) + ' — <a href="' + esc(r.photo) + '" target="_blank" rel="noopener">' + esc(t('viewPhoto')) + '</a>' : esc(t('noPhoto'))) + '</div></div>';
+    acts += '<div class="act"><h4>' + esc(t('actFinish')) + '</h4><div class="row"><input type="date" id="d-finish-' + id + '" max="' + todayIso() + '" />'
+      + '<button class="btn green" data-act="finish" data-id="' + id + '"' + (r.photo ? '' : ' disabled') + '>' + esc(t('btnFinish')) + '</button></div>'
+      + (r.photo ? '' : '<div class="hint">' + esc(t('needPhoto')) + '</div>') + '</div>';
+    acts += '<div class="act"><h4>' + esc(t('actDelay')) + '</h4><div class="row"><input type="date" id="d-delay-' + id + '" min="' + todayIso() + '" />'
+      + '<input type="text" id="t-delay-' + id + '" placeholder="' + esc(t('reason')) + '" />'
+      + '<button class="btn ghost" data-act="delay" data-id="' + id + '">' + esc(t('btnDelay')) + '</button></div></div>';
+  }
+  return '<div class="card"><div class="card-top"><div><span class="ship-no">' + esc(r.shipNo) + '</span>' + (r.po ? '<span class="po">' + esc(t('po')) + ' ' + esc(r.po) + '</span>' : '') + '</div>'
+    + '<div><span class="badge ' + cls + '">' + esc(label) + '</span>' + lateBadge + '</div></div>'
+    + '<div class="items">' + esc(r.lines) + '</div>'
+    + '<div class="dates"><div><label>' + esc(t('plStart')) + '</label>' + esc(r.start || '—') + '</div><div><label>' + esc(t('plEnd')) + '</label>' + esc(r.end || '—') + '</div>'
+    + (r.startedOn ? '<div><label>' + esc(t('started')) + '</label>' + esc(r.startedOn) + '</div>' : '')
+    + (r.finishedOn ? '<div><label>' + esc(t('finished')) + '</label>' + esc(r.finishedOn) + '</div>' : '')
+    + (r.expected ? '<div><label>' + esc(t('expected')) + '</label>' + esc(r.expected) + '</div>' : '') + '</div>'
+    + acts + '</div>';
+}
+
+function save(id, data, okMsg){
+  return ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_NAME, id: id, payload: { data: data } }).then((resp) => {
+    if (resp && String(resp.code) === '3000') { toast(okMsg); STICKY = id; load(); return true; }
+    toast((resp && resp.message) || (t('failed') + ' — ' + (resp && resp.code))); return false;
+  }).catch((err) => { toast((err && err.message) || t('failed')); return false; });
+}
+function act(kind, id){
+  const val = (p) => { const el = $(p + id); return el ? el.value : ''; };
+  if (kind === 'start') return save(id, { Report_Prod_Event: 'production_started', Report_Prod_Date: val('d-start-') }, t('done'));
+  if (kind === 'finish') return save(id, { Report_Prod_Event: 'production_finished', Report_Prod_Date: val('d-finish-') }, t('done'));
+  if (kind === 'delay') {
+    const d = val('d-delay-'), r = val('t-delay-').trim();
+    if (!d || !r) { toast(t('delayNeed')); return; }
+    return save(id, { Delay_New_Date: d, Delay_Reason: r }, t('done'));
+  }
+  if (kind === 'upload') {
+    const el = $('f-photo-' + id), f = el && el.files[0];
+    if (!f) { toast(t('chooseFile')); return; }
+    if (f.size > MAX_BYTES) { toast(t('tooBig')); return; }
+    if (!/\.(jpe?g|png|heic|webp|pdf)$/i.test(f.name)) { toast(t('badType')); return; }
+    ZOHO.CREATOR.FILE.uploadFile({ report_name: REPORT_NAME, id: id, field_name: 'Prod_Photo', file: f }).then((r) => {
+      if (r && String(r.code) === '3000') { toast(t('uploaded')); STICKY = id; load(); } else toast((r && r.message) || t('failed'));
+    }).catch(() => toast(t('failed')));
+  }
+}
+applyLang();
+load();
+</script>
+</body>
+</html>

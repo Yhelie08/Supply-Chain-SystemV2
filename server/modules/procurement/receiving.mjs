@@ -21,10 +21,12 @@
 // (inactive in Zoho), Create_Bin_Receiving (Books / Inventory).
 // Differences on purpose: Damage_Missing_Details matches a line by PR_No AND SKU (Zoho used PR_No only, so two lines with the same or no
 // PR_No shared each other's rows); a new Receiving record with no number gets the next RCV-nnnnn (Zoho's form numbers it by itself).
+import { portalOf } from '../../workflows/suppliers.mjs';
 import { register } from '../../workflows/index.mjs';
 import { ZohoError, zohoNow } from '../../criteria.mjs';
 import { blank, idOf, truthy, toNum, todayDate } from '../../workflows/deluge.mjs';
 import { nextNumber } from './purchase-order.mjs';
+import { applyShipmentEvent } from './ship-track.mjs';
 
 const SHIP = 'Shipments';
 const EXC = 'Exceptions';
@@ -37,6 +39,9 @@ const q = (s) => `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 const damaged = (l) => n(l.Damage_Qty);
 const missing = (l) => n(l.Missing_Qty);
 const isComplete = (l) => n(l.Accepted_Qty) + n(l.Damage_Qty) + n(l.Missing_Qty) === n(l.Expected_Qty) && n(l.Accepted_Qty) === n(l.Expected_Qty);
+// Spec v1.4 (D12, RCV-R4): "received" means counted AND binned, i.e. pickable. 'Receiving Area' is where goods wait, not a bin.
+export const isBinned = (l) => text(l.Bin_location).trim() !== '' && text(l.Bin_location).trim() !== 'Receiving Area';
+export const isReady = (l) => isComplete(l) && isBinned(l);
 
 // The Exceptions record of a receiving line: by Receive_No + SKU, else (older ones) by PR_No + Receive_No, which then gets the key.
 async function exceptionOfLine(store, receiveNo, line, { stamp = false } = {}) {
@@ -70,7 +75,7 @@ async function beforeSave({ input, previous, store }) {
   input.Ready_for_Fulfillment1 = lines.filter((l) => truthy(l.Ready_for_Fulfillment)).length;
 
   // Receiving_Set_Line_Result
-  for (const l of lines) { l.Line_Result = isComplete(l) ? 'Complete' : 'Incomplete'; l.Ready_for_Fulfillment = isComplete(l); }
+  for (const l of lines) { l.Line_Result = isComplete(l) ? 'Complete' : 'Incomplete'; l.Ready_for_Fulfillment = isReady(l); }
 
   // Receiving_Validate_Qty
   for (const l of lines) {
@@ -106,7 +111,7 @@ async function beforeSave({ input, previous, store }) {
   let hasException = false;
   for (const l of lines) {
     total.acc += n(l.Accepted_Qty); total.dmg += damaged(l); total.mis += missing(l);
-    if (!isComplete(l)) incomplete++;
+    if (!isReady(l)) incomplete++; // a line is done only when it is counted in full AND binned
     if (damaged(l) > 0 || missing(l) > 0) hasException = true;
   }
   const status = lines.length === 0 || (total.acc === 0 && total.dmg === 0 && total.mis === 0) ? 'Pending' : incomplete === 0 ? 'Received' : 'Partial Received';
@@ -119,6 +124,8 @@ async function beforeSave({ input, previous, store }) {
       if (text(ship.Shipment_Status) !== 'Delivered') { patch.Previous_Status = ship.Shipment_Status; patch.Shipment_Status = 'Delivered'; }
       if (hasException && !truthy(ship.Need_Attention1)) patch.Need_Attention1 = true;
       if (Object.keys(patch).length) await store.updateRecord(SHIP, shipId, patch, { byForm: true });
+      // Ship & Track (spec v1.4): the first count is the best sign of arrival, so the shipment arrived "before" it (T-5)
+      await applyShipmentEvent(store, shipId, 'arrived_warehouse', { source: 'system', bound: 'before', note: 'before the first count' }).catch((e) => console.error('[ship-track]', e));
     }
   }
   input.Receiving_Line_Items = lines;
@@ -201,7 +208,7 @@ async function afterSave({ record: r, id, store, user }) {
     const arrived = new Set();
     for (const l of lines) if (text(l.PR_No) !== '' && n(l.Expected_Qty) > 0 && missing(l) === 0) arrived.add(`${text(l.PR_No)}|${text(l.RR_No)}|${text(l.SKU)}`);
     const supplier = text(ship.Supplier);
-    const copy = supplier.includes('Fenteng') ? ['Fenteng_Shipment', 'Supplier1_Shipment_Details'] : supplier.includes('Tony') ? ['Tony_Shipment', 'Supplier2_Shipment_Details'] : null;
+    const copy = portalOf(supplier)?.key === 'fenteng' ? ['Fenteng_Shipment', 'Supplier1_Shipment_Details'] : portalOf(supplier)?.key === 'tony' ? ['Tony_Shipment', 'Supplier2_Shipment_Details'] : null;
     if (arrived.size && copy) {
       const [form, grid] = copy;
       for (const c of await store.find(form, (x) => text(x.Parent_Shipment_ID) === text(ship.ID))) {

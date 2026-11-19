@@ -1,0 +1,274 @@
+{
+  "name": "Shipments",
+  "extends": true,
+  "_about": "Fields added by the HomeCartel spec v1.4 (02 Procurement / 04 Ship and Track, 05 Shared Engines 01, 03, 04). Merged into the parsed Zoho form by server/model.mjs. Planned dates, actual stamps, queue columns and Order_Date are written by the server only (server/modules/procurement/ship-track.mjs); a widget write to them is dropped.",
+  "fields": [
+    {
+      "name": "Ship_Track",
+      "label": "Ship & Track",
+      "type": "section"
+    },
+    {
+      "name": "Stage",
+      "label": "Stage",
+      "type": "picklist",
+      "options": [
+        "production",
+        "shipped_out",
+        "arrived_port",
+        "customs_cleared",
+        "arrived_warehouse",
+        "received"
+      ],
+      "helpText": "Set by the server from the events below. A blank stage on an older row is read from Shipment_Status."
+    },
+    {
+      "name": "Shipment_Mode",
+      "label": "Shipment Mode",
+      "type": "picklist",
+      "options": [
+        "Airfreight",
+        "LCL",
+        "FCL"
+      ],
+      "helpText": "One shipment = one mode (spec PO-R4)."
+    },
+    {
+      "name": "Forwarder",
+      "label": "Forwarder",
+      "type": "text"
+    },
+    {
+      "name": "Tracking_Ref",
+      "label": "Tracking Reference",
+      "type": "text"
+    },
+    {
+      "name": "Order_Date",
+      "label": "Order Date",
+      "type": "date",
+      "helpText": "Earliest Sales Order date of the shipment, copied by the server (spec DT-1)."
+    },
+    {
+      "name": "PO_Date",
+      "label": "PO Date",
+      "type": "date",
+      "helpText": "The date the PO was placed. Production planned start = PO Date + 1."
+    },
+    {
+      "name": "Production_Start_Planned",
+      "label": "Production Start (planned)",
+      "type": "date"
+    },
+    {
+      "name": "Production_End_Planned",
+      "label": "Production End (planned)",
+      "type": "date"
+    },
+    {
+      "name": "Shipout_Planned",
+      "label": "Shipout (planned)",
+      "type": "date"
+    },
+    {
+      "name": "Arrival_Planned",
+      "label": "Arrival at port (planned)",
+      "type": "date"
+    },
+    {
+      "name": "Receive_Planned",
+      "label": "Pickable (planned)",
+      "type": "date",
+      "helpText": "Arrival + receiving days."
+    },
+    {
+      "name": "Production_Started_At",
+      "label": "Production Started",
+      "type": "datetime"
+    },
+    {
+      "name": "Production_Finished_At",
+      "label": "Production Finished",
+      "type": "datetime"
+    },
+    {
+      "name": "Shipped_Out_At",
+      "label": "Shipped Out",
+      "type": "datetime"
+    },
+    {
+      "name": "Arrived_Port_At",
+      "label": "Arrived at Port",
+      "type": "datetime"
+    },
+    {
+      "name": "Customs_Cleared_At",
+      "label": "Customs Cleared",
+      "type": "datetime"
+    },
+    {
+      "name": "Arrived_Warehouse_At",
+      "label": "Arrived at Warehouse",
+      "type": "datetime"
+    },
+    {
+      "name": "Received_At",
+      "label": "Received",
+      "type": "datetime"
+    },
+    {
+      "name": "Last_Supplier_Update_At",
+      "label": "Last Supplier Update",
+      "type": "datetime"
+    },
+    {
+      "name": "Last_Chase_At",
+      "label": "Last Chase",
+      "type": "datetime"
+    },
+    {
+      "name": "Production_Photos",
+      "label": "Production Photos",
+      "type": "upload file",
+      "fileCount": "10",
+      "helpText": "At least one is required before the shipment can leave Production (spec ST-R3)."
+    },
+    {
+      "name": "Shipment_Photos",
+      "label": "Shipment Photos",
+      "type": "upload file",
+      "fileCount": "10"
+    },
+    {
+      "name": "Report_Event",
+      "label": "Report Event",
+      "type": "picklist",
+      "options": [
+        "production_started",
+        "production_finished",
+        "shipped_out",
+        "arrived_port",
+        "customs_cleared",
+        "arrived_warehouse",
+        "received"
+      ],
+      "helpText": "Write-only: the server turns it into a stage event and clears it."
+    },
+    {
+      "name": "Report_Occurred_At",
+      "label": "Event Happened On",
+      "type": "text",
+      "helpText": "When it happened (yyyy-MM-dd or yyyy-MM-dd HH:mm:ss). Blank = now. Cannot be in the future."
+    },
+    {
+      "name": "Report_Source",
+      "label": "Event Source",
+      "type": "picklist",
+      "options": [
+        "user",
+        "supplier",
+        "forwarder",
+        "system"
+      ]
+    },
+    {
+      "name": "Report_Note",
+      "label": "Event Note",
+      "type": "text"
+    },
+    {
+      "name": "Target_Change_Reason",
+      "label": "Reason for changing the target",
+      "type": "text",
+      "helpText": "Write-only: required when Target_Date changes (spec DT-4). The server logs it in Target_Date_Changes and clears it."
+    },
+    {
+      "name": "Queue",
+      "label": "Queue (written by the sorting engine)",
+      "type": "section"
+    },
+    {
+      "name": "Category",
+      "label": "Category",
+      "type": "picklist",
+      "options": [
+        "broken",
+        "act_now",
+        "tell_customer",
+        "watch",
+        "on_track",
+        "blocked"
+      ]
+    },
+    {
+      "name": "Blocked_Reason",
+      "label": "Blocked Reason",
+      "type": "text"
+    },
+    {
+      "name": "Queue_Rank",
+      "label": "Queue Rank",
+      "type": "number"
+    },
+    {
+      "name": "Priority_Reason",
+      "label": "Priority Reason",
+      "type": "text"
+    },
+    {
+      "name": "Suggested_Action",
+      "label": "Suggested Action",
+      "type": "text"
+    },
+    {
+      "name": "Date_Needed",
+      "label": "Date Needed (pickable)",
+      "type": "date",
+      "helpText": "Target delivery - fulfillment days - delivery days."
+    },
+    {
+      "name": "Forecast_Pickable",
+      "label": "Forecast Pickable",
+      "type": "date"
+    },
+    {
+      "name": "Slack_Days",
+      "label": "Slack (days)",
+      "type": "number"
+    },
+    {
+      "name": "Days_Late",
+      "label": "Days Late",
+      "type": "number"
+    },
+    {
+      "name": "Scored_At",
+      "label": "Scored At",
+      "type": "datetime"
+    },
+    {
+      "name": "Supplier_Expected_Date",
+      "label": "Supplier Expected Date",
+      "type": "date",
+      "helpText": "Set by the server from a delay report (spec SP-R5): the new date the supplier promises for the next stage (ship out while in Production, arrival after). It replaces the computed planned date until the stage moves."
+    },
+    {
+      "name": "Delay_Reason",
+      "label": "Delay Reason",
+      "type": "text",
+      "helpText": "The reason of the last delay report. Server-only."
+    },
+    {
+      "name": "Report_Delay_Date",
+      "label": "Report Delay: New Expected Date",
+      "type": "date",
+      "helpText": "Write-only: the server turns it into a delay report and clears it."
+    },
+    {
+      "name": "Report_Delay_Reason",
+      "label": "Report Delay: Reason",
+      "type": "text",
+      "helpText": "Write-only. A reason is required."
+    }
+  ]
+}

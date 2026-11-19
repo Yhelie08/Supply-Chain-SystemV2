@@ -35,7 +35,7 @@ test('1. Procurement: PO -> Shipment -> Receiving, all 3 lamps counted in', asyn
   ok(ship, 'shipment');
   const rcv = await one('Receiving');
   assert.equal((await one('Shipments')).Sales_Order, SO);
-  const lines = rcv.Receiving_Line_Items.map((l) => ({ ...l, Accepted_Qty: 3 }));
+  const lines = rcv.Receiving_Line_Items.map((l) => ({ ...l, Accepted_Qty: 3, Bin_location: 'A-01-1' })); // received = counted AND binned (spec D12)
   ok(await api.updateRecordById('Receiving', rcv.ID, { Receiving_Line_Items: lines }), 'receiving count');
   const done = await one('Receiving');
   assert.equal(done.Receive_Status, 'Received');
@@ -146,7 +146,13 @@ test('7. Delivery: Initial Scheduling hand-off -> Service Request -> Appointment
 });
 
 test('8. Appointment: site confirmed, scheduled, dispatched, in transit, delivered, completed -> it is on the Archived page', async () => {
-  ok(await api.updateRecordById('Service_Appointment', state.appt, { Site_Confirmation_Status: 'Confirmed', Confirmation_Method: 'Phone', Site_Confirmation_Notes: 'Customer said ok' }), 'site confirmation');
+  // Site Requirements Checklist (spec v1.4, Delivery 01, SR-R2): lines 1-11 must be answered before the site can be
+  // confirmed. See tests/delivery-management/site-checklist.test.js for the gate's own tests.
+  const checklist = [1, 2, 5, 7, 8, 9, 10].map((id) => ({ Line: id, Status: 'Yes' })).concat([
+    { Line: 3, Detail: { Required: 'No' } }, { Line: 4, Detail: { Restricted: 'No' } },
+    { Line: 6, Detail: { Meters: '2.4' } }, { Line: 11, Detail: { Start: '8:00 AM', End: '6:00 PM' } },
+  ]);
+  ok(await api.updateRecordById('Service_Appointment', state.appt, { Site_Checklist: checklist, Site_Confirmation_Status: 'Confirmed', Confirmation_Method: 'Phone', Site_Confirmation_Notes: 'Customer said ok' }), 'site confirmation');
   ok(await api.updateRecordById('Service_Appointment', state.appt, { Confirmed_Schedule_Date: '2026-12-20', Confirmed_Time_Slot: '09:00 AM - 12:00 PM', Calendar_Entry_Created: true, Appointment_Status: 'Scheduled' }), 'scheduled');
   for (const status of ['Dispatched', 'In Transit']) ok(await api.updateRecordById('Service_Appointment', state.appt, { Appointment_Status: status }), status);
   ok(await api.updateRecordById('Service_Appointment', state.appt, { Appointment_Status: 'Delivered', Actual_Delivery_Date: '2026-12-20' }), 'delivered');

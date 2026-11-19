@@ -1,0 +1,94 @@
+{
+  "name": "Tony_Shipment",
+  "extends": true,
+  "_about": "Spec v1.4 supplier portal. Delay_* = SP-R4 / SP-R5: the supplier reports a delay on its own copy. Prod_* = the Production screen: the server fills the view fields from the parent shipment (never a customer name or price); the supplier writes only Report_Prod_Event / Report_Prod_Date / Prod_Photo, and the server passes them to the parent shipment.",
+  "fields": [
+    {
+      "name": "Delay_New_Date",
+      "label": "Delay: new expected date",
+      "type": "date"
+    },
+    {
+      "name": "Delay_Reason",
+      "label": "Delay: reason",
+      "type": "text"
+    },
+    {
+      "name": "Prod_Po_No",
+      "label": "PO No",
+      "type": "text",
+      "helpText": "Server-written view field: the PO of this shipment."
+    },
+    {
+      "name": "Prod_Status",
+      "label": "Production Status",
+      "type": "picklist",
+      "options": [
+        "not_started",
+        "in_production",
+        "finished",
+        "shipped"
+      ],
+      "helpText": "Server-written view field."
+    },
+    {
+      "name": "Prod_Planned_Start",
+      "label": "Planned Production Start",
+      "type": "date",
+      "helpText": "Server-written view field."
+    },
+    {
+      "name": "Prod_Planned_End",
+      "label": "Planned Production End",
+      "type": "date",
+      "helpText": "Server-written view field."
+    },
+    {
+      "name": "Prod_Started_On",
+      "label": "Production Started",
+      "type": "text",
+      "helpText": "Server-written view field (when it happened)."
+    },
+    {
+      "name": "Prod_Finished_On",
+      "label": "Production Finished",
+      "type": "text",
+      "helpText": "Server-written view field (when it happened)."
+    },
+    {
+      "name": "Prod_Expected_Date",
+      "label": "Expected Date (after a delay)",
+      "type": "date",
+      "helpText": "Server-written view field."
+    },
+    {
+      "name": "Prod_Lines",
+      "label": "Items",
+      "type": "text",
+      "helpText": "Server-written view field: SKU, item and quantity, one per line. No customer, no price."
+    },
+    {
+      "name": "Prod_Photo",
+      "label": "Production Photo",
+      "type": "upload file",
+      "fileCount": "1",
+      "helpText": "JPG, PNG, HEIC, WebP or PDF, 10 MB. Required before production finished can be reported (spec ST-R3)."
+    },
+    {
+      "name": "Report_Prod_Event",
+      "label": "Report Production",
+      "type": "picklist",
+      "options": [
+        "production_started",
+        "production_finished"
+      ],
+      "helpText": "Write-only: the server turns it into a stage event on the shipment and clears it."
+    },
+    {
+      "name": "Report_Prod_Date",
+      "label": "Report Production: the day it happened",
+      "type": "date",
+      "helpText": "Write-only. Blank = today. Never in the future."
+    }
+  ]
+}

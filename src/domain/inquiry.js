@@ -173,11 +173,12 @@ export function titleFor(changes, fallback) {
   return `Updated ${changes.length} fields`;
 }
 
-// "Fenteng" or "Tony" for the two suppliers that have a chat thread; '' for everyone else.
+// "Fenteng Lighting" or "Tony Fan" for the two suppliers that have a chat thread; '' for everyone else. "Tony" and "Tony Fan" are one
+// supplier, "Fenteng" and "Fenteng Lighting" are one (owner, 2026-11-17): the thread key is always the full name.
 export function chatKey(supplierName) {
-  const s = String(supplierName || '');
-  if (s.includes('Fenteng')) return 'Fenteng';
-  if (s.includes('Tony')) return 'Tony';
+  const words = String(supplierName || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  if (words.includes('fenteng')) return 'Fenteng Lighting';
+  if (words.includes('tony')) return 'Tony Fan';
   return '';
 }
 

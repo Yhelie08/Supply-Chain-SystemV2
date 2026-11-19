@@ -1,0 +1,10 @@
+{
+  "name": "Procurement_Settings",
+  "label": "Procurement Settings",
+  "_about": "Control Panel, Procurement group (spec 05 Shared Engines / 08, CP-R1..R6). The catalogue of settings (label, default, min, max, what it affects) lives in server/modules/procurement/settings-defs.mjs; a row here only stores a changed value. No row = the default. Every change is written to Procurement_Settings_History.",
+  "fields": [
+    { "name": "Setting_Key", "label": "Setting Key", "type": "text" },
+    { "name": "Value", "label": "Value", "type": "text" },
+    { "name": "Change_Reason", "label": "Reason for the change", "type": "text" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Schedule_Holds",
+  "label": "Schedule Holds",
+  "_about": "Soft holds (spec v1.4, Delivery 01, 'Earliest available date'): a quoted date holds the capacity for soft_hold_minutes (default 20) so two sales agents cannot both promise the same last slot. Written by server/modules/delivery-management/earliest-slot.mjs only.",
+  "fields": [
+    { "name": "Installer", "label": "Installer", "type": "text" },
+    { "name": "Hold_Date", "label": "Hold Date", "type": "date" },
+    { "name": "Hours", "label": "Hours Held", "type": "number" },
+    { "name": "Expires_At", "label": "Expires At", "type": "datetime" },
+    { "name": "Quoted_By", "label": "Quoted By", "type": "text" },
+    { "name": "Service_Request_No", "label": "Service Request No", "type": "text", "helpText": "The SR this quote was for, if one exists yet — optional, a hold can be made before an SR is saved." },
+    { "name": "Released", "label": "Released", "type": "checkbox", "helpText": "True once converted into a real appointment or explicitly released; an expired-but-unreleased hold is just ignored by date math, never cleaned up by a job." }
+  ]
+}

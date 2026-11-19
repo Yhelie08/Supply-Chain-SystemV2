@@ -10,6 +10,7 @@
 // Books OAuth client and the owner's OK (the tests use a stand-in). The custom field ids are Books' own, taken from the
 // Deluge; the organisation id comes from the Books client configuration.
 import { BooksError } from '../../books/client.mjs';
+import { stampReturnStatus } from './sales-returns.mjs';
 
 const ok = (message, extra = {}) => ({ status: 'success', message, ...extra });
 const fail = (message) => ({ status: 'error', message });
@@ -156,6 +157,7 @@ export async function create_sales_return_books(p, data, ctx) {
   const returnId = salesReturn.salesreturn_id;
   const returnNo = salesReturn.salesreturn_number;
   await data.updateRecord('Sales_Returns_Form', record.ID, { Books_SalesReturn_ID: text(returnId), Books_SalesReturn_No: text(returnNo), RMA: text(returnNo), SR_CREATION_STATUS: 'CREATED' }, { byForm: true });
+  await stampReturnStatus(data, record.ID); // plain raw-store write above — sales-returns.mjs's own hook never sees it (RT-R6).
 
   // Receive the stock back. If this step fails the return is still valid: it is reported, not undone.
   const receiveLines = (salesReturn.line_items || []).map((l) => ({ line_item_id: l.line_item_id, quantity: l.quantity }));

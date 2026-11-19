@@ -327,6 +327,18 @@
     .preview-sheet-header{display:none}
     .sticker-grid{padding:0}
   }
+
+  /* 2026-11-17 owner request: the detail page was one long column. Left = the work (line items, damage / missing, evidence); right = the
+     summaries (events, totals, flags, info, history). The shared theme sets one column for this page; these rules win on purpose. */
+  #detailView .detail-grid,
+  #detailView .detail-grid:has(#evidenceCard){grid-template-columns:minmax(0,1fr) 380px !important;gap:20px !important;align-items:start}
+  #detailView .detail-grid > *{min-width:0}
+  #detailView .detail-grid:has(#evidenceCard) > :nth-child(2){display:flex !important;flex-direction:column;gap:18px;grid-template-columns:none !important}
+  #detailView .detail-grid:has(#evidenceCard) > :nth-child(2) > :is(#tlhcMount,#incMount){grid-column:auto}
+  #detailView .detail-grid > :nth-child(2) #rcvEventsCard .totals-bar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #detailView .detail-grid > :nth-child(2) .result-flags{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #detailView .detail-grid > :nth-child(2) #rcvEventsCard .totals-bar .t-item .n{font-size:12px;word-break:break-word}
+  @media(max-width:1000px){#detailView .detail-grid,#detailView .detail-grid:has(#evidenceCard){grid-template-columns:minmax(0,1fr) !important}}
 </style>
 <script>
 /* ════════════════════════════════
@@ -447,7 +459,7 @@ var PRHold = (function(){
         <thead>
           <tr>
             <th>Receive #</th><th>PO #</th><th>SO #</th><th>Ship #</th><th>EXC #</th><th>RR #</th><th>Supplier</th><th>Lines</th>
-            <th>Accepted / Expected</th><th>Exceptions</th><th>Status</th><th>Next Step</th><th>Forecast</th>
+            <th>Accepted / Expected</th><th>Exceptions</th><th>Status</th><th>Arrivals (spec v1.4)</th><th>Next Step</th><th>Forecast</th>
           </tr>
         </thead>
         <tbody id="listBody"></tbody>
@@ -498,11 +510,6 @@ var PRHold = (function(){
     </div>
   </div>
 
-  <div class="card">
-    <h3>Result Flags <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(auto-derived, live)</span></h3>
-    <div class="result-flags" id="resultFlags"></div>
-  </div>
-
   <div class="detail-grid">
     <div style="display:flex;flex-direction:column;gap:18px">
       <div class="card">
@@ -530,11 +537,44 @@ var PRHold = (function(){
 
       <div class="card" id="evidenceCard" style="display:none">
         <h3>Damage / Missing Evidence <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(photos attach immediately per row; other fields save with the top Save button)</span></h3>
+        <div id="supplierPhotosRow" style="display:none;margin-bottom:12px">
+          <label style="font-size:12px;color:var(--gray-500);display:block;margin-bottom:4px">Supplier's own photos, for comparison</label>
+          <div id="supplierPhotosThumbs" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        </div>
         <div id="evidenceBody"></div>
+      </div>
+
+      <div class="card">
+        <h3>SKU Receive History <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(every Books receive-event logged against this record)</span></h3>
+        <table class="dmd-table">
+          <thead><tr><th>#</th><th>SKU</th><th>Item</th><th>Qty</th><th>Books Receive No.</th></tr></thead>
+          <tbody id="skuHistBody"></tbody>
+        </table>
+        <div id="skuHistEmpty" class="dmd-empty">No Books receive events logged yet</div>
       </div>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:18px">
+    <div class="card" id="rcvEventsCard">
+      <h3>Receiving events <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(stamped by the server: Received = counted and binned)</span></h3>
+      <div class="totals-bar">
+        <div class="t-item"><div class="n" id="evArrived" style="font-size:13px">&mdash;</div><div class="l">Arrived</div></div>
+        <div class="t-item"><div class="n" id="evCounted" style="font-size:13px">&mdash;</div><div class="l">Counted</div></div>
+        <div class="t-item"><div class="n" id="evBinned" style="font-size:13px">&mdash;</div><div class="l">Binned</div></div>
+        <div class="t-item"><div class="n" id="evAvailable" style="font-size:13px">&mdash;</div><div class="l">Available</div></div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--gray-500)">Gate log: it arrived on</label>
+        <input type="date" id="rcvArrivedOn" style="height:32px;border:1.5px solid var(--gray-200);border-radius:6px;padding:0 8px" />
+        <button class="btn btn-ghost btn-sm" onclick="rcvReportArrived()">Record arrival</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Result Flags <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(auto-derived, live)</span></h3>
+      <div class="result-flags" id="resultFlags"></div>
+    </div>
+
       <div class="card">
         <h3>Receiving Info</h3>
         <div class="info-grid">
@@ -545,15 +585,6 @@ var PRHold = (function(){
           <div class="info-item"><label>Customer</label><div class="val" id="infoCustomer">—</div></div>
           <div class="info-item"><label>Sales Owner</label><div class="val" id="infoSalesOwner">—</div></div>
         </div>
-      </div>
-
-      <div class="card">
-        <h3>SKU Receive History <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(every Books receive-event logged against this record)</span></h3>
-        <table class="dmd-table">
-          <thead><tr><th>#</th><th>SKU</th><th>Item</th><th>Qty</th><th>Books Receive No.</th></tr></thead>
-          <tbody id="skuHistBody"></tbody>
-        </table>
-        <div id="skuHistEmpty" class="dmd-empty">No Books receive events logged yet</div>
       </div>
 
       <!-- MERGED 2026-07-30, per user request — Timeline History + Internal Notes
@@ -869,7 +900,7 @@ function invokeApi(apiName, publicKey, payload){
 function loadList(){
   /* PR On Hold (Phase 3): a held item can still be received (so the stock count stays right); it is only tagged. */
   PRHold.load(function(){ if(ALL_ROWS && ALL_ROWS.length) renderList(); });
-  document.getElementById('listBody').innerHTML = '<tr><td colspan="13"><div class="loading-wrap"><div class="spinner"></div>Loading receiving records…</div></td></tr>';
+  document.getElementById('listBody').innerHTML = '<tr><td colspan="14"><div class="loading-wrap"><div class="spinner"></div>Loading receiving records…</div></td></tr>';
   if(typeof ZOHO==='undefined' || !ZOHO.CREATOR || !ZOHO.CREATOR.DATA || typeof ZOHO.CREATOR.DATA.getRecords!=='function'){
     console.error('[Receiving] SDK not available');
     showToast('Widget SDK not available — see console');
@@ -1376,6 +1407,33 @@ function trkRenderDetail(r){
   });
 }
 
+/* ADDED 2026-11-17 (spec v1.4, Receiving): "received" now means counted AND binned (pickable). The four events (arrived, counted, binned,
+   available) are stamped by the server; the Arrivals state, rank, reason and action are written by the server too. This widget only reads them,
+   and sends one thing: the gate log (Report_Arrived_On = the day the goods really arrived). */
+var RCV_STATE = { expected:['badge-gray','Expected'], arrived:['badge-amber','Arrived, not counted'], counted:['badge-blue','Counted, not binned'], binned:['badge-blue','Binned'], available:['badge-green','Available'] };
+function rcvSortByQueue(rows){
+  rows.sort(function(a, b){
+    var ra = parseFloat(a.Queue_Rank), rb = parseFloat(b.Queue_Rank);
+    ra = isNaN(ra) ? 1e9 : ra; rb = isNaN(rb) ? 1e9 : rb;
+    return ra - rb;
+  });
+}
+function rcvArrivalCell(r){
+  var m = RCV_STATE[r.Rcv_State];
+  if(!m) return '<span style="color:var(--gray-400)">Not scored yet</span>';
+  var rank = (r.Queue_Rank !== null && r.Queue_Rank !== undefined && r.Queue_Rank !== '') ? '#' + esc(r.Queue_Rank) + ' ' : '';
+  return '<span class="badge ' + m[0] + '" title="' + esc(r.Priority_Reason || '') + '">' + rank + m[1] + '</span>' +
+    (r.Suggested_Action ? '<div style="font-size:11.5px;font-weight:600;color:var(--orange-dark);max-width:260px">' + esc(r.Suggested_Action) + '</div>' : '');
+}
+function rcvReportArrived(){
+  var d = document.getElementById('rcvArrivedOn').value;
+  if(!d){ showToast('Choose the day it arrived'); return; }
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: REPORT_NAME, id: String(CURRENT_RECORD.ID), payload: { data: { Report_Arrived_On: d } } }).then(function(resp){
+    if(!(resp && String(resp.code) === '3000')){ showToast((resp && resp.message) || 'Not saved'); return; }
+    showToast('Arrival recorded'); openDetail(String(CURRENT_RECORD.ID));
+  }).catch(function(err){ showToast((err && err.message) || 'Not saved'); });
+}
+
 function renderList(){
   var q = (document.getElementById('searchInput').value || '').toLowerCase();
   var rows = ALL_ROWS.filter(function(r){
@@ -1390,6 +1448,7 @@ function renderList(){
       trkShipFor(r) + ' ' + trkExcFor(r).join(' ') + ' ' + trkRRFor(r).join(' ')).toLowerCase();
     return hay.indexOf(q) !== -1;
   });
+  rcvSortByQueue(rows); /* spec SE-5: arrived-not-counted first, oldest Sales Order first; the rank is the server's */
   var body = document.getElementById('listBody');
   var empty = document.getElementById('listEmpty');
   if(rows.length === 0){
@@ -1418,6 +1477,7 @@ function renderList(){
       '<td>' + accepted + ' / ' + expected + '</td>' +
       '<td>' + (excCount>0 ? '<span class="badge badge-red">' + excCount + '</span>' : '<span class="badge badge-gray">0</span>') + '</td>' +
       '<td>' + statusBadge(status, r) + recvHoldBadge(r) + '</td>' +
+      '<td>' + rcvArrivalCell(r) + '</td>' +
       '<td>' + nextStepCell(r.ID, nextStepFor(r)) + '</td>' +
       '<td>' + forecastCell(r) + '</td>' +
       '</tr>';
@@ -2366,7 +2426,12 @@ function forecastCell(r) {
   var status = String(r.Forecast_Status == null ? "" : r.Forecast_Status).trim();
   var win = String(r.Forecast_Window == null ? "" : r.Forecast_Window).trim();
 
-  if (!raw && !status) return '<span style="color:#cbd5e1">—</span>';
+  if (!raw && !status) {
+    /* The delivery forecast above is written only by the Forecast_Stamp_Daily schedule (01:00). Until then show the forecast pickable date of
+       the shipment (Ship & Track), in grey, so the column is not blank. */
+    if (r.Rcv_Forecast_Pickable) return '<span title="Forecast pickable (Ship & Track). The delivery forecast is stamped every day at 01:00." style="white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569">pickable ' + fcEsc(forecastDateText(r.Rcv_Forecast_Pickable)) + '</span>';
+    return '<span style="color:#cbd5e1">—</span>';
+  }
 
   var tone = FORECAST_TONE[status] || FORECAST_TONE["No Start Date"];
   var date = raw ? fcEsc(forecastDateText(raw)) : "—";
@@ -2765,7 +2830,42 @@ function openDetail(id){
   });
 }
 
+function rcvRenderEvents(){
+  var r = CURRENT_RECORD || {};
+  var set = function(id, v){ var el = document.getElementById(id); if(el) el.textContent = v || '\u2014'; };
+  set('evArrived', r.Arrived_At); set('evCounted', r.Counted_At); set('evBinned', r.Binned_At); set('evAvailable', r.Available_At);
+  document.getElementById('rcvArrivedOn').max = new Date().toISOString().slice(0,10);
+  /* the supplier's production / shipment photos next to the damage/missing evidence photos, so the fault can be
+     traced (spec ST-R4): real thumbnails, not just a link, and every production photo (the field now holds a
+     growing list, not just the newest one — a second supplier upload used to erase the first). */
+  var shipId = r.Shipments && (r.Shipments.ID || r.Shipments);
+  var row = document.getElementById('supplierPhotosRow'), thumbs = document.getElementById('supplierPhotosThumbs');
+  if(row) row.style.display = 'none';
+  if(thumbs) thumbs.innerHTML = '';
+  if(shipId && row && thumbs){
+    ZOHO.CREATOR.DATA.getRecordById({ report_name: 'All_Shipments', id: String(shipId), field_config: 'all' }).then(function(resp){
+      var sh = resp && resp.data; if(!sh) return;
+      var photos = [];
+      var raw = sh.Production_Photos;
+      if(Array.isArray(raw)) photos = photos.concat(raw);
+      else if(typeof raw === 'string' && raw){ try{ var parsed = JSON.parse(raw); photos = photos.concat(Array.isArray(parsed) ? parsed : [raw]); }catch(e){ photos.push(raw); } }
+      if(sh.Shipment_Photos) photos.push(sh.Shipment_Photos);
+      if(!photos.length) return;
+      row.style.display = 'block';
+      photos.forEach(function(url, i){
+        var img = document.createElement('img');
+        img.className = 'photo-thumb';
+        img.title = 'Supplier photo ' + (i+1);
+        img.onclick = function(){ openLightbox(img.src); };
+        img.onerror = function(){ photoThumbFallback(img, '', 'photo ' + (i+1)); };
+        thumbs.appendChild(img);
+        applyEvidencePhotoImg(img, url);
+      });
+    }).catch(function(){});
+  }
+}
 function renderDetailHeader(){
+  rcvRenderEvents(); /* spec v1.4: the four events + gate log + supplier photos */
   var r = CURRENT_RECORD;
   renderNextStepBanner("nsBanner", r.ID, nextStepFor(r));
   // MERGED 2026-07-30 — open both components for this record.
@@ -3078,9 +3178,14 @@ var CURRENT_DMD_ROWS = [];
    the otherwise-live totals until Save is clicked — the rest are fully live). */
 function renderResultFlags(lineCount, incomplete, totDamage, totMissing){
   var excCount = parseInt((CURRENT_RECORD && CURRENT_RECORD.Exception_Count) || 0, 10);
-  var isComplete = lineCount > 0 && incomplete === 0;
+  /* spec v1.4 (D12): a receive is complete only when every line is counted in full AND has a real bin ('Receiving Area' is where goods wait) */
+  var binSelects = document.querySelectorAll('select[data-field="Bin_location"]');
+  var allBinned = binSelects.length > 0;
+  binSelects.forEach(function(sel){ var b = (sel.value || '').trim(); if(b === '' || b === 'Receiving Area') allBinned = false; });
+  var isComplete = lineCount > 0 && incomplete === 0 && allBinned;
   var flags = [
     ['Is Complete Receive', isComplete ? 'badge-green' : 'badge-red', isComplete ? 'Yes' : 'No'],
+    ['Binned', allBinned ? 'badge-green' : 'badge-amber', allBinned ? 'Yes' : 'No bin yet'],
     ['Has Damage', totDamage > 0 ? 'badge-red' : 'badge-gray', totDamage > 0 ? 'Yes — ' + totDamage + ' pcs' : 'No'],
     ['Has Missing', totMissing > 0 ? 'badge-amber' : 'badge-gray', totMissing > 0 ? 'Yes — ' + totMissing + ' pcs' : 'No'],
     ['Has Exceptions', excCount > 0 ? 'badge-red' : 'badge-gray', excCount > 0 ? 'Yes — ' + excCount : 'No'],

@@ -548,14 +548,14 @@ const SUPPLIER_INITIAL = 'T';
 /* Matches Purchase_Request1's own Supplier_Selected.Suppliers value ("Tony") —
    must be re-sent on every submit since the write is a full subform-row replace
    (see submitResponse) — omitting it wipes Suppliers_Supplier2 blank. */
-const SUPPLIER_MATCH_NAME = 'Tony';
+const SUPPLIER_MATCH_NAME = 'Tony Fan'; /* the full name since 2026-11-17 (owner): "Tony" and "Tony Fan" are one supplier */
 /* Subform + field link names — differ between Fenteng (_Supplier1) and Tony (_Supplier2) */
 const SUBFORM_NAME = 'Supplier_Selected_Supplier2';
 const F = {
   prNo: 'PR_No_Supplier2', sku: 'sku_Supplier2', desc1: 'Description1_Supplier2',
   desc: 'description_Supplier2', unit: 'unit_Supplier2', qty: 'quantity_Supplier2',
   category: 'category_Supplier2', date: 'Target_Delivery_Supplier2', priority: 'Priority_PR_Supplier2',
-  srpRate: 'SRP_Rate_PR_Supplier2', inqRef: 'inquiry_reference_Supplier2',
+  refKnown: 'Ref_Price_Known_Supplier2', inqRef: 'inquiry_reference_Supplier2',
   suppliers: 'Suppliers_Supplier2', avail: 'Availability_Supplier2', initial: 'Initial_Price_Supplier2',
   negotiated: 'Negotiated_Supplier2', final: 'Final_Price_Supplier2', lead: 'Lead_Time_Supplier2',
   status: 'Status_Supplier2', selected: 'Selected_Supplier2',
@@ -1322,7 +1322,7 @@ function applyFieldStates(r){
 function onAvailChange(){
   const avail = $('r-avail').value;
   const cannotOrUnavailable = (avail==="Cannot Produce" || avail==="Unavailable");
-  const hasSRPRate = _currentRaw && parseFloat(_currentRaw[F.srpRate]) > 0;
+  const hasSRPRate = _currentRaw && _currentRaw[F.refKnown] === 'Yes'; /* a yes / no flag: the supplier never receives our selling price (spec SP-R1) */
   const skippable = cannotOrUnavailable || (avail==="Confirmed" && (hasSRPRate || !_itemRateIsZero));
   $('ip-req').style.display = skippable ? 'none' : 'inline';
   $('lt-req').style.display = (avail==="Confirmed" || cannotOrUnavailable) ? 'none' : 'inline';
@@ -1421,7 +1421,7 @@ function submitResponse(){
      exists (SRP_Rate_PR_Supplier1/2, PR's own stored SO-approved rate, OR the
      catalog Items.Rate via loadItemRate/_itemRateIsZero) — same rule Inquiries
      already enforces, SRP_Rate kept as PR's own extra signal on top. */
-  const hasSRPRate = _currentRaw && parseFloat(_currentRaw[F.srpRate]) > 0;
+  const hasSRPRate = _currentRaw && _currentRaw[F.refKnown] === 'Yes'; /* a yes / no flag: the supplier never receives our selling price (spec SP-R1) */
   const priceSkippable = cannotOrUnavailable || (avail==="Confirmed" && (hasSRPRate || !_itemRateIsZero));
   /* BUG found+fixed 2026-07-14 (same class already fixed in Fenteng-Inquiries/
      Tony-Inquiries): `!initial` only catches an EMPTY string — typing "0" is a

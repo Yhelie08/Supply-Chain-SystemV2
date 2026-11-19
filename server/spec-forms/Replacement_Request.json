@@ -1,0 +1,64 @@
+{
+  "name": "Replacement_Request",
+  "extends": true,
+  "_about": "Spec v1.4 Exceptions and Replacement (02 / 06). Target_Delivery is set at creation (RR-R3); the rest are server-written: a widget write is dropped.",
+  "fields": [
+    {
+      "name": "Target_Delivery",
+      "label": "Target Delivery",
+      "type": "date",
+      "helpText": "RR-R3: the original target if it is still ahead, else today + rr_default_days."
+    },
+    {
+      "name": "Order_Date",
+      "label": "Original Order Date",
+      "type": "date",
+      "helpText": "The original SO's Order Date (RR-R3). Server-written."
+    },
+    {
+      "name": "Original_Supplier",
+      "label": "Original Supplier",
+      "type": "text",
+      "helpText": "RR-R1: who supplied the item first. RR_Supplier is the supplier chosen for the replacement."
+    },
+    {
+      "name": "Supplier_Change_Reason",
+      "label": "Supplier Change Reason",
+      "type": "textarea",
+      "helpText": "RR-R1: required when the supplier was changed."
+    },
+    {
+      "name": "Replacement_Received_At",
+      "label": "Replacement Received At",
+      "type": "datetime",
+      "helpText": "rr.replacement_received. Server-written."
+    },
+    {
+      "name": "Rr_Forecast_Pickable",
+      "label": "Forecast Pickable",
+      "type": "date",
+      "helpText": "From the replacement shipment. Server-written."
+    },
+    {
+      "name": "Rr_Category",
+      "label": "Category",
+      "type": "picklist",
+      "options": [
+        "broken"
+      ],
+      "helpText": "Open replacements are Broken: first in every queue (RR-R4). Server-written."
+    },
+    {
+      "name": "Rr_Queue_Rank",
+      "label": "Queue Rank",
+      "type": "number",
+      "helpText": "Oldest original Order Date first. Server-written."
+    },
+    {
+      "name": "Rr_Ack_Alert_At",
+      "label": "Not-acknowledged Alert At",
+      "type": "datetime",
+      "helpText": "Server-written."
+    }
+  ]
+}

@@ -14,9 +14,9 @@ const user = { role: 'user', email: 'u' };
 const policyFile = path.join(WIDGETS, 'Delivery Management', 'Policy Settings', 'app', 'index.html');
 const otherFile = path.join(WIDGETS, 'Delivery Management', 'Service Appointment', 'app', 'index.html');
 
-test('pages.json flags Policy Settings and nothing else', () => {
+test('pages.json flags the settings pages (Delivery Policy Settings, Procurement Settings) and nothing else', () => {
   const flagged = sections.flatMap((s) => s.tabs).filter((t) => t.adminOnly).map((t) => t.widget);
-  assert.deepEqual(flagged, ['Delivery Management/Policy Settings']);
+  assert.deepEqual(flagged.sort(), ['Delivery Management/Policy Settings', 'Procurement/Procurement Settings']);
 });
 
 test('the Policy Settings page is served to admins only', () => {
@@ -33,7 +33,16 @@ test('the menu hides admin-only tabs from users, not from admins', () => {
   const labels = (me) => access.visibleSections(me).flatMap((s) => s.tabs).map((t) => t.label);
   assert.ok(labels(admin).includes('Policy Settings'));
   assert.ok(!labels(user).includes('Policy Settings'));
-  assert.equal(labels(user).length, labels(admin).length - 1);
+  assert.ok(labels(admin).includes('Procurement Settings'));
+  assert.ok(!labels(user).includes('Procurement Settings'));
+  assert.equal(labels(user).length, labels(admin).length - 2, 'Policy Settings and Procurement Settings');
+});
+
+test('a user cannot write Procurement Settings through the SDK either', () => {
+  for (const form of ['Procurement_Settings', 'Procurement_Settings_History']) {
+    assert.ok(access.checkCall(user, 'addRecords', { form_name: form }), form);
+    assert.equal(access.checkCall(admin, 'addRecords', { form_name: form }), null);
+  }
 });
 
 test('a user cannot write Policy Settings through any SDK write, by form or report name', () => {

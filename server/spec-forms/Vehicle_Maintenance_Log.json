@@ -1,0 +1,14 @@
+{
+  "name": "Vehicle_Maintenance_Log",
+  "label": "Vehicle Maintenance Log",
+  "_about": "Truck Maintenance (spec v1.4, Delivery 08 §2, TK-R4): type, date, km, shop, cost, receipts. Cost is 'restricted to admin, supervisor' by the spec; this app has no field-level role masking anywhere yet (same gap noted for Third_Party_Fee), so it is stored but not hidden from anyone who can read this form.",
+  "fields": [
+    { "name": "Vehicle", "label": "Vehicle", "type": "text" },
+    { "name": "Type", "label": "Type", "type": "text", "helpText": "e.g. \"Oil change\", \"Tire rotation\"." },
+    { "name": "Date", "label": "Date", "type": "date" },
+    { "name": "KM", "label": "KM", "type": "number" },
+    { "name": "Shop", "label": "Shop", "type": "text" },
+    { "name": "Cost", "label": "Cost", "type": "number" },
+    { "name": "Receipts", "label": "Receipts", "type": "text", "helpText": "Photo/receipt URL." }
+  ]
+}

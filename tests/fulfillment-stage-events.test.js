@@ -20,7 +20,7 @@ before(async () => {
 beforeEach(async () => { for (const f of [SOF, EVENTS]) await db.query(`DELETE FROM "${f}"`); });
 
 test('Stage_Events form exists with the expected columns', async () => {
-  const id = await raw.addRecord(EVENTS, { Record_Type: 'package', Record_ID: '1', Event: 'package.picking', Occurred_At: 'x', Reported_At: 'x', Source: 'system' });
+  const id = await raw.addRecord(EVENTS, { Record_Type: 'package', Record_Id: '1', Event: 'package.picking', Occurred_At: 'x', Reported_At: 'x', Source: 'system' });
   const r = await raw.getRecordById(EVENTS, id, { raw: true });
   assert.equal(r.Record_Type, 'package');
   assert.equal(r.Event, 'package.picking');
@@ -47,7 +47,7 @@ const store = () => createHookedStore(raw, workflows);
 test('creating a package logs exactly one event for its starting stage', async () => {
   const hooked = store();
   const id = await hooked.addRecord(SOF, { SO_No: 'SO-1', Fulfillment_Stage: 'Waiting For Package' });
-  const rows = await raw.find(EVENTS, (r) => r.Record_ID === String(id));
+  const rows = await raw.find(EVENTS, (r) => r.Record_Id === String(id));
   assert.equal(rows.length, 1);
   assert.equal(rows[0].Record_Type, 'package');
   assert.equal(rows[0].Event, 'package.waiting_for_package');
@@ -61,7 +61,7 @@ test('a save that changes Fulfillment_Stage logs exactly one new row with the ne
   // package to Order Readiness (server/modules/fulfillment/workflows.mjs's packageStage rule).
   const id = await hooked.addRecord(SOF, { SO_No: 'SO-2', Fulfillment_Stage: 'Waiting For Package' });
   await hooked.updateRecord(SOF, id, { Package: 'PAC-2', Status: 'Yes' }, { byForm: true });
-  const rows = await raw.find(EVENTS, (r) => r.Record_ID === String(id));
+  const rows = await raw.find(EVENTS, (r) => r.Record_Id === String(id));
   assert.equal(rows.length, 2);
   assert.deepEqual(rows.map((r) => r.Event).sort(), ['package.order_readiness', 'package.waiting_for_package']);
 });
@@ -72,7 +72,7 @@ test('a save that does NOT change Fulfillment_Stage logs nothing new', async () 
   // Readiness), so saving an unrelated field here never recomputes the stage out from under this assertion.
   const id = await hooked.addRecord(SOF, { SO_No: 'SO-3', Fulfillment_Stage: 'Picking', Package: 'PAC-3' });
   await hooked.updateRecord(SOF, id, { Delivery_Type: 'Delivery Only' }, { byForm: true }); // unrelated field, same stage
-  const rows = await raw.find(EVENTS, (r) => r.Record_ID === String(id));
+  const rows = await raw.find(EVENTS, (r) => r.Record_Id === String(id));
   assert.equal(rows.length, 1); // only the creation event
 });
 
@@ -80,6 +80,6 @@ test('two saves in a row setting the same Fulfillment_Stage log only once (no du
   const hooked = store();
   const id = await hooked.addRecord(SOF, { SO_No: 'SO-4', Fulfillment_Stage: 'Waiting For Package' });
   await hooked.updateRecord(SOF, id, { Fulfillment_Stage: 'Waiting For Package' }, { byForm: true }); // same value again
-  const rows = await raw.find(EVENTS, (r) => r.Record_ID === String(id));
+  const rows = await raw.find(EVENTS, (r) => r.Record_Id === String(id));
   assert.equal(rows.length, 1);
 });

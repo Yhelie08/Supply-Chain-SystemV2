@@ -13,6 +13,23 @@ export const forms = Object.fromEntries(
     return [form.name, form];
   }),
 );
+// Spec v1.4 additions (server/spec-forms/*.json), kept out of zoho-export/parsed so `npm run parse-ds` cannot wipe them.
+// A file with "extends": true adds the fields it names to the parsed form of the same name (fields already there are kept);
+// any other file is a new form.
+const SPEC_FORMS = path.join(ROOT, 'server', 'spec-forms');
+if (fs.existsSync(SPEC_FORMS)) {
+  for (const f of fs.readdirSync(SPEC_FORMS).filter((n) => n.endsWith('.json')).sort()) {
+    const add = JSON.parse(fs.readFileSync(path.join(SPEC_FORMS, f), 'utf8'));
+    const own = forms[add.name];
+    if (add.extends) {
+      if (!own) throw new Error(`spec-forms/${f} extends "${add.name}", which is not in the parsed export`);
+      const have = new Set(own.fields.map((x) => x.name));
+      own.fields.push(...add.fields.filter((x) => !have.has(x.name)));
+    } else if (!own) {
+      forms[add.name] = { name: add.name, label: add.label ?? add.name, fields: add.fields };
+    }
+  }
+}
 export const reports = Object.fromEntries(JSON.parse(fs.readFileSync(path.join(PARSED, 'reports.json'), 'utf8')).map((r) => [r.name, r]));
 
 const NO_VALUE = new Set(['section', 'help_text', 'plaintext', 'submit', 'cancel', 'tooltip']);

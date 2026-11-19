@@ -1,0 +1,45 @@
+{
+  "name": "Suppliers",
+  "extends": true,
+  "_about": "Per-supplier settings of the spec (01 Database section 3, Control Panel CP-R9). A shipment with no quoted lead time uses its supplier's default production days, then the global setting.",
+  "fields": [
+    {
+      "name": "Default_Production_Days",
+      "label": "Default Production Days",
+      "type": "number",
+      "helpText": "Blank = the global production_days setting."
+    },
+    {
+      "name": "Default_Consolidation_Days",
+      "label": "Default Consolidation Days",
+      "type": "number",
+      "helpText": "Blank = the global consolidation_days setting."
+    },
+    {
+      "name": "Is_Main_Supplier",
+      "label": "Main Supplier",
+      "type": "checkbox",
+      "helpText": "Fenteng, Tony Fan: the supplier ladder day-3 decision also goes to the supervisor."
+    },
+    {
+      "name": "Supplier_Language",
+      "label": "Language",
+      "type": "picklist",
+      "options": [
+        "EN",
+        "ZH"
+      ]
+    },
+    {
+      "name": "Contact_Email",
+      "label": "Contact Email",
+      "type": "text"
+    },
+    {
+      "name": "Name_Aliases",
+      "label": "Other Names",
+      "type": "text",
+      "helpText": "The names this supplier is called in older records, separated by commas (e.g. Tony, Tony Fan Lighting). A supplier is found by its name or one of these, never by a part of a name (spec INQ-R6)."
+    }
+  ]
+}

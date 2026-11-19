@@ -6,6 +6,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startE2EHarness } from './helpers/e2e-harness.mjs';
+import { DEFAULT_SETTINGS } from '../../server/modules/procurement/plan.mjs';
+import { addDays, ymd, parseDate } from '../../server/workflows/deluge.mjs';
 
 let harness, api;
 const isTrue = (v) => v === true || v === 'true';
@@ -96,7 +98,7 @@ test('4. Create PO: the PO, then Tony\'s copy of it with a Pending shipment and 
   assert.equal((await rows('Fenteng_Lighting_Purchase_Order')).length, 0);
   const [ship] = await rows('Shipments');
   assert.equal(ship.Shipment_Status, 'Pending');
-  assert.equal(ship.Supplier, 'Tony');
+  assert.equal(ship.Supplier, 'Tony Fan');
   S.shipId = ship.ID; S.shipNo = ship.Shipment_No;
   const [rcv] = await rows('Receiving');
   assert.equal(rcv.Receive_Status, 'Pending');
@@ -129,7 +131,8 @@ test('6. Tony ships: the line is added to the buyer\'s shipment In Transit with 
   assert.equal(ship.Supplier_Shipment_Details[0].Status, 'In Transit');
   assert.match(ship.Supplier_Shipment_Details[0].Shipment_ID, /^SHP-AIR-\d{5}$/);
   assert.equal(ship.Ship_Out_Date, '2027-01-03');
-  assert.equal(ship.Estimated_Warehouse_Arrival, '2027-01-15');
+  const airDays = DEFAULT_SETTINGS.transit_air_days + DEFAULT_SETTINGS.customs_air_days + DEFAULT_SETTINGS.receiving_days; // from the settings, not a fixed 12
+  assert.equal(ship.Estimated_Warehouse_Arrival, ymd(addDays(parseDate('2027-01-03'), airDays)), `airfreight: ship date + ${airDays} days`);
   // saving the supplier's shipment again adds nothing
   ok(await api.updateRecordById('Tony_Shipment', tonyShip.ID, { Added_User1: 'tony' }), 'save again');
   assert.equal((await rows('Shipments'))[0].Supplier_Shipment_Details.length, 1);
@@ -229,16 +232,17 @@ test('11. The same process when Fenteng is chosen: PO copy, acknowledge, ship, r
   assert.equal(Number(copy.Total_PO_Value_Supplier1), 120);
   assert.equal((await call('acknowledge_po_fenteng', { poNoSupplier1: po.PO_No, etd: '2027-02-01', eta: '2027-02-12' })).status, 'success');
   assert.equal((await call('acknowledge_po_fenteng', { poNoSupplier1: po.PO_No, etd: '2027-02-01', eta: '2027-02-12' })).status, 'already');
-  const ship = (await rows('Shipments')).find((s) => s.Supplier === 'Fenteng');
+  const ship = (await rows('Shipments')).find((s) => s.Supplier === 'Fenteng Lighting');
   assert.deepEqual([ship.ETD, ship.ETA], ['2027-02-01', '2027-02-12']);
 
   const fs = (await rows('Fenteng_Shipment'))[0];
   ok(await api.updateRecordById('Fenteng_Shipment', fs.ID, { Supplier1_Shipment_Details: fs.Supplier1_Shipment_Details.map((r) => ({ ...r, Select_To_Ship: true, Shipment_Mode: 'FCL', Date_Shipped: '2027-02-02' })) }), 'Fenteng ships');
-  const shipped = (await rows('Shipments')).find((s) => s.Supplier === 'Fenteng');
+  const shipped = (await rows('Shipments')).find((s) => s.Supplier === 'Fenteng Lighting');
   assert.match(shipped.Supplier_Shipment_Details[0].Shipment_ID, /^SHP-FCL-\d{5}$/);
-  assert.equal(shipped.Estimated_Warehouse_Arrival, '2027-03-21', 'FCL: +47 days');
+  const fclDays = DEFAULT_SETTINGS.transit_fcl_days + DEFAULT_SETTINGS.customs_fcl_days + DEFAULT_SETTINGS.receiving_days; // from the settings, not a fixed 47
+  assert.equal(shipped.Estimated_Warehouse_Arrival, ymd(addDays(parseDate('2027-02-02'), fclDays)), `FCL: ship date + ${fclDays} days`);
 
-  const rcv = (await rows('Receiving')).find((r) => r.Supplier === 'Fenteng');
+  const rcv = (await rows('Receiving')).find((r) => r.Supplier === 'Fenteng Lighting');
   ok(await api.updateRecordById('Receiving', rcv.ID, { Receiving_Line_Items: rcv.Receiving_Line_Items.map((l) => ({ ...l, Accepted_Qty: 1, Missing_Qty: 1 })), Create_Exception_Requested: true }), 'count');
   const exc = (await rows('Exceptions')).find((e) => e.Receive_No === rcv.Receive_No1);
   assert.ok(exc, 'a missing unit raises an exception');

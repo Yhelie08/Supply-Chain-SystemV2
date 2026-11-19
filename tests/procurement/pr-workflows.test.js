@@ -95,16 +95,13 @@ test('a Local PR uses HC System, with no lead time and no freight', async () => 
   assert.deepEqual([rec.Selected_Supplier, rec.Required_Days_Lead, rec.Shipping_mode_selected], ['HC System', '0', true]);
 });
 
-test('mirrors Zoho: readiness is worked out before the shipment mode is set, so a new PR is ready one save later', async () => {
+test('spec v1.4 PR-R5 (review item, 2026-11-18): an auto-priced PR reaches Ready for PO on its first save, no second touch needed', async () => {
   const id = await store.addRecord('Purchase_Request1', pr({ SRP_Approved_PR: 100, Supplier_Selected: [{ Supplier_ID: tony, Suppliers: 'Tony', Selected: true, Final_Price: 90, Lead_Time: 5 }] }));
-  let rec = await read(id);
+  const rec = await read(id);
   assert.deepEqual([rec.Selected_Supplier1, rec.Final_price_confirmed, rec.Target_date_exists], [true, true, true]);
-  assert.equal(rec.Shipment_Mode, 'LCL', 'the mode was set in this save');
-  assert.equal(rec.Shipping_mode_selected, false, 'but readiness looked at it before');
-  assert.equal(rec.PR_READY_FOR_PO, false);
-  await store.updateRecord('Purchase_Request1', id, { description: 'touched' }, { byForm: true });
-  rec = await read(id);
-  assert.deepEqual([rec.Shipping_mode_selected, rec.PR_READY_FOR_PO], [true, true]);
+  assert.equal(rec.Shipment_Mode, 'LCL', 'the mode was defaulted in this save');
+  assert.equal(rec.Shipping_mode_selected, true, 'readiness now sees the mode this save set, not a stale blank one');
+  assert.equal(rec.PR_READY_FOR_PO, true, 'no person, and no extra save, needed to reach Ready for PO');
 });
 
 test('price confirmed: approved SRP, SRP rate, an inquiry, the catalog rate, or a supplier cost', async () => {
@@ -117,11 +114,15 @@ test('price confirmed: approved SRP, SRP rate, an inquiry, the catalog rate, or 
   assert.equal(await confirmed({ sku: 'PRICED' }), true);
 });
 
-test('shipment mode and dates: LCL when the supplier date is 30+ days away, airfreight when closer', async () => {
+test('shipment mode and dates: the supplier date is the target - 4 days; the mode is only defaulted (to sea) and never switched to air by itself (spec PO-R1, review C4)', async () => {
   const far = await read(await store.addRecord('Purchase_Request1', pr({ Target_Delivery: inDays(60) })));
   assert.deepEqual([far.supplier_target_date, far.Shipment_Mode, far.Shipment_Days], [inDays(56), 'LCL', '30']);
   const near = await read(await store.addRecord('Purchase_Request1', pr({ Target_Delivery: inDays(10) })));
-  assert.deepEqual([near.supplier_target_date, near.Shipment_Mode, near.Shipment_Days], [inDays(6), 'Airfreight', '14']);
+  assert.deepEqual([near.supplier_target_date, near.Shipment_Mode, near.Shipment_Days], [inDays(6), 'LCL', '30'], 'close to the target it is still sea: the PR shows impossible and the buyer decides about air');
+  const air = await store.addRecord('Purchase_Request1', pr({ Target_Delivery: inDays(10), Shipment_Mode: 'Airfreight' }));
+  await store.updateRecord('Purchase_Request1', air, { Description1: 'saved again' });
+  const kept = await read(air);
+  assert.deepEqual([kept.Shipment_Mode, kept.Shipment_Days], ['Airfreight', '14'], "the buyer's choice of air is kept on every save");
 });
 
 test('timeline: remaining days to the end of production, and the delay status', async () => {
@@ -161,8 +162,8 @@ test('a new PR is copied to each supplier portal that should quote it', async ()
   const [f] = await fentengCopies(rec.PR_No);
   assert.deepEqual([t.Response_Status, t.edit_counter, t.sku_Supplier2, t.quantity_Supplier2, t.Product_Image_Supplier2_PR], ['Waiting', '1', 'S-1', '2', '/img/lamp.png']);
   assert.deepEqual([f.Response_Status, f.sku_Supplier1, f.Priority_PR_Supplier1], ['Waiting', 'S-1', rec.Priority]);
-  assert.deepEqual(t.Supplier_Selected_Supplier2.map((r) => r.Suppliers_Supplier2), ['Tony']);
-  assert.deepEqual(f.Supplier_Selected_Supplier1.map((r) => r.Suppliers_Supplier1), ['Fenteng']);
+  assert.deepEqual(t.Supplier_Selected_Supplier2.map((r) => r.Suppliers_Supplier2), ['Tony Fan']);
+  assert.deepEqual(f.Supplier_Selected_Supplier1.map((r) => r.Suppliers_Supplier1), ['Fenteng Lighting']);
   assert.equal(rec.Product_Image_PR, '/img/lamp.png', 'and the PR takes its item\'s photo');
 });
 
@@ -205,10 +206,10 @@ test('editing a PR updates the copies: changes reopen them, a selection decides 
   assert.deepEqual([t2.Response_Status, t2.edit_counter, f2.Response_Status, f2.edit_counter], ['Selected', '1', 'Not Selected', '0']);
 });
 
-test('deleting a PR removes the suppliers\' copies', async () => {
+test("a PR is never deleted (spec: cancel it); its suppliers' copies stay", async () => {
   const id = await store.addRecord('Purchase_Request1', pr());
   const no = (await read(id)).PR_No;
   assert.equal((await tonyCopies(no)).length + (await fentengCopies(no)).length, 2);
-  await store.deleteRecord('Purchase_Request1', id);
-  assert.equal((await tonyCopies(no)).length + (await fentengCopies(no)).length, 0);
+  await assert.rejects(() => store.deleteRecord('Purchase_Request1', id), (e) => /never deleted/.test(e.message));
+  assert.equal((await tonyCopies(no)).length + (await fentengCopies(no)).length, 2);
 });

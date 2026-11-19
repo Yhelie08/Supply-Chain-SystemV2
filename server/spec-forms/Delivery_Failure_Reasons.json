@@ -1,0 +1,11 @@
+{
+  "name": "Delivery_Failure_Reasons",
+  "label": "Delivery Failure Reasons",
+  "_about": "Failure reason codes (spec v1.4, Delivery 05): '[DEFAULT list, Admin-editable]'. server/modules/delivery-management/failure-redelivery.mjs falls back to its own hardcoded 11-code default list when this table is empty; adding rows here is how an admin edits it (no Control Panel UI exists for Delivery yet, same gap as TM-R4's roster — see the Delivery review doc).",
+  "fields": [
+    { "name": "Code", "label": "Code", "type": "text", "helpText": "e.g. \"not_home\", \"damaged_in_transit\"." },
+    { "name": "Reason", "label": "Reason", "type": "text" },
+    { "name": "Next_Step", "label": "Next Step", "type": "text" },
+    { "name": "Active", "label": "Active", "type": "checkbox" }
+  ]
+}

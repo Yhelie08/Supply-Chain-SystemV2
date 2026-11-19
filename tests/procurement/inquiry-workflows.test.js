@@ -78,6 +78,30 @@ test('only the suppliers that were asked get a copy', async () => {
   assert.equal((await raw.find('Fenteng_Notifications')).length, 0);
 });
 
+test('a custom item (no catalog Items, typed sku/description) carries its own photos to every supplier copy', async () => {
+  const photos = ['/api/v2.1/custom-lamp.jpg', '/api/v2.1/custom-spec.pdf'];
+  const id = await store.addRecord('Inquiry_Form', base({ Items: '', sku: 'CUSTOM-9', description: 'A one-off fixture, no catalog match', Attachments: photos }), 'staff@example.test');
+  const rec = await inquiry(id);
+  assert.equal(rec.Product_Image, '', 'no catalog item means no product image');
+  const { INQ_No } = rec;
+  for (const s of SUPPLIERS) {
+    const [copy] = await copiesOf(s.form, INQ_No);
+    assert.ok(copy, `${s.form} has a copy`);
+    assert.equal(copy.SKU_Supplier, 'CUSTOM-9');
+    assert.equal(copy.Description_Supplier, 'A one-off fixture, no catalog match');
+    assert.deepEqual(JSON.parse(copy.Image_from_Inq), photos, 'the buyer\'s own photos, not a catalog image');
+    assert.equal(copy[s.imageField], '', 'no catalog item to pull a product image from');
+  }
+});
+
+test('editing a custom item\'s attachments updates the supplier copy too', async () => {
+  const id = await store.addRecord('Inquiry_Form', base({ Items: '', Attachments: ['/api/v2.1/first.jpg'] }));
+  const { INQ_No } = await inquiry(id);
+  await store.updateRecord('Inquiry_Form', id, { Attachments: ['/api/v2.1/first.jpg', '/api/v2.1/second.jpg'] }, { byForm: true });
+  const [copy] = await copiesOf('Supplier_2', INQ_No);
+  assert.deepEqual(JSON.parse(copy.Image_from_Inq), ['/api/v2.1/first.jpg', '/api/v2.1/second.jpg']);
+});
+
 test('prices: a quote with both negotiated and final price is Final, with one it is Negotiating', async () => {
   const id = await store.addRecord('Inquiry_Form', base());
   const rec = await inquiry(id);

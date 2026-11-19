@@ -10,7 +10,7 @@
       "required": false
     },
     {
-      "name": "Record_ID",
+      "name": "Record_Id",
       "label": "Record ID",
       "type": "text",
       "required": false

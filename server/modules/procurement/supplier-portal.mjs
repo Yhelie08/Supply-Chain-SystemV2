@@ -7,6 +7,7 @@
 // Acknowledge_On. The ETD / ETA go onto the PO's Pending shipment. A PO that has no shipment yet, or that is a replacement (has an
 // RR reference), gets its shipment, the supplier's copy of it and its Receiving record now (nothing is made twice; see po-approval.mjs).
 // Approve RR: the supplier's RR and the main Replacement_Request with the same RR_No become "Acknowledged" with the dates.
+import { recordPoAcknowledged } from './po-spec.mjs';
 import { ok, fail } from '../../custom-api-helpers.mjs';
 import { blank, todayDate, ymd } from '../../workflows/deluge.mjs';
 import { zohoNow } from '../../criteria.mjs';
@@ -29,6 +30,7 @@ export async function acknowledgePO(key, payload, store, ctx = {}) {
     await store.updateRecord(S.copy, copy.ID, { [f('Acknowledge_On')]: now, [f('PO_Status')]: 'Confirmed' }, { byForm: true });
     for (const apo of await store.find('Purchase_Order', (p) => text(p.PO_No) === text(copy[f('PO_No')]), { criteria: `(PO_No == "${text(copy[f('PO_No')]).replace(/"/g, '')}")` })) {
       await store.updateRecord('Purchase_Order', apo.ID, { Acknowledge_On: now, PO_Status: 'Confirmed' }, { byForm: true });
+      await recordPoAcknowledged(store, apo.ID, ctx.user || ''); // spec v1.4: the state and the po.acknowledged event
       const pending = await store.find('Shipments', (s) => text(s.PO_No?.ID ?? s.PO_No) === String(apo.ID) && text(s.Shipment_Status) === 'Pending');
       if (pending.length) await store.updateRecord('Shipments', pending[pending.length - 1].ID, { ETD: etd, ETA: eta }, { byForm: true });
       if (text(apo.RR_Reference_No) !== '' || pending.length === 0) await shipmentAndReceivingFor(store, ctx, S, text(apo.PO_No), { ETD: etd, ETA: eta });

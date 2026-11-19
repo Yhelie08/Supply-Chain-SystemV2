@@ -14,6 +14,9 @@
 // Not ported: the Disable_* workflows (on load), Submit_Response_PRbtn / Action buttons (they only open the form), the notifications (inactive),
 // and `input.edit_counter = 0` at the end of PR_Stage_Supplier_Changed*: Zoho runs it on success, where a change to the form's input is not
 // saved, so it never locked anything.
+import { applyShipmentEvent, reportShipmentDelay } from './ship-track.mjs';
+import { refreshPrSpec } from './pr-spec.mjs';
+import { loadSettings, transitDays, customsDays } from './plan.mjs';
 import { register } from '../../workflows/index.mjs';
 import { ZohoError } from '../../criteria.mjs';
 import { blank, idOf, truthy, toNum, parseDate, addDays, ymd } from '../../workflows/deluge.mjs';
@@ -26,14 +29,26 @@ const SHIPMENTS = [
   { form: 'Tony_Shipment', grid: 'Supplier2_Shipment_Details' },
   { form: 'Fenteng_Shipment', grid: 'Supplier1_Shipment_Details' },
 ];
-const DAYS = { Airfreight: 12, LCL: 67, FCL: 47 };
+// The days from the ship date to the warehouse now come from Procurement Settings (transit + customs + receiving), the same numbers as the
+// plan of Ship & Track. They were fixed here (air 12, LCL 67, FCL 47), which gave a second, different arrival date (review C7).
 const PREFIX = { Airfreight: 'AIR', LCL: 'LCL', FCL: 'FCL' };
 const COUNTER = { Airfreight: 'Air_Counter', LCL: 'LCL_Counter', FCL: 'FCL_Counter' };
 
 for (const { form, grid } of SHIPMENTS) {
   register(form, {
+    // spec SP-R5: a delay report needs a new date and a reason (the supplier sees the refusal on its own screen)
+    beforeUpdate: ({ input }) => {
+      const d = text(input.Delay_New_Date), r = text(input.Delay_Reason).trim();
+      if ((d !== '' || r !== '') && (d === '' || r === '')) refuse('A delay report needs the new expected date and a reason.');
+    },
     afterUpdate: async ({ record: sup, id, store }) => {
       const supId = text(sup.ID || id);
+      if (text(sup.Delay_New_Date) !== '' && text(sup.Parent_Shipment_ID) !== '') {
+        const date = text(sup.Delay_New_Date), reason = text(sup.Delay_Reason);
+        await store.updateRecord(form, supId, { Delay_New_Date: '', Delay_Reason: '' }, { byForm: true });
+        await reportShipmentDelay(store, text(sup.Parent_Shipment_ID), { date, reason, source: 'supplier' })
+          .catch((e) => console.error('[ship-track] supplier delay report', e.message));
+      }
       const rows = (sup[grid] || []).map((r) => ({ ...r }));
       const todo = rows.filter((r) => truthy(r.Select_To_Ship) && !truthy(r.Synced) && ['Airfreight', 'LCL', 'FCL'].includes(text(r.Shipment_Mode)));
       if (todo.length === 0) return;
@@ -47,6 +62,7 @@ for (const { form, grid } of SHIPMENTS) {
 
       const details = [...(parent.Supplier_Shipment_Details || [])];
       const modeBySku = new Map();
+      const settings = await loadSettings(store);
       let shipOut = null, arrival = null;
       for (const r of todo) {
         const mode = text(r.Shipment_Mode);
@@ -57,7 +73,7 @@ for (const { form, grid } of SHIPMENTS) {
         });
         shipOut = text(r.Date_Shipped);
         const d = parseDate(r.Date_Shipped);
-        if (d) arrival = ymd(addDays(d, DAYS[mode]));
+        if (d) arrival = ymd(addDays(d, transitDays(settings, mode) + customsDays(settings, mode) + settings.receiving_days));
         modeBySku.set(text(r.SKU), mode);
         r.Synced = true;
       }
@@ -68,14 +84,17 @@ for (const { form, grid } of SHIPMENTS) {
       if (arrival) patch.Estimated_Warehouse_Arrival = arrival;
       patch.PO_Shipments = (parent.PO_Shipments || []).map((l) => (modeBySku.has(text(l.SKU)) ? { ...l, Shipment_Mode_When_Received: modeBySku.get(text(l.SKU)) } : l));
       await store.updateRecord('Shipments', parent.ID, patch, { byForm: true });
+      // Ship & Track (spec v1.4): the supplier's ship date is a "shipped out" event (it implies production finished, ST-R5). The
+      // supplier's own copy cannot refuse the save, so the production-photo rule (ST-R3) is not enforced on this path yet.
+      if (shipOut) await applyShipmentEvent(store, parent.ID, 'shipped_out', { occurredAt: shipOut, source: 'supplier', gate: false }).catch((e) => console.error('[ship-track] supplier shipout', e.message));
     },
   });
 }
 
 // ---------------- the supplier's Purchase Request ----------------
 const PR_FORMS = [
-  { form: 'Tony_Fan_Purchase_Request', sfx: '_Supplier2', name: 'Tony' },
-  { form: 'Fenteng_Lighting_Purchase_Request', sfx: '_Supplier1', name: 'Fenteng' },
+  { form: 'Tony_Fan_Purchase_Request', sfx: '_Supplier2', name: 'Tony Fan' },
+  { form: 'Fenteng_Lighting_Purchase_Request', sfx: '_Supplier1', name: 'Fenteng Lighting' },
 ];
 
 for (const { form, sfx, name } of PR_FORMS) {
@@ -88,7 +107,7 @@ for (const { form, sfx, name } of PR_FORMS) {
       if (toNum(rec.edit_counter) === 0 && text(rec.edit_counter) !== '' ) refuse('Editing is locked. Wait for Purchase Request update.');
       const missing = [];
       const note = (m) => { if (!missing.includes(m)) missing.push(m); };
-      const hasSrp = !blank(rec[f('SRP_Rate_PR')]) && toNum(rec[f('SRP_Rate_PR')]) !== 0;
+      const hasSrp = text(rec[f('Ref_Price_Known')]) === 'Yes';
       for (const row of rec[f('Supplier_Selected')] || []) {
         const avail = text(row[f('Availability')]);
         if (avail === '') note('Availability');
@@ -128,7 +147,7 @@ for (const { form, sfx, name } of PR_FORMS) {
         changed = JSON.stringify(next) !== JSON.stringify(row);
         return next;
       });
-      if (changed) await store.updateRecord('Purchase_Request1', pr.ID, { Supplier_Selected: rows }, { byForm: true });
+      if (changed) { await store.updateRecord('Purchase_Request1', pr.ID, { Supplier_Selected: rows }, { byForm: true }); await refreshPrSpec(store, pr.ID); }
     }
   }
 }

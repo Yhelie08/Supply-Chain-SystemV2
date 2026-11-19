@@ -1,0 +1,16 @@
+{
+  "name": "Vehicle_Status",
+  "label": "Vehicle Status",
+  "_about": "Truck Maintenance (spec v1.4, Delivery 08 §2, TK-R2/R3): one row per field vehicle. server/modules/delivery-management/truck-maintenance.mjs is the only writer of Status/Down_Reason/Down_At/Last_Service_*; Current_KM is read-only in this app too (no odometer-reading flow exists yet — see its own file header).",
+  "fields": [
+    { "name": "Vehicle", "label": "Vehicle", "type": "text", "helpText": "Matches a name in rotation.mjs's ROSTER.vehicles." },
+    { "name": "Current_KM", "label": "Current KM", "type": "number" },
+    { "name": "Last_Service_KM", "label": "Last Service KM", "type": "number" },
+    { "name": "Last_Service_Date", "label": "Last Service Date", "type": "date" },
+    { "name": "Interval_KM", "label": "Service Interval (KM)", "type": "number", "helpText": "Default 5000 if blank (TK-R2's own default)." },
+    { "name": "Next_Service_Due_Date", "label": "Next Service Due Date", "type": "date", "helpText": "Date-based schedule, if the vehicle is serviced by date rather than (or as well as) km." },
+    { "name": "Status", "label": "Status", "type": "picklist", "options": ["Active", "Down"] },
+    { "name": "Down_Reason", "label": "Down Reason", "type": "text" },
+    { "name": "Down_At", "label": "Down At", "type": "datetime" }
+  ]
+}

@@ -2,6 +2,7 @@
 // The "Clone for Replacement" button on a Replacement_Request: logs a replacement shipment for an acknowledged RR.
 // Writes go through rawStore (no workflow re-fire), so every number, line, total and date is set explicitly here,
 // exactly as the Deluge does. The 2026-08-07 supplier contains() fix and the 2026-10-13 HC System (Local) branch are kept.
+import { portalOf } from '../../workflows/suppliers.mjs';
 import { fail } from '../../custom-api-helpers.mjs';
 import { idOf, blank } from '../../workflows/deluge.mjs';
 import { nextNumber } from '../../workflows/numbering.mjs';
@@ -27,9 +28,9 @@ export async function clone_shipment_for_replacement({ rrRecordId }, data, ctx =
   const supplier = text(r.RR_Supplier);
   let supStatus = '';
   let supShipMode = '';
-  if (supplier.includes('Fenteng')) {
+  if (portalOf(supplier)?.key === 'fenteng') {
     for (const sm of await data.find('Fenteng_Lighting_Replacement_Request', (c) => text(c.RR_No) === text(r.RR_No))) { supStatus = text(sm.RR_Status); supShipMode = text(sm.Shipment_Mode); }
-  } else if (supplier.includes('Tony')) {
+  } else if (portalOf(supplier)?.key === 'tony') {
     for (const sm of await data.find('Tony_Fan_Replacement_Request', (c) => text(c.RR_No) === text(r.RR_No))) { supStatus = text(sm.RR_Status); supShipMode = text(sm.Shipment_Mode); }
   } else if (supplier.includes('HC System')) {
     supStatus = text(r.RR_Status); // local team acknowledges on the main record; no supplier portal, no ship mode (mirrors Zoho 2026-10-13)
@@ -130,10 +131,10 @@ export async function clone_shipment_for_replacement({ rrRecordId }, data, ctx =
 
   // The supplier's own copy of the replacement shipment (Fenteng / Tony), one detail row per shipment line, RR_No blank.
   const details = [newLine].map((l) => ({ SKU: l.SKU, Item_Name: l.Item_Name, PR_No: l.PR_No, RR_No: '' }));
-  if (supplier.includes('Fenteng')) {
+  if (portalOf(supplier)?.key === 'fenteng') {
     const copyId = await data.addRecord('Fenteng_Shipment', { Shipment_No: shipmentNo, Parent_Shipment_ID: String(newShipID) }, ctx.user);
     await data.updateRecord('Fenteng_Shipment', copyId, { Supplier1_Shipment_Details: details }, { byForm: true });
-  } else if (supplier.includes('Tony')) {
+  } else if (portalOf(supplier)?.key === 'tony') {
     const copyId = await data.addRecord('Tony_Shipment', { Shipment_No: shipmentNo, Parent_Shipment_ID: String(newShipID) }, ctx.user);
     await data.updateRecord('Tony_Shipment', copyId, { Supplier2_Shipment_Details: details }, { byForm: true });
   }

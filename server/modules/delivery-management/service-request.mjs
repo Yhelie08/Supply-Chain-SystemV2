@@ -35,7 +35,10 @@ export function clock12(value) {
   return `${String(shown).padStart(2, '0')}:${m[2]}:${m[3] ?? '00'} ${hour >= 12 ? 'PM' : 'AM'}`;
 }
 
-async function makeAppointment({ id, record: input, store, user }) {
+// Exported so auto-handoff.mjs (SR-R1) can call it directly after creating a Service_Request1 record from its
+// own hook on Delivery_Scheduling -- a write a hook makes through `store` does not re-fire hooks (see
+// workflows/index.mjs's own header comment), so the normal afterAdd registration below would never see it.
+export async function makeAppointment({ id, record: input, store, user }) {
   if (!blank(input.Service_Appointment_ID)) return;
 
   // 1. The Initial Scheduling record gives the order date and the day the order was dispatched.

@@ -7,6 +7,7 @@ import { register } from '../../workflows/index.mjs';
 import { ZohoError, zohoNow } from '../../criteria.mjs';
 import { blank, truthy } from '../../workflows/deluge.mjs';
 import { SA, customerName, storedClock, day } from './scheduling.mjs';
+import { stampJobStatus } from './job-status.mjs';
 
 const EXC = 'DMS_Exception_Queue';
 
@@ -98,6 +99,7 @@ async function completionSchedule({ record: input, store, user }) {
     Appointment_Status: 'Completed',
     Calendar_Event_Summary: `${appointment.Calendar_Event_Summary ?? ''} | Actual: ${startText} - ${endText}`,
   }, { byForm: true });
+  await stampJobStatus(store, saId); // plain raw-store write above — job-status.mjs's own SA hook never sees it.
 
   const team = appointment.Installer;
   const teamDate = day(appointment.Confirmed_Schedule_Date);

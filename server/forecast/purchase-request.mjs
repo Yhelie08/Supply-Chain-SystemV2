@@ -16,6 +16,7 @@
 //  - With no Sales_Order_Fulfillment row the PR is never stock on hand; the prep start is read from the Gate, Pick, QC and Crate
 //    rows of the SO without looking at the PR number, and with no prep start nothing counts as used.
 //  - It always writes the PR and the SOF row (here only a value that differs, which gives the same result).
+import { forecastSettings } from '../modules/procurement/forecast-settings.mjs';
 import { settingsFrom, bucketOf, finish } from './engine.mjs';
 import { toDate, txt } from './stamp.mjs';
 import { todayDate } from '../workflows/deluge.mjs';
@@ -35,7 +36,7 @@ async function stampIfDifferent(store, form, row, f) {
 }
 
 export async function fcStampPurchaseRequest(store, prId, { today = todayDate() } = {}) {
-  const settings = settingsFrom((await store.find('Forecast_Settings'))[0] ?? null);
+  const settings = await forecastSettings(store); // the Procurement Settings page, over the old Forecast_Settings record
   const id = String(prId ?? '');
   const [pr] = await store.find('Purchase_Request1', (r) => r.ID === id);
 

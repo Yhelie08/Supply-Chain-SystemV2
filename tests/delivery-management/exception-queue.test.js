@@ -9,6 +9,7 @@ import { createStore } from '../../server/pg/store.mjs';
 import { createHookedStore } from '../../server/workflows/index.mjs';
 import { workflows } from '../../server/workflows/all.mjs';
 import { ymd, addDays, todayDate, truthy, idOf } from '../../server/workflows/deluge.mjs';
+import { get_broken_sales_orders } from '../../server/modules/delivery-management/exception-queue.mjs';
 
 const SA = 'Service_Appointment_Form';
 const EXC = 'DMS_Exception_Queue';
@@ -21,7 +22,7 @@ before(async () => {
   raw = createStore({ query: (sql, params) => db.query(sql, params), transaction: (fn) => db.transaction(fn) });
   store = createHookedStore(raw, workflows);
 });
-beforeEach(async () => { for (const f of [SA, 'Daily_Team_Availability', EXC, 'Policy_Settings']) await db.query(`DELETE FROM "${f}"`); });
+beforeEach(async () => { for (const f of [SA, 'Daily_Team_Availability', EXC, 'Policy_Settings', 'Replacement_Request']) await db.query(`DELETE FROM "${f}"`); });
 
 const customer = { first_name: 'Maria', last_name: 'Santos' };
 const appointment = (extra = {}) => raw.addRecord(SA, { Sales_Order: 'SO-1', Type_of_Delivery: 'Delivery Only', Customer_Name: customer, Appointment_Status: 'Scheduled', Exception_Status: 'Flagged', Exception_Reason: 'Calendar Full', ...extra });
@@ -128,6 +129,17 @@ test('Dispatch-stage requeue: a Priority copy with its items goes back to the qu
 
   await store.updateRecord(EXC, id, { Severity: 'High' }, { byForm: true }); // saved again: not requeued twice
   assert.equal((await raw.find(SA)).length, 2);
+});
+
+test('get_broken_sales_orders: reports only the Sales Orders with an open Replacement Request, read-only (no appointment is touched)', async () => {
+  const sa = await appointment({ Sales_Order: 'SO-1' });
+  await raw.addRecord('Replacement_Request', { RR_No: 'RR-00001', RR_SO: 'SO-1', RR_Status: 'Open' });
+  await raw.addRecord('Replacement_Request', { RR_No: 'RR-00002', RR_SO: 'SO-9', RR_Status: 'Closed' }); // done: not reported
+  const r = await get_broken_sales_orders({}, raw);
+  assert.equal(r.status, 'success');
+  assert.deepEqual(r.soNumbers, ['SO-1']);
+  assert.deepEqual(r.bySo['SO-1'], ['RR-00001']);
+  assert.ok(!truthy((await readSA(sa)).Priority), 'read-only: it never sets Priority or touches the appointment');
 });
 
 test('only the Dispatch stage is requeued, and Dismissed is never requeued', async () => {

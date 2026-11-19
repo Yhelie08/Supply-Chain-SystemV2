@@ -622,13 +622,14 @@ function App(){
        extended with a per-supplier completion rate. */
     var supplierAgg = {};
     function ensureSupplier(name){ if (!supplierAgg[name]) supplierAgg[name] = { name:name, count:0, completed:0, spend:0 }; return supplierAgg[name]; }
-    ensureSupplier("Fenteng"); ensureSupplier("Tony Fan");
+    ensureSupplier("Fenteng Lighting"); ensureSupplier("Tony Fan");
     raw.po.forEach(function(po){
       var isCompleted = poDerivedStatus(po) === "completed";
       var lines = extractSubformRows(po["PO_Line_Items"]);
       lines.forEach(function(l){
         var sup = val(l,"Supplier","Unassigned");
         if (sup === "Tony") sup = "Tony Fan";
+        if (sup === "Fenteng") sup = "Fenteng Lighting";
         var agg = ensureSupplier(sup);
         agg.count += 1;
         if (isCompleted) agg.completed += 1;

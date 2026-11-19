@@ -36,6 +36,8 @@ test('totals, line result and receive status; the shipment becomes Delivered', a
   assert.equal(s.Shipment_Status, 'Delivered');
   assert.equal(s.Previous_Status, 'In Transit');
   await store.updateRecord('Receiving', id, { Receiving_Line_Items: [line({ Accepted_Qty: 3 }), line({ PR_No: 'PR-2', SKU: 'S-1', Expected_Qty: 2, Accepted_Qty: 2 })] });
+  assert.equal((await rcv(id)).Receive_Status, 'Partial Received', 'counted in full but not binned: not pickable yet (spec D12)');
+  await store.updateRecord('Receiving', id, { Receiving_Line_Items: [line({ Accepted_Qty: 3, Bin_location: 'A-01-1' }), line({ PR_No: 'PR-2', SKU: 'S-1', Expected_Qty: 2, Accepted_Qty: 2, Bin_location: 'A-01-2' })] });
   assert.equal((await rcv(id)).Receive_Status, 'Received');
 });
 

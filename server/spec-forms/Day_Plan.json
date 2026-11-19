@@ -1,0 +1,18 @@
+{
+  "name": "Day_Plan",
+  "label": "Day Plan",
+  "_about": "Day plans (spec v1.4, Delivery 02 §4, DP-R1-R6): the ordered list of a team-day's jobs. One row per (Plan_Date, Installer). Stops is written only by server/modules/delivery-management/day-plans.mjs — a Service Appointment joins the list automatically once it becomes Scheduled for that team-day (DP-R1/R2); the dispatcher reorders it (DP-R3, optimistic concurrency on Version); it locks at dispatch (DP-R6/DS-R3).",
+  "fields": [
+    { "name": "Plan_Date", "label": "Plan Date", "type": "date" },
+    { "name": "Installer", "label": "Installer", "type": "text" },
+    { "name": "Driver", "label": "Driver", "type": "text", "helpText": "Carried from Daily_Team_Availability for display; not the source of truth for the pairing." },
+    { "name": "Stops", "label": "Stops", "type": "grid", "helpText": "Ordered: array position is the stop number (DP-R1). One row per stop: { SA_ID, Time_Slot, Loaded_Box_Count, Loading_Confirmed }." },
+    { "name": "Version", "label": "Version", "type": "number", "helpText": "DP-R3: a reorder save must send the version it started from, or it is refused with 'This day changed, please refresh.'" },
+    { "name": "Locked", "label": "Locked", "type": "checkbox", "helpText": "DP-R6/DS-R3: true once the pre-delivery gate passes and the day is dispatched. Further edits need the dispatcher." },
+    { "name": "Locked_At", "label": "Locked At", "type": "datetime" },
+    { "name": "Driver_Signature", "label": "Driver Signature", "type": "text", "helpText": "DS-R2/G8: captured on the Dispatch screen." },
+    { "name": "Dispatcher_Signature", "label": "Dispatcher Signature", "type": "text" },
+    { "name": "Dispatched_By", "label": "Dispatched By", "type": "text" },
+    { "name": "Dispatched_At", "label": "Dispatched At", "type": "datetime" }
+  ]
+}

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Procurement Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --blue:#2563EB; --blue-dark:#1D4ED8; --blue-light:#EFF6FF; --blue-mid:#BFDBFE;
+    --green:#16A34A; --green-light:#DCFCE7; --green-mid:#86EFAC;
+    --amber:#D97706; --amber-light:#FEF3C7; --amber-mid:#FCD34D;
+    --red:#DC2626; --red-light:#FEE2E2; --red-mid:#FCA5A5;
+    --orange:#EA580C; --orange-dark:#C2410C; --orange-light:#FFF7ED; --orange-mid:#FED7AA;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0; --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B; --gray-600:#475569; --gray-700:#334155; --gray-800:#1E293B;
+    --white:#FFFFFF; --radius-sm:4px; --radius:8px; --radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04); --t:150ms ease;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  button,input,select{font-family:inherit}
+  .page{padding:24px;display:flex;flex-direction:column;gap:18px;min-height:100vh}
+  .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .page-header h1{font-size:24px;font-weight:700;color:#1A1A2E;letter-spacing:-.02em}
+  .page-header p{font-size:13px;color:var(--gray-500);margin-top:4px;max-width:720px}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;border:none}
+  .btn-ghost{background:var(--white);border:1.5px solid var(--gray-200);color:var(--gray-700)}
+  .btn-ghost:hover{border-color:var(--orange);color:var(--orange-dark)}
+  .btn-orange{background:var(--orange);color:var(--white);font-weight:600}
+  .btn-orange:hover{background:var(--orange-dark)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+  .badge-gray{background:var(--gray-100);color:var(--gray-600);border-color:var(--gray-200)}
+  .badge-orange{background:var(--orange-light);color:var(--orange-dark);border-color:var(--orange-mid)}
+  .card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .card h2{font-size:12.5px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.06em;padding:14px 20px;background:var(--gray-50);border-bottom:1px solid var(--gray-200)}
+  .row{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:6px 20px;padding:14px 20px;border-bottom:1px solid var(--gray-100);align-items:center}
+  .row:last-child{border-bottom:none}
+  .row .lbl{font-weight:600;font-size:14px}
+  .row .key{font-size:11.5px;color:var(--gray-400);font-family:Consolas,monospace}
+  .row .aff{font-size:12.5px;color:var(--gray-500);margin-top:2px}
+  .row .meta{font-size:11.5px;color:var(--gray-400);margin-top:3px}
+  .val{display:flex;gap:6px;align-items:center;justify-content:flex-end}
+  .val input{width:90px;height:34px;padding:0 10px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-size:14px;font-weight:600;text-align:right}
+  .val input.text{width:100%}
+  .val select{height:34px;padding:0 8px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-size:14px;font-weight:600}
+  .val input:focus{outline:none;border-color:var(--orange)}
+  .unit{font-size:12px;color:var(--gray-400);width:34px}
+  .effect{grid-column:1/-1;background:var(--orange-light);border:1px solid var(--orange-mid);border-radius:8px;padding:11px 14px;font-size:13px}
+  .effect.bad{background:var(--red-light);border-color:var(--red-mid);color:#7f1d1d}
+  .effect .btns{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
+  .effect input{height:32px;padding:0 10px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px;min-width:240px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:10.5px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;padding:9px 14px;background:var(--gray-50);border-bottom:1px solid var(--gray-200)}
+  td{padding:9px 14px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+  td input[type=number]{width:80px;height:30px;padding:0 8px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm)}
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);background:var(--gray-800);color:var(--white);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:3000;opacity:0;transition:opacity .2s;max-width:420px}
+  .toast.show{opacity:1}
+  .hint{font-size:12px;color:var(--gray-500);padding:10px 20px}
+</style>
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Procurement Settings</h1>
+      <p>Every number the Procurement screens use. Change one here and the dates, the board and the alerts follow. Before you save you see how many open shipments would change category. Every change is kept in the history below.</p>
+    </div>
+    <button class="btn btn-ghost" id="recalc" onclick="recalc()">Recalculate now</button>
+  </div>
+  <div id="groups"></div>
+  <div class="card"><h2>Suppliers (their own days; blank = the settings above)</h2><div id="suppliers"><div class="hint">Loading&hellip;</div></div></div>
+  <div class="card"><h2>Change history</h2><div id="history"><div class="hint">Loading&hellip;</div></div></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/* PROCUREMENT SETTINGS — spec v1.4 (05 Shared Engines / 08 Control Panel: CP-R1, CP-R3 .. CP-R6, CP-R9). Admin only.
+   The catalogue (label, default, limits, what it affects) comes from the server; a change writes one Procurement_Settings row and
+   the server keeps the history. The effect is previewed first (preview_procurement_setting writes nothing). */
+var CAT = [];
+var DRAFT = {};
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function toast(m){ var t = $('toast'); t.textContent = m; t.className = 'toast show'; clearTimeout(toast._t); toast._t = setTimeout(function(){ t.className = 'toast'; }, 4200); }
+function api(name, payload){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({ api_name: name, http_method: 'POST', content_type: 'application/json', payload: payload || {}, public_key: '' })
+    .then(function(r){ return (r && r.result) ? r.result : (r && r.data) ? r.data : r; });
+}
+var UNIT = { days: 'days', hours: 'hours', text: '', yes_no: '' };
+function loadCatalogue(){
+  return api('get_procurement_settings', {}).then(function(r){ CAT = (r && r.settings) || []; renderGroups(); });
+}
+function renderGroups(){
+  var groups = []; CAT.forEach(function(s){ if(groups.indexOf(s.group) < 0) groups.push(s.group); });
+  $('groups').innerHTML = groups.map(function(g){
+    return '<div class="card" style="margin-bottom:16px"><h2>' + esc(g) + '</h2>' + CAT.filter(function(s){ return s.group === g; }).map(rowHtml).join('') + '</div>';
+  }).join('');
+}
+function rowHtml(s){
+  var cur = DRAFT[s.key] !== undefined ? DRAFT[s.key] : s.value;
+  var limits = (s.type === 'text' || s.type === 'yes_no') ? '' : ' &middot; allowed ' + s.min + ' to ' + s.max;
+  var dflt = s.default === '' ? '(blank)' : (s.type === 'yes_no' ? (s.default ? 'yes' : 'no') : s.default);
+  var meta = (s.source === 'saved' ? 'Changed' : s.source === 'legacy' ? 'In use from the old Forecast Setting' : 'In use') + ' &middot; default ' + esc(dflt) +
+    (s.source === 'saved' ? ' &middot; last changed by ' + esc(s.last_changed_by || '?') + ' ' + esc(s.last_changed_at || '') : '') + limits;
+  var badge = s.source === 'saved' ? ' <span class="badge badge-orange">changed</span>' : s.source === 'legacy' ? ' <span class="badge badge-gray">from the old Forecast Setting</span>' : '';
+  var k = ' data-key="' + s.key + '"';
+  var input = s.type === 'yes_no'
+    ? '<select id="in-' + s.key + '"' + k + ' onchange="setDraft(this)"><option value="true"' + (String(cur) === 'true' ? ' selected' : '') + '>Yes</option><option value="false"' + (String(cur) === 'false' ? ' selected' : '') + '>No</option></select>'
+    : '<input class="' + (s.type === 'text' ? 'text' : '') + '" id="in-' + s.key + '"' + k + ' value="' + esc(cur) + '" oninput="setDraft(this)" onkeydown="if(event.key===\'Enter\')review(this.dataset.key)" />';
+  return '<div class="row" id="row-' + s.key + '"><div><div class="lbl">' + esc(s.label) + badge + '</div><div class="key">' + s.key + '</div><div class="aff">' + esc(s.affects) + '</div><div class="meta">' + meta + '</div></div>' +
+    '<div class="val">' + input + '<span class="unit">' + (UNIT[s.type] || '') + '</span></div>' +
+    '<div class="effect" id="fx-' + s.key + '" style="display:none"></div>' +
+    '<div style="grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-ghost"' + k + ' onclick="review(this.dataset.key)">Review the change</button>' +
+    (s.row_id ? '<button class="btn btn-ghost"' + k + ' onclick="resetToDefault(this.dataset.key)">Back to ' + (s.source === 'saved' ? 'the old value' : 'the default') + '</button>' : '') + '</div></div>';
+}
+function setDraft(el){ DRAFT[el.dataset.key] = el.value; }
+function find(key){ for(var i = 0; i < CAT.length; i++) if(CAT[i].key === key) return CAT[i]; return null; }
+function review(key){
+  var s = find(key); var v = $('in-' + key).value;
+  var fx = $('fx-' + key); fx.style.display = 'block'; fx.className = 'effect'; fx.innerHTML = 'Checking&hellip;';
+  if(String(v) === String(s.value) && s.source === 'saved'){ fx.innerHTML = 'No change.'; return; }
+  if(String(v) === String(s.value) && !s.row_id){ fx.innerHTML = 'This is the value already in use. Saving it only keeps it here instead of in the old Forecast Setting.'; }
+  api('preview_procurement_setting', { key: key, value: v }).then(function(r){
+    if(!r || r.status !== 'success'){ fx.className = 'effect bad'; fx.innerHTML = esc((r && r.message) || 'Not accepted.'); return; }
+    var moved = (r.moved || []).map(function(m){ return esc(m.no) + ': ' + esc(m.from) + ' &rarr; ' + esc(m.to); }).join('<br>');
+    fx.innerHTML = '<b>' + esc(s.label) + ': ' + esc(s.value) + ' &rarr; ' + esc(v) + '</b><br>' + esc(r.message) + (moved ? '<div style="margin-top:6px;font-size:12px">' + moved + '</div>' : '') +
+      '<div class="btns"><input id="why-' + key + '" placeholder="Why? (optional)" /><button class="btn btn-orange" data-key="' + key + '" onclick="save(this.dataset.key)">Save the change</button><button class="btn btn-ghost" data-key="' + key + '" onclick="cancel(this.dataset.key)">Cancel</button></div>';
+  }).catch(function(){ fx.className = 'effect bad'; fx.innerHTML = 'Could not check the effect.'; });
+}
+function cancel(key){ delete DRAFT[key]; renderGroups(); }
+function save(key){
+  var s = find(key); var v = $('in-' + key).value; var why = ($('why-' + key) || {}).value || '';
+  var p = s.row_id
+    ? ZOHO.CREATOR.DATA.updateRecordById({ report_name: 'Procurement_Settings', id: s.row_id, payload: { data: { Value: v, Change_Reason: why } } })
+    : ZOHO.CREATOR.DATA.addRecords({ form_name: 'Procurement_Settings', payload: { data: { Setting_Key: key, Value: v, Change_Reason: why } } });
+  p.then(function(r){
+    if(!(r && String(r.code) === '3000')){ toast((r && r.message) || 'Not saved'); return; }
+    toast('Saved. The board was re-scored.'); delete DRAFT[key]; loadAll();
+  }).catch(function(e){ toast((e && e.message) || 'Not saved'); });
+}
+function resetToDefault(key){
+  var s = find(key); if(!s || !s.row_id) return;
+  ZOHO.CREATOR.DATA.deleteRecordById({ report_name: 'Procurement_Settings', id: s.row_id }).then(function(){ toast('Back to the default'); delete DRAFT[key]; loadAll(); }).catch(function(e){ toast((e && e.message) || 'Not done'); });
+}
+function recalc(){
+  var b = $('recalc'); b.disabled = true;
+  api('recalculate_shipments', {}).then(function(r){ b.disabled = false; toast((r && r.message) || 'Done'); }).catch(function(){ b.disabled = false; toast('Could not recalculate'); });
+}
+function loadHistory(){
+  ZOHO.CREATOR.DATA.getRecords({ report_name: 'Procurement_Settings_History', field_config: 'all', page: 1, pageSize: 100 }).then(function(r){
+    var rows = (r && String(r.code) === '3000' && r.data) ? r.data : [];
+    rows.sort(function(a, b){ return Number(b.ID) - Number(a.ID); });
+    $('history').innerHTML = rows.length ? '<table><thead><tr><th>When</th><th>Setting</th><th>Old</th><th>New</th><th>By</th><th>Why / effect</th></tr></thead><tbody>' + rows.slice(0, 40).map(function(h){
+      return '<tr><td>' + esc(h.Changed_At) + '</td><td>' + esc((find(h.Setting_Key) || {}).label || h.Setting_Key) + '</td><td>' + esc(h.Old_Value) + '</td><td><b>' + esc(h.New_Value) + '</b></td><td>' + esc(h.Changed_By) + '</td><td>' + esc([h.Reason, h.Effect].filter(Boolean).join(' · ')) + '</td></tr>';
+    }).join('') + '</tbody></table>' : '<div class="hint">No change yet: everything is at its default.</div>';
+  }).catch(function(){ $('history').innerHTML = '<div class="hint">History not available.</div>'; });
+}
+function supName(r){ var n = r.Supplier_Name; return n && typeof n === 'object' ? (n.zc_display_value || n.display_value || [n.first_name, n.last_name].filter(Boolean).join(' ')) : (n || ''); }
+function loadSuppliers(){
+  ZOHO.CREATOR.DATA.getRecords({ report_name: 'All_Suppliers', field_config: 'all', page: 1, pageSize: 100 }).then(function(r){
+    var rows = (r && String(r.code) === '3000' && r.data) ? r.data : [];
+    $('suppliers').innerHTML = rows.length ? '<table><thead><tr><th>Supplier</th><th>Production days</th><th>Consolidation days</th><th>Main supplier</th><th></th></tr></thead><tbody>' + rows.map(function(s){
+      var main = s.Is_Main_Supplier === true || s.Is_Main_Supplier === 'true';
+      return '<tr><td><b>' + esc(supName(s)) + '</b></td><td><input type="number" min="1" max="180" id="sp-' + s.ID + '" value="' + esc(s.Default_Production_Days || '') + '" /></td><td><input type="number" min="0" max="30" id="sc-' + s.ID + '" value="' + esc(s.Default_Consolidation_Days || '') + '" /></td><td><input type="checkbox" id="sm-' + s.ID + '"' + (main ? ' checked' : '') + ' /></td><td><button class="btn btn-ghost" onclick="saveSupplier(\'' + s.ID + '\')">Save</button></td></tr>';
+    }).join('') + '</tbody></table><div class="hint">A main supplier (Fenteng, Tony Fan): the day-3 ladder decision also goes to the supervisor. Used by the plan only when a shipment has no quoted lead time.</div>' : '<div class="hint">No suppliers yet.</div>';
+  }).catch(function(){ $('suppliers').innerHTML = '<div class="hint">Suppliers not available.</div>'; });
+}
+function saveSupplier(id){
+  var data = { Default_Production_Days: $('sp-' + id).value, Default_Consolidation_Days: $('sc-' + id).value, Is_Main_Supplier: $('sm-' + id).checked };
+  ZOHO.CREATOR.DATA.updateRecordById({ report_name: 'All_Suppliers', id: String(id), payload: { data: data } }).then(function(r){
+    toast(r && String(r.code) === '3000' ? 'Supplier saved. Open shipments use it the next time they are planned.' : ((r && r.message) || 'Not saved'));
+  }).catch(function(e){ toast((e && e.message) || 'Not saved'); });
+}
+function loadAll(){ loadCatalogue().then(function(){ loadHistory(); }); loadSuppliers(); }
+loadAll();
+</script>
+</body>
+</html>

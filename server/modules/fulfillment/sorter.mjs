@@ -28,6 +28,8 @@ export async function capacityFor(store, date) {
 }
 const OPEN_EXCEPTION_STATUSES = new Set(['Pending', 'In Rework']);
 const BROKEN_ORDER_TYPES = new Set(['Complaint', 'Replacement']);
+// Same statuses rr-spec.mjs (Procurement) treats as done; Replacement_Request is a shared form, not owned by this module.
+const RR_DONE_STATUSES = new Set(['Closed', 'Completed', 'Cancelled']);
 
 // Calendar-day slack: target minus today. (The full spec formula also subtracts work days still needed; that
 // refinement needs the manpower calculator, which is a later slice — see the design doc's §3.)
@@ -59,9 +61,14 @@ function blockedCheck(sof, gates, openExceptions) {
   return null;
 }
 
-export function categorize(sof, { gates = [], openExceptions = [], now = new Date(), policy = () => null } = {}) {
+export function categorize(sof, { gates = [], openExceptions = [], openRRs = [], now = new Date(), policy = () => null } = {}) {
   const blockedReason = blockedCheck(sof, gates, openExceptions);
   if (blockedReason) return { category: 'blocked', blockedReason, priorityReason: blockedReason };
+
+  // Procurement review item (2026-11-18): an open Replacement Request for this Sales Order is "broken" here too,
+  // first in the queue above a blocked package, same as order_type Complaint/Replacement already is.
+  const openRR = openRRs.find((rr) => text(rr.RR_SO) === text(sof.SO_No));
+  if (openRR) return { category: 'broken', blockedReason: null, priorityReason: `Replacement request ${text(openRR.RR_No) || 'open'}` };
 
   const isBroken = BROKEN_ORDER_TYPES.has(text(sof.order_type));
   const target = effectiveTarget(sof, policy);
@@ -154,16 +161,18 @@ export function peopleNeeded(openBoxesDue, perPersonDailyBoxes, daysAvailable) {
 }
 
 async function scoreAllOpenPackages(store) {
-  const [sofs, gates, exceptions, policy, capacity] = await Promise.all([
+  const [sofs, gates, exceptions, rrs, policy, capacity] = await Promise.all([
     store.find(SOF_NAME, (r) => OPEN_STAGE(r.Fulfillment_Stage)),
     store.find('Sales_Order_Readiness_Gate'),
     store.find('Exception_Control1'),
+    store.find('Replacement_Request'),
     policyReader(store),
     capacityFor(store, today()),
   ]);
   const openExceptions = exceptions.filter((e) => OPEN_EXCEPTION_STATUSES.has(text(e.Status)));
+  const openRRs = rrs.filter((r) => !RR_DONE_STATUSES.has(text(r.RR_Status)));
   const now = new Date();
-  const entries = sofs.map((sof) => ({ sof, ...categorize(sof, { gates, openExceptions, now, policy }) }));
+  const entries = sofs.map((sof) => ({ sof, ...categorize(sof, { gates, openExceptions, openRRs, now, policy }) }));
   return rankAndCutLine(entries, { capacityBoxes: capacity.capacityBoxes });
 }
 
