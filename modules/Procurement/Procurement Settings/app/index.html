@@ -68,6 +68,7 @@
       <p>Every number the Procurement screens use. Change one here and the dates, the board and the alerts follow. Before you save you see how many open shipments would change category. Every change is kept in the history below.</p>
     </div>
     <button class="btn btn-ghost" id="recalc" onclick="recalc()">Recalculate now</button>
+    <button class="btn btn-ghost" id="syncCustomized" onclick="syncCustomizedItems()">Refresh Customized Items</button>
   </div>
   <div id="groups"></div>
   <div class="card"><h2>Suppliers (their own days; blank = the settings above)</h2><div id="suppliers"><div class="hint">Loading&hellip;</div></div></div>
@@ -146,6 +147,17 @@ function resetToDefault(key){
 function recalc(){
   var b = $('recalc'); b.disabled = true;
   api('recalculate_shipments', {}).then(function(r){ b.disabled = false; toast((r && r.message) || 'Done'); }).catch(function(){ b.disabled = false; toast('Could not recalculate'); });
+}
+/* Customized-category items (owner, 2026-11-20): these live in Zoho Inventory, not Akeneo, and
+   Zoho's API quota is tight, so New Inquiry's item picker searches a local cache (Items) instead
+   of Zoho live -- this button is the only thing that refreshes that cache. See
+   app/procurement/books_apis.py's sync_customized_items_from_inventory. */
+function syncCustomizedItems(){
+  var b = $('syncCustomized'); b.disabled = true; b.textContent = 'Refreshing…';
+  api('sync_customized_items_from_inventory', {}).then(function(r){
+    b.disabled = false; b.textContent = 'Refresh Customized Items';
+    toast((r && r.message) || (r && r.status === 'error' ? 'Could not refresh' : 'Done'));
+  }).catch(function(){ b.disabled = false; b.textContent = 'Refresh Customized Items'; toast('Could not refresh Customized items'); });
 }
 function loadHistory(){
   ZOHO.CREATOR.DATA.getRecords({ report_name: 'Procurement_Settings_History', field_config: 'all', page: 1, pageSize: 100 }).then(function(r){

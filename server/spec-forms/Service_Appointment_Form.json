@@ -41,6 +41,7 @@
     { "name": "Broken_Redelivery", "label": "Broken Redelivery", "type": "checkbox", "helpText": "FR-R2: true on a redelivery job created because the original was damaged in transit or refused — the sorting engine (sorter.mjs) reads this to put it in the Broken category. Server-only." },
     { "name": "Force_Closed", "label": "Force Closed", "type": "checkbox", "helpText": "FR-R5: the dispatcher closed this job by hand (phone died / team could not submit) instead of a normal close-out. Goes to the supervisor's Approval_Queue (Kind force_close) for after-the-fact review." },
     { "name": "Force_Close_Reason", "label": "Force Close Reason", "type": "text" },
+    { "name": "Time_Window", "label": "Time Window", "type": "text", "helpText": "Delivery 03: the window the customer is told (Morning or Afternoon, from the workday times), instead of the exact Confirmed_Time_Slot. Computed by the server (time-window.mjs); a widget cannot write it." },
     { "name": "Site_Visit_Blocking_Findings", "label": "Site Visit Blocking Findings", "type": "text", "helpText": "SV-R3: carried over from an earlier Site Visit appointment for the same Sales Order, for the sales agent. Server-only." }
   ]
 }

@@ -2,17 +2,13 @@
 # server/index.mjs (BACKEND=pg path, i.e. server/pg/api.mjs's createPgApi/startPg). Every
 # application-level error is HTTP 200 with {code, message} in the body; only "not authenticated"
 # and "unknown operation" get a real HTTP error status (confirmed from the Node source).
-#
-# Out of scope for Foundation (ported by later sub-projects, not here): Fulfillment's
-# reconcileFulfillment catch-up after a custom API call, and the Books/Akeneo/Shopify clients.
-# invoke_custom_api's dispatch table is wired but empty, so none of that applies yet.
 import json
 import os
 import re
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import asyncpg
 from fastapi import FastAPI, Request
@@ -20,12 +16,18 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Resp
 
 from app import auth
 from app.access import create_access
+from app.akeneo.client import create_akeneo_api
+from app.books.client import create_zoho_api
 from app.criteria import ZohoError
 from app.custom_apis import invoke_custom_api
+from app.delivery.scoping import TEAM_SCOPING
 from app.schema import ensure_schema
+from app.shopify.client import create_shopify_api
 from app.store import create_store
 from app.workflows import create_hooked_store
 import app.fulfillment  # noqa: F401 -- side effect: registers every Fulfillment hook and custom API
+import app.procurement  # noqa: F401 -- side effect: registers every Procurement hook and custom API
+import app.delivery  # noqa: F401 -- side effect: registers Delivery Management Phase 1's hooks and custom APIs
 from app.fulfillment.apis import recalculate_fulfillment_queue, package_pick_status  # noqa: F401 -- names used below to gate the reconcile catch-up
 from app.fulfillment.pipeline import reconcile_fulfillment
 
@@ -35,7 +37,13 @@ PUBLIC = ROOT / "server" / "public"
 UPLOADS = Path(os.environ.get("DATA_DIR", str(ROOT / "data"))) / "uploads"
 UPLOADS.mkdir(parents=True, exist_ok=True)
 
-SECTIONS = json.loads((ROOT / "server" / "pages.json").read_text(encoding="utf-8"))
+def _with_src(tab: dict) -> dict:
+    widget_path = "/".join(quote(part, safe="") for part in tab["widget"].split("/"))
+    return {**tab, "src": f"/w/{widget_path}/{quote(tab['entry'], safe='')}"}
+
+
+_RAW_SECTIONS = json.loads((ROOT / "server" / "pages.json").read_text(encoding="utf-8"))
+SECTIONS = [{**s, "tabs": [_with_src(t) for t in s["tabs"]]} for s in _RAW_SECTIONS]
 
 MIME = {
     ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css",
@@ -48,7 +56,7 @@ SECURITY_HEADERS = {
     "Content-Security-Policy": "frame-ancestors 'self'",
 }
 
-access = create_access(SECTIONS, str(WIDGETS))
+access = create_access(SECTIONS, str(WIDGETS), TEAM_SCOPING)
 
 
 def _resp(status: int, body, content_type: str = "application/json") -> Response:
@@ -183,7 +191,20 @@ def create_app() -> FastAPI:
             await auth.ensure_schema(conn)
         _app.state.pool = pool
         _app.state.store = create_store(pool)
-        _app.state.hooked_store = create_hooked_store(_app.state.store)
+        books = create_zoho_api()
+        print(f"[books] Zoho Books/Inventory {'configured' if books['is_configured']() else 'not configured (workflows and APIs that call Books will report it)'}")
+        akeneo = create_akeneo_api()
+        print(f"[akeneo] {'configured' if akeneo['is_configured']() else 'not configured (Items picker search will report it)'}")
+        shopify = create_shopify_api()
+        print(f"[shopify] {'configured' if shopify['is_configured']() else 'not configured (Akeneo item pick will skip the price lookup)'}")
+        _app.state.hooked_store = create_hooked_store(_app.state.store, books=books)
+
+        async def save_upload(name: str, buffer: bytes) -> str:
+            file_name = f"{_now_ms()}_{re.sub(r'[^\\w.-]+', '_', str(name))}"
+            (UPLOADS / file_name).write_bytes(buffer)
+            return f"/uploads/{file_name}"
+
+        _app.state.custom_api_ctx = {"books": books, "akeneo": akeneo, "shopify": shopify, "save_upload": save_upload}
         _app.state.auth = auth.create_auth(pool)
         note = await _app.state.auth.bootstrap_admin(os.environ)
         if note:
@@ -334,7 +355,11 @@ def _register_routes(app: FastAPI) -> None:
 
     async def _run_op(op_name: str, body: dict, user: str, hooked_store) -> dict:
         if op_name == "getRecords":
-            data = await hooked_store.get_records(body["report_name"], **{k: v for k, v in body.items() if k != "report_name"}, user=user)
+            # zoho-shim.js's getRecords body carries extra SDK fields (app_name, etc.) that Node's
+            # loosely-typed JS object spread ignores; Python's **kwargs spread does not, so only the
+            # fields get_records actually accepts are forwarded.
+            kwargs = {k: body[k] for k in ("criteria", "page", "page_size", "max_records") if k in body}
+            data = await hooked_store.get_records(body["report_name"], **kwargs, user=user)
             return {"code": 3000, "data": data}
         if op_name == "getRecordById":
             data = await hooked_store.get_record_by_id(body["report_name"], body["id"])
@@ -421,7 +446,7 @@ def _register_routes(app: FastAPI) -> None:
                             return _resp(200, {"code": 403, "message": "Cannot assign records to other teams."})
 
             if op_name == "invokeCustomApi":
-                result = await invoke_custom_api(body.get("api_name"), body.get("payload"), raw_store, {"user": user})
+                result = await invoke_custom_api(body.get("api_name"), body.get("payload"), raw_store, {**request.app.state.custom_api_ctx, "user": user})
                 # A custom API's writes do not fire the workflow hooks, so what a Fulfillment one
                 # wrote is carried on here (Readiness, Pick, QC) -- matches server/pg/api.mjs's own
                 # catch-up after any Fulfillment custom API call.

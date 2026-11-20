@@ -726,6 +726,9 @@
               <label class="field-label" for="fItems">Item Name <span class="req">*</span></label>
               <input class="form-input" type="text" id="fItems" placeholder="Enter item name" autocomplete="off" />
               <div class="ac-dropdown" id="fItemsDropdown"></div>
+              <div style="margin-top:4px">
+                <a href="#" id="fCustomizedItemLink" style="font-size:12.5px;color:var(--blue);font-weight:600;text-decoration:none" onclick="event.preventDefault();openCustomizedItemPrompt();">+ Customized item (enter Zoho Inventory ID)</a>
+              </div>
             </div>
             <div class="field-item">
               <label class="field-label" for="fSku">SKU</label>
@@ -1673,6 +1676,28 @@
   </div>
 </div>
 
+<div id="customizedItemModal" style="display:none;position:fixed;inset:0;z-index:5500;align-items:center;justify-content:center;background:rgba(0,0,0,.4);padding:20px">
+  <div style="background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);max-width:440px;width:100%;max-height:88vh;display:flex;flex-direction:column">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:700;color:var(--gray-800)">Customized Item</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeCustomizedItemPrompt()" title="Close" style="width:32px;padding:0;justify-content:center">&#10005;</button>
+    </div>
+    <div style="padding:20px 22px;overflow-y:auto">
+      <div class="field-grid" style="grid-template-columns:1fr">
+        <div class="field-item">
+          <label class="field-label" for="ciItemId">Zoho Inventory Item ID <span class="req">*</span></label>
+          <input class="form-input" type="text" id="ciItemId" placeholder="e.g. 2680178000024629990" />
+          <div style="font-size:12px;color:var(--gray-500);margin-top:6px">Looks up the item in Zoho Inventory, Customized category only. Fetched once and cached — later lookups of the same ID don't call Zoho again.</div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid var(--gray-100);display:flex;justify-content:flex-end;gap:10px">
+      <button class="btn btn-ghost btn-sm" onclick="closeCustomizedItemPrompt()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="ciSaveBtn" onclick="saveCustomizedItem()">Add Item</button>
+    </div>
+  </div>
+</div>
+
 <div id="lightboxOverlay" class="lightbox-overlay" onclick="closeLightbox()">
   <button class="lightbox-close" onclick="closeLightbox()" title="Close">&#10005;</button>
   <img id="lightboxImg" src="" onclick="event.stopPropagation()" />
@@ -1713,6 +1738,11 @@ var CUSTOM_API_CREATE_BOOKS_CONTACT_KEY = 'BeeatkJFbfzQvSNPMaCTPbFyQ';
    placeholder until the Custom Function/API is created live in Creator. */
 var CUSTOM_API_ADD_ITEM = 'add_item_by_id';
 var CUSTOM_API_ADD_ITEM_KEY = 'yjWf2kbeuBRHJpEDzKy8RuQyR';
+/* Customized-category items (owner, 2026-11-20): these live in Zoho Inventory, not Akeneo, and
+   Zoho's API quota is tight, so this is New Inquiry's exact-ID lookup, not live search-as-you-type.
+   Fetched once, cached in Items — a second lookup of the same ID never calls Zoho again. */
+var CUSTOM_API_FETCH_CUSTOMIZED_ITEM = 'fetch_customized_item_from_inventory';
+var CUSTOM_API_FETCH_CUSTOMIZED_ITEM_KEY = 'hK3nRwLq7Pz0xJmTvYbGsFdCa';
 /* Fetches live Books data (address/email/phone/Customer Type) for a picked customer, by its ID1
    (Books contact_id). Fired on pick only, not bulk, so a 10k+ customer list never burns API quota
    loading rows nobody is using. Key is a placeholder until the Custom Function/API is created live in Creator. */
@@ -3194,6 +3224,27 @@ async function fetchAllRecords(reportName){
    sync scripts) — Item_Name kept as a fallback only in case Configure Fields ever exposes
    it under different casing on some report. */
 function itemLabel(it){ return val(it.item_name) || val(it.Item_Name) || ''; }
+/* Customized-category items (owner, 2026-11-20): New Inquiry's Item Name field searches this
+   instead of Akeneo entirely -- these items live in Zoho Inventory, not Akeneo, and a bulk sync
+   (Procurement Settings' "Refresh Customized Items" button, app/procurement/books_apis.py's
+   sync_customized_items_from_inventory) pre-loads them into Items so this is a normal local-cache
+   search (instant, zero Zoho calls), same shape as the old itemsCache search. Loaded once here,
+   same report (All_Items) as itemsCache, just filtered to category == "Customized". */
+var customizedItemsCache = [];
+var customizedItemsLoaded = false;
+async function loadCustomizedItemsFromCreator(){
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
+  try{
+    var resp = await ZOHO.CREATOR.DATA.getRecords({ app_name: REAL_APP_NAME, report_name: ITEMS_REPORT, criteria: 'category == "Customized"', max_records: 1000 });
+    if(resp && resp.code === 3000 && Array.isArray(resp.data)) customizedItemsCache = resp.data;
+  } catch(err){
+    if(errCode(err) !== 9220) console.warn('[CustomizedItems] load failed:', err);
+    customizedItemsCache = [];
+  }
+  customizedItemsCache.sort(function(a,b){ return itemLabel(a).toLowerCase().localeCompare(itemLabel(b).toLowerCase()); });
+  customizedItemsLoaded = true;
+  if($('fItemsDropdown').classList.contains('show')) renderItemsDropdown();
+}
 async function loadItemsFromCreator(){
   if(isStandalone() || typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.getRecords!=='function') return;
   itemsCache = await fetchAllRecords(ITEMS_REPORT);
@@ -3215,11 +3266,10 @@ async function loadItemsFromCreator(){
 function renderItemsDropdown(){
   var dd = $('fItemsDropdown');
   var q = $('fItems').value.trim().toLowerCase();
-  var list = itemsCache.filter(function(it){ return itemLabel(it).toLowerCase().startsWith(q); });
-  var addNewHtml = '<div class="ac-item ac-item-add" data-add="1" style="color:var(--blue);font-weight:600">+ Add item by ID (not in catalog yet)</div>';
-  dd.innerHTML = (list.length
+  var list = customizedItemsCache.filter(function(it){ return itemLabel(it).toLowerCase().startsWith(q); });
+  dd.innerHTML = list.length
     ? list.map(function(it,i){ return '<div class="ac-item" data-i="'+i+'">'+escapeHtml(itemLabel(it))+'</div>'; }).join('')
-    : '<div class="ac-empty">'+(itemsLoaded ? 'No matching items' : 'Loading items…')+'</div>') + addNewHtml;
+    : '<div class="ac-empty">'+(customizedItemsLoaded ? 'No matching items' : 'Loading items…')+'</div>';
   dd.querySelectorAll('.ac-item[data-i]').forEach(function(el){
     el.addEventListener('mousedown', function(e){
       e.preventDefault();
@@ -3228,14 +3278,6 @@ function renderItemsDropdown(){
       dd.classList.remove('show');
     });
   });
-  var addEl = dd.querySelector('.ac-item-add');
-  if(addEl){
-    addEl.addEventListener('mousedown', function(e){
-      e.preventDefault();
-      dd.classList.remove('show');
-      openNewItemModal('new');
-    });
-  }
   dd.classList.add('show');
 }
 /* Valid options for the fixed Unit picklist — Items.Unit is freetext, so map loosely and fall back to current value */
@@ -3247,7 +3289,7 @@ function matchUnitOption(rawUnit){
 }
 function applyItemMatch(){
   var typed = $('fItems').value.trim();
-  var match = itemsCache.filter(function(it){ return itemLabel(it).trim().toLowerCase() === typed.toLowerCase(); })[0];
+  var match = customizedItemsCache.filter(function(it){ return itemLabel(it).trim().toLowerCase() === typed.toLowerCase(); })[0];
   selectedItemId = match ? val(match.ID || match.id) : '';
   /* SKU/Description/Unit/SRP are auto-filled from the matched item — always overwrite, even with
      blank/default, so switching to an item missing one of these doesn't leave the previous
@@ -3265,35 +3307,9 @@ function applyItemMatch(){
     $('fProductImageWrap').style.display = 'none';
     $('fProductImage').src = '';
   }
-  /* A bare Akeneo search hit (_akeneo: true) has only identifier/name — the real fields (SKU,
-     Description/Rate/spec fields) come from one pick-time fetch, not from search. Also re-fetch
-     for an already-synced local item (match.ID1 set, _akeneo false) so a stale stored value
-     (e.g. Description saved before a later fix to the Akeneo transform) self-heals on next pick
-     instead of silently serving old Postgres data forever — still one fetch per pick, not per
-     keystroke/search result, so this stays within the "least API calls" constraint. */
-  if(match && match.ID1){
-    var pickedItemId = selectedItemId;
-    fetchItemFromAkeneo(match.ID1, function(r){
-      if(selectedItemId !== pickedItemId || $('fItems').value.trim().toLowerCase() !== typed.toLowerCase()) return;
-      var idx = itemsCache.findIndex(function(it){ return it.ID1 === r.identifier; });
-      if(idx > -1) itemsCache[idx] = Object.assign({}, itemsCache[idx], { item_name: r.item_name, SKU: r.SKU, Description: r.Description, category: r.category, Rate: r.Rate, Image: r.Image, _akeneo: false });
-      $('fSku').value = r.SKU || $('fSku').value;
-      $('fDescription').value = r.Description || '';
-      if(r.Rate) $('fSrp').value = r.Rate;
-      if(r.Dimension) $('fDimension').value = r.Dimension;
-      if(r.ColorBody) $('fColorBody').value = r.ColorBody;
-      if(r.Voltage) $('fVoltage').value = r.Voltage;
-      if(r.ColorTemp) setSpecSelectValue('fColorTemp', r.ColorTemp);
-      /* Image is cached server-side on first fetch (server/modules/procurement/akeneo-apis.mjs) --
-         never re-downloaded from Akeneo on later picks, just re-applied from r.Image here. */
-      if(r.Image){
-        $('fProductImageWrap').style.display = '';
-        $('fProductImage').src = '';
-        applyCreatorImage($('fProductImage'), r.Image);
-      }
-      checkReadiness();
-    });
-  }
+  /* Customized items are not in Akeneo (owner, 2026-11-20) -- no pick-time Akeneo re-fetch here,
+     unlike the normal catalog. Every field this form needs already came from the Customized sync
+     (sync_customized_items_from_inventory) above. */
   checkReadiness();
 }
 
@@ -3842,6 +3858,57 @@ async function saveNewItem(){
   }
 }
 
+/* ── Customized item (New Inquiry only) — Zoho Inventory, Customized category, exact-ID lookup.
+   Separate from openNewItemModal/saveNewItem above (Books, any category, also used by Detail/Edit)
+   so neither flow's behavior changes for the other. ── */
+function openCustomizedItemPrompt(){
+  $('ciItemId').value = '';
+  $('customizedItemModal').style.display = 'flex';
+}
+function closeCustomizedItemPrompt(){
+  $('customizedItemModal').style.display = 'none';
+}
+async function saveCustomizedItem(){
+  clearFieldErrors();
+  var itemId = $('ciItemId').value.trim();
+  if(!itemId){ toast('Item ID is required', 3000); highlightFieldError('ciItemId'); return; }
+  if(typeof ZOHO==='undefined'||!ZOHO.CREATOR||!ZOHO.CREATOR.DATA||typeof ZOHO.CREATOR.DATA.invokeCustomApi!=='function'){
+    toast('Creator API not available — widget must be uploaded to Creator.', 5000);
+    return;
+  }
+  var btn = $('ciSaveBtn');
+  btn.disabled = true; btn.textContent = 'Fetching from Inventory…';
+  try{
+    var resp = await ZOHO.CREATOR.DATA.invokeCustomApi({
+      api_name: CUSTOM_API_FETCH_CUSTOMIZED_ITEM,
+      http_method: 'POST',
+      content_type: 'application/json',
+      payload: { itemId: itemId },
+      public_key: CUSTOM_API_FETCH_CUSTOMIZED_ITEM_KEY
+    });
+    var result = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+    console.log('[CustomizedItem] fetch_customized_item_from_inventory result:', JSON.stringify(result));
+    if(result && result.status === 'success'){
+      var newRec = { ID: result.recordId, ID1: result.ID1, item_name: result.item_name, SKU: result.SKU, Rate: result.Rate, Unit: result.Unit, Description: result.Description, category: result.category };
+      var existingIdx = -1;
+      for(var i=0;i<customizedItemsCache.length;i++){ if(val(customizedItemsCache[i].ID1) === itemId){ existingIdx = i; break; } }
+      if(existingIdx > -1) customizedItemsCache[existingIdx] = newRec; else customizedItemsCache.push(newRec);
+      customizedItemsCache.sort(function(a,b){ return itemLabel(a).toLowerCase().localeCompare(itemLabel(b).toLowerCase()); });
+      $('fItems').value = itemLabel(newRec);
+      applyItemMatch();
+      closeCustomizedItemPrompt();
+      toast(result.message || 'Item added', 3500);
+    } else {
+      toast((result && result.message) || 'Could not add item — see console', 5000);
+    }
+  } catch(err){
+    console.error('[CustomizedItem] fetch_customized_item_from_inventory call failed:', err);
+    toast('Error adding item — see console', 5000);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Add Item';
+  }
+}
+
 /* ── Project — dependent on Customer; list is derived in buildProjectsCache() ── */
 function renderProjectsDropdown(){
   var dd = $('fProjectDropdown');
@@ -3888,11 +3955,10 @@ function applyProjectMatch(){
 }
 
 /* ── Event handlers: New Inquiry ── */
+/* New Inquiry's Item Name field searches customizedItemsCache only (owner, 2026-11-20) -- no
+   searchItemsLive/Akeneo call here. See loadCustomizedItemsFromCreator and renderItemsDropdown. */
 $('fItems').addEventListener('input', applyItemMatch);
 $('fItems').addEventListener('input', renderItemsDropdown);
-$('fItems').addEventListener('input', function(){
-  searchItemsLive($('fItems').value, function(){ applyItemMatch(); renderItemsDropdown(); });
-});
 $('fItems').addEventListener('focus', renderItemsDropdown);
 $('fItems').addEventListener('blur', function(){ setTimeout(function(){ $('fItemsDropdown').classList.remove('show'); }, 120); });
 $('fCustomer').addEventListener('input', applyCustomerMatch);
@@ -6150,7 +6216,7 @@ async function initWidget(){
     showSdkWarning('ZOHO.CREATOR.DATA.getRecords not found — SDK version mismatch.');
     return;
   }
-  await Promise.all([loadFromCreator(), loadItemsFromCreator(), loadCustomersFromCreator(), loadProjectsFromCreator(), loadQuoteGroupsFromCreator(), loadSuppliersFromCreator()]);
+  await Promise.all([loadFromCreator(), loadItemsFromCreator(), loadCustomizedItemsFromCreator(), loadCustomersFromCreator(), loadProjectsFromCreator(), loadQuoteGroupsFromCreator(), loadSuppliersFromCreator()]);
 }
 
 /* ── List event handlers ── */

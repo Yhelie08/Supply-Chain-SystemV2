@@ -1,0 +1,11 @@
+{
+  "name": "Delivery_Roster",
+  "label": "Delivery Roster",
+  "_about": "The people and vehicles the nightly team rotation pairs up (spec Delivery 02, TM-R4: edited any time in the Control Panel). One row per installer, driver or vehicle. No row at all = the built-in roster in rotation.mjs (the same list the Daily Team Availability widget used to hold). Admin only. Seeded by the Delivery Settings page's 'Make the roster editable' button.",
+  "fields": [
+    { "name": "Role", "label": "Role", "type": "picklist", "options": ["installer", "driver", "vehicle"] },
+    { "name": "Name", "label": "Name", "type": "text", "helpText": "A person's name, or a vehicle as it is written on the team row, e.g. Traviz (NIB-3823)." },
+    { "name": "Active", "label": "Active", "type": "checkbox", "helpText": "Untick to take someone or something out of the rotation without deleting the row." },
+    { "name": "Sort_Order", "label": "Sort Order", "type": "number", "helpText": "The rotation walks the list in this order, then by row. Changing the order changes who is paired with whom from the next night." }
+  ]
+}
