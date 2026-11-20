@@ -317,6 +317,19 @@
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
+          <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">⚖️ Crate Weight and Size <span class="text-rose-500">*</span></h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="block text-xs font-semibold text-slate-600">Weight (kg)
+              <input id="f_Crate_Weight_Kg" type="number" min="0" step="0.01" class="field-input mt-1" placeholder="e.g. 12.5">
+            </label>
+            <label class="block text-xs font-semibold text-slate-600">Dimensions (cm)
+              <input id="f_Crate_Dimensions_Cm" type="text" class="field-input mt-1" placeholder="Length x width x height, e.g. 120 x 60 x 40">
+            </label>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Required before the crate can be marked Done (together with the checklist and at least one photo).</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4">
           <h3 class="text-xs font-bold tracking-wide text-slate-500 uppercase mb-4">🚦 Crating Status</h3>
           <div class="flex items-center gap-6">
             <label class="flex items-center gap-2 text-sm text-slate-700">
@@ -461,6 +474,15 @@
     </span>`;
   }
 
+  // The server refuses a step with a code and a reason (FS-3 hold, QC / Crate evidence, a Blocked package). The widget shim rejects with
+  // Error(message) + .code, like Zoho's SDK, so the reason is in err.message; show it instead of a vague failure.
+  function refusalReason(err) {
+    if (err && err.serverMessage) return String(err.serverMessage);
+    if (err && err.code && err.message) return String(err.message);
+    try { const j = JSON.parse(err && err.responseText); if (j && j.message) return String(j.message); } catch (e) { /* not a server answer */ }
+    return "";
+  }
+
   function toast(message, type) {
     const container = document.getElementById("toastContainer");
     const el = document.createElement("div");
@@ -472,7 +494,7 @@
       el.style.transition = "opacity .25s ease";
       el.style.opacity = "0";
       setTimeout(() => el.remove(), 250);
-    }, 2600);
+    }, type === "error" ? 7000 : 2600);
   }
 
   // ---------------------------------------------------------------------
@@ -554,6 +576,9 @@
     document.getElementById("videoStatusNote").textContent = videoCount ? "A video is currently attached." : "None attached yet.";
     document.getElementById("f_Video").value = "";
 
+    document.getElementById("f_Crate_Weight_Kg").value = textVal(r.Crate_Weight_Kg);
+    document.getElementById("f_Crate_Dimensions_Cm").value = textVal(r.Crate_Dimensions_Cm);
+
     const status = textVal(r.Crating_Status1);
     document.getElementById("f_Status_Pending").checked = status !== "Done";
     document.getElementById("f_Status_Done").checked = status === "Done";
@@ -598,6 +623,8 @@
       SKU: document.getElementById("f_SKU").value.trim(),
       Quantity: document.getElementById("f_Quantity").value.trim(),
       Crating_Checklist: readCheckboxGroup("g_Crating_Checklist"),
+      Crate_Weight_Kg: document.getElementById("f_Crate_Weight_Kg").value.trim(),
+      Crate_Dimensions_Cm: document.getElementById("f_Crate_Dimensions_Cm").value.trim(),
       Crating_Status1: statusEl ? statusEl.value : "Pending",
     };
   }
@@ -629,15 +656,34 @@
     return failures;
   }
 
+  // CR-R2 (mandatory since 2026-11-20): crating can only be marked Done with the checklist, at least one photo,
+  // the crate weight (kg) and its dimensions (cm). The server checks the same things; this just says it before sending.
+  function crateDoneProblems(data, imageFiles) {
+    const missing = [];
+    if (!(data.Crating_Checklist || []).length) missing.push("the crating checklist");
+    if (!imageFiles.length && !toArray(currentEditRecord.Photo_Documentation).length) missing.push("at least one photo");
+    if (!(parseFloat(data.Crate_Weight_Kg) > 0)) missing.push("the crate weight in kg");
+    if (isBlank(data.Crate_Dimensions_Cm)) missing.push("the crate dimensions in cm");
+    return missing;
+  }
+
   async function saveEditForm() {
     if (!currentEditRecord) return;
     const data = collectEditFormData();
-    const saveBtns = [document.getElementById("saveEditBtn"), document.getElementById("saveEditBtn2")];
-    saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
-
     const recordId = currentEditRecord.ID;
     const imageFiles = Array.from(document.getElementById("f_Images").files || []);
     const videoFiles = Array.from(document.getElementById("f_Video").files || []);
+
+    if (data.Crating_Status1 === "Done" && textVal(currentEditRecord.Crating_Status1) !== "Done") {
+      const missing = crateDoneProblems(data, imageFiles);
+      if (missing.length) {
+        toast("Crating Done needs: " + missing.join(", ") + ".", "error");
+        return;
+      }
+    }
+
+    const saveBtns = [document.getElementById("saveEditBtn"), document.getElementById("saveEditBtn2")];
+    saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
 
     const config = {
       app_name: CONFIG.APP_NAME,
@@ -649,9 +695,46 @@
     };
 
     try {
+      const failures = [];
+
+      // File bytes can't ride in the Data API payload — each of these is a separate ZOHO.CREATOR.FILE.uploadFile
+      // call. They go FIRST (the record already exists), so the photo is on the record when the server checks the
+      // Done status (CR-R2).
+      if (imageFiles.length) {
+        const failCount = await uploadFilesSequentially(recordId, "Photo_Documentation", imageFiles);
+        if (failCount) failures.push(`${failCount} photo${failCount === 1 ? "" : "s"}`);
+        else currentEditRecord.Photo_Documentation = "uploaded";
+      }
+      if (videoFiles.length) {
+        const resp = await uploadFileToField(recordId, "Video_Documentation", videoFiles[0]);
+        if (!resp || resp.code !== 3000) failures.push("video"); else currentEditRecord.Video_Documentation = "uploaded";
+      }
+
       const response = await ZOHO.CREATOR.DATA.updateRecords(config);
-      if (!response || response.code !== 3000) throw new Error("update-failed");
+      if (!response || response.code !== 3000) {
+        const refused = new Error("update-failed");
+        refused.serverMessage = response && response.message;
+        throw refused;
+      }
       Object.assign(currentEditRecord, data);
+
+      // After an upload the record holds a real file path, but this copy only holds the text "uploaded" (a stand-in), which
+      // the detail view would try to load as a picture (a 404 until the page was reloaded; found 2026-11-20). Read the
+      // saved record back so the photos and video shown are the real ones. If that read fails, keep the stand-in.
+      if (imageFiles.length || videoFiles.length) {
+        try {
+          const fresh = await ZOHO.CREATOR.DATA.getRecords({
+            app_name: CONFIG.APP_NAME, report_name: CONFIG.REPORT_NAME,
+            criteria: `(ID == ${recordId})`, field_config: "all", max_records: 1,
+          });
+          const row = fresh && fresh.data && fresh.data[0];
+          if (row) {
+            Object.assign(currentEditRecord, row);
+            const i = allRecords.findIndex((x) => String(x.ID) === String(recordId));
+            if (i >= 0) allRecords[i] = currentEditRecord;
+          }
+        } catch (err) { console.error(err); }
+      }
 
       // Box count (PKG-R3: "updated at crate") — a separate write to the package, only when the field was
       // actually changed, so a Crate save that didn't touch it never overwrites a count someone else just set.
@@ -664,20 +747,6 @@
         }).catch((err) => console.error(err)); // box count is secondary to the crate checklist itself saving
       }
 
-      const failures = [];
-
-      // File bytes can't ride in the Data API payload above — each of these
-      // is a separate ZOHO.CREATOR.FILE.uploadFile call.
-      if (imageFiles.length) {
-        const failCount = await uploadFilesSequentially(recordId, "Photo_Documentation", imageFiles);
-        if (failCount) failures.push(`${failCount} photo${failCount === 1 ? "" : "s"}`);
-        else currentEditRecord.Photo_Documentation = "uploaded";
-      }
-      if (videoFiles.length) {
-        const resp = await uploadFileToField(recordId, "Video_Documentation", videoFiles[0]);
-        if (!resp || resp.code !== 3000) failures.push("video"); else currentEditRecord.Video_Documentation = "uploaded";
-      }
-
       saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
       toast(failures.length ? `Saved, but failed to upload: ${failures.join(", ")}.` : "Crate checklist saved.", failures.length ? "error" : "success");
       orderedRows = computeOrderedRows(allRecords);
@@ -686,7 +755,7 @@
     } catch (err) {
       console.error(err);
       saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
-      toast("Couldn't save changes.", "error");
+      toast(refusalReason(err) || "Couldn't save changes.", "error");
     }
   }
 

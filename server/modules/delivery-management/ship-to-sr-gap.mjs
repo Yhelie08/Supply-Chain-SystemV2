@@ -2,7 +2,8 @@
 // Aggregation / To Ship in Fulfillment) and the Service Request being created. Read-only, no new fields.
 //
 // Where the two timestamps come from:
-//   - aggregation: Fulfillment's own Stage_Events row `package.order_aggregation` (fulfillment/stage-events.mjs),
+//   - aggregation: Fulfillment's own Stage_Events row `package.aggregated` (spec v1.4 name, written by the Python Fulfillment since 2026-11-20)
+//     or `package.order_aggregation` (the old name; every row written before that, and by the Node Fulfillment, carries it),
 //     keyed by the Sales_Order_Fulfillment record ID (one record per package).
 //   - Service Request created: Service_Request1.Added_Time.
 //   - the link: Service_Request1.Sales_Order + Package_Number (can be several packages, comma separated)
@@ -17,7 +18,7 @@ import { blank } from '../../workflows/deluge.mjs';
 const SR = 'Service_Request1';
 const SOF = 'Sales_Order_Fulfillment';
 const EVENTS = 'Stage_Events';
-const AGGREGATED = 'package.order_aggregation';
+const AGGREGATED = ['package.aggregated', 'package.order_aggregation']; // new spec name and the old one: both count as the same event
 const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
 
 // "2026-11-18 03:45:00 PM" -> Date (local). Same small per-file parser job-status.mjs uses.
@@ -44,7 +45,7 @@ export async function getShipToSrGap(store) {
     // measured, so they are counted as unmatched below, not dropped silently.
     store.find(SR, (r) => !blank(r.Sales_Order) && !blank(r.Package_Number)),
     store.find(SOF, (r) => !blank(r.SO_No) && !blank(r.Package)),
-    store.find(EVENTS, (e) => e.Record_Type === 'package' && e.Event === AGGREGATED),
+    store.find(EVENTS, (e) => e.Record_Type === 'package' && AGGREGATED.includes(e.Event)),
   ]);
 
   // package ID -> earliest aggregation time. Compared as IDs in text, never as Numbers (see site-visits.mjs:

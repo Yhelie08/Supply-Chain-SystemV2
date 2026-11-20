@@ -1,0 +1,19 @@
+{
+  "name": "Crate_Checklist",
+  "extends": true,
+  "_about": "Fields added by the HomeCartel spec v1.4 (03 Fulfillment / 03 Pick, QC, Rework and Crate, rule CR-R2): the crate weight in kg and its dimensions in cm. Required when Crating Status is set to Done (checked by app/fulfillment/mandatory.py, with the checklist and at least one photo).",
+  "fields": [
+    {
+      "name": "Crate_Weight_Kg",
+      "label": "Crate weight (kg)",
+      "type": "decimal",
+      "helpText": "Required to mark crating Done (CR-R2)."
+    },
+    {
+      "name": "Crate_Dimensions_Cm",
+      "label": "Crate dimensions (cm)",
+      "type": "text",
+      "helpText": "Length x width x height in cm, for example 120 x 60 x 40. Required to mark crating Done (CR-R2)."
+    }
+  ]
+}

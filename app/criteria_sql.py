@@ -107,7 +107,7 @@ def criteria_to_sql(src: str | None, form: str, ctx: dict | None = None, offset:
                 if b["lit"] == "null":
                     return "FALSE" if eq else "TRUE"
                 if b["lit"] in ("string", "number") and _DIGITS_ONLY.match(str(b["value"])):
-                    return f"{col} {'=' if eq else '<>'} {param(str(b['value']))}::bigint"
+                    return f"{col} {'=' if eq else '<>'} {param(str(b['value']))}::text::bigint"
                 return _no()
             kind = cols[a["field"]]["kind"]
             if kind == "text":

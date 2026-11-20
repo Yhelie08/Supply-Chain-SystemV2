@@ -1141,6 +1141,15 @@
   // Messages arrive here already in the active language when the call site
   // interpolates a value (it calls t() itself to get the right template); this
   // second t() covers every plain literal call and is a no-op on the rest.
+  // The server refuses a step with a code and a reason (FS-3 hold, QC / Crate evidence, a Blocked package). The widget shim rejects with
+  // Error(message) + .code, like Zoho's SDK, so the reason is in err.message; show it instead of a vague failure.
+  function refusalReason(err) {
+    if (err && err.serverMessage) return String(err.serverMessage);
+    if (err && err.code && err.message) return String(err.message);
+    try { const j = JSON.parse(err && err.responseText); if (j && j.message) return String(j.message); } catch (e) { /* not a server answer */ }
+    return "";
+  }
+
   function toast(message, type) {
     message = t(message);
     const container = document.getElementById("toastContainer");
@@ -1153,7 +1162,7 @@
       el.style.transition = "opacity .25s ease";
       el.style.opacity = "0";
       setTimeout(() => el.remove(), 250);
-    }, 2600);
+    }, type === "error" ? 7000 : 2600);
   }
 
   // ---------------------------------------------------------------------
@@ -1673,6 +1682,25 @@
     if (document.getElementById("f_Location").value) document.getElementById("f_Location").classList.remove("field-input-error");
   });
 
+  // QC-R2 / QC-R3 (mandatory since 2026-11-20). The server refuses the same saves; this says it before anything is sent.
+  //   Approved: each checklist group (Fixture Body, LED, Uniformity) has a line ticked, at least one photo, and the signature.
+  //   Rejected: a reason (Remarks) and at least one photo.
+  function qcEvidenceProblems(status, data, imageFiles, hasSignature) {
+    const missing = [];
+    const hasPhoto = imageFiles.length > 0 || toArray(currentEditRecord.Image_Upload_max_10_JPG_JPEG_PNG).length > 0;
+    if (status === "Approved") {
+      const empty = [["Fixture_Body_Checklist", "Fixture Body"], ["LED_Checklist", "LED"], ["Uniformity", "Uniformity"]]
+        .filter(([field]) => !(data[field] || []).length).map(([, label]) => label);
+      if (empty.length) missing.push("checklist lines ticked in " + empty.join(", "));
+      if (!hasPhoto) missing.push("at least one photo");
+      if (!hasSignature) missing.push("the checker's signature");
+    } else if (status === "Rejected") {
+      if (isBlank(data.Remarks) || !String(data.Remarks).trim()) missing.push("a reason (Remarks)");
+      if (!hasPhoto) missing.push("at least one photo");
+    }
+    return missing;
+  }
+
   async function saveEditForm() {
     if (!currentEditRecord) return;
     if (!validateQcRequiredFields()) {
@@ -1738,14 +1766,45 @@
       }
     }
 
-    const saveBtns = [document.getElementById("saveEditBtn"), document.getElementById("saveEditBtn2")];
-    saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
-
     const shouldUploadSignature = signatureDirty && !isSignatureCanvasBlank();
     const imageFiles = Array.from(document.getElementById("f_Images").files || []);
     const videoFiles = Array.from(document.getElementById("f_Video").files || []);
 
+    const hasSignature = shouldUploadSignature || !isBlank(currentEditRecord.Signature);
+    const statusesToWrite = Array.from(new Set(writes.map((w) => w.QC_Status))).filter((st) => st !== textVal(currentEditRecord.QC_Status));
+    for (const st of statusesToWrite) {
+      const missing = qcEvidenceProblems(st, data, imageFiles, hasSignature);
+      if (missing.length) {
+        toast("QC " + st + " needs: " + missing.join(", ") + ".", "error");
+        return;
+      }
+    }
+
+    const saveBtns = [document.getElementById("saveEditBtn"), document.getElementById("saveEditBtn2")];
+    saveBtns.forEach((b) => { b.disabled = true; b.textContent = "Saving…"; });
+
     try {
+      const failures = [];
+
+      // File bytes can't ride in the Data API payload below — each of these is a separate
+      // ZOHO.CREATOR.FILE.uploadFile call. They go FIRST (the QC record already exists from Pick), so the
+      // photo and the signature are on the record when the server checks the Approved / Rejected status
+      // (QC-R2 / QC-R3).
+      if (shouldUploadSignature) {
+        const file = await signatureCanvasToFile();
+        const resp = file && await uploadFileToField(recordId, "Signature", file);
+        if (!resp || resp.code !== 3000) failures.push("signature"); else currentEditRecord.Signature = "uploaded";
+      }
+      if (imageFiles.length) {
+        const failCount = await uploadFilesSequentially(recordId, "Image_Upload_max_10_JPG_JPEG_PNG", imageFiles);
+        if (failCount) failures.push(`${failCount} image${failCount === 1 ? "" : "s"}`);
+        else currentEditRecord.Image_Upload_max_10_JPG_JPEG_PNG = "uploaded";
+      }
+      if (videoFiles.length) {
+        const resp = await uploadFileToField(recordId, "Video_Upload_max_3_min_30_sec1", videoFiles[0]);
+        if (!resp || resp.code !== 3000) failures.push("video"); else currentEditRecord.Video_Upload_max_3_min_30_sec1 = "uploaded";
+      }
+
       let lastResponse = null;
       for (const writeData of writes) {
         const config = {
@@ -1767,28 +1826,13 @@
         console.log("[QC SAVE] key fields — QC_Status:", JSON.stringify(writeData.QC_Status), "Quantity:", JSON.stringify(writeData.Quantity), "SO:", JSON.stringify(writeData.SO), "SKU:", JSON.stringify(writeData.SKU), "PAC:", JSON.stringify(writeData.PAC));
         lastResponse = await ZOHO.CREATOR.DATA.updateRecords(config);
         console.log("[QC SAVE] updateRecords response:", JSON.stringify(lastResponse));
-        if (!lastResponse || lastResponse.code !== 3000) throw new Error("update-failed");
+        if (!lastResponse || lastResponse.code !== 3000) {
+          const refused = new Error("update-failed");
+          refused.serverMessage = lastResponse && lastResponse.message;
+          throw refused;
+        }
       }
       Object.assign(currentEditRecord, writes[writes.length - 1]);
-
-      const failures = [];
-
-      // File bytes can't ride in the Data API payload above — each of these
-      // is a separate ZOHO.CREATOR.FILE.uploadFile call.
-      if (shouldUploadSignature) {
-        const file = await signatureCanvasToFile();
-        const resp = file && await uploadFileToField(recordId, "Signature", file);
-        if (!resp || resp.code !== 3000) failures.push("signature"); else currentEditRecord.Signature = "uploaded";
-      }
-      if (imageFiles.length) {
-        const failCount = await uploadFilesSequentially(recordId, "Image_Upload_max_10_JPG_JPEG_PNG", imageFiles);
-        if (failCount) failures.push(`${failCount} image${failCount === 1 ? "" : "s"}`);
-        else currentEditRecord.Image_Upload_max_10_JPG_JPEG_PNG = "uploaded";
-      }
-      if (videoFiles.length) {
-        const resp = await uploadFileToField(recordId, "Video_Upload_max_3_min_30_sec1", videoFiles[0]);
-        if (!resp || resp.code !== 3000) failures.push("video"); else currentEditRecord.Video_Upload_max_3_min_30_sec1 = "uploaded";
-      }
 
       // ADDED 2026-07-27 — mirror the same Image/Video files into
       // Exception_Control_Media so the Exception Control widget can show them,
@@ -1815,7 +1859,7 @@
     } catch (err) {
       console.error(err);
       saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
-      toast("Couldn't save changes.", "error");
+      toast(refusalReason(err) || "Couldn't save changes.", "error");
     }
   }
 

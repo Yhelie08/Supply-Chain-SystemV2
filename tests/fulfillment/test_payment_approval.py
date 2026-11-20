@@ -1,6 +1,8 @@
 # Partial/unpaid packages stay out of Order Readiness ("Need Approval") until approved (app/fulfillment/workflows.py).
 import pytest
 
+from app.criteria import ZohoError
+
 from app.schema import ensure_schema
 from app.store import create_store
 from app.workflows import create_hooked_store
@@ -27,7 +29,7 @@ def hooked_store(raw_store):
 
 async def _add_package(hooked_store, extra=None):
     extra = extra or {}
-    return await hooked_store.add_record(SOF, {"SO_No": "SO-1", "Fulfillment_Stage": "Waiting For Package", "Package": "PAC-1", "Status": "Partial", "Item_Details1": [LAMP, SHADE], **extra})
+    return await hooked_store.add_record(SOF, {"SO_No": "SO-1", "Fulfillment_Stage": "Waiting For Package", "Package": "PAC-1", "Status": "Partial", "Shipping_Address": "1 Main St", "Contact_No": "0917 000 0000", "Item_Details1": [LAMP, SHADE], **extra})
 
 
 async def _stage(raw_store, id_):
@@ -78,8 +80,15 @@ async def test_paying_moves_to_readiness_with_no_approval_credit_terms_need_none
 async def test_a_gate_record_still_needing_approval_is_never_released_to_pick(hooked_store, raw_store):
     await _add_package(hooked_store)
     g1 = (await raw_store.find(GATE))[0]
-    await hooked_store.update_record(GATE, g1["ID"], {"Assign_Picker": "Hendel", "Release": True}, by_form=True)
+    # spec OR-R1 (2026-11-20): a package whose payment is not cleared is Blocked, and the Release is refused (before, it was saved but made no Pick)
+    with pytest.raises(ZohoError) as e:
+        await hooked_store.update_record(GATE, g1["ID"], {"Assign_Picker": "Hendel", "Release": True}, by_form=True)
+    assert "Blocked" in str(e.value)
     assert await raw_store.find(PICK) == []
     await _approve(hooked_store, g1["ID"])
+    with pytest.raises(ZohoError):   # one of the package's two items is approved, the other is not: the PACKAGE is still Blocked
+        await hooked_store.update_record(GATE, g1["ID"], {"Assign_Picker": "Hendel", "Release": True}, by_form=True)
+    for g in await raw_store.find(GATE):
+        await _approve(hooked_store, g["ID"])
     await hooked_store.update_record(GATE, g1["ID"], {"Assign_Picker": "Hendel", "Release": True}, by_form=True)
     assert len(await raw_store.find(PICK)) == 1

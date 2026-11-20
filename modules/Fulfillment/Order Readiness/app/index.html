@@ -140,7 +140,15 @@
 
     <!-- Capacity bar (spec 05 Shared Engines / 02 Calculators §1): today's people / boxes-per-hour / hours,
          the resulting capacity, and how much is suggested for release today. -->
+    <!-- "Ranking is stale" (spec 05 Shared Engines / 01 section 6): shown when nothing was scored for 26 hours. Filled by
+         refreshStaleBanner() from the ranking_status API. -->
+    <div id="staleBanner" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl px-5 py-3 mb-4 text-sm flex flex-wrap items-center gap-3"></div>
+
     <div id="capacityBar" class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 mb-4 flex flex-wrap items-center gap-4 text-sm"></div>
+
+    <!-- Capacity figures and crew sizing (spec 03 Fulfillment / 02 Order Readiness screens; 05 / 02 section 1). Filled by
+         refreshCapacitySummary() from the capacity_summary API (read only). -->
+    <div id="capacitySummary" class="hidden bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-3 mb-4 text-sm text-slate-600 flex flex-wrap items-center gap-x-5 gap-y-1"></div>
 
     <!-- Category tabs (sorting engine: spec 03 Fulfillment / 02 Order Readiness). "Today's release" (all
          Suggested_Release=true across every category) is the default landing view. -->
@@ -155,6 +163,11 @@
       <div id="tableToolbar" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b border-slate-100 shrink-0">
         <h2 class="text-xs font-bold tracking-wide text-slate-700 uppercase">Readiness Gate List</h2>
         <div class="flex flex-wrap items-center gap-2">
+          <!-- Release selected / Release all suggested (custom API release_gate_records). Filled by refreshBulkBar(). -->
+          <button id="releaseSelectedBtn" type="button" disabled
+            class="text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-full px-3 py-2 transition disabled:opacity-40 disabled:cursor-not-allowed">Release selected (0)</button>
+          <button id="releaseSuggestedBtn" type="button" disabled
+            class="text-xs font-semibold text-slate-800 bg-white border border-slate-300 hover:bg-slate-50 rounded-full px-3 py-2 transition disabled:opacity-40 disabled:cursor-not-allowed">Release all suggested (0)</button>
           <div class="relative">
             <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 10-10.6 0 7.5 7.5 0 0010.6 0z" />
@@ -169,7 +182,8 @@
         <table class="w-full text-sm">
           <thead>
             <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100 whitespace-nowrap">
-              <th class="px-5 py-2.5 font-bold">Payment Status</th>
+              <th class="pl-5 pr-1 py-2.5 w-8"><input type="checkbox" id="selectAllRows" title="Select every visible row that is not released yet" aria-label="Select all rows not released yet" /></th>
+              <th class="px-3 py-2.5 font-bold">Payment Status</th>
               <th class="px-3 py-2.5 font-bold">Next Step</th>
               <th class="px-3 py-2.5 font-bold">Priority</th>
               <th class="px-3 py-2.5 font-bold">Suggested Action</th>
@@ -350,6 +364,26 @@
     </div>
   </div>
 
+  <!-- Bulk release modal (Release selected / Release all suggested): asks for a picker only when some rows have none, then shows what
+       was released and what was skipped (and why). -->
+  <div id="bulkReleaseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-5" style="background: var(--hc-panel, #fff);">
+      <h3 id="bulkTitle" class="text-sm font-bold text-slate-900 mb-1"></h3>
+      <p id="bulkSummary" class="text-xs text-slate-500 mb-3"></p>
+      <div id="bulkPickerBlock" class="hidden mb-3">
+        <label class="text-xs text-slate-600 block mb-1" for="bulkPickerSelect" id="bulkPickerLabel">Picker for the items that have none</label>
+        <select id="bulkPickerSelect" class="w-full text-sm rounded-md border border-slate-200 bg-white px-2 py-1.5"></select>
+        <input id="bulkPickerOther" type="text" placeholder="Picker name" class="hidden w-full mt-2 text-sm rounded-md border border-slate-200 bg-white px-2 py-1.5" />
+        <p class="text-[11px] text-slate-400 mt-1">An item that already has a picker keeps it.</p>
+      </div>
+      <div id="bulkResult" class="hidden mb-3 text-xs text-slate-700 max-h-56 overflow-auto"></div>
+      <div class="flex items-center justify-end gap-2">
+        <button id="bulkCancelBtn" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 transition">Cancel</button>
+        <button id="bulkConfirmBtn" class="text-xs font-semibold bg-slate-900 text-white rounded-lg px-3 py-2 hover:bg-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed">Release</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Check Payment Status confirm modal — same replaces-native-confirm() rationale
        as releaseModal above. -->
   <div id="paymentCheckModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
@@ -425,6 +459,11 @@
     PICKER_OPTIONS: ["Hendel", "Jayvon", "Jazz", "Edwin"],   // matches the form's Assign_Picker picklist values
     // "Check Payment Status" — see DelugeScripts/readiness_gate_check_payment_status.txt.
     // Placeholder key, wire in the real one once the Custom API is created live in Creator.
+    // Sorting engine APIs. They need no key on the Python server (it ignores public_key).
+    CUSTOM_API_RECALC: "recalculate_fulfillment_queue",
+    CUSTOM_API_RANKING_STATUS: "ranking_status",
+    CUSTOM_API_CAPACITY_SUMMARY: "capacity_summary",
+    CUSTOM_API_RELEASE_BULK: "release_gate_records",
     CUSTOM_API_CHECK_PAYMENT: "check_payment_status",
     CUSTOM_API_CHECK_PAYMENT_KEY: "1v0bgwBVb3bD8h4pDB8rOkqQB",
   };
@@ -800,6 +839,15 @@
     }
   }
 
+  // The server refuses a step with a code and a reason (FS-3 hold, QC / Crate evidence, a Blocked package). The widget shim rejects with
+  // Error(message) + .code, like Zoho's SDK, so the reason is in err.message; show it instead of a vague failure.
+  function refusalReason(err) {
+    if (err && err.serverMessage) return String(err.serverMessage);
+    if (err && err.code && err.message) return String(err.message);
+    try { const j = JSON.parse(err && err.responseText); if (j && j.message) return String(j.message); } catch (e) { /* not a server answer */ }
+    return "";
+  }
+
   function toast(message, type) {
     const container = document.getElementById("toastContainer");
     const el = document.createElement("div");
@@ -811,7 +859,7 @@
       el.style.transition = "opacity .25s ease";
       el.style.opacity = "0";
       setTimeout(() => el.remove(), 250);
-    }, 2600);
+    }, type === "error" ? 7000 : 2600);
   }
 
   // ---------------------------------------------------------------------
@@ -963,7 +1011,7 @@
   }
 
   function groupHeaderRow(r) {
-    return `<tr><td colspan="17" class="px-5 pt-4 pb-1 text-xs font-bold text-slate-900">${escapeHtml(displayVal(r.sales_order_number))}</td></tr>`;
+    return `<tr><td colspan="18" class="px-5 pt-4 pb-1 text-xs font-bold text-slate-900">${escapeHtml(displayVal(r.sales_order_number))}</td></tr>`;
   }
 
   // Release is gated on a picker being assigned first — same pattern as
@@ -1141,7 +1189,8 @@ function forecastCell(r) {
 
     return `
       <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}" title="${escapeHtml(sof.Priority_Reason || "")}">
-        <td class="px-5 py-2.5">${paymentCell}</td>
+        <td class="pl-5 pr-1 py-2.5 w-8" data-col="select">${isTrue(r.Release) ? "" : `<input type="checkbox" class="row-select" data-id="${r.ID}" data-pkg="${escapeHtml(pkgKey(r))}" title="Releasing moves the whole package to Picking" aria-label="Select this package for release" ${selectedPkgs.has(pkgKey(r)) ? "checked" : ""} />`}</td>
+        <td class="px-3 py-2.5">${paymentCell}</td>
         <td class="px-3 py-2.5">${nextStepCell(r.ID, nextStepFor(r))}</td>
         <td class="px-3 py-2.5">${priorityCellHtml(r)}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(sof.Suggested_Action))}</td>
@@ -1168,7 +1217,7 @@ function forecastCell(r) {
     let html = "";
     let lastSoNumber = null;
     if (!filtered.length) {
-      html = `<tr><td colspan="17" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+      html = `<tr><td colspan="18" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
     } else {
       filtered.forEach((r) => {
         if (r.sales_order_number !== lastSoNumber) { html += groupHeaderRow(r); lastSoNumber = r.sales_order_number; }
@@ -1183,6 +1232,20 @@ function forecastCell(r) {
 
     tableBody.querySelectorAll(".assign-picker-select").forEach(wirePickerSelect);
     tableBody.querySelectorAll(".release-btn").forEach(wireReleaseBtn);
+
+    // only packages you can see and that still have an item not released stay selected
+    const selectable = new Set(filtered.filter((r) => !isTrue(r.Release)).map((r) => pkgKey(r)));
+    selectedPkgs = new Set(Array.from(selectedPkgs).filter((k) => selectable.has(k)));
+    tableBody.querySelectorAll(".row-select").forEach((box) => {
+      box.addEventListener("click", (ev) => ev.stopPropagation());   // do not open the detail view
+      box.addEventListener("change", () => {
+        // one tick stands for the whole package: every item of it ticks together
+        if (box.checked) selectedPkgs.add(box.dataset.pkg); else selectedPkgs.delete(box.dataset.pkg);
+        tableBody.querySelectorAll(".row-select").forEach((other) => { if (other.dataset.pkg === box.dataset.pkg) other.checked = box.checked; });
+        refreshBulkBar();
+      });
+    });
+    refreshBulkBar();
 
     document.getElementById("totalCount").textContent = totalCount;
   }
@@ -1328,12 +1391,13 @@ function forecastCell(r) {
           toast("Order marked as released.", "success");
           if (onSuccess) onSuccess();
         } else {
-          toast("Couldn't release order.", "error");
+          // the server says why when it refuses (a Blocked package, spec OR-R1): show that, not a vague failure
+          toast((response && response.message) || "Couldn't release order.", "error");
           if (onError) onError();
         }
       }).catch((err) => {
         console.error(err);
-        toast("Couldn't release order.", "error");
+        toast(refusalReason(err) || "Couldn't release order.", "error");
         if (onError) onError();
       });
     });
@@ -1366,6 +1430,186 @@ function forecastCell(r) {
       onError: () => { btnEl.disabled = false; btnEl.textContent = "Release"; },
     });
   }
+
+  // ---------------------------------------------------------------------
+  // Release selected / Release all suggested (spec 05 / 02). The server does the work and the rules (custom API release_gate_records):
+  // a row is skipped when it is already released, still needs payment approval, its package is Blocked, or it has no picker; "all
+  // suggested" works per package (a package is never released half); this screen only picks the rows, asks for a picker when some
+  // have none, and shows the answer row by row.
+  // ---------------------------------------------------------------------
+  let selectedPkgs = new Set();   // keys "SO::package" of the packages ticked
+  let bulkMode = "";
+  let bulkRows = [];
+  let bulkDone = false;
+  let bulkPreviewOk = false;
+  let bulkSeq = 0;
+
+  function pkgKey(r) { return sofQueueKey(r.sales_order_number, r.Package_Order); }
+  function visibleReleasableRows() { return getFilteredRows().filter((r) => !isTrue(r.Release)); }
+  // every item of a ticked package that is not released yet (the server releases the whole package, so the dialog counts the whole package)
+  function selectedRows() { return allRecords.filter((r) => !isTrue(r.Release) && selectedPkgs.has(pkgKey(r))); }
+  function suggestedRows() {
+    return allRecords.filter((r) => {
+      const q = sofQueueFor(r);
+      return !isTrue(r.Release) && isTrue(q.Suggested_Release) && String(q.Fulfillment_Stage || "") === "Order Readiness";
+    });
+  }
+  function packageCount(rows) { return new Set(rows.map(pkgKey)).size; }
+
+  function refreshBulkBar() {
+    const sel = selectedPkgs.size;
+    const sug = suggestedRows();
+    const selBtn = document.getElementById("releaseSelectedBtn");
+    const sugBtn = document.getElementById("releaseSuggestedBtn");
+    if (!selBtn || !sugBtn) return;
+    selBtn.textContent = `Release selected (${sel})`;
+    selBtn.disabled = sel === 0;
+    selBtn.title = sel ? `${sel} package(s) ticked: all their items go to Picking together` : "Tick a package first";
+    sugBtn.textContent = `Release all suggested (${packageCount(sug)})`;
+    sugBtn.disabled = sug.length === 0;
+    sugBtn.title = sug.length ? `${sug.length} item(s) in ${packageCount(sug)} package(s) that the ranking suggests for today` : "Nothing is suggested right now";
+    const all = visibleReleasableRows();
+    const allPkgs = new Set(all.map(pkgKey));
+    const box = document.getElementById("selectAllRows");
+    if (box) {
+      box.checked = allPkgs.size > 0 && sel === allPkgs.size;
+      box.indeterminate = sel > 0 && sel < allPkgs.size;
+      box.disabled = allPkgs.size === 0;
+    }
+  }
+
+  function bulkPickerValue() {
+    const sel = document.getElementById("bulkPickerSelect").value;
+    return sel === "__other" ? document.getElementById("bulkPickerOther").value.trim() : sel;
+  }
+
+  function bulkPayload(preview) {
+    const payload = { mode: bulkMode, picker: bulkPickerValue(), preview: !!preview };
+    if (bulkMode === "selected") payload.ids = bulkRows.map((r) => String(r.ID));
+    return payload;
+  }
+
+  function refreshBulkConfirm() {
+    const needsPicker = bulkRows.some((r) => isBlank(r.Assign_Picker));
+    const confirm = document.getElementById("bulkConfirmBtn");
+    if (bulkDone) { confirm.disabled = false; return; }
+    confirm.disabled = !bulkPreviewOk || (needsPicker && !bulkPickerValue());
+  }
+
+  function skippedHtml(skipped, heading) {
+    return skipped.length
+      ? `<p class="font-semibold mb-1">${heading}</p>` + skipped.map((x) =>
+          `<p class="py-0.5 border-t border-slate-100">${escapeHtml([x.so, x.item || x.sku].filter(Boolean).join(" · ") || "Row " + x.id)} &mdash; ${escapeHtml(x.reason)}</p>`).join("")
+      : "";
+  }
+
+  // Asks the server what would happen (nothing is written): which packages go, which are skipped and why, and whether it goes over
+  // capacity. Over capacity is allowed (spec OR-R4); it is only said.
+  function refreshBulkPreview() {
+    const seq = ++bulkSeq;
+    bulkPreviewOk = false;
+    const box = document.getElementById("bulkResult");
+    box.classList.remove("hidden");
+    box.innerHTML = `<p class="text-slate-400">Checking…</p>`;
+    refreshBulkConfirm();
+    invokeCustomApi(CONFIG.CUSTOM_API_RELEASE_BULK, "", bulkPayload(true)).then((res) => {
+      if (seq !== bulkSeq) return;   // an older answer: the picker changed meanwhile
+      if (!res || res.status !== "success") { box.innerHTML = `<p class="text-rose-700">${escapeHtml((res && res.message) || "Couldn't check.")}</p>`; return; }
+      const skipped = (res.results || []).filter((x) => x.status === "skipped");
+      box.innerHTML =
+        `<p><strong>${res.wouldRelease}</strong> item(s) in <strong>${res.packages}</strong> package(s) will be released (${res.boxes} boxes of ${res.capacityBoxes} today).</p>` +
+        (res.warning ? `<p class="mt-1 rounded-md bg-amber-50 text-amber-800 px-2 py-1">${escapeHtml(res.warning)}</p>` : "") +
+        (skipped.length ? `<div class="mt-2">${skippedHtml(skipped, "Will be skipped:")}</div>` : "");
+      bulkPreviewOk = res.wouldRelease > 0;
+      document.getElementById("bulkConfirmBtn").textContent = res.wouldRelease > 0 ? `Yes, release ${res.wouldRelease} item(s)` : "Nothing to release";
+      refreshBulkConfirm();
+    }).catch((err) => {
+      console.error(err);
+      if (seq === bulkSeq) box.innerHTML = `<p class="text-rose-700">Couldn't check.</p>`;
+    });
+  }
+
+  function openBulkModal(mode) {
+    bulkMode = mode;
+    bulkRows = mode === "selected" ? selectedRows() : suggestedRows();
+    if (!bulkRows.length) { toast(mode === "selected" ? "Tick at least one package first." : "Nothing is suggested right now.", "error"); return; }
+    bulkDone = false;
+    const noPicker = bulkRows.filter((r) => isBlank(r.Assign_Picker)).length;
+    document.getElementById("bulkTitle").textContent = mode === "selected" ? "Release the selected packages?" : "Release all suggested?";
+    document.getElementById("bulkSummary").textContent =
+      `${bulkRows.length} item(s) in ${packageCount(bulkRows)} package(s). A package goes to Picking with all its items, or not at all.`;
+    const picker = document.getElementById("bulkPickerSelect");
+    picker.innerHTML = `<option value="">Choose a picker…</option>` +
+      CONFIG.PICKER_OPTIONS.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("") + `<option value="__other">Other…</option>`;
+    document.getElementById("bulkPickerOther").value = "";
+    document.getElementById("bulkPickerOther").classList.add("hidden");
+    document.getElementById("bulkPickerBlock").classList.toggle("hidden", noPicker === 0);
+    document.getElementById("bulkPickerLabel").textContent = `${noPicker} item(s) have no picker. Picker for them:`;
+    document.getElementById("bulkCancelBtn").classList.remove("hidden");
+    document.getElementById("bulkConfirmBtn").textContent = "Yes, Release";
+    document.getElementById("bulkReleaseModal").classList.remove("hidden");
+    refreshBulkPreview();
+  }
+
+  function closeBulkModal() {
+    document.getElementById("bulkReleaseModal").classList.add("hidden");
+    bulkSeq++;   // ignore a preview that is still on its way
+    if (bulkDone) { selectedPkgs = new Set(); loadLive(); }
+  }
+
+  function showBulkResult(res) {
+    bulkDone = true;
+    const skipped = (res.results || []).filter((x) => x.status === "skipped");
+    document.getElementById("bulkTitle").textContent = "Release finished";
+    document.getElementById("bulkSummary").textContent = `Released ${res.released} item(s) in ${res.packages} package(s). Skipped ${res.skipped}.`;
+    document.getElementById("bulkPickerBlock").classList.add("hidden");
+    const box = document.getElementById("bulkResult");
+    box.innerHTML =
+      (res.warning ? `<p class="mb-2 rounded-md bg-amber-50 text-amber-800 px-2 py-1">${escapeHtml(res.warning)}</p>` : "") +
+      (skipped.length ? skippedHtml(skipped, "Skipped:") : `<p class="text-emerald-700">Everything was released.</p>`);
+    box.classList.remove("hidden");
+    document.getElementById("bulkCancelBtn").classList.add("hidden");
+    const confirm = document.getElementById("bulkConfirmBtn");
+    confirm.textContent = "Close";
+    confirm.disabled = false;
+  }
+
+  function runBulkRelease() {
+    const confirm = document.getElementById("bulkConfirmBtn");
+    confirm.disabled = true;
+    confirm.textContent = "Releasing…";
+    invokeCustomApi(CONFIG.CUSTOM_API_RELEASE_BULK, "", bulkPayload(false)).then((res) => {
+      if (res && res.status === "success") {
+        toast(`Released ${res.released} item(s)` + (res.skipped ? `, skipped ${res.skipped}.` : "."), res.skipped ? "error" : "success");
+        showBulkResult(res);
+      } else {
+        toast((res && res.message) || "Couldn't release.", "error");
+        confirm.disabled = false;
+        confirm.textContent = "Yes, Release";
+      }
+    }).catch((err) => {
+      console.error(err);
+      toast("Couldn't release.", "error");
+      confirm.disabled = false;
+      confirm.textContent = "Yes, Release";
+    });
+  }
+
+  document.getElementById("releaseSelectedBtn").addEventListener("click", () => openBulkModal("selected"));
+  document.getElementById("releaseSuggestedBtn").addEventListener("click", () => openBulkModal("suggested"));
+  document.getElementById("bulkCancelBtn").addEventListener("click", closeBulkModal);
+  document.getElementById("bulkConfirmBtn").addEventListener("click", () => { if (bulkDone) closeBulkModal(); else runBulkRelease(); });
+  document.getElementById("bulkPickerSelect").addEventListener("change", (ev) => {
+    document.getElementById("bulkPickerOther").classList.toggle("hidden", ev.target.value !== "__other");
+    refreshBulkPreview();
+  });
+  document.getElementById("bulkPickerOther").addEventListener("change", refreshBulkPreview);
+  document.getElementById("bulkPickerOther").addEventListener("input", refreshBulkConfirm);
+  document.getElementById("selectAllRows").addEventListener("change", (ev) => {
+    const keys = new Set(visibleReleasableRows().map(pkgKey));
+    if (ev.target.checked) keys.forEach((k) => selectedPkgs.add(k)); else keys.forEach((k) => selectedPkgs.delete(k));
+    renderTable();
+  });
 
   function switchToDetail(recordId) {
     const r = allRecords.find(rec => String(rec.ID) === String(recordId));
@@ -1493,7 +1737,9 @@ function forecastCell(r) {
       </label>
       <span class="text-slate-500">&times; ${boxesPerHour} boxes/hr &times; ${hoursPerDay} hrs = <strong>${capacityBoxes} boxes capacity</strong></span>
       <span class="text-slate-500">Suggested today: <strong>${suggestedCount}</strong></span>
+      <button id="recalcBtn" type="button" class="ml-auto text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition">Recalculate</button>
     `;
+    document.getElementById("recalcBtn").addEventListener("click", recalculateQueue);
     document.getElementById("capacityPeopleInput").addEventListener("change", (ev) => {
       const n = parseInt(ev.target.value, 10);
       if (!Number.isFinite(n) || n < 0) return;
@@ -1524,12 +1770,68 @@ function forecastCell(r) {
     }
   }
 
+  // Recalculate (spec 05 / 01 section 6): a full re-score of the Fulfillment queue now, then the screen reloads.
+  function recalculateQueue() {
+    const btn = document.getElementById("recalcBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "Recalculating…"; }
+    invokeCustomApi(CONFIG.CUSTOM_API_RECALC, "", {}).then((res) => {
+      if (res && res.status === "success") {
+        let msg = `Re-scored ${res.scored} package(s).`;
+        if (res.urgentWarning) msg += ` Warning: ${res.urgent} urgent orders (${res.urgentPct}%) is too many; fix the categories instead of adding flags.`;
+        toast(msg, res.urgentWarning ? "error" : "success");
+      } else {
+        toast((res && res.message) || "Couldn't recalculate.", "error");
+      }
+      loadLive();
+    }).catch((err) => {
+      console.error(err);
+      toast("Couldn't recalculate.", "error");
+      if (btn) { btn.disabled = false; btn.textContent = "Recalculate"; }
+    });
+  }
+
+  // Capacity figures: boxes in progress (released, not yet finished), free capacity, what is suggested, "over capacity by N", the
+  // backlog in days, and the crew sizing line ("to clear Late + About to be late in N days you need X people (you have P)").
+  function refreshCapacitySummary() {
+    const el = document.getElementById("capacitySummary");
+    invokeCustomApi(CONFIG.CUSTOM_API_CAPACITY_SUMMARY, "", {}).then((c) => {
+      if (!c || c.status !== "success") { el.classList.add("hidden"); return; }
+      const parts = [
+        `In progress: <strong>${c.inProgressBoxes}</strong> boxes`,
+        `Free today: <strong>${c.freeBoxes}</strong> of ${c.capacityBoxes}`,
+        `Suggested: <strong>${c.suggestedBoxes}</strong> boxes (${c.suggestedCount})`,
+      ];
+      if (c.backlogDays !== null) parts.push(`Backlog: <strong>${c.backlogDays}</strong> day(s)`);
+      if (c.overCapacityBy > 0) parts.unshift(`<span class="text-rose-700 font-semibold">Over capacity by ${c.overCapacityBy} boxes</span>`);
+      if (c.lateOrAtRiskCount > 0 && c.peopleNeeded !== null) {
+        const short = c.peopleNeeded > c.people;
+        parts.push(`<span class="${short ? "text-rose-700" : "text-slate-600"}">To clear Late + About to be late (${c.dueBoxes} boxes) in ${c.crewDays} days you need <strong>${Math.ceil(c.peopleNeeded)}</strong> people (you have ${c.people})</span>`);
+      }
+      el.innerHTML = parts.map((x) => `<span>${x}</span>`).join("");
+      el.classList.remove("hidden");
+    }).catch(() => el.classList.add("hidden"));   // no figures when the check itself cannot run
+  }
+
+  function refreshStaleBanner() {
+    const el = document.getElementById("staleBanner");
+    invokeCustomApi(CONFIG.CUSTOM_API_RANKING_STATUS, "", {}).then((res) => {
+      if (res && res.status === "success" && res.stale) {
+        el.innerHTML = `<span><strong>Ranking is stale.</strong> ${res.scoredAt ? "Last scored " + escapeHtml(res.scoredAt) + "." : "It has not been scored yet."} The order below may not be right until it is recalculated.</span>`;
+        el.classList.remove("hidden");
+      } else {
+        el.classList.add("hidden");
+      }
+    }).catch(() => el.classList.add("hidden"));   // no banner when the check itself cannot run
+  }
+
   function loadLive() {
     renderCategoryTabs();
     Promise.all([fetchAllRecords(), fetchSofQueue(), fetchTodayCapacity()]).then(([records, sofRecords, capacityRow]) => {
       allRecords = records;
       sofQueueMap = new Map(sofRecords.map((s) => [sofQueueKey(s.SO_No, s.Package), s]));
       renderCapacityBar(capacityRow);
+      refreshStaleBanner();
+      refreshCapacitySummary();
       return applyAutoPriority(allRecords);
     }).then(() => {
       orderedRows = computeOrderedRows(allRecords);

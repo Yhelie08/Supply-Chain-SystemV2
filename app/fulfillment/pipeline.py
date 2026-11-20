@@ -23,6 +23,7 @@
 # workflows again (an insert/update through the raw store does not on Zoho either).
 from app.criteria import zoho_now
 from app.deluge import blank, truthy
+from app.fulfillment.stage import set_stage
 from app.fulfillment.where import eq
 from app.fulfillment.workflows import needs_payment_approval, package_stage
 from app.workflows import register
@@ -49,7 +50,7 @@ async def advance_stage(store, so, item_name, sku, stage) -> None:
         current_stage = sof.get("Fulfillment_Stage")
         if current_stage == stage or (current_stage in STAGE_ORDER and STAGE_ORDER.index(current_stage) > target):
             continue
-        await store.update_record(SOF, sof["ID"], {"Fulfillment_Stage": stage}, by_form=True)
+        await set_stage(store, sof, stage)
 
 
 # ---------- Sales order package -> Readiness Gate ----------
@@ -215,7 +216,7 @@ async def reconcile_fulfillment(store, *, user: str = "system") -> dict:
             done["gate"] += 1
         stage = await package_stage(store, sof)
         if stage is not None and stage != sof.get("Fulfillment_Stage"):
-            await store.update_record(SOF, sof["ID"], {"Fulfillment_Stage": stage}, by_form=True)
+            await set_stage(store, sof, stage, rescore=False)
             done["stage"] += 1
 
     picks0 = await store.find(PICK)
@@ -257,7 +258,10 @@ async def reconcile_fulfillment(store, *, user: str = "system") -> dict:
             elif any(g.get("sales_order_number") == sof.get("SO_No") and g.get("SKU") == _text(row.get("SKU")) and truthy(g.get("Release")) for g in gate_rows):
                 at("Picking")
         if want != sof.get("Fulfillment_Stage"):
-            await store.update_record(SOF, sof["ID"], {"Fulfillment_Stage": want}, by_form=True)
+            await set_stage(store, sof, want, rescore=False)
             done["stage"] += 1
 
+    if done["stage"]:
+        from app.fulfillment.sorter import rescore_all   # once for the whole sweep, not once per package
+        await rescore_all(store)
     return done

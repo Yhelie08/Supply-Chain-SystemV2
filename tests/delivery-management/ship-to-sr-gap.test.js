@@ -10,18 +10,19 @@ const SR = 'Service_Request1';
 const SOF = 'Sales_Order_Fulfillment';
 const EVENTS = 'Stage_Events';
 let db, raw;
+let eventName = 'package.order_aggregation'; // the name the test rows carry: the old one by default
 
 before(async () => {
   db = new PGlite();
   await ensureSchema(db);
   raw = createStore({ query: (sql, params) => db.query(sql, params), transaction: (fn) => db.transaction(fn) });
 });
-beforeEach(async () => { for (const f of [SR, SOF, EVENTS]) await db.query(`DELETE FROM "${f}"`); });
+beforeEach(async () => { eventName = 'package.order_aggregation'; for (const f of [SR, SOF, EVENTS]) await db.query(`DELETE FROM "${f}"`); });
 
 // A package, and the moment it reached Order Aggregation.
 async function pkg(so, name, aggregatedAt) {
   const id = await raw.addRecord(SOF, { SO_No: so, Package: name });
-  if (aggregatedAt) await raw.addRecord(EVENTS, { Record_Type: 'package', Record_Id: String(id), Event: 'package.order_aggregation', Occurred_At: aggregatedAt });
+  if (aggregatedAt) await raw.addRecord(EVENTS, { Record_Type: 'package', Record_Id: String(id), Event: eventName, Occurred_At: aggregatedAt });
   return id;
 }
 // A Service Request; Added_Time is stamped by the store, so it is set afterwards to the time the test wants.
@@ -103,4 +104,17 @@ test('only the right SO: the same package name on a different sales order is not
 test('nothing at all: zero counts and blank averages, no crash', async () => {
   const r = await getShipToSrGap(raw);
   assert.deepEqual(r, { count: 0, unmatched: 0, negative: 0, avgHours: null, medianHours: null, maxHours: null });
+});
+
+test('the spec v1.4 name package.aggregated (written by the Python Fulfillment) counts the same as the old package.order_aggregation, and the two can be mixed', async () => {
+  eventName = 'package.aggregated';
+  const fresh = await pkg('SO-NEW', 'PAC-1', '2026-11-16 09:00:00 AM');
+  await sr('SO-NEW', 'PAC-1', '2026-11-16 11:00:00 AM');
+  eventName = 'package.order_aggregation';
+  await pkg('SO-OLD', 'PAC-1', '2026-11-16 09:00:00 AM');
+  await sr('SO-OLD', 'PAC-1', '2026-11-16 13:00:00 PM');
+  const r = await getShipToSrGap(raw);
+  assert.equal(r.count, 2);
+  assert.equal(r.maxHours, 4);
+  assert.ok(fresh);
 });

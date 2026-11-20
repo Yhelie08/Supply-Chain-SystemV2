@@ -1,0 +1,11 @@
+{
+  "name": "Suggested_Actions",
+  "label": "Suggested Actions",
+  "_about": "The lookup the sorting engine uses for the suggested_action text (spec 05 / 01 section 3; 01 Database suggested_actions). Admin-editable. A row here replaces the built-in default for the same Module + Condition code (Category blank = any category). Fulfillment condition codes: above_line, below_line, blocked_payment, blocked_items, blocked_exception, blocked_address, blocked_contact.",
+  "fields": [
+    { "name": "Module", "label": "Module", "type": "text", "helpText": "Fulfillment (the Delivery and Procurement rows belong to their own engines)." },
+    { "name": "Category", "label": "Category", "type": "text", "helpText": "broken, late, at_risk, on_time or blocked; leave blank for any." },
+    { "name": "Condition_Code", "label": "Condition code", "type": "text" },
+    { "name": "Action_Text", "label": "Suggested action", "type": "text" }
+  ]
+}

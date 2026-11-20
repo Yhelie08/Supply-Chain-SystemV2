@@ -12,6 +12,10 @@ import app.fulfillment.crate_dispatch  # noqa: F401
 SOF, QC, AGG, CRATE, GATE, PRE = "Sales_Order_Fulfillment", "Checker_Checklist", "Order_Aggregation1", "Crate_Checklist", "Sales_Order_Readiness_Gate", "Pre_Order_FF"
 
 
+# Mandatory checks (app/fulfillment/mandatory.py): a crate saved as Done has to carry its checklist, photo, weight and dimensions.
+_CRATE_DONE = {"Crating_Status1": "Done", "Crating_Checklist": ["Maayos at matibay ang pagkaka-crate"], "Photo_Documentation": "/uploads/3_crate.jpg", "Crate_Weight_Kg": "12.5", "Crate_Dimensions_Cm": "120 x 60 x 40"}
+
+
 @pytest.fixture
 async def raw_store(db_conn):
     await ensure_schema(db_conn)
@@ -49,7 +53,7 @@ async def test_crating_done_item_goes_to_to_ship_with_crate_quantity_qc_bin_for_
     await _add_package(raw_store)
     await raw_store.add_record(QC, {"SO": "SO-1", "PAC": "PAC-1", "SKU": "L-1", "QC_Status": "Approved", "Quantity": "2", "Bin_Location": "A-01", "City": "Makati", "Email": "c@example.test", "Contact": "0900"})
     id_ = await _crate(hooked_store)
-    await hooked_store.update_record(CRATE, id_, {"Crating_Status1": "Done"}, by_form=True)
+    await hooked_store.update_record(CRATE, id_, _CRATE_DONE, by_form=True)
     agg = await raw_store.find(AGG)
     assert len(agg) == 1
     assert agg[0]["SO"] == "SO-1"
@@ -66,8 +70,8 @@ async def test_crating_done_item_goes_to_to_ship_with_crate_quantity_qc_bin_for_
 @pytest.mark.asyncio
 async def test_a_second_crated_item_adds_a_row_to_the_same_to_ship_record(hooked_store, raw_store):
     await _add_package(raw_store)
-    await _crate(hooked_store, {"Crating_Status1": "Done"})
-    await _crate(hooked_store, {"SKU": "S-1", "Item_Name": "Shade", "Quantity": "1", "Crating_Status1": "Done"})
+    await _crate(hooked_store, _CRATE_DONE)
+    await _crate(hooked_store, {"SKU": "S-1", "Item_Name": "Shade", "Quantity": "1", **_CRATE_DONE})
     agg = await raw_store.find(AGG)
     assert len(agg) == 1
     assert sorted(r["SKU"] for r in agg[0]["Item_Details"]) == ["L-1", "S-1"]

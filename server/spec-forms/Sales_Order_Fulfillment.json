@@ -1,0 +1,11 @@
+{
+  "name": "Sales_Order_Fulfillment",
+  "extends": true,
+  "_about": "Queue columns added by the HomeCartel spec v1.4 sorting engine (05 / 01): who has to act on a block (blocked_owner), the manual-urgency marker (section 7), and the aging guard (section 5: days in the current stage and its level). Written only by app/fulfillment/sorter.py.",
+  "fields": [
+    { "name": "Blocked_Owner", "label": "Blocked owner", "type": "text", "helpText": "Who has to act: Sales agent, Fulfillment supervisor, ..." },
+    { "name": "Urgent", "label": "Urgent", "type": "checkbox", "helpText": "An approved, not expired urgency request exists for this order." },
+    { "name": "Aging_Days", "label": "Days in this stage", "type": "number" },
+    { "name": "Aging_Level", "label": "Aging level", "type": "text", "helpText": "low (7 days), mid (14), high (21); blank when under the first." }
+  ]
+}

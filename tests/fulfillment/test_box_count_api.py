@@ -28,7 +28,7 @@ def hooked_store(raw_store):
 async def _add_package(hooked_store):
     return await hooked_store.add_record(SOF, {
         "SO_No": "SO-1", "Fulfillment_Stage": "Waiting For Package", "Package": "PAC-1", "Status": "Yes",
-        "Customer_Type": "Corporate", "Delivery_Type": "Delivery Only", "order_type": "Normal", "Shipping_Address": "1 Main St", "Item_Details1": [LAMP],
+        "Customer_Type": "Corporate", "Delivery_Type": "Delivery Only", "order_type": "Normal", "Shipping_Address": "1 Main St", "Contact_No": "0917 000 0000", "Item_Details1": [LAMP],
     })
 
 

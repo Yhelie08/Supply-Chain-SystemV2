@@ -115,6 +115,23 @@ function fetchReport(reportName){
   });
 }
 
+/* Scoreboard numbers (spec 03 / 06 section 2): the server works them out (custom API scoreboard_numbers, app/fulfillment/scoreboard.py) from the
+   Stage_Events log, the package rows, the Pick rows, the exceptions and the capacity days. A failure here must never stop the rest of the
+   dashboard, so it resolves to null and the cards say they could not be loaded. */
+function fetchScoreboard(){
+  return ZOHO.CREATOR.DATA.invokeCustomApi({
+    app_name: CONFIG.APP_NAME, api_name: "scoreboard_numbers", public_key: "", http_method: "POST", payload: {},
+  }).then(function(resp){
+    var d = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+    return (d && d.status === "success") ? d : null;
+  }).catch(function(err){ console.error("[FulfillmentScoreboard] scoreboard numbers failed:", err); return null; });
+}
+function formatHours(h){
+  if (h < 1) return Math.round(h * 60) + " min";
+  if (h < 48) return (Math.round(h * 10) / 10) + " h";
+  return (Math.round(h / 24 * 10) / 10) + " d";
+}
+
 /* ================= HELPERS ================= */
 function str(rec, field){ var v = rec && rec[field]; return (v === undefined || v === null) ? "" : String(v).trim(); }
 function parseCreatorDate(s){
@@ -336,6 +353,83 @@ function ProgressRow({ label, value, max }){
   );
 }
 
+/* Median hours between the five moments of the spec (Ready -> Released ... Aggregated -> Dispatched). null = could not be loaded. */
+function TimeInStage({ rows }){
+  if (rows === null) return <EmptyState text="Could not load the scoreboard numbers." />;
+  var done = rows.filter(function(r){ return r.count > 0; });
+  if (!done.length) return <EmptyState text="No finished stays yet." />;
+  var max = Math.max.apply(null, done.map(function(r){ return r.medianHours; }).concat([0.01]));
+  return (
+    <div className="space-y-3.5">
+      {rows.map(function(r){
+        var pct = r.count ? Math.max(2, Math.round((r.medianHours / max) * 100)) : 0;
+        return (
+          <div key={r.key}>
+            <div className="flex items-center justify-between text-[12.5px] mb-1.5">
+              <span className="font-semibold text-slate-700">{r.label}</span>
+              <span className="text-slate-400 tabular">{r.count ? formatHours(r.medianHours) : "—"} <span className="text-slate-300">· {r.count} stay{r.count === 1 ? "" : "s"}</span></span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-full rounded-full bg-accent-500" style={{ width: pct + "%" }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function pctText(v){ return v === null || v === undefined ? "—" : v + "%"; }
+function ScoreboardSection({ sb }){
+  if (sb === null) return (
+    <SectionCard title="Scoreboard" className="xl:col-span-12"><EmptyState text="Could not load the scoreboard numbers." /></SectionCard>
+  );
+  var weeks = sb.reworkRate.weeks, thisWeek = weeks[weeks.length - 1];
+  var types = Object.keys(sb.reworkRate.byType);
+  var perPerson = sb.boxesPerPersonPerHour;
+  var onTime = sb.onTimeDispatch;
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <KpiCard label="Boxes Out Today" icon={<IconTruck size={17}/>} value={sb.boxesOut.today}
+          sub="boxes on packages dispatched today" deltaPct={null} deltaGoodWhen={null}
+          sparkData={sb.boxesOut.days.map(function(d){ return d.boxes; })} sparkColor="#0ca30c" />
+        <KpiCard label="Capacity Used" icon={<IconBox size={17}/>} value={pctText(sb.capacityUsed.pct)}
+          sub={sb.capacityUsed.releasedBoxes + " released / " + sb.capacityUsed.capacityBoxes + " boxes today"} deltaPct={null} deltaGoodWhen={null} />
+        <KpiCard label="Boxes / Person / Hour" icon={<IconBox size={17}/>} value={perPerson.value === null ? "—" : perPerson.value}
+          sub={perPerson.value === null ? "no picker recorded in the last 7 days" : perPerson.boxes + " boxes over " + perPerson.personHours + " person-hours"} deltaPct={null} deltaGoodWhen={null} />
+        <KpiCard label="On-time Dispatch" icon={<IconCheck size={17}/>} value={pctText(onTime.pct)}
+          sub={onTime.onTime + " on time, " + onTime.late + " late" + (onTime.noTarget ? ", " + onTime.noTarget + " with no target" : "") + " (last " + sb.windowDays + " days)"} deltaPct={null} deltaGoodWhen={null} />
+        <KpiCard label="Rework Rate" icon={<IconAlert size={17}/>} value={pctText(thisWeek.ratePct)}
+          sub={thisWeek.withRework + " of " + thisWeek.throughQc + " packages through QC this week"} deltaPct={null} deltaGoodWhen={null}
+          sparkData={weeks.map(function(w){ return w.ratePct || 0; })} sparkColor="#d03b3b" />
+        <KpiCard label="Received → Pick Gap" icon={<IconInbox size={17}/>} value={sb.receivedToPickGap.medianDays === null ? "—" : sb.receivedToPickGap.medianDays + "d"}
+          sub={"median days from available to released (" + sb.receivedToPickGap.count + " package" + (sb.receivedToPickGap.count === 1 ? "" : "s") + ")"} deltaPct={null} deltaGoodWhen={null} />
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <SectionCard title={"Time in Stage (median, last " + sb.windowDays + " days)"} className="xl:col-span-6">
+          <TimeInStage rows={sb.timeInStage} />
+        </SectionCard>
+        <SectionCard title="Rework Rate by Week" className="xl:col-span-6">
+          <div className="space-y-2.5">
+            {weeks.map(function(w){
+              return (
+                <div key={w.weekStart} className="flex items-center justify-between text-[12.5px]">
+                  <span className="text-slate-500">Week of {w.weekStart}</span>
+                  <span className="font-semibold text-slate-700 tabular">{pctText(w.ratePct)} <span className="text-slate-300 font-normal">· {w.withRework} of {w.throughQc}</span></span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11.5px] text-slate-400 mt-3">
+            {types.length ? "By rework type: " + types.map(function(t){ return t + " " + sb.reworkRate.byType[t]; }).join(", ") : "No rework in these weeks."}
+          </p>
+        </SectionCard>
+      </div>
+    </div>
+  );
+}
+
 function ActivityFeed({ items }){
   if (!items.length) return <EmptyState text="No recent fulfillment activity." />;
   return (
@@ -385,8 +479,9 @@ function App(){
       fetchReport(CONFIG.SOF_REPORT), fetchReport(CONFIG.QC_REPORT),
       fetchReport(CONFIG.PICK_REPORT), Promise.resolve([]), // Pack form retired: Pack and QC are one tab now, so there are no Pack rows
       fetchReport("Capacity_Days"), // report_name with no reports.json entry resolves to the form of the same name
+      fetchScoreboard(),
     ]).then(function(results){
-      setRaw({ sof: results[0], qc: results[1], pick: results[2], pack: results[3], capacityDays: results[4] });
+      setRaw({ sof: results[0], qc: results[1], pick: results[2], pack: results[3], capacityDays: results[4], scoreboard: results[5] });
       setLoading(false);
     }).catch(function(err){
       console.error("[FulfillmentScoreboard] load failed:", err);
@@ -681,6 +776,8 @@ function App(){
                   <StatusBreakdown rows={computed.stageBreakdown} />
                 </SectionCard>
               </div>
+
+              <ScoreboardSection sb={raw.scoreboard} />
 
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
                 <SectionCard title="Next Target Delivery" className="xl:col-span-4">

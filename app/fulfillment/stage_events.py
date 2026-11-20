@@ -1,50 +1,49 @@
 # Fulfillment stage event log (spec: HomeCartel v1.4, 01 Database §8 stage_events). Write-only this
 # slice -- logs a Stage_Events row whenever Sales_Order_Fulfillment.Fulfillment_Stage actually
-# changes. One generic hook catches every current and future write site (pipeline.py's
-# advance_stage and reconcile_fulfillment, workflows.py's stage_on_save and stage_on_gate_save --
-# five as of this writing) rather than a logging call added at each one individually. Ported from
-# server/modules/fulfillment/stage-events.mjs.
-import re
-
-from app.criteria import zoho_now
-from app.deluge import blank
+# changes. This hook catches the saves that come through the hooked store (a widget, the API). The
+# writes a hook or a sweep makes through the RAW store never fire a hook, so those go through
+# stage.set_stage(), which logs the same row (fix 2026-11-20, plan step 7.0; the original Node port
+# missed them and logged only a package's first stage).
+from app.fulfillment.events import log_package_event
+from app.fulfillment.stage import EVENTS, SOF, _text, log_stage_event, stage_slug  # noqa: F401 -- stage_slug is re-exported
+from app.fulfillment.where import eq
 from app.workflows import register
 
-SOF = "Sales_Order_Fulfillment"
-EVENTS = "Stage_Events"
-
-
-def _text(v) -> str:
-    return "" if (blank(v) or str(v) == "null") else str(v)
-
-
-# 'Pack & QC' -> 'pack_qc'. Derived from the stage string itself, not a hand-listed table, so it
-# can never drift from pipeline.py's STAGE_ORDER.
-def stage_slug(stage) -> str:
-    s = _text(stage).lower().replace("&", " ").strip()
-    return re.sub(r"\s+", "_", s)
-
-
-async def _log_stage_event(store, id_, stage) -> None:
-    slug = stage_slug(stage)
-    if slug == "":
-        return
-    stamp = zoho_now()
-    await store.add_record(EVENTS, {
-        "Record_Type": "package", "Record_Id": _text(id_), "Event": f"package.{slug}",
-        "Occurred_At": stamp, "Reported_At": stamp, "Source": "system",
-    })
+GATE = "Sales_Order_Readiness_Gate"
+STARTING_STAGE = "Waiting For Package"
 
 
 async def _on_add(args: dict) -> None:
-    await _log_stage_event(args["store"], args.get("id"), args["record"].get("Fulfillment_Stage"))
+    # a package that is created: package.created, then the stage it starts in (unless that is the first stage, which "created" already says)
+    store, id_, stage = args["store"], args.get("id"), _text(args["record"].get("Fulfillment_Stage"))
+    await log_package_event(store, id_, "package.created", actor=args.get("user", ""))
+    if stage and stage != STARTING_STAGE:
+        await log_stage_event(store, id_, stage)
 
 
 async def _on_update(args: dict) -> None:
-    record, previous = args["record"], args.get("previous")
-    if _text(record.get("Fulfillment_Stage")) == _text((previous or {}).get("Fulfillment_Stage")):
-        return
-    await _log_stage_event(args["store"], args.get("id"), record.get("Fulfillment_Stage"))
+    record, previous, store, id_ = args["record"], args.get("previous") or {}, args["store"], args.get("id")
+    if _text(record.get("Fulfillment_Stage")) != _text(previous.get("Fulfillment_Stage")):
+        await log_stage_event(store, id_, record.get("Fulfillment_Stage"))
+    # the real box count became known (PKG-R3: estimated until someone counts)
+    if _text(record.get("Box_Count_Source")) == "counted" and _text(previous.get("Box_Count_Source")) != "counted":
+        await log_package_event(store, id_, "package.box_counted", note=f"{_text(record.get('Box_Count'))} boxes".strip(), actor=args.get("user", ""))
 
 
 register(SOF, {"afterAdd": _on_add, "afterUpdate": _on_update})
+
+
+async def _on_gate_update(args: dict) -> None:
+    # a picker is chosen for an item of the package (the first time, or a different one)
+    record, previous, store = args["record"], args.get("previous") or {}, args["store"]
+    picker = _text(record.get("Assign_Picker"))
+    if picker == "" or picker == _text(previous.get("Assign_Picker")):
+        return
+    so, pkg = _text(record.get("sales_order_number")), _text(record.get("Package_Order"))
+    if so == "":
+        return
+    for sof in await store.find(SOF, lambda r: _text(r.get("SO_No")) == so and (pkg == "" or _text(r.get("Package")) == pkg), criteria=eq("SO_No", so)):
+        await log_package_event(store, sof["ID"], "package.picker_assigned", note=f"{_text(record.get('SKU'))}: {picker}", actor=args.get("user", ""))
+
+
+register(GATE, {"afterUpdate": _on_gate_update})

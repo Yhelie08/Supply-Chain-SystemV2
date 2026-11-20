@@ -12,7 +12,7 @@ import re
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import asyncpg
 from fastapi import FastAPI, Request
@@ -28,14 +28,18 @@ from app.workflows import create_hooked_store
 import app.fulfillment  # noqa: F401 -- side effect: registers every Fulfillment hook and custom API
 from app.fulfillment.apis import recalculate_fulfillment_queue, package_pick_status  # noqa: F401 -- names used below to gate the reconcile catch-up
 from app.fulfillment.pipeline import reconcile_fulfillment
+from app.fulfillment import SCHEDULES as FULFILLMENT_SCHEDULES
+from app.schedules import start_schedules
 
-ROOT = Path(__file__).resolve().parent.parent
-WIDGETS = ROOT / "modules"
-PUBLIC = ROOT / "server" / "public"
+from app.paths import MODULES as WIDGETS, PAGES_JSON, PUBLIC, ROOT  # noqa: E402 -- the folders can be moved with environment variables (app/paths.py)
 UPLOADS = Path(os.environ.get("DATA_DIR", str(ROOT / "data"))) / "uploads"
 UPLOADS.mkdir(parents=True, exist_ok=True)
 
-SECTIONS = json.loads((ROOT / "server" / "pages.json").read_text(encoding="utf-8"))
+# Every tab gets the `src` the shell puts into its iframe, the same as Node (server/index.mjs): /w/<Section>/<Tab>/<entry>, each part URL-encoded.
+SECTIONS = json.loads(PAGES_JSON.read_text(encoding="utf-8"))
+for _section in SECTIONS:
+    for _tab in _section["tabs"]:
+        _tab["src"] = "/w/" + "/".join(quote(p, safe="") for p in _tab["widget"].split("/")) + "/" + quote(_tab["entry"], safe="")
 
 MIME = {
     ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css",
@@ -188,7 +192,11 @@ def create_app() -> FastAPI:
         note = await _app.state.auth.bootstrap_admin(os.environ)
         if note:
             print(note)
+        # The scheduled jobs (app/schedules.py). Off unless SCHEDULES=on; they get the plain store, like a Zoho schedule.
+        schedules = start_schedules(pool=pool, store=_app.state.store, schedules=FULFILLMENT_SCHEDULES)
+        _app.state.schedules = schedules
         yield
+        await schedules.stop()
         await pool.close()
 
     app.router.lifespan_context = lifespan
@@ -298,7 +306,11 @@ def _register_routes(app: FastAPI) -> None:
         denied = access.check_upload(me, report)
         if denied:
             return _resp(200, denied)
-        file_name = f"{_now_ms()}_{re.sub(r'[^\\w.-]+', '_', str(name))}"
+        # letters, digits, "_", "." and "-" stay; everything else becomes "_" (the extension must survive: the file is served by it).
+        # Found in the browser 2026-11-20: this used to be written inside the f-string as r'[^\\w.-]+' (a doubled backslash), which kept only
+        # the letter "w" and turned lamp.png into _._ .
+        safe_name = re.sub(r"[^\w.-]+", "_", str(name))
+        file_name = f"{_now_ms()}_{safe_name}"
         body = await request.body()
         (UPLOADS / file_name).write_bytes(body)
         file_url = f"/uploads/{file_name}"
@@ -334,7 +346,12 @@ def _register_routes(app: FastAPI) -> None:
 
     async def _run_op(op_name: str, body: dict, user: str, hooked_store) -> dict:
         if op_name == "getRecords":
-            data = await hooked_store.get_records(body["report_name"], **{k: v for k, v in body.items() if k != "report_name"}, user=user)
+            # Only the options the store understands. The widgets also send app_name, field_config, ... (the Zoho JS API's own keys), which the
+            # store ignores, exactly like server/pg/api.mjs does with `{ ...b, user }`; passing them on made every widget load fail with a 500.
+            options = {k: body[k] for k in ("criteria", "page", "page_size", "max_records") if body.get(k) is not None}
+            if body.get("pageSize") is not None and "page_size" not in options:
+                options["page_size"] = body["pageSize"]
+            data = await hooked_store.get_records(body["report_name"], **options, user=user)
             return {"code": 3000, "data": data}
         if op_name == "getRecordById":
             data = await hooked_store.get_record_by_id(body["report_name"], body["id"])

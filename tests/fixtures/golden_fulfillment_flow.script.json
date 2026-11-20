@@ -1,0 +1,50 @@
+{
+  "_about": "One scripted Fulfillment flow, run through the HOOKED store by both the Node reference (tools/golden-flow-node.mjs) and the Python replay. ops: add {form, as, data, store: hooked|raw}; update {form, where, nth, data} (always through the hooked store, by form name); snapshot {name}. '$name' inside data is the id of a record added with that 'as'. Order A: two items, one lamp split 2 pass + 1 reject, the shade for crating, the rejected unit repaired and re-checked, crating done, dispatch. Order B: a pre-order that arrives with a package number.",
+  "tracked_forms": [
+    "Sales_Order_Fulfillment", "Sales_Order_Readiness_Gate", "Pre_Order_FF", "Pick1", "Pick_Notifications", "Checker_Checklist",
+    "Crate_Checklist", "Order_Aggregation1", "Exception_Control1", "ExceptionControl_Notifications", "Stage_Events"
+  ],
+  "steps": [
+    { "op": "add", "store": "raw", "form": "Customer", "as": "cust", "data": { "customer_name": "Golden Customer" } },
+    { "op": "add", "form": "Sales_Order_Fulfillment", "as": "pkgA", "data": {
+      "SO_No": "SO-G1", "Fulfillment_Stage": "Waiting For Package", "Package": "PAC-G1", "Status": "Yes", "Customer": "$cust", "Customer_Type": "Corporate",
+      "Delivery_Type": "Delivery Only", "order_type": "Normal", "Shipping_Address": "1 Golden St", "Contact_No": "0917 000 0000", "target_delivery_date": "2099-12-31",
+      "Item_Details1": [
+        { "Item": "Lamp", "SKU": "L-G", "Quantity": "3", "Bin_Location": "A-01" },
+        { "Item": "Shade", "SKU": "S-G", "Quantity": "1", "Bin_Location": "B-02" }
+      ] } },
+    { "op": "snapshot", "name": "1 package with a package number: Order Readiness, one Gate row per item" },
+
+    { "op": "update", "form": "Sales_Order_Readiness_Gate", "where": { "sales_order_number": "SO-G1", "SKU": "L-G" }, "data": { "Assign_Picker": "Hendel", "Release": true } },
+    { "op": "update", "form": "Sales_Order_Readiness_Gate", "where": { "sales_order_number": "SO-G1", "SKU": "S-G" }, "data": { "Assign_Picker": "Kurt", "Release": true } },
+    { "op": "snapshot", "name": "2 both items released: Pick rows, notifications, stage Picking" },
+
+    { "op": "update", "form": "Pick1", "where": { "SO": "SO-G1", "SKU": "L-G" }, "data": { "Marked": true } },
+    { "op": "update", "form": "Pick1", "where": { "SO": "SO-G1", "SKU": "S-G" }, "data": { "Marked": true } },
+    { "op": "snapshot", "name": "3 both picked: Pack & QC rows" },
+
+    { "op": "update", "form": "Checker_Checklist", "where": { "SO": "SO-G1", "SKU": "L-G" }, "data": { "Quality_Checker": "Kurt", "QC_Status": "Rejected", "Quantity": "1", "Quantity_of_Damage_Items": "1", "Remarks": "Cracked glass", "Image_Upload_max_10_JPG_JPEG_PNG": "/uploads/1_photo.jpg" } },
+    { "op": "update", "form": "Checker_Checklist", "where": { "SO": "SO-G1", "SKU": "L-G" }, "data": { "QC_Status": "Approved", "Quantity": "2", "Split_Rejected_Qty": "1", "Split_Original_Qty": "3", "Fixture_Body_Checklist": ["Walang yupi, gasgas, bitak o basag"], "LED_Checklist": ["Hindi kumukurap ang bulb"], "Uniformity": ["Kapag marami ang ilaw dapat pare-parehas ang sukat"], "Signature": "/uploads/2_sig.png" } },
+    { "op": "snapshot", "name": "4 lamp split: 2 to To Ship, 1 to Exception Control" },
+
+    { "op": "update", "form": "Checker_Checklist", "where": { "SO": "SO-G1", "SKU": "S-G" }, "data": { "For_Crate": true } },
+    { "op": "update", "form": "Checker_Checklist", "where": { "SO": "SO-G1", "SKU": "S-G" }, "data": { "Quality_Checker": "Kurt", "QC_Status": "Approved", "Quantity": "1", "Fixture_Body_Checklist": ["Walang yupi, gasgas, bitak o basag"], "LED_Checklist": ["Hindi kumukurap ang bulb"], "Uniformity": ["Kapag marami ang ilaw dapat pare-parehas ang sukat"], "Image_Upload_max_10_JPG_JPEG_PNG": "/uploads/1_photo.jpg", "Signature": "/uploads/2_sig.png" } },
+    { "op": "snapshot", "name": "5 shade approved for crating: a Crate row" },
+
+    { "op": "update", "form": "Exception_Control1", "where": { "Sales_Order": "SO-G1" }, "data": { "Status": "Completed" } },
+    { "op": "snapshot", "name": "6 the rejected unit repaired: back to QC" },
+    { "op": "update", "form": "Checker_Checklist", "where": { "SO": "SO-G1", "SKU": "L-G", "QC_Status": "" }, "data": { "Quality_Checker": "Kurt", "QC_Status": "Approved", "Quantity": "1", "Fixture_Body_Checklist": ["Walang yupi, gasgas, bitak o basag"], "LED_Checklist": ["Hindi kumukurap ang bulb"], "Uniformity": ["Kapag marami ang ilaw dapat pare-parehas ang sukat"], "Image_Upload_max_10_JPG_JPEG_PNG": "/uploads/1_photo.jpg", "Signature": "/uploads/2_sig.png" } },
+    { "op": "snapshot", "name": "7 the re-check approved: the lamp quantity in To Ship is 3" },
+
+    { "op": "update", "form": "Crate_Checklist", "where": { "SO": "SO-G1" }, "data": { "Crating_Status1": "Done", "Crating_Checklist": ["Maayos at matibay ang pagkaka-crate"], "Photo_Documentation": "/uploads/3_crate.jpg", "Crate_Weight_Kg": "12.5", "Crate_Dimensions_Cm": "120 x 60 x 40" } },
+    { "op": "snapshot", "name": "8 crating done: the shade joins To Ship" },
+
+    { "op": "update", "form": "Order_Aggregation1", "where": { "SO": "SO-G1" }, "data": { "Dispatch_Selected": true } },
+    { "op": "snapshot", "name": "9 dispatched: stage For Delivery" },
+
+    { "op": "add", "form": "Pre_Order_FF", "as": "preB", "data": {
+      "SO": "SO-G2", "SKU": "L-G2", "Item_Name": "Lamp B", "Qty": "3", "Bin_Location": "B-02", "Pre_Order_Status": "Received", "Package_Number": "PAC-G2", "Status": "Partial",
+      "Order_Type": "Pre Order", "Delivery_Type": "Delivery Only", "Customer_Name": "Golden Customer", "Customer_Address": "2 Golden St", "PR": "PR-G2" } },
+    { "op": "snapshot", "name": "10 a received pre-order with a package number enters the Gate" }
+  ]
+}

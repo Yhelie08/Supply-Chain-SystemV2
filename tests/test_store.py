@@ -126,3 +126,35 @@ async def test_an_unrecognized_field_name_is_stored_in_extra_and_still_comes_bac
     rec2 = await store.get_record_by_id("Sales_Order_Fulfillment", record_id, raw=True)
     assert rec2["Totally_Made_Up_Field"] == "keep-me"
     assert rec2["Package"] == "PAC-EXTRA"
+
+
+@pytest.mark.asyncio
+async def test_find_by_an_id_criteria_like_the_widgets_send_works_on_real_postgres(store):
+    # every widget save is updateRecords with criteria "(ID == <id>)"; the id travels as text and must be cast, not sent as a bigint parameter
+    a = await store.add_record("Sales_Order_Fulfillment", {"SO_No": "SO-ID-1"})
+    await store.add_record("Sales_Order_Fulfillment", {"SO_No": "SO-ID-2"})
+    rows = await store.find("Sales_Order_Fulfillment", criteria=f"(ID == {a})")
+    assert [r["SO_No"] for r in rows] == ["SO-ID-1"]
+    others = await store.find("Sales_Order_Fulfillment", criteria=f"(ID != {a})")
+    assert [r["SO_No"] for r in others] == ["SO-ID-2"]
+
+
+@pytest.mark.asyncio
+async def test_a_lookup_inside_a_grid_row_shows_the_item_name_not_its_id_for_the_warehouse_forms(store):
+    # found in the browser 2026-11-20: the Warehouse Request card showed 4900000000000000061 where the item name goes (Zoho gives { ID, display_value })
+    item = await store.add_record("Items", {"item_name": "Sample Shade", "SKU": "SMP-S1"})
+    wr = await store.add_record("Warehouse_Request", {"Item": [{"Items": item, "SKU": "SMP-S1"}]})
+    shown = (await store.get_record_by_id("Warehouse_Request", wr))["Item"][0]
+    assert shown["Items"] == {"ID": item, "display_value": "Sample Shade", "zc_display_value": "Sample Shade"} and shown["SKU"] == "SMP-S1"
+    assert (await store.get_record_by_id("Warehouse_Request", wr, raw=True))["Item"][0]["Items"] == item   # raw stays the plain id (what Deluge and the hooks read)
+    tw = await store.add_record("Transfer_Warehouse", {"Item_to_transfer": [{"Items": item, "SKU": "SMP-S1"}]})
+    assert (await store.get_record_by_id("Transfer_Warehouse", tw))["Item_to_transfer"][0]["Items"]["display_value"] == "Sample Shade"
+
+
+@pytest.mark.asyncio
+async def test_a_grid_lookup_to_an_item_that_no_longer_exists_falls_back_to_the_id_and_other_grids_are_left_alone(store):
+    wr = await store.add_record("Warehouse_Request", {"Item": [{"Items": "4900000000000000999", "SKU": "X"}, {"SKU": "no item on this row"}]})
+    rows = (await store.get_record_by_id("Warehouse_Request", wr))["Item"]
+    assert rows[0]["Items"]["display_value"] == "4900000000000000999" and "Items" not in rows[1] or not rows[1].get("Items")
+    pr = await store.add_record("Purchase_Request1", {"Supplier_Load_Balancing": [{"Suppliers": "123"}]})
+    assert (await store.get_record_by_id("Purchase_Request1", pr))["Supplier_Load_Balancing"][0]["Suppliers"] == "123"   # Procurement's grid is not changed

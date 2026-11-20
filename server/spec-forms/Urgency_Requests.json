@@ -1,0 +1,15 @@
+{
+  "name": "Urgency_Requests",
+  "label": "Urgency Requests",
+  "_about": "Manual urgency (spec 05 Shared Engines / 01 Sorting Engine section 7, MU-1 to MU-6; 01 Database urgency_requests). A sales agent or supervisor asks for urgency with a name and a reason; a supervisor approves with a name. Approved and not expired = the order sorts first INSIDE its own category (never above a higher category, never past a gate). It expires after the Target Delivery date, or 14 days after approval when there is no target. It can be raised by hand, never lowered by hand. Checked by app/fulfillment/urgency.py.",
+  "fields": [
+    { "name": "SO_No", "label": "Sales Order", "type": "text" },
+    { "name": "Reason", "label": "Reason", "type": "textarea", "helpText": "Required (MU-1): VIP, project deadline, relationship call." },
+    { "name": "Requested_By", "label": "Requested by", "type": "text", "helpText": "Required (MU-1): the name of the sales agent or supervisor." },
+    { "name": "Requested_On", "label": "Requested on", "type": "date" },
+    { "name": "Status", "label": "Status", "type": "picklist", "options": ["Requested", "Approved", "Rejected"] },
+    { "name": "Approved_By", "label": "Decided by", "type": "text", "helpText": "The supervisor who approved (or rejected) it." },
+    { "name": "Approved_On", "label": "Decided on", "type": "date" },
+    { "name": "Expires_On", "label": "Expires on", "type": "date", "helpText": "Set by the server when it is approved: the Target Delivery date, or 14 days later when there is none (MU-2)." }
+  ]
+}

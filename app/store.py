@@ -9,7 +9,7 @@ import re
 import time
 from contextlib import asynccontextmanager
 
-from app.model import COLUMNS, LOOKUP_DISPLAY, display_from_format, form_of_report, form_by_name
+from app.model import COLUMNS, GRID_LOOKUPS, LOOKUP_DISPLAY, RESOLVED_GRID_LOOKUP_FORMS, display_from_format, form_of_report, form_by_name
 from app.criteria import ZohoError, zoho_now, compile_criteria
 from app.schema import quote_ident as q, own_columns
 from app.criteria_sql import criteria_to_sql
@@ -117,6 +117,19 @@ def create_store(db):
                     if not _is_id(id_val):
                         continue
                     need.setdefault(lookup_form, set()).add(str(id_val))
+        for grid, subs in (GRID_LOOKUPS.get(form, {}) if form in RESOLVED_GRID_LOOKUP_FORMS else {}).items():
+            for row in rows:
+                cell = row.get(grid)
+                if isinstance(cell, str):   # the row comes straight from the database: a grid is still JSON text
+                    try:
+                        cell = json.loads(cell)
+                    except ValueError:
+                        cell = []
+                for grid_row in cell or []:
+                    for sub_name, lookup_form in subs.items():
+                        v = grid_row.get(sub_name) if isinstance(grid_row, dict) else None
+                        if lookup_form in COLUMNS and _is_id(v):
+                            need.setdefault(lookup_form, set()).add(str(v))
         displays: dict[str, dict[str, str]] = {}
         for lookup_form, ids in need.items():
             found = await db.fetch(
@@ -148,6 +161,20 @@ def create_store(db):
                     dv = displays.get(col["lookup"], {}).get(str(id_val), str(id_val))
                     return {"ID": str(id_val), "display_value": dv, "zc_display_value": dv}
                 v = [one(x) for x in v] if isinstance(v, list) else one(v)
+            if not raw and col["type"] == "grid" and form in RESOLVED_GRID_LOOKUP_FORMS and isinstance(v, list):
+                subs = GRID_LOOKUPS.get(form, {}).get(name, {})
+                if subs:
+                    def resolve(grid_row):
+                        if not isinstance(grid_row, dict):
+                            return grid_row
+                        out = dict(grid_row)
+                        for sub_name, lookup_form in subs.items():
+                            val = out.get(sub_name)
+                            if _is_id(val):
+                                dv = displays.get(lookup_form, {}).get(str(val), str(val))
+                                out[sub_name] = {"ID": str(val), "display_value": dv, "zc_display_value": dv}
+                        return out
+                    v = [resolve(r) for r in v]
             rec[name] = v
         extra = row.get("_extra")
         if extra:

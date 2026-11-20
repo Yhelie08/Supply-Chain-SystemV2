@@ -19,6 +19,21 @@ async def raw_store(db_conn):
     return create_store(db_conn)
 
 
+class CountingStore:
+    """Wraps the real store and counts update_record calls (Node's tests do the same)."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.writes = 0
+
+    async def update_record(self, *a, **kw):
+        self.writes += 1
+        return await self._inner.update_record(*a, **kw)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
 # No WORKFLOWS-clearing fixture in this file: app.forecast.hooks registers its 7 hooks once, at
 # import time, the same way Node's hooks.mjs does -- clearing WORKFLOWS between tests would also
 # erase them, since they are never re-registered. This file instead relies on the module import
@@ -62,6 +77,18 @@ async def test_mirrors_zoho_a_fulfillment_row_is_stamped_only_when_it_has_no_for
     await raw_store.update_record("Sales_Order_Fulfillment", id_, {"Forecast_Delivery": in_days(3)}, by_form=True)
     await hooked.update_record("Sales_Order_Fulfillment", id_, {"Shipment_Mode": "Air"}, by_form=True)
     assert (await raw_store.get_record_by_id("Sales_Order_Fulfillment", id_, raw=True))["Forecast_Delivery"] == in_days(3)  # untouched
+
+
+@pytest.mark.asyncio
+async def test_the_stamp_does_not_fire_itself_saving_again_changes_nothing(raw_store):
+    counting = CountingStore(raw_store)
+    hooked = create_hooked_store(counting)
+    await raw_store.add_record("Sales_Order_Fulfillment", {"SO_No": "SO-3", "order_type": "STOCK"})
+    id_ = await hooked.add_record("Pick1", {"SO": "SO-3"})
+    assert counting.writes > 0
+    counting.writes = 0
+    await hooked.update_record("Pick1", id_, {"SO": "SO-3"}, by_form=True)
+    assert counting.writes == 1  # only this save itself: the stamp found nothing to change
 
 
 @pytest.mark.asyncio

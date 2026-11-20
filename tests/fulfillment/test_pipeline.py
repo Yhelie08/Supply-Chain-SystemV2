@@ -13,6 +13,19 @@ LAMP = {"Item": "Lamp", "SKU": "L-1", "Quantity": "2", "Bin_Location": "A-01"}
 SHADE = {"Item": "Shade", "SKU": "S-1", "Quantity": "4", "Bin_Location": "B-02"}
 
 
+# Mandatory checks (app/fulfillment/mandatory.py): a QC save that sets Approved / Rejected has to carry its evidence.
+_PHOTO = "Image_Upload_max_10_JPG_JPEG_PNG"
+_CHECKS = {"Fixture_Body_Checklist": ["Walang yupi, gasgas, bitak o basag"], "LED_Checklist": ["Hindi kumukurap ang bulb"], "Uniformity": ["Kapag marami ang ilaw dapat pare-parehas ang sukat"]}
+
+
+def _evidence(qc_status):
+    if qc_status == "Approved":
+        return {**_CHECKS, _PHOTO: "/uploads/1_lamp.jpg", "Signature": "/uploads/2_sig.png"}
+    if qc_status == "Rejected":
+        return {"Remarks": "Damaged", _PHOTO: "/uploads/1_lamp.jpg"}
+    return {}
+
+
 @pytest.fixture
 async def raw_store(db_conn):
     await ensure_schema(db_conn)
@@ -29,7 +42,7 @@ async def _add_package(hooked_store, raw_store, extra=None):
     customer = await raw_store.add_record("Customer", {"customer_name": "Sample Customer"})
     return await hooked_store.add_record(SOF, {
         "SO_No": "SO-1", "Fulfillment_Stage": "Waiting For Package", "Package": "PAC-1", "Status": "Yes", "Customer": customer,
-        "Customer_Type": "Corporate", "Delivery_Type": "Delivery Only", "order_type": "Normal", "Shipping_Address": "1 Main St",
+        "Customer_Type": "Corporate", "Delivery_Type": "Delivery Only", "order_type": "Normal", "Shipping_Address": "1 Main St", "Contact_No": "0917 000 0000",
         "Item_Details1": [LAMP, SHADE], **extra,
     })
 
@@ -193,7 +206,7 @@ async def test_marking_again_updates_pending_qc_approved_is_history_new_pick_get
     qc = await _rows(raw_store, QC)
     assert len(qc) == 1
     assert qc[0]["Bin_Location"] == "A-02"
-    await hooked_store.update_record(QC, qc[0]["ID"], {"QC_Status": "Approved"}, by_form=True)
+    await hooked_store.update_record(QC, qc[0]["ID"], {"QC_Status": "Approved", **_evidence("Approved")}, by_form=True)
     await hooked_store.update_record(PICK, pick["ID"], {"Quantity_to_Pick": "3"}, by_form=True)
     qc = await _rows(raw_store, QC)
     assert len(qc) == 2

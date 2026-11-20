@@ -29,3 +29,11 @@ async def _on_gate_save(args: dict) -> None:
 
 
 register("Sales_Order_Readiness_Gate", {"afterAdd": _on_gate_save, "afterUpdate": _on_gate_save})
+
+
+# An exception opened or closed blocks / frees its package at once (EX-3, sorting engine section 6).
+async def _on_exception_save(args: dict) -> None:
+    await rescore_one(args["store"], _text(args["record"].get("Sales_Order")))
+
+
+register("Exception_Control1", {"afterAdd": _on_exception_save, "afterUpdate": _on_exception_save})

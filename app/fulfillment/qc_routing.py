@@ -17,6 +17,7 @@ import re
 
 from app.criteria import zoho_now
 from app.deluge import blank
+from app.fulfillment.events import log_item_event
 from app.fulfillment.pipeline import advance_stage
 from app.fulfillment.where import eq
 from app.workflows import register
@@ -179,9 +180,15 @@ async def qc_routing(ctx: dict) -> None:
     if so == "" or sku == "" or units < 1:
         return
 
+    # spec event for the DECISION (only when the status changes: saving the same decision again logs nothing)
+    decided_now = _text((ctx.get("previous") or {}).get("QC_Status")) != status
     if status == "Rejected":
         await _rejected_to_exception(ctx, so, sku, pac, units)
+        if decided_now:
+            await log_item_event(ctx["store"], so, qc.get("Item_Name"), sku, "package.qc_rejected", note=_text(qc.get("Remarks")), actor=ctx.get("user", ""))
         return
+    if decided_now:
+        await log_item_event(ctx["store"], so, qc.get("Item_Name"), sku, "package.qc_passed", actor=ctx.get("user", ""))
     if _is_crate(qc.get("For_Crate")):
         await _approved_to_crate(ctx, so, sku, pac, units)
         await advance_stage(ctx["store"], so, qc.get("Item_Name"), sku, "Crate")

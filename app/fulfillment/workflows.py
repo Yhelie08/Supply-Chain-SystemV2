@@ -14,6 +14,7 @@ import app.forecast.hooks  # noqa: F401 -- side effect: registers the 7 Instant 
 # Only these three stages are managed here. A record already further along (Picking, Pack & QC,
 # Crate, For Delivery) is never moved back or forward by this rule.
 from app.deluge import blank, truthy
+from app.fulfillment.stage import set_stage
 from app.fulfillment.where import eq
 from app.workflows import register
 
@@ -75,7 +76,7 @@ async def _stage_on_gate_save(args: dict) -> None:
     for sof in await store.find(SOF, lambda r: _text(r.get("SO_No")) == so and _text(r.get("Package")) == pkg, criteria=eq("SO_No", so)):
         want = await package_stage(store, sof)
         if want != sof.get("Fulfillment_Stage"):
-            await store.update_record(SOF, sof["ID"], {"Fulfillment_Stage": want}, by_form=True)
+            await set_stage(store, sof, want, rescore=False)   # the Gate save re-scores through sorter_hooks right after
 
 
 register(GATE, {"afterAdd": _stage_on_gate_save, "afterUpdate": _stage_on_gate_save})

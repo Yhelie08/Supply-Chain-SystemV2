@@ -14,6 +14,7 @@
 # The QC record copies the header from the QC record that rejected the unit; the checker is the
 # exception's "Checked By".
 from app.deluge import blank, truthy
+from app.fulfillment.events import log_item_event
 from app.fulfillment.pipeline import advance_stage
 from app.fulfillment.where import eq
 from app.workflows import register
@@ -75,6 +76,7 @@ async def repaired_to_qc(args: dict) -> None:
         qc_id = await store.add_record(QC, {"SO": so, "PAC": pac, "SKU": sku, **header, "Quantity": str(units), "Quality_Checker": _text(exc.get("Checker")), "Recheck_Exceptions": [exc_id]}, user)
 
     await store.update_record(EXC, exc_id, {"Sent_To_QC": True, "QC_Record": str(qc_id)}, by_form=True)
+    await log_item_event(store, so, header["Item_Name"], sku, "package.rework_done", actor=user)   # the repair is finished and the unit goes back to QC
     await advance_stage(store, so, header["Item_Name"], sku, "Pack & QC")
 
 

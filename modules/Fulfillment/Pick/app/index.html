@@ -340,6 +340,15 @@
     </span>`;
   }
 
+  // The server refuses a step with a code and a reason (FS-3 hold, QC / Crate evidence, a Blocked package). The widget shim rejects with
+  // Error(message) + .code, like Zoho's SDK, so the reason is in err.message; show it instead of a vague failure.
+  function refusalReason(err) {
+    if (err && err.serverMessage) return String(err.serverMessage);
+    if (err && err.code && err.message) return String(err.message);
+    try { const j = JSON.parse(err && err.responseText); if (j && j.message) return String(j.message); } catch (e) { /* not a server answer */ }
+    return "";
+  }
+
   function toast(message, type) {
     const container = document.getElementById("toastContainer");
     const el = document.createElement("div");
@@ -351,7 +360,7 @@
       el.style.transition = "opacity .25s ease";
       el.style.opacity = "0";
       setTimeout(() => el.remove(), 250);
-    }, 2600);
+    }, type === "error" ? 7000 : 2600);
   }
 
   // ---------------------------------------------------------------------
@@ -593,7 +602,7 @@
       }).catch((err) => {
         console.error(err);
         if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Mark as Picked"; }
-        toast("Couldn't mark as picked.", "error");
+        toast(refusalReason(err) || "Couldn't mark as picked.", "error");
       });
     });
   }

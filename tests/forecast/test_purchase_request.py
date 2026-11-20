@@ -90,6 +90,16 @@ async def test_stock_on_hand_vs_on_the_ladder_vs_never_stock_with_no_order(store
 
 
 @pytest.mark.asyncio
+async def test_a_prep_stage_counts_the_days_used_from_the_earliest_gate_pick_qc_or_crate_row_of_the_so(store, db_conn):
+    id_ = await _pr(store, db_conn)
+    await store.add_record("Sales_Order_Fulfillment", {"SO_No": "SO-4", "PR_No": "PR-1", "order_type": "PRE ORDER", "Fulfillment_Stage": "Picking"})
+    pick = await store.add_record("Pick1", {"SO": "SO-4", "PR_if_any": "PR-OTHER"})
+    await _added_on(db_conn, "Pick1", pick, "2026-11-09 09:00:00 AM")  # 3 of 7 days used, even though the row names another PR
+    await fc_stamp_purchase_request(store, id_, today=TODAY)
+    assert (await store.get_record_by_id("Purchase_Request1", id_, raw=True))["Forecast_Window"] == "Nov 16 - Nov 16, 2026 | Air | Picking"
+
+
+@pytest.mark.asyncio
 async def test_a_shipped_pr_is_in_transit_a_delivered_one_is_at_the_warehouse(store, db_conn):
     id_ = await _pr(store, db_conn, added="2026-10-01 08:00:00 AM")
     await store.add_record("Shipments", {"Shipment_Status": "In Transit", "Supplier_Shipment_Details": [{"PR_No": "PR-1", "Date_Shipped": "2026-11-01"}]})
@@ -103,6 +113,31 @@ async def test_a_shipped_pr_is_in_transit_a_delivered_one_is_at_the_warehouse(st
 
 
 @pytest.mark.asyncio
+async def test_mirrors_zoho_the_supplier_lead_time_is_added_only_when_the_shipment_branch_is_not_taken(store, db_conn):
+    id_ = await _pr(store, db_conn, {"Required_Days_Lead": "10"})
+    await store.add_record("Forecast_Settings", {"Re_anchor_on_Latest_Real_Event": "false", "Include_Supplier_Lead_Time": "true"})
+    await fc_stamp_purchase_request(store, id_, today=TODAY)
+    assert (await store.get_record_by_id("Purchase_Request1", id_, raw=True))["Forecast_Window"] == "Nov 25 - Nov 28, 2026 | Air | Procurement"  # Nov 1 + 14 + 10
+    for r in await store.find("Forecast_Settings"):
+        await store.delete_record("Forecast_Settings", r["ID"])
+    await store.add_record("Forecast_Settings", {"Re_anchor_on_Latest_Real_Event": "true", "Include_Supplier_Lead_Time": "true"})
+    await fc_stamp_purchase_request(store, id_, today=TODAY)
+    assert (await store.get_record_by_id("Purchase_Request1", id_, raw=True))["Forecast_Window"] == "Nov 15 - Nov 18, 2026 | Air | Procurement"  # re-anchoring on: the lead time is not added
+
+
+@pytest.mark.asyncio
+async def test_mirrors_zoho_a_second_run_writes_nothing(store, db_conn):
+    def forecast_of(r):
+        return (r["Forecast_Delivery"], r["Forecast_Window"], r["Forecast_Status"], r["Modified_Time"])
+
+    id_ = await _pr(store, db_conn)
+    await fc_stamp_purchase_request(store, id_, today=TODAY)
+    first = await store.get_record_by_id("Purchase_Request1", id_, raw=True)
+    await fc_stamp_purchase_request(store, id_, today=TODAY)
+    assert forecast_of(await store.get_record_by_id("Purchase_Request1", id_, raw=True)) == forecast_of(first)
+
+
+@pytest.mark.asyncio
 async def test_fc_pr_to_pre_order_copies_the_pr_forecast_onto_every_pre_order_row_of_the_pr(store, db_conn):
     id_ = await _pr(store, db_conn)
     a = await store.add_record("Pre_Order_FF", {"SO": "SO-5", "PR": "PR-1"})
@@ -113,6 +148,19 @@ async def test_fc_pr_to_pre_order_copies_the_pr_forecast_onto_every_pre_order_ro
     for row in (a, b):
         assert (await store.get_record_by_id("Pre_Order_FF", row, raw=True))["Forecast_Delivery"] == "2026-11-17"
     assert (await store.get_record_by_id("Pre_Order_FF", other, raw=True))["Forecast_Delivery"] == ""
+
+
+@pytest.mark.asyncio
+async def test_fc_pr_to_pre_order_does_not_wipe_a_pre_order_date_when_the_pr_has_no_forecast_yet(store, db_conn):
+    id_ = await _pr(store, db_conn, {"Shipment_Mode": "", "Sourcing_Type": "Import"})
+    po = await store.add_record("Pre_Order_FF", {"SO": "SO-8", "PR": "PR-1", "Forecast_Delivery": "2026-12-01", "Forecast_Status": "On Track"})
+    out = await fc_pr_to_pre_order(store, id_, today=TODAY)
+    if NULL_TEXT:
+        assert out.startswith("PR-1 -> 1 pre-order row")
+    else:
+        assert "wala pang forecast ang PR mismo" in out
+        assert (await store.get_record_by_id("Pre_Order_FF", po, raw=True))["Forecast_Delivery"] == "2026-12-01"
+    assert (await fc_pr_to_pre_order(store, "4662244000099999999", today=TODAY)).startswith("walang PR na ")
 
 
 @pytest.mark.asyncio

@@ -133,3 +133,30 @@ def test_mirrors_zoho_overdue_wins_over_on_track_when_target_already_behind_toda
 
 def test_no_anchor_at_all_nothing_is_stamped():
     assert run(stockOnHand=False, prAdded=None) == {"skip": True}
+
+
+def test_property_the_middle_date_is_never_outside_the_window_and_never_before_today_over_many_random_orders():
+    # the Node test of the same name (tests/forecast/engine.test.js): 500 random orders, the same ranges
+    import random
+    rnd = random.Random(12345)
+    stages = ["", "For Delivery", "Order Readiness", "Picking", "Pack", "Quality Checking", "Crate"]
+    modes = ["", "Air", "LCL", "FCL", "Truck"]
+    day = lambda: d(2026, rnd.randint(1, 11), rnd.randint(1, 28))  # noqa: E731
+    checked = 0
+    for _ in range(500):
+        settings = DEFAULT_SETTINGS if rnd.randrange(2) == 0 else settings_from({
+            "Re_anchor_on_Latest_Real_Event": "true" if rnd.randrange(2) else "false",
+            "Include_Supplier_Lead_Time": "true" if rnd.randrange(2) else "false"})
+        r = run(
+            stage=rnd.choice(stages), stockOnHand=rnd.randrange(2) == 0, modeVal=rnd.choice(modes),
+            sourcing="Local" if rnd.randrange(4) == 0 else "", prAdded=None if rnd.randrange(5) == 0 else day(),
+            prepFound=rnd.randrange(2) == 0, prepStart=day(), dateShipped=day() if rnd.randrange(3) == 0 else None,
+            shipStatus="Delivered" if rnd.randrange(6) == 0 else "", clientTarget=None if rnd.randrange(3) == 0 else d(2026, rnd.randint(1, 12), rnd.randint(1, 28)),
+            settings=settings, supLead=rnd.randrange(20))
+        if r.get("skip"):
+            continue
+        checked += 1
+        assert r["earliest"] >= "2026-11-12", r
+        assert r["earliest"] <= r["delivery"] <= r["latest"], r
+        assert r["status"] in ("On Track", "At Risk", "Will Miss", "Overdue", "No Client Date"), r
+    assert checked > 100   # the check is not empty: most random orders do get a forecast

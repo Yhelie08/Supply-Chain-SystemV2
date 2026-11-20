@@ -13,6 +13,19 @@ from app.fulfillment.where import eq
 SOF, QC, AGG, CRATE, EXC = "Sales_Order_Fulfillment", "Checker_Checklist", "Order_Aggregation1", "Crate_Checklist", "Exception_Control1"
 
 
+# Mandatory checks (app/fulfillment/mandatory.py): a QC save that sets Approved / Rejected has to carry its evidence.
+_PHOTO = "Image_Upload_max_10_JPG_JPEG_PNG"
+_CHECKS = {"Fixture_Body_Checklist": ["Walang yupi, gasgas, bitak o basag"], "LED_Checklist": ["Hindi kumukurap ang bulb"], "Uniformity": ["Kapag marami ang ilaw dapat pare-parehas ang sukat"]}
+
+
+def _evidence(qc_status):
+    if qc_status == "Approved":
+        return {**_CHECKS, _PHOTO: "/uploads/1_lamp.jpg", "Signature": "/uploads/2_sig.png"}
+    if qc_status == "Rejected":
+        return {"Remarks": "Damaged", _PHOTO: "/uploads/1_lamp.jpg"}
+    return {}
+
+
 @pytest.fixture
 async def raw_store(db_conn):
     await ensure_schema(db_conn)
@@ -35,7 +48,7 @@ async def _add_qc(hooked_store, extra=None):
 
 async def _decide(hooked_store, id_, qc_status, quantity, extra=None):
     extra = extra or {}
-    await hooked_store.update_record(QC, id_, {"QC_Status": qc_status, "Quantity": str(quantity), **extra}, by_form=True)
+    await hooked_store.update_record(QC, id_, {"QC_Status": qc_status, "Quantity": str(quantity), **_evidence(qc_status), **extra}, by_form=True)
 
 
 async def _stage(raw_store):

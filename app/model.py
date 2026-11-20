@@ -5,9 +5,7 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-PARSED = ROOT / "zoho-export" / "parsed"
-SPEC_FORMS = ROOT / "server" / "spec-forms"
+from app.paths import PARSED, ROOT, SPEC_FORMS  # noqa: F401 -- the folders can be moved with environment variables (app/paths.py)
 
 SYSTEM_COLUMNS = ["ID", "Added_Time", "Modified_Time", "Added_User", "_extra"]
 
@@ -21,7 +19,7 @@ def _load_forms() -> dict:
     for f in (PARSED / "forms").glob("*.json"):
         form = json.loads(f.read_text(encoding="utf-8"))
         forms[form["name"]] = form
-    if SPEC_FORMS.exists():
+    if SPEC_FORMS:
         for f in sorted(SPEC_FORMS.glob("*.json")):
             add = json.loads(f.read_text(encoding="utf-8"))
             own = forms.get(add["name"])
@@ -76,10 +74,28 @@ def _build_lookup_display(forms: dict) -> dict:
     return lookup_display
 
 
+def _build_grid_lookups(forms: dict) -> dict:
+    """{form: {grid field: {sub-field: looked-up form}}}: the lookups INSIDE a subform (e.g. Warehouse Request -> Item -> Items)."""
+    out: dict = {}
+    for form in forms.values():
+        for f in form.get("fields", []):
+            if f.get("type") != "grid":
+                continue
+            subs = {s["name"]: s["lookup"]["form"] for s in f.get("fields") or [] if isinstance(s.get("lookup"), dict) and s["lookup"].get("form")}
+            if subs:
+                out.setdefault(form["name"], {})[f["name"]] = subs
+    return out
+
+
+# Only these forms show a grid lookup as { ID, display_value } (what Zoho gives a widget). Purchase_Request1's Supplier_Load_Balancing is
+# left as it was: Procurement's own code reads that grid.
+RESOLVED_GRID_LOOKUP_FORMS = ("Warehouse_Request", "Transfer_Warehouse")
+
 FORMS = _load_forms()
 REPORTS = _load_reports()
 COLUMNS = _build_columns(FORMS)
 LOOKUP_DISPLAY = _build_lookup_display(FORMS)
+GRID_LOOKUPS = _build_grid_lookups(FORMS)
 
 _DISPLAY_TOKEN = re.compile(r"""\s*(?:"((?:[^"\\]|\\.)*)"|([A-Za-z_]\w*(?:\.\w+)*)|(\+))""")
 

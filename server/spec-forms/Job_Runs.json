@@ -1,0 +1,13 @@
+{
+  "name": "Job_Runs",
+  "label": "Job Runs",
+  "_about": "A log of every scheduled or manual run of an engine (spec 01 Database job_runs; 05 / 01 section 6). Written by app/fulfillment/sorter.py for the nightly and the manual (Recalculate) runs of the sorting engine. A re-score after a single save does not write a row.",
+  "fields": [
+    { "name": "Job_Name", "label": "Job", "type": "text" },
+    { "name": "Started_At", "label": "Started", "type": "text" },
+    { "name": "Finished_At", "label": "Finished", "type": "text" },
+    { "name": "Status", "label": "Status", "type": "picklist", "options": ["ok", "failed"] },
+    { "name": "Rows_Touched", "label": "Rows touched", "type": "number" },
+    { "name": "Error", "label": "Error", "type": "textarea" }
+  ]
+}

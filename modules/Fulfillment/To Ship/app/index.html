@@ -732,6 +732,15 @@
     return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClasses}">${escapeHtml(text)}</span>`;
   }
 
+  // The server refuses a step with a code and a reason (FS-3 hold, QC / Crate evidence, a Blocked package). The widget shim rejects with
+  // Error(message) + .code, like Zoho's SDK, so the reason is in err.message; show it instead of a vague failure.
+  function refusalReason(err) {
+    if (err && err.serverMessage) return String(err.serverMessage);
+    if (err && err.code && err.message) return String(err.message);
+    try { const j = JSON.parse(err && err.responseText); if (j && j.message) return String(j.message); } catch (e) { /* not a server answer */ }
+    return "";
+  }
+
   function toast(message, type) {
     const container = document.getElementById("toastContainer");
     const el = document.createElement("div");
@@ -743,7 +752,7 @@
       el.style.transition = "opacity .25s ease";
       el.style.opacity = "0";
       setTimeout(() => el.remove(), 250);
-    }, 2600);
+    }, type === "error" ? 7000 : 2600);
   }
 
   function itemRowCount_(r) {
@@ -1396,7 +1405,7 @@ function forecastCell(r) {
       renderDispatchPanel(r);
     } catch (err) {
       console.error(err);
-      toast("Couldn't update the selection.", "error");
+      toast(refusalReason(err) || "Couldn't update the selection.", "error");
     }
   }
   document.getElementById("detailItemRows").addEventListener("click", (ev) => {
@@ -1742,6 +1751,16 @@ function forecastCell(r) {
     return groups;
   }
 
+  async function checkExceptionHold(so, pacs) {
+    try {
+      const resp = await ZOHO.CREATOR.DATA.invokeCustomApi({
+        app_name: CONFIG.APP_NAME, api_name: "exception_hold_check", public_key: "", http_method: "POST", payload: { so: textVal(so), pacs: pacs },
+      });
+      const d = (resp && resp.data) ? resp.data : (resp && resp.result) ? resp.result : resp;
+      return d && d.held ? (d.message || "This package has an open exception.") : "";
+    } catch (err) { console.error(err); return ""; }   // if the check itself fails, the server still refuses the save later
+  }
+
   async function dispatchRecord() {
     if (!currentDetailRecord) return;
     const r = currentDetailRecord;
@@ -1776,6 +1795,12 @@ function forecastCell(r) {
     // unsafe — Package_Shipments rows are plain top-level records instead).
     const pacGroups = groupSelectedItemsByPac(selectedItems, r);
     const packageCount = pacGroups.size;
+
+    // FS-3: ask the server first. Dispatch creates a record in Delivery's Initial Scheduling BEFORE it saves the dispatch on this row, so
+    // an open exception on the package has to stop it here, with the reason, and not after something was already created in Delivery.
+    // (The save of the dispatch is refused by the server too; this only stops it earlier.)
+    const holdMessage = await checkExceptionHold(r.SO, [...pacGroups.keys()].filter((x) => x && x !== "—"));
+    if (holdMessage) { toast(holdMessage, "error"); return; }
 
     document.getElementById("dispatchModalMessage").textContent =
       `This sends ${selectedItems.length} selected item${selectedItems.length === 1 ? "" : "s"} (${selectedItems.map((it) => displayVal(it.Item_Name)).join(", ")}) to the DMS as one new Initial Scheduling record` +
@@ -2012,7 +2037,7 @@ function forecastCell(r) {
         });
       }).catch((err) => {
         console.error(err);
-        toast("Dispatch failed — see console.", "error");
+        toast(refusalReason(err) || "Dispatch failed — see console.", "error");
         btn.disabled = false;
         renderDispatchPanel(r);
       });
@@ -2236,7 +2261,7 @@ function forecastCell(r) {
     } catch (err) {
       console.error(err);
       saveBtns.forEach((b) => { b.disabled = false; b.textContent = "Save Changes"; });
-      toast("Couldn't save changes.", "error");
+      toast(refusalReason(err) || "Couldn't save changes.", "error");
     }
   }
 

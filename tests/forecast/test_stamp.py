@@ -15,6 +15,21 @@ async def store(db_conn):
     return create_store(db_conn)
 
 
+class CountingStore:
+    """Wraps the real store and counts update_record calls (Node's tests/forecast/stamp.test.js does the same)."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.writes = 0
+
+    async def update_record(self, *a, **kw):
+        self.writes += 1
+        return await self._inner.update_record(*a, **kw)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
 async def added_on(db_conn, form, id_, text):
     # Added_Time is system-managed (store.update_record silently drops it), so backdating it for a
     # test needs a raw SQL write -- same approach as Node's tests/forecast/stamp.test.js's addedOn().
@@ -73,6 +88,50 @@ async def test_only_a_pre_order_row_the_pr_gives_the_start_sourcing_and_mode(sto
         po_row["Forecast_Delivery"], po_row["Forecast_Window"], po_row["Forecast_Status"],
     )
     assert out.endswith("| 2 record")
+
+
+@pytest.mark.asyncio
+async def test_an_order_already_shipped_counts_from_the_day_it_shipped_shipment_found_by_pr_number(store):
+    sof = await store.add_record("Sales_Order_Fulfillment", {"SO_No": "SO-4", "order_type": "PRE ORDER", "PR_No": "PR-2", "Shipment_Mode": "LCL", "Fulfillment_Stage": "Pre Order"})
+    await store.add_record("Purchase_Request1", {"PR_No": "PR-2", "Sourcing_Type": "Import"})
+    await store.add_record("Shipments", {"Shipment_Status": "In Transit", "Supplier_Shipment_Details": [
+        {"PR_No": "PR-9", "Date_Shipped": "2026-10-01"},
+        {"PR_No": "PR-2", "Date_Shipped": "2026-11-01", "Shipment_Mode": "LCL"},
+    ]})
+    await fc_stamp_by_so_no(store, "SO-4", today=TODAY)
+    r = await store.get_record_by_id("Sales_Order_Fulfillment", sof, raw=True)
+    assert r["Forecast_Window"] == "Dec 20 - Jan 17, 2027 | LCL | In transit"
+    assert r["Forecast_Delivery"] == "2027-01-03"
+
+
+@pytest.mark.asyncio
+async def test_a_delivered_shipment_puts_the_order_at_the_warehouse(store):
+    sof = await store.add_record("Sales_Order_Fulfillment", {"SO_No": "SO-5", "order_type": "PRE ORDER", "PR_No": "PR-3", "Shipment_Mode": "LCL"})
+    await store.add_record("Purchase_Request1", {"PR_No": "PR-3"})
+    await store.add_record("Shipments", {"Shipment_Status": "Delivered", "Supplier_Shipment_Details": [{"PR_No": "PR-3", "Date_Shipped": "2026-09-01"}]})
+    await fc_stamp_by_so_no(store, "SO-5", today=TODAY)
+    assert (await store.get_record_by_id("Sales_Order_Fulfillment", sof, raw=True))["Forecast_Window"] == "Nov 19 - Nov 19, 2026 | LCL | At WH"
+
+
+@pytest.mark.asyncio
+async def test_a_second_run_writes_nothing(store):
+    counting = CountingStore(store)
+    await store.add_record("Sales_Order_Fulfillment", {"SO_No": "SO-9", "order_type": "STOCK"})
+    await store.add_record("Pick1", {"SO": "SO-9"})
+    await fc_stamp_by_so_no(counting, "SO-9", today=TODAY)
+    assert counting.writes == 2
+    counting.writes = 0
+    await fc_stamp_by_so_no(counting, "SO-9", today=TODAY)
+    assert counting.writes == 0
+
+
+@pytest.mark.asyncio
+async def test_mirrors_zoho_a_blank_shipment_mode_on_the_sof_is_the_text_null_so_the_pr_mode_is_not_used(store, db_conn):
+    sof = await store.add_record("Sales_Order_Fulfillment", {"SO_No": "SO-12", "order_type": "PRE ORDER", "PR_No": "PR-6"})
+    pr = await store.add_record("Purchase_Request1", {"PR_No": "PR-6", "Sourcing_Type": "Import", "Shipment_Mode": "Air"})
+    await added_on(db_conn, "Purchase_Request1", pr, "2026-11-01 08:00:00 AM")
+    await fc_stamp_by_so_no(store, "SO-12", today=TODAY)
+    assert "| LCL? | Procurement" in (await store.get_record_by_id("Sales_Order_Fulfillment", sof, raw=True))["Forecast_Window"]
 
 
 @pytest.mark.asyncio

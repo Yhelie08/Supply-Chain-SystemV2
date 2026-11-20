@@ -16,6 +16,7 @@
 # moves forward; the Pre-Order -> Gate key includes the package (and RR) so an RR replacement never
 # overwrites the original item's Gate record.
 from app.deluge import blank, truthy
+from app.fulfillment.events import log_item_event
 from app.fulfillment.pipeline import advance_stage
 from app.fulfillment.qc_routing import upsert_to_ship
 from app.fulfillment.where import eq
@@ -43,6 +44,8 @@ async def crate_to_ship(args: dict) -> None:
         await advance_stage(store, so, c.get("Item_Name"), sku, "Crate")
         return
 
+    if _text((args.get("previous") or {}).get("Crating_Status1")) != "Done":   # package.crated, once, when crating becomes Done
+        await log_item_event(store, so, c.get("Item_Name"), sku, "package.crated", actor=user)
     qcs = await store.find("Checker_Checklist", lambda r: _text(r.get("SO")) == so and _text(r.get("SKU")) == sku and _text(r.get("PAC")) == pac and _text(r.get("QC_Status")) == "Approved", criteria=eq("SO", so))
     from_ = qcs[0] if qcs else {}
     await upsert_to_ship(store, user, so, {

@@ -22,10 +22,31 @@ async def store(db_conn):
     return create_store(db_conn)
 
 
-def test_the_six_queue_columns_exist_on_sales_order_fulfillment_schema():
-    # confirmed via Foundation's ensure_schema and the generic forms/*.json loader -- this is a
-    # schema-presence smoke check matching the Node test's intent, not an app-level assertion.
-    pass
+@pytest.mark.asyncio
+async def test_the_six_queue_columns_exist_on_sales_order_fulfillment_schema(store):
+    # was an empty `pass` (found 2026-11-19): now writes and reads the columns, like Node's test does
+    id_ = await store.add_record(SOF, {"SO_No": "SO-1", "Category": "on_time", "Queue_Rank": "1", "Suggested_Release": True})
+    r = await store.get_record_by_id(SOF, id_, raw=True)
+    assert r["Category"] == "on_time"
+    assert r["Queue_Rank"] == "1"
+    assert r["Suggested_Release"] is True
+
+
+@pytest.mark.asyncio
+async def test_box_count_and_box_count_source_columns_exist_on_sales_order_fulfillment(store):
+    id_ = await store.add_record(SOF, {"SO_No": "SO-BOX-1", "Box_Count": "7", "Box_Count_Source": "counted"})
+    r = await store.get_record_by_id(SOF, id_, raw=True)
+    assert r["Box_Count"] == "7"
+    assert r["Box_Count_Source"] == "counted"
+
+
+@pytest.mark.asyncio
+async def test_capacity_days_form_exists_with_date_people_boxes_per_hour_hours_per_day(store):
+    id_ = await store.add_record("Capacity_Days", {"Date": "2026-11-17", "People": "4", "Boxes_Per_Hour": "8", "Hours_Per_Day": "7"})
+    r = await store.get_record_by_id("Capacity_Days", id_, raw=True)
+    assert r["People"] == "4"
+    assert r["Boxes_Per_Hour"] == "8"
+    assert r["Hours_Per_Day"] == "7"
 
 
 def test_categorize_blocked_when_payment_not_cleared_and_no_credit_terms():
@@ -134,9 +155,10 @@ def test_rank_and_cut_line_so_no_ascending_is_the_final_tiebreak():
 
 
 def test_rank_and_cut_line_cut_line_marks_suggested_release_up_to_free_capacity():
+    # changed 2026-11-20: the list stops AT the package that would exceed the capacity (spec 03 / 02 acceptance), it no longer includes it
     entries = [_entry("SO-1", created="2026-11-01", items=[{"Quantity": "5"}]), _entry("SO-2", created="2026-11-02", items=[{"Quantity": "5"}]), _entry("SO-3", created="2026-11-03", items=[{"Quantity": "5"}])]
     out = rank_and_cut_line(entries, capacity_boxes=8)
-    assert [(e["sof"]["SO_No"], e["suggestedRelease"]) for e in out] == [("SO-1", True), ("SO-2", True), ("SO-3", False)]
+    assert [(e["sof"]["SO_No"], e["suggestedRelease"]) for e in out] == [("SO-1", True), ("SO-2", False), ("SO-3", False)]
 
 
 def test_rank_and_cut_line_a_wip_stage_entry_never_gets_suggested_release_or_consumes_capacity_twice():
