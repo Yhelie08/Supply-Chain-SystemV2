@@ -1101,6 +1101,7 @@ function mapPO(r){
     orderDate:        _val(r,'Earliest_Order_Date'),
     target:           _val(r,'Earliest_Target'),
     forecast:         _val(r,'Po_Forecast_Pickable'),
+    completedOn:      _val(r,'Completed_On'),
     bornLate:         _boolVal(r,'Born_Late'),
     shortfall:        parseInt(_val(r,'Shortfall_Days')||'0',10) || 0,
     linesRaised:      parseInt(_val(r,'Lines_Raised')||'0',10) || 0,
@@ -1369,7 +1370,7 @@ function renderTable(){
       <td>${escapeHtml(po.soNo)}</td>
       <td>${escapeHtml(po.customer)}</td>
       <td>${urgencyBadge(po)}</td>
-      <td style="white-space:nowrap">${fmtDay(po.orderDate)}</td>
+      <td style="white-space:nowrap">${fmtDay(po.orderDate)}${poOrderAge(po) != null ? ' <span style="color:var(--gray-400);font-size:11px">('+poOrderAge(po)+'d)</span>' : ''}</td>
       <td style="white-space:nowrap">${fmtDay(po.target)}</td>
       <td style="white-space:nowrap">${fmtDay(po.forecast)}</td>
       <td style="text-align:center">${po.totalLines}</td>
@@ -1397,6 +1398,15 @@ function urgencyBadge(po){
   return '<span title="'+escapeHtml(po.urgencyReason||'')+'" style="display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;background:'+u[1]+';color:'+u[2]+'">'+u[0]+'</span>';
 }
 const fmtDay = v => v ? escapeHtml(String(v).slice(0,10)) : '<span style="color:var(--gray-400)">—</span>';
+/* DT-3 (05 Shared Engines/03): Order Age = today - Order Date, frozen at Completed_On once every line has
+   been received -- same "stops counting at delivery" treatment used for Shipments/Receiving/RR. */
+function poOrderAge(po){
+  const start = Date.parse(String(po.orderDate||'').slice(0,10)+'T00:00:00');
+  if(isNaN(start)) return null;
+  let end = po.completedOn ? Date.parse(po.completedOn) : NaN;
+  if(isNaN(end)) end = Date.now();
+  return Math.max(0, Math.floor((end - start) / 86400000));
+}
 function filterUrgency(u, el){
   currentUrgency = u;
   document.querySelectorAll('#urgencyTabs .tab').forEach(t => t.classList.remove('active'));

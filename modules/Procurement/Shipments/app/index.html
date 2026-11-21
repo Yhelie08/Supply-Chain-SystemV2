@@ -1206,7 +1206,7 @@ function renderList(){
     return '<tr class="row-' + sKey + '" onclick="openDetail(\'' + r.ID + '\')">' +
       '<td><strong>' + esc(r.Shipment_No) + '</strong>' + fulfExcBadge + '</td>' +
       '<td>' + stRankCell(r) + '</td>' +
-      '<td>' + esc(r.Order_Date || '\u2014') + '</td>' +
+      '<td>' + esc(r.Order_Date || '\u2014') + (stOrderAge(r) != null ? ' <span style="color:var(--gray-500);font-size:11px">(' + stOrderAge(r) + 'd)</span>' : '') + '</td>' +
       '<td>' + esc(dispVal(r.PO_No)) + '</td>' +
       '<td>' + esc(r.Sales_Order) + '</td>' +
       '<td>' + trkChips(trkExcFor(r), 'trk-exc') + '</td>' +
@@ -1407,6 +1407,7 @@ function renderDetail(){
 
   renderLineItems();
   stRenderDetail(r); // ADDED 2026-11-17 — Ship & Track card
+  stLoadForecastTrend(r); // DT-8: "slipped N days" / "moved up N days", from Forecast_History (FC-2)
   stTargetChanged();
 
   /* ADDED 2026-07-16, per user request — plain persistent Notes field (real, already-
@@ -2316,6 +2317,40 @@ function stSetBoard(c){ ST_BOARD = c; renderList(); }
 })();
 
 function stDate(v){ return v ? esc(String(v)) : '<span style="color:var(--gray-400)">&mdash;</span>'; }
+/* Display format per spec v1.4 (00 Overview/01 System Overview): "13 Nov 2026 14:05" -- 24-hour, no AM/PM.
+   Storage stays as today's local-time Zoho string (that half of the spec's TZ rule is a separate, cross-module
+   decision, not attempted here: display only, owner decision 2026-11-21). */
+var ST_STAMP_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function stFmtWhen(s){
+  s = String(s || '').trim();
+  if(!s) return '';
+  var ap = null, apM = s.match(/\s*(AM|PM)\s*$/i);
+  if(apM){ ap = apM[1].toUpperCase(); s = s.slice(0, apM.index).trim(); }
+  function to24(h){ if(!ap) return h; if(ap === 'AM') return h === 12 ? 0 : h; return h === 12 ? 12 : h + 12; }
+  var d = null;
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(m) d = new Date(+m[1], +m[2]-1, +m[3], to24(+m[4]), +m[5], +(m[6]||0));
+  else {
+    var m2 = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if(m2){
+      var mon = ST_STAMP_MON.findIndex(function(x){ return x.toLowerCase() === m2[2].slice(0,3).toLowerCase(); });
+      if(mon > -1) d = new Date(+m2[3], mon, +m2[1], to24(+m2[4]), +m2[5], +(m2[6]||0));
+    }
+  }
+  if(!d || isNaN(d.getTime())) return s;
+  var pad = function(n){ return String(n).padStart(2, '0'); };
+  return d.getDate() + ' ' + ST_STAMP_MON[d.getMonth()] + ' ' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+/* DT-3 (05 Shared Engines/03): Order Age = today - Order Date, shown beside it, stops counting at delivery.
+   "Received" is this record's delivery-equivalent stage, so a shipment that already arrived freezes its age
+   at Received_At instead of still counting up. Returns null when there's no Order Date to measure from. */
+function stOrderAge(r){
+  var start = Date.parse(r.Order_Date);
+  if(isNaN(start)) return null;
+  var end = r.Received_At ? Date.parse(r.Received_At) : NaN;
+  if(isNaN(end)) end = Date.now();
+  return Math.max(0, Math.floor((end - start) / 86400000));
+}
 function stPhotoLink(v){
   // Production_Photos now accumulates every upload (a list), not just the newest one; Shipment_Photos is still one value.
   var urls = Array.isArray(v) ? v : (function(){ if(typeof v !== 'string' || !v) return v ? [v] : []; try{ var p = JSON.parse(v); return Array.isArray(p) ? p : [v]; }catch(e){ return [v]; } })();
@@ -2329,10 +2364,16 @@ function stRenderDetail(r){
   bits.push('<span class="badge badge-gray">' + esc(ST_STAGE[stStageOf(r)]) + '</span>');
   if(c) bits.push('<span class="badge ' + c[2] + '">' + c[1] + (r.Queue_Rank ? ' &middot; rank #' + esc(r.Queue_Rank) : '') + '</span>');
   if(late > 0) bits.push('<span class="badge badge-red">' + late + ' day(s) late</span>');
+  /* DT-8 display order: Order Date -> Target Delivery -> Forecast Delivery, then Order Age. "Date needed
+     (pickable)" is an extra Sorting Engine input (05/01), not one of the spec's 3 dates, so it's kept after
+     them rather than between. "slipped N days" / "moved up N days" is filled in async by
+     stLoadForecastTrend() below, from Forecast_History (FC-2) -- the #stForecastTrend span starts empty. */
+  var age = stOrderAge(r);
   var dates = '<div class="info-grid" style="margin-top:8px">' +
-    '<div class="info-item"><label>Order Date</label><div class="val">' + stDate(r.Order_Date) + '</div></div>' +
+    '<div class="info-item"><label>Order Date</label><div class="val">' + stDate(r.Order_Date) + (age != null ? ' <span style="color:var(--gray-500);font-weight:400">(' + age + ' day(s) old)</span>' : '') + '</div></div>' +
+    '<div class="info-item"><label>Target Delivery</label><div class="val">' + stDate(r.Target_Date) + '</div></div>' +
+    '<div class="info-item"><label>Forecast Delivery (pickable)</label><div class="val">' + stDate(r.Forecast_Pickable) + (r.Forecast_Window_Low ? ' <span style="color:var(--gray-500);font-weight:400;font-size:12px">(' + esc(String(r.Forecast_Window_Low).slice(0,10)) + ' – ' + esc(String(r.Forecast_Window_High).slice(0,10)) + ')</span>' : '') + ' <span id="stForecastTrend"></span></div></div>' +
     '<div class="info-item"><label>Date needed (pickable)</label><div class="val">' + stDate(r.Date_Needed) + '</div></div>' +
-    '<div class="info-item"><label>Forecast pickable</label><div class="val">' + stDate(r.Forecast_Pickable) + '</div></div>' +
     '</div>';
   var why = (r.Priority_Reason ? '<div style="font-size:12.5px;margin-top:8px">' + esc(r.Priority_Reason) + '</div>' : '') +
             (r.Suggested_Action ? '<div style="font-size:12.5px;font-weight:600;color:var(--orange-dark);margin-top:2px">Suggested: ' + esc(r.Suggested_Action) + '</div>' : '') +
@@ -2367,9 +2408,28 @@ function stLoadLog(id){
     list.sort(function(a,b){ return String(a.Added_Time || '').localeCompare(String(b.Added_Time || '')) || (Number(a.ID) < Number(b.ID) ? -1 : 1); });
     body.innerHTML = list.length ? list.map(function(e){
       var bound = e.Occurred_Bound && e.Occurred_Bound !== 'exact' ? ' <em>(' + esc(e.Occurred_Bound) + ')</em>' : '';
-      return '<tr><td>' + esc(String(e.Event || '').replace('shipment.','').replace(/_/g,' ')) + '</td><td>' + esc(e.Occurred_At || '') + bound + '</td><td>' + esc(e.Reported_At || '') + '</td><td>' + esc(e.Source || '') + '</td><td>' + esc(e.Visit_No || '') + '</td></tr>';
+      return '<tr><td>' + esc(String(e.Event || '').replace('shipment.','').replace(/_/g,' ')) + '</td><td>' + esc(stFmtWhen(e.Occurred_At)) + bound + '</td><td>' + esc(stFmtWhen(e.Reported_At)) + '</td><td>' + esc(e.Source || '') + '</td><td>' + esc(e.Visit_No || '') + '</td></tr>';
     }).join('') : '<tr><td colspan="5" style="color:var(--gray-400)">No events yet</td></tr>';
   }).catch(function(){ body.innerHTML = '<tr><td colspan="5" style="color:var(--gray-400)">Event log not available</td></tr>'; });
+}
+/* DT-8 (spec 05 Shared Engines / 03): "slipped N days" / "moved up N days" -- the last two Forecast_History
+   rows for this shipment (FC-2), comparing the forecast now in effect against the one right before it. Needs
+   at least 2 rows (a shipment with only its first-ever forecast has nothing to compare against yet). */
+function stLoadForecastTrend(r){
+  var el = document.getElementById('stForecastTrend');
+  if(!el) return;
+  el.textContent = '';
+  ZOHO.CREATOR.DATA.getRecords({ report_name: 'Forecast_History', criteria: '(Record_Type == "shipment" && Record_Id == "' + String(r.ID) + '")', field_config: 'all', page: 1, pageSize: 200 }).then(function(resp){
+    var list = (resp && resp.code === 3000 && resp.data) ? resp.data : [];
+    if(list.length < 2) return;
+    list.sort(function(a,b){ return String(a.Occurred_At || '').localeCompare(String(b.Occurred_At || '')); });
+    var latest = list[list.length - 1], prior = list[list.length - 2];
+    var diff = Math.round((new Date(String(latest.New_Forecast).slice(0,10) + 'T00:00:00') - new Date(String(prior.New_Forecast).slice(0,10) + 'T00:00:00')) / 86400000);
+    if(!diff) return;
+    el.innerHTML = diff > 0
+      ? '<span style="color:var(--red);font-weight:600;font-size:12px">(slipped ' + diff + ' day(s))</span>'
+      : '<span style="color:var(--green);font-weight:600;font-size:12px">(moved up ' + Math.abs(diff) + ' day(s))</span>';
+  }).catch(function(){});
 }
 /* DT-4 (spec 05 Shared Engines / 03): a changed promise date needs a reason; the server logs old, new, why and who. */
 function stTargetChanged(){

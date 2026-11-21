@@ -232,6 +232,18 @@
       "type": "date"
     },
     {
+      "name": "Forecast_Window_Low",
+      "label": "Forecast Window (earliest)",
+      "type": "date",
+      "helpText": "FC-3: Forecast_Pickable minus forecast_window_sea_days, shown only while the shipment is at sea (shipped out, not yet at the port). Blank once the arrival is actual, not estimated."
+    },
+    {
+      "name": "Forecast_Window_High",
+      "label": "Forecast Window (latest)",
+      "type": "date",
+      "helpText": "FC-3: Forecast_Pickable plus forecast_window_sea_days, same scope as Forecast_Window_Low."
+    },
+    {
       "name": "Slack_Days",
       "label": "Slack (days)",
       "type": "number"
@@ -240,6 +252,12 @@
       "name": "Days_Late",
       "label": "Days Late",
       "type": "number"
+    },
+    {
+      "name": "Forecast_Error_Days",
+      "label": "Forecast Error (days)",
+      "type": "number",
+      "helpText": "Spec 05/03 Forecast chain + FC-4, Procurement's own portion: Received_At minus the last Forecast_Pickable before the shipment was received (positive = later than forecast, negative = earlier). 'True' customer delivery is a Fulfillment/Delivery Management stage this module never observes, so this freezes at Received (arrival at our warehouse), not at delivery -- documented scope narrowing, not the full spec concept. Set once, the first rescore after Received_At is stamped; never recomputed after."
     },
     {
       "name": "Scored_At",

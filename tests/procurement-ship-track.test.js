@@ -8,10 +8,10 @@ import { createHookedStore } from '../server/workflows/index.mjs';
 import { workflows } from '../server/workflows/all.mjs';
 import { DEFAULT_SETTINGS, SPEC_NUMBERS, feasibility, plannedChain, forecastChain } from '../server/modules/procurement/plan.mjs';
 import { categorise, rank } from '../server/modules/procurement/sorting.mjs';
-import { rescoreShipments, runShipmentLadder } from '../server/modules/procurement/ship-track.mjs';
+import { rescoreShipments, runShipmentLadder, reportShipmentDelay, applyShipmentEvent, get_forecast_error_report } from '../server/modules/procurement/ship-track.mjs';
 import { addDays, ymd, todayDate } from '../server/workflows/deluge.mjs';
 
-const FORMS = ['Purchase_Order', 'Shipments', 'Receiving', 'Sales_Order', 'Sales_Order_Fulfillment', 'Purchase_Request1', 'Stage_Events', 'Ladder_Events', 'Approval_Queue', 'App_Notifications', 'Procurement_Settings', 'Procurement_Settings_History', 'Target_Date_Changes', 'Suppliers', 'Forecast_Settings'];
+const FORMS = ['Purchase_Order', 'Shipments', 'Receiving', 'Sales_Order', 'Sales_Order_Fulfillment', 'Purchase_Request1', 'Stage_Events', 'Ladder_Events', 'Approval_Queue', 'App_Notifications', 'Procurement_Settings', 'Procurement_Settings_History', 'Target_Date_Changes', 'Suppliers', 'Forecast_Settings', 'Forecast_History'];
 let db, raw, store;
 before(async () => {
   db = new PGlite();
@@ -237,6 +237,116 @@ test('a PR cannot have its own forecast pickable typed; it only follows the ship
   const pr = (await raw.find('Purchase_Request1', (p) => p.PR_No === 'PR-1'))[0];
   await store.updateRecord('Purchase_Request1', pr.ID, { Pr_Forecast_Pickable: '2001-01-01' });
   assert.notEqual((await raw.getRecordById('Purchase_Request1', pr.ID, { raw: true })).Pr_Forecast_Pickable, '2001-01-01');
+});
+
+// ---------- forecast history (FC-2: "every change is kept in forecast_history with the event that caused it") ----------
+test('FC-2: a shipment getting its first forecast writes one history row, with the default cause when none is given', async () => {
+  const { id } = await shipment({ target: 60 });
+  await rescoreShipments(raw);
+  const s = await get(id);
+  const rows = await raw.find('Forecast_History', (r) => String(r.Record_Id) === String(id));
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].Record_Type, 'shipment');
+  assert.equal(rows[0].Old_Forecast, '');
+  assert.equal(rows[0].New_Forecast, s.Forecast_Pickable.slice(0, 10));
+  assert.equal(rows[0].Caused_By, 'shipment.saved');
+});
+
+test('FC-2: re-scoring again with nothing changed writes no new row', async () => {
+  const { id } = await shipment({ target: 60 });
+  await rescoreShipments(raw);
+  await rescoreShipments(raw);
+  const rows = await raw.find('Forecast_History', (r) => String(r.Record_Id) === String(id));
+  assert.equal(rows.length, 1, 'the forecast did not change the second time, so nothing new is logged');
+});
+
+test('FC-2: the cause passed in is the one recorded (a delay report)', async () => {
+  const { id } = await shipment({ target: 60 });
+  await rescoreShipments(raw); // the first forecast, cause not under test here
+  await reportShipmentDelay(raw, id, { date: day(90), reason: 'Mould broke', source: 'supplier' });
+  const rows = await raw.find('Forecast_History', (r) => String(r.Record_Id) === String(id));
+  const last = rows.at(-1);
+  assert.equal(last.Caused_By, 'shipment.delay_reported');
+  assert.notEqual(last.New_Forecast, last.Old_Forecast);
+});
+
+test('FC-2: the nightly full rescore is logged with cause "nightly"', async () => {
+  const { id } = await shipment({ target: 60 }); // creating it already logs one row (cause shipment.saved, via the afterAdd hook)
+  // nothing has actually happened yet (no production start): once "today" moves far enough past the planned
+  // pickable date, the plan is floored to today (plan.mjs) -- a real forecast shift to log, not a no-op rescore.
+  await runShipmentLadder(raw, { today: addDays(today, 100) });
+  const rows = await raw.find('Forecast_History', (r) => String(r.Record_Id) === String(id));
+  assert.ok(rows.some((r) => r.Caused_By === 'nightly'), 'a row with cause "nightly" was written');
+});
+
+// ---------- FC-3: a range while uncertain, at sea ----------
+test('FC-3: a shipment at sea (shipped out) gets a +/- forecast_window_sea_days band around Forecast_Pickable', async () => {
+  const { id } = await shipment({ target: 90 });
+  await applyShipmentEvent(raw, id, 'shipped_out', { source: 'system' });
+  const s = await get(id);
+  assert.equal(s.Stage, 'shipped_out');
+  assert.ok(s.Forecast_Pickable);
+  assert.equal(s.Forecast_Window_Low, daysOffset(s.Forecast_Pickable, -3));
+  assert.equal(s.Forecast_Window_High, daysOffset(s.Forecast_Pickable, 3));
+});
+
+test('FC-3: no window once production has not shipped, or once it has actually arrived', async () => {
+  const { id } = await shipment({ target: 90 }); // still in Production
+  assert.equal((await get(id)).Forecast_Window_Low, '');
+  await applyShipmentEvent(raw, id, 'shipped_out', { source: 'system' });
+  assert.ok((await get(id)).Forecast_Window_Low);
+  await applyShipmentEvent(raw, id, 'arrived_port', { source: 'system' });
+  assert.equal((await get(id)).Forecast_Window_Low, '', 'the arrival is now actual, not estimated -- no more uncertainty band');
+});
+
+test('FC-3: a Procurement_Settings override narrows or widens the window', async () => {
+  await raw.addRecord('Procurement_Settings', { Setting_Key: 'forecast_window_sea_days', Value: '1' });
+  const { id } = await shipment({ target: 90 });
+  await applyShipmentEvent(raw, id, 'shipped_out', { source: 'system' });
+  const s = await get(id);
+  assert.equal(s.Forecast_Window_Low, daysOffset(s.Forecast_Pickable, -1));
+  assert.equal(s.Forecast_Window_High, daysOffset(s.Forecast_Pickable, 1));
+});
+
+// ---------- Forecast chain / FC-4, Procurement's own portion (owner decision 2026-11-21: freeze at Received --
+// arrival at our warehouse -- not at "delivered to the customer", which is a Fulfillment/Delivery stage this
+// module never observes) ----------
+const daysBetween = (a, b) => Math.round((new Date(a.slice(0, 10) + 'T00:00:00') - new Date(b.slice(0, 10) + 'T00:00:00')) / 86400000);
+const daysOffset = (iso, n) => ymd(addDays(new Date(iso.slice(0, 10) + 'T00:00:00'), n));
+
+test('Forecast_Error_Days freezes at Received_At minus the last forecast made before receiving', async () => {
+  const { id } = await shipment({ target: 60 });
+  const before = await get(id);
+  assert.ok(before.Forecast_Pickable, 'a forecast exists before receiving');
+  const receivedOn = day(-1);
+  await applyShipmentEvent(raw, id, 'received', { occurredAt: receivedOn, source: 'system' });
+  const after = await get(id);
+  assert.ok(after.Received_At);
+  assert.equal(Number(after.Forecast_Error_Days), daysBetween(receivedOn, before.Forecast_Pickable));
+});
+
+test('Forecast_Error_Days is set once and does not change on a later rescore', async () => {
+  const { id } = await shipment({ target: 60 });
+  await applyShipmentEvent(raw, id, 'received', { occurredAt: day(-1), source: 'system' });
+  const first = (await get(id)).Forecast_Error_Days;
+  await rescoreShipments(raw, { full: true, cause: 'nightly' });
+  assert.equal((await get(id)).Forecast_Error_Days, first);
+});
+
+test('FC-4: the monthly report averages Forecast_Error_Days and buckets early / on-time / late, for shipments received this month', async () => {
+  const a = await shipment({ target: 60, so: 'SO-A' });
+  await applyShipmentEvent(raw, a.id, 'received', { occurredAt: day(-1), source: 'system' });
+  const b = await shipment({ target: 60, so: 'SO-B', lines: [{ ...line, PR_No: 'PR-2', Shipping_Mode: 'Airfreight' }] });
+  await applyShipmentEvent(raw, b.id, 'received', { occurredAt: day(-1), source: 'system' });
+  const notReceived = await shipment({ target: 60, so: 'SO-C' }); // still open: no Forecast_Error_Days, excluded
+  const resp = await get_forecast_error_report({}, raw);
+  assert.equal(resp.code, 3000);
+  assert.equal(resp.data.total, 2);
+  assert.ok(resp.data.avg_error_days !== null);
+  assert.equal(resp.data.by_bucket.reduce((n, x) => n + x.count, 0), 2);
+  assert.ok(resp.data.by_mode.some((m) => m.name === 'LCL'));
+  assert.ok(resp.data.by_mode.some((m) => m.name === 'Airfreight'));
+  assert.ok(!(await get(notReceived.id)).Forecast_Error_Days);
 });
 
 // ---------- the supplier ladder (Ship & Track) ----------

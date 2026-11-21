@@ -295,9 +295,11 @@ async def test_a_package_with_no_stamp_counts_from_the_day_it_was_imported_so_go
 
 
 async def test_14_days_tells_the_supervisor_21_days_escalates_to_the_admin_once_each(raw_store):
-    mid = await _package(raw_store, "SO-1")
-    high = await _package(raw_store, "SO-2")
-    low = await _package(raw_store, "SO-3")
+    # target_delivery_date far in the future: on_time regardless of the real wall-clock date, so the new OR-R6 at_risk
+    # morning-list digest (also fired by rescore_all) never sneaks into this test's own exact-list assertion.
+    mid = await _package(raw_store, "SO-1", target_delivery_date="2099-12-31")
+    high = await _package(raw_store, "SO-2", target_delivery_date="2099-12-31")
+    low = await _package(raw_store, "SO-3", target_delivery_date="2099-12-31")
     await _enter(raw_store, mid, "package.order_readiness", 15)
     await _enter(raw_store, high, "package.order_readiness", 22)
     await _enter(raw_store, low, "package.order_readiness", 8)
@@ -313,6 +315,94 @@ async def test_14_days_tells_the_supervisor_21_days_escalates_to_the_admin_once_
 async def test_a_package_that_already_left_for_delivery_is_not_aged(raw_store):
     id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="For Delivery")
     await _enter(raw_store, id_, "package.for_delivery", 60)
+    await rescore_all(raw_store)
+    assert await raw_store.find(NOTES) == []
+
+
+# ---- silence alerts (T-7, 05 Shared Engines / 04 Timestamps and Event Log): released -> picked in 1 day, qc_rejected -> rework_done in 3 days (RW-R5)
+async def test_released_more_than_a_day_ago_with_nothing_picked_tells_the_supervisor_once(raw_store):
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="Picking", target_delivery_date="2099-12-31")
+    await _enter(raw_store, id_, "package.released", 2)
+    await rescore_all(raw_store)
+    await rescore_all(raw_store)   # the second run must not tell again
+    notes = await raw_store.find(NOTES)
+    assert len(notes) == 1
+    assert notes[0]["Notification_Type"] == "Pick Stalled" and notes[0]["Source_Record_ID"] == str(id_)
+    assert "Picking" in notes[0]["Message"] and "Fulfillment supervisor" in notes[0]["Message"]
+
+
+async def test_released_today_gets_no_pick_stalled_alert_yet(raw_store):
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="Picking", target_delivery_date="2099-12-31")
+    await _enter(raw_store, id_, "package.released", 0)
+    await rescore_all(raw_store)
+    assert await raw_store.find(NOTES) == []
+
+
+async def test_a_package_that_moved_on_to_pack_qc_is_no_longer_silent_about_picking(raw_store):
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="Pack & QC", target_delivery_date="2099-12-31")
+    await _enter(raw_store, id_, "package.released", 10)   # old, but it is no longer the current stage
+    await _enter(raw_store, id_, "package.picked", 1)
+    await rescore_all(raw_store)
+    assert await raw_store.find(NOTES) == []
+
+
+async def test_an_open_exception_with_a_qc_rejection_three_days_old_tells_the_supervisor_rework_stuck_once(raw_store):
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="Pack & QC")
+    await _enter(raw_store, id_, "package.qc_rejected", 4)
+    await raw_store.add_record("Exception_Control1", {"Sales_Order": "SO-1", "SKU": "L-1", "PAC": "PAC-SO-1", "Status": "Pending", "Item_Name": "Lamp"})
+    await rescore_all(raw_store)
+    await rescore_all(raw_store)   # the second run must not tell again
+    notes = [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "Rework Stuck"]
+    assert len(notes) == 1 and notes[0]["Source_Record_ID"] == str(id_)
+    assert "Fulfillment supervisor" in notes[0]["Message"]
+
+
+async def test_a_qc_rejection_under_three_days_old_gets_no_rework_stuck_alert_yet(raw_store):
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="Pack & QC")
+    await _enter(raw_store, id_, "package.qc_rejected", 2)
+    await raw_store.add_record("Exception_Control1", {"Sales_Order": "SO-1", "SKU": "L-1", "PAC": "PAC-SO-1", "Status": "Pending", "Item_Name": "Lamp"})
+    await rescore_all(raw_store)
+    assert [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "Rework Stuck"] == []
+
+
+async def test_a_closed_exception_does_not_get_a_rework_stuck_alert_even_if_the_rejection_is_old(raw_store):
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="Pack & QC")
+    await _enter(raw_store, id_, "package.qc_rejected", 10)
+    await raw_store.add_record("Exception_Control1", {"Sales_Order": "SO-1", "SKU": "L-1", "PAC": "PAC-SO-1", "Status": "Completed", "Item_Name": "Lamp"})
+    await rescore_all(raw_store)
+    assert [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "Rework Stuck"] == []
+
+
+# ---- OA-R4: a package waiting in Order Aggregation (not yet dispatched) past aggregation_wait_days (default 2)
+async def test_a_package_waiting_2_days_in_order_aggregation_tells_the_supervisor_once(raw_store):
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="Order Aggregation")
+    await _enter(raw_store, id_, "package.aggregated", 2)
+    await rescore_all(raw_store)
+    await rescore_all(raw_store)   # the second run must not tell again
+    notes = [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "Aggregation Wait"]
+    assert len(notes) == 1 and notes[0]["Source_Record_ID"] == str(id_)
+    assert "Order Aggregation" in notes[0]["Message"] and "Fulfillment supervisor" in notes[0]["Message"]
+
+
+async def test_a_package_waiting_under_the_default_2_days_gets_no_aggregation_wait_alert_yet(raw_store):
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="Order Aggregation")
+    await _enter(raw_store, id_, "package.aggregated", 1)
+    await rescore_all(raw_store)
+    assert [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "Aggregation Wait"] == []
+
+
+async def test_aggregation_wait_days_setting_overrides_the_default(raw_store):
+    await raw_store.add_record("Policy_Settings", {"Policy_Key": "aggregation_wait_days", "Value": "5"})
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="Order Aggregation")
+    await _enter(raw_store, id_, "package.aggregated", 3)
+    await rescore_all(raw_store)
+    assert [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "Aggregation Wait"] == []   # 3 days < the 5-day setting
+
+
+async def test_a_package_already_dispatched_is_not_silent_about_aggregation(raw_store):
+    id_ = await _package(raw_store, "SO-1", Fulfillment_Stage="For Delivery")
+    await _enter(raw_store, id_, "package.aggregated", 10)
+    await _enter(raw_store, id_, "package.dispatched", 1)
     await rescore_all(raw_store)
     assert await raw_store.find(NOTES) == []
 
@@ -503,6 +593,17 @@ async def test_becoming_late_notifies_and_staying_late_does_not(raw_store):
     assert len(late) == 1 and "SO-1" in late[0]["Message"] and "sales agent" in late[0]["Message"]
 
 
+# OR-R6: the real sales agent's name, when Sales_Order actually has a row for this SO (name-only, owner decision 2026-11-21)
+async def test_becoming_late_names_the_real_sales_agent_when_sales_order_has_one(raw_store):
+    await raw_store.add_record("Sales_Order", {"Sales_Order_Number": "SO-1", "Sales_Agent": "Juan Dela Cruz"})
+    id_ = await _package(raw_store, "SO-1", target_delivery_date="2027-06-01")
+    await rescore_all(raw_store)
+    await raw_store.update_record(SOF, id_, {"target_delivery_date": "2026-11-01"}, by_form=True)
+    await rescore_all(raw_store)
+    late = [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "Order Late"]
+    assert len(late) == 1 and "sales agent Juan Dela Cruz" in late[0]["Message"]
+
+
 async def test_becoming_blocked_tells_the_owner_by_name_and_an_already_late_import_tells_nobody(raw_store):
     id_ = await _package(raw_store, "SO-1", target_delivery_date="2027-06-01")
     await _package(raw_store, "SO-2", target_delivery_date="2026-01-01")   # imported already late
@@ -513,6 +614,40 @@ async def test_becoming_blocked_tells_the_owner_by_name_and_an_already_late_impo
     assert kinds == [("Order Blocked", "SO-1")]
     note = (await raw_store.find(NOTES))[0]
     assert "Missing contact number" in note["Message"] and "Sales agent" in note["Message"]
+
+
+# ---- "About to be late" -> the supervisor's morning list, once a day (OR-R6, a digest, not a per-package alert)
+# Dates are computed off the real wall clock (not the file's own tz-aware NOW) and rescore_all runs with no custom `now`:
+# passing a tz-aware `now` all the way into rescore_all crashes on a package with no Stage_Events yet (days_in_stage falls
+# back to parsing the naive Added_Time) -- a pre-existing gap nothing before this exercised, out of scope to fix here.
+async def test_about_to_be_late_sends_one_digest_a_day_listing_every_at_risk_package(raw_store):
+    target = (datetime.now().date() + timedelta(days=5)).isoformat()   # slack 5 - 5 = 0 (<= 3): at_risk, not yet late
+    await _package(raw_store, "SO-1", target_delivery_date=target)
+    await _package(raw_store, "SO-2", target_delivery_date="2099-12-31")   # on time: not in the list
+    await rescore_all(raw_store)
+    await rescore_all(raw_store)   # same day again: no second digest
+    digest = [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "About To Be Late Morning List"]
+    assert len(digest) == 1
+    assert "SO-1" in digest[0]["Message"] and "SO-2" not in digest[0]["Message"] and "supervisor" in digest[0]["Message"]
+
+
+async def test_about_to_be_late_digest_fires_again_on_a_later_day(raw_store):
+    target = (datetime.now().date() + timedelta(days=5)).isoformat()
+    await _package(raw_store, "SO-1", target_delivery_date=target)
+    yesterday = (datetime.now().date() - timedelta(days=1)).isoformat()
+    await raw_store.add_record(NOTES, {
+        "Recipient_Email": "x", "Notification_Type": "About To Be Late Morning List", "Created_On": zoho_now(),
+        "Read": False, "Target_URL": "", "Message": "stale", "Source_Record_No": f"morning-list:{yesterday}", "Source_Record_ID": "",
+    })
+    await rescore_all(raw_store)
+    digest = [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "About To Be Late Morning List"]
+    assert len(digest) == 2   # yesterday's (seeded above) plus a fresh one for today
+
+
+async def test_no_at_risk_packages_means_no_digest(raw_store):
+    await _package(raw_store, "SO-1", target_delivery_date="2099-12-31")   # on time
+    await rescore_all(raw_store)
+    assert [n for n in await raw_store.find(NOTES) if n["Notification_Type"] == "About To Be Late Morning List"] == []
 
 
 # ---- the capacity bar and crew sizing numbers
@@ -527,6 +662,17 @@ async def test_the_capacity_summary_gives_capacity_progress_suggested_backlog_an
     assert out["openBoxes"] == 260 and out["backlogDays"] == 1.2                            # 260 / 224
     assert out["dueBoxes"] == 60 and out["crewDays"] == 3 and out["lateOrAtRiskCount"] == 1
     assert out["peopleNeeded"] == 0.4                                                       # 60 / (8 x 7 x 3 days)
+
+
+async def test_the_capacity_summary_counts_how_many_in_progress_packages_are_still_estimated(raw_store):
+    # PKG-R3 acceptance: "a package without a counted box count shows 'estimated' in every capacity figure" --
+    # inProgressBoxes blends counted and estimated numbers, so inProgressEstimatedCount flags how many of them are estimated.
+    await raw_store.add_record("Capacity_Days", {"Date": datetime.now().date().isoformat(), "People": "4", "Boxes_Per_Hour": "8", "Hours_Per_Day": "7"})
+    await _package(raw_store, "SO-1", Fulfillment_Stage="Picking", Box_Count="100", Box_Count_Source="counted")
+    await _package(raw_store, "SO-2", Fulfillment_Stage="Picking")  # no Box_Count_Source at all: estimated
+    await _package(raw_store, "SO-3", Fulfillment_Stage="Order Readiness")  # not WIP, shouldn't count either way
+    out = await capacity_summary(raw_store)
+    assert out["inProgressEstimatedCount"] == 1
 
 
 async def test_over_capacity_is_reported_when_more_was_released_than_the_day_can_do(raw_store):
@@ -551,7 +697,7 @@ async def test_a_new_qc_rejection_blocks_the_package_even_though_the_exception_h
     await rescore_all(raw_store)
     r = await _get(raw_store, id_)
     assert (r["Category"], r["Blocked_Reason"], r["Blocked_Owner"]) == ("blocked", "Open exception", "Fulfillment supervisor")
-    for closed in ("Completed", "OK", "Unrepairable"):
+    for closed in ("Completed", "OK", "Unrepairable", "Return to Pick"):   # Return to Pick: QC-R3's third checker choice, added 2026-11-21
         exc = (await raw_store.find("Exception_Control1"))[0]
         await raw_store.update_record("Exception_Control1", exc["ID"], {"Status": closed}, by_form=True)
         await rescore_all(raw_store)

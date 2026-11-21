@@ -10,9 +10,9 @@
 // A production finished report needs a production photo (ST-R3); this closes the gap the supplier's ship-date path still has.
 import { register } from '../../workflows/index.mjs';
 import { ZohoError, zohoNow } from '../../criteria.mjs';
-import { blank, idOf } from '../../workflows/deluge.mjs';
+import { blank, idOf, toNum } from '../../workflows/deluge.mjs';
 import { occurredFrom, logEvent } from './events.mjs';
-import { applyShipmentEvent, effectiveStage, refreshSupplierView, appendPhoto } from './ship-track.mjs';
+import { applyShipmentEvent, effectiveStage, refreshSupplierView, appendPhoto, reportPartialQuantity } from './ship-track.mjs';
 
 const text = (v) => (blank(v) || String(v) === 'null' ? '' : String(v));
 const refuse = (m) => { throw new ZohoError(2001, m); };
@@ -32,6 +32,13 @@ for (const form of COPIES) {
       const ev = text(input.Report_Prod_Event);
       const photo = text(input.Prod_Photo);
       if (photo !== '' && !PHOTO_TYPES.test(photo.split('?')[0])) refuse('A production photo must be JPG, PNG, HEIC, WebP or PDF.');
+      // Partial quantity (spec: "report partial quantities ... with a new date"). Simple presence/shape check here,
+      // same convention as the Delay report above it (supplier-portal-workflows.mjs) -- the deeper check (the SKU is
+      // really on this shipment, the quantity does not exceed what was ordered, the shipment has not already
+      // arrived) happens in reportPartialQuantity(), called from afterUpdate below.
+      const partialSku = text(input.Report_Partial_SKU);
+      if (partialSku !== '' && !(toNum(input.Report_Partial_Qty) > 0)) refuse('Give the quantity actually being shipped (a number above 0).');
+      else if (partialSku === '' && text(input.Report_Partial_Qty) !== '') refuse('Say which item (SKU) the partial quantity is for.');
       if (ev === '') {
         if (text(input.Report_Prod_Date) !== '') refuse('Say what happened (production started or finished) with the date.');
         return;
@@ -64,6 +71,13 @@ for (const form of COPIES) {
         await store.updateRecord(form, copyId, { Report_Prod_Event: '', Report_Prod_Date: '' }, { byForm: true });
         await applyShipmentEvent(store, parent.ID, ev, { occurredAt: date, source: 'supplier', gate: true })
           .catch((e) => console.error('[production-portal]', ev, e.message));
+      }
+      const partialSku = text(record.Report_Partial_SKU);
+      if (partialSku !== '') {
+        const qty = record.Report_Partial_Qty, reason = text(record.Report_Partial_Reason);
+        await store.updateRecord(form, copyId, { Report_Partial_SKU: '', Report_Partial_Qty: '', Report_Partial_Reason: '' }, { byForm: true });
+        await reportPartialQuantity(store, parent.ID, { sku: partialSku, qty, reason, source: 'supplier' })
+          .catch((e) => console.error('[production-portal] partial quantity', e.message));
       }
       await refreshSupplierView(store, parent.ID);
     },

@@ -98,6 +98,6 @@ async function apply(store, item) {
       result = `Target changed to ${payload.proposed_target}. Tell the customer.`;
     } else result = 'Target kept.';
   }
-  await rescoreShipments(store);
+  await rescoreShipments(store, { cause: `decision.${item.Kind}_resolved` });
   return result;
 }

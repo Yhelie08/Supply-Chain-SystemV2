@@ -4,7 +4,8 @@
 #   Boxes out per day         boxes of the packages dispatched that day (a package counts once per day).
 #   Capacity used             boxes released today / the day's capacity (people x boxes per hour x hours).
 #   Boxes per person per hour my reading: boxes picked / (people who picked that day x the day's hours per day), over the last 7 days.
-#   Rework rate               packages with at least one exception / packages through QC (a QC passed or rejected event), per week, split by rework type.
+#   Rework rate               packages with at least one exception / packages through QC (a QC passed or rejected event), per week, split by rework type
+#                             (Rework field) and fault origin (Fault_Origin field, both optional, "Select"/blank = "Not chosen yet").
 #   Time in stage             median hours Ready->Released, Released->Picked, Picked->QC passed, QC passed->Aggregated, Aggregated->Dispatched.
 #   Received -> Pick gap      median days Ready->Released ("available" to "released").
 #   On-time dispatch          packages dispatched on or before their target delivery date (packages with no target are counted apart).
@@ -177,12 +178,12 @@ async def test_a_pick_row_with_no_picker_name_does_not_count_as_a_person(raw_sto
 # ---------------- Rework rate ----------------
 @pytest.mark.asyncio
 async def test_rework_rate_is_packages_with_an_exception_over_packages_through_qc_per_week_split_by_type(raw_store):
-    # this week (starts Mon 2026-11-16): 4 packages through QC; two of them have an exception (Paint, blank type)
+    # this week (starts Mon 2026-11-16): 4 packages through QC; two of them have an exception (Paint/transit, blank/blank)
     for i, so in enumerate(["SO-1", "SO-2", "SO-3", "SO-4"]):
         pid = await _pkg(raw_store, so)
         await _ev(raw_store, pid, "package.qc_passed" if i % 2 else "package.qc_rejected", _t("2026-11-18", "10:00"))
-    await raw_store.add_record(EXC, {"Sales_Order": "SO-1", "PAC": "PAC-SO-1", "Rework_Type": "Paint"})
-    await raw_store.add_record(EXC, {"Sales_Order": "SO-1", "PAC": "PAC-SO-1", "Rework_Type": "Repair"})   # a second exception on the same package: counted once
+    await raw_store.add_record(EXC, {"Sales_Order": "SO-1", "PAC": "PAC-SO-1", "Rework": "Paint", "Fault_Origin": "transit"})
+    await raw_store.add_record(EXC, {"Sales_Order": "SO-1", "PAC": "PAC-SO-1", "Rework": "Repair", "Fault_Origin": "transit"})   # a second exception on the same package: counted once
     await raw_store.add_record(EXC, {"Sales_Order": "SO-3", "PAC": "PAC-SO-3"})
     # last week (starts Mon 2026-11-09): 1 package through QC, no exception
     old = await _pkg(raw_store, "SO-5")
@@ -193,7 +194,26 @@ async def test_rework_rate_is_packages_with_an_exception_over_packages_through_q
     assert by_week["2026-11-16"] == {"weekStart": "2026-11-16", "throughQc": 4, "withRework": 2, "ratePct": 50.0}
     assert by_week["2026-11-09"] == {"weekStart": "2026-11-09", "throughQc": 1, "withRework": 0, "ratePct": 0.0}
     assert res["weeks"][-1]["weekStart"] == "2026-11-16"            # the newest week is the one that contains today
-    assert res["byType"] == {"Paint": 1, "Repair": 1, "Not chosen yet": 1}   # types of the exceptions of the packages with rework, over the 4 weeks
+    assert res["byType"] == {"Paint": 1, "Repair": 1, "Not chosen yet": 1}   # Rework field (what the widget edits), of the packages with rework, over the 4 weeks
+    assert res["byOrigin"] == {"transit": 2, "Not chosen yet": 1}             # Fault_Origin field, same packages
+
+
+@pytest.mark.asyncio
+async def test_rework_type_field_nothing_writes_is_not_used_and_select_counts_as_not_chosen_yet(raw_store):
+    # Rework_Type is a dead field (only Node's sample seed ever wrote it); the Exception Control widget edits `Rework`, whose
+    # unset value is the string "Select", not blank. Both must land in the same "Not chosen yet" bucket as a truly blank field.
+    pid = await _pkg(raw_store, "SO-1")
+    await _ev(raw_store, pid, "package.qc_rejected", _t("2026-11-18", "10:00"))
+    await raw_store.add_record(EXC, {"Sales_Order": "SO-1", "PAC": "PAC-SO-1", "Rework": "Select", "Fault_Origin": "unknown", "Rework_Type": "Paint"})
+    res = (await _run(raw_store))["reworkRate"]
+    assert res["byType"] == {"Not chosen yet": 1}
+    assert res["byOrigin"] == {"unknown": 1}
+
+
+async def test_the_fault_origin_column_exists(raw_store):
+    id_ = await raw_store.add_record(EXC, {"Sales_Order": "SO-1", "PAC": "PAC-SO-1", "Fault_Origin": "supplier"})
+    r = await raw_store.get_record_by_id(EXC, id_, raw=True)
+    assert r["Fault_Origin"] == "supplier"
 
 
 # ---------------- On-time dispatch ----------------

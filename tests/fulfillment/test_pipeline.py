@@ -194,6 +194,7 @@ async def test_mark_picked_creates_one_pending_qc_record_package_in_pack_qc(hook
         "SO-1", "PAC-1", "PR-0042", "RR-0007", "L-1", "Lamp", "2", "A-01", "2026-12-05", "Sample Customer", "1 Main St",
     )
     assert (qc[0]["QC_Status"], qc[0]["Quality_Checker"]) == ("", "")
+    assert str(qc[0]["Visit_No"]) == "1"  # QC-R5: the very first QC of this item/package
     assert (await _sof(raw_store, id_))["Fulfillment_Stage"] == "Pack & QC"
     assert len(await raw_store.get_records("All_Qc_Reports1")) == 1
 

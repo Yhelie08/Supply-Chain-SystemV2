@@ -322,6 +322,7 @@
               <select id="wr_RequestStatus" class="field-input mt-1">
                 <option value="Pending">Pending</option>
                 <option value="Done">Done</option>
+                <option value="Cannot do">Cannot do</option>
               </select>
             </label>
           </div>
@@ -433,8 +434,30 @@
               <span id="detailDispatchStatus"></span>
             </div>
             <div id="detailMarkDispatched"></div>
-            <div id="detailMarkReceived"></div>
           </div>
+        </div>
+        <!-- TR-R2 (03 Fulfillment / 05 Warehouse Request and Transfer): "Received stamps when the receiver confirms
+             quantities and signs. Differences create an exception." Shown once the transfer is Dispatched and not
+             yet Received; the server refuses Mark as Received without these (app/fulfillment/transfer.py). -->
+        <div id="tfReceiveEvidence" class="bg-white rounded-2xl border border-slate-200 shadow-card px-5 py-4 mt-4 hidden">
+          <h3 class="text-xs font-bold tracking-wide text-slate-700 uppercase mb-3">📥 Confirm Receipt</h3>
+          <label class="flex items-center gap-2 text-sm text-slate-700 mb-3">
+            <input type="checkbox" id="tfQuantitiesMatch" checked> Quantities match what was sent
+          </label>
+          <div id="tfDiscrepancyWrap" class="mb-3 hidden">
+            <label class="text-xs text-slate-500">Discrepancy notes
+              <textarea id="tfDiscrepancyNotes" rows="2" class="field-input mt-1 resize-none" placeholder="What's different (item, quantity)?"></textarea>
+            </label>
+          </div>
+          <p class="text-xs text-slate-500 mb-1">Receiver signature</p>
+          <div class="border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+            <canvas id="tfSignatureCanvas" class="w-full touch-none cursor-crosshair block" height="120"></canvas>
+          </div>
+          <div class="flex items-center justify-between mt-2 mb-4">
+            <p class="text-[11px] text-slate-400">Draw the receiver's signature.</p>
+            <button id="tfClearSignatureBtn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition">Clear</button>
+          </div>
+          <div id="detailMarkReceived"></div>
         </div>
       </div>
     </div>
@@ -582,6 +605,7 @@
     blue:    { border: "border-blue-400",    text: "text-blue-600",    badgeBg: "bg-blue-50",    badgeText: "text-blue-700",    badgeBorder: "border-blue-200",    dot: "bg-blue-500" },
     violet:  { border: "border-violet-400",  text: "text-violet-600",  badgeBg: "bg-violet-50",  badgeText: "text-violet-700",  badgeBorder: "border-violet-200",  dot: "bg-violet-500" },
     slate:   { border: "border-slate-300",   text: "text-slate-500",   badgeBg: "bg-slate-50",   badgeText: "text-slate-500",   badgeBorder: "border-slate-200",   dot: "bg-slate-400" },
+    rose:    { border: "border-rose-400",    text: "text-rose-600",    badgeBg: "bg-rose-50",    badgeText: "text-rose-700",    badgeBorder: "border-rose-200",    dot: "bg-rose-500" },
   };
 
   function displayVal(v) {
@@ -639,6 +663,14 @@
     return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${p.badgeBg} ${p.badgeText} ${p.badgeBorder}">
       <span class="h-1.5 w-1.5 rounded-full ${p.dot}"></span>${escapeHtml(text)}
     </span>`;
+  }
+  // Same helper the other Fulfillment widgets use (Crate, Pick, To Ship, Order Readiness, Pack & QC): the server's
+  // refusal reason (ZohoError -> code 3100 -> this message) lands in err.message via the shim's rejection.
+  function refusalReason(err) {
+    if (err && err.serverMessage) return String(err.serverMessage);
+    if (err && err.code && err.message) return String(err.message);
+    try { const j = JSON.parse(err && err.responseText); if (j && j.message) return String(j.message); } catch (e) { /* not a server answer */ }
+    return "";
   }
   function toast(message, type) {
     const container = $("toastContainer");
@@ -1150,9 +1182,11 @@
       }));
     }
 
+    // WR-R1 (03 Fulfillment / 05 Warehouse Request and Transfer): "Requests are ranked oldest first, separate from
+    // package work." Changed 2026-11-21 from newest-first.
     function computeOrderedRows(records) {
       return records.slice().sort((a, b) =>
-        (parseZohoDateTime(b.Date_Requested) || new Date(0)) - (parseZohoDateTime(a.Date_Requested) || new Date(0)));
+        (parseZohoDateTime(a.Date_Requested) || new Date(0)) - (parseZohoDateTime(b.Date_Requested) || new Date(0)));
     }
     const globalSearchEl = $("wrGlobalSearch");
     function searchQuery() { return globalSearchEl.value.trim().toLowerCase(); }
@@ -1210,10 +1244,38 @@
           </div>
         </div>`;
     }
+    // Status model (03 Fulfillment / 05 Warehouse Request and Transfer): "Requested -> Assigned -> Done / Cannot do".
+    // "Assigned" is derived (a Picker is set, not yet Done/Cannot do), not a stored value -- no schema change needed.
+    // Both Done and Cannot do are terminal (closed), grouped in the same board column.
+    function isTerminalRequestStatus(status) { return status === "Done" || status === "Cannot do"; }
+
+    // "suggest the least loaded picker" (03 Fulfillment / 05 Warehouse Request and Transfer): same click-to-fill
+    // pattern as PK-R1 in the Order Readiness widget. Load = count of this picker's own currently-open (not
+    // Done/Cannot do) requests -- Warehouse Request has no box-count-like batch unit to weigh by instead.
+    function suggestedPickerFor(excludeId) {
+      const load = {};
+      CONFIG.PICKER_OPTIONS.forEach((p) => { load[p] = 0; });
+      allRecords.forEach((r) => {
+        if (excludeId != null && String(r.ID) === String(excludeId)) return;
+        if (isTerminalRequestStatus(textVal(r.Request_Status))) return;
+        const p = textVal(r.Picker);
+        if (!(p in load)) return;
+        load[p] += 1;
+      });
+      return CONFIG.PICKER_OPTIONS.reduce((a, b) => (load[a] || 0) <= (load[b] || 0) ? a : b);
+    }
+    function pickerHintMarkup(name) {
+      return `<div class="text-[10px] text-slate-400 mt-1">Suggested (least loaded): <button type="button" id="wr_Picker_suggested_btn" data-name="${escapeHtml(name)}" class="font-semibold text-slate-600 hover:text-slate-900 underline decoration-dotted">${escapeHtml(name)}</button></div>`;
+    }
+    function wireSuggestedPickerBtn() {
+      const btn = $("wr_Picker_suggested_btn");
+      if (!btn) return;
+      btn.addEventListener("click", () => { $("wr_Picker").value = btn.dataset.name; });
+    }
     function renderBoard() {
       const rows = orderedRows.filter(matchesSearch);
-      const done = rows.filter((r) => textVal(r.Request_Status) === "Done");
-      const pending = rows.filter((r) => textVal(r.Request_Status) !== "Done");
+      const done = rows.filter((r) => isTerminalRequestStatus(textVal(r.Request_Status)));
+      const pending = rows.filter((r) => !isTerminalRequestStatus(textVal(r.Request_Status)));
       setColumn("pending", pending, requestCardHtml, "No pending requests");
       setColumn("done", done, requestCardHtml, "Nothing marked Done yet");
     }
@@ -1275,7 +1337,8 @@
       renderImageThumbs("wrDetailActualPhotoThumbs", r.Actual_Photo_Upload);
       renderVideoList("wrDetailActualVideoExisting", r.Actual_Video_Upload);
 
-      $("wrDetailStatusBadge").innerHTML = textVal(r.Request_Status) === "Done" ? badgePill("Done", "emerald") : badgePill("Pending", "amber");
+      $("wrDetailStatusBadge").innerHTML = textVal(r.Request_Status) === "Done" ? badgePill("Done", "emerald")
+        : textVal(r.Request_Status) === "Cannot do" ? badgePill("Cannot do", "rose") : badgePill("Pending", "amber");
 
       showView("wrDetailView");
     }
@@ -1482,8 +1545,9 @@
       $("wr_RequestBy_wrap").innerHTML = otherSelectMarkup("wr_RequestBy", CONFIG.REQUEST_BY_OPTIONS, "", "Requester name");
       wireOtherSelect("wr_RequestBy");
       $("wr_Request").value = "";
-      $("wr_Picker_wrap").innerHTML = otherSelectMarkup("wr_Picker", CONFIG.PICKER_OPTIONS, "", "Picker name");
+      $("wr_Picker_wrap").innerHTML = otherSelectMarkup("wr_Picker", CONFIG.PICKER_OPTIONS, "", "Picker name") + pickerHintMarkup(suggestedPickerFor(null));
       wireOtherSelect("wr_Picker");
+      wireSuggestedPickerBtn();
       $("wr_RequestStatus").value = "Pending";
       $("wr_Remarks").value = "";
       stagedUploadImage = []; stagedActualPhoto = []; stagedActualVideo = [];
@@ -1527,9 +1591,12 @@
         $("wr_RequestBy_wrap").innerHTML = otherSelectMarkup("wr_RequestBy", CONFIG.REQUEST_BY_OPTIONS, textVal(existingRecord.Request_By), "Requester name");
         wireOtherSelect("wr_RequestBy");
         $("wr_Request").value = textVal(existingRecord.Request);
-        $("wr_Picker_wrap").innerHTML = otherSelectMarkup("wr_Picker", CONFIG.PICKER_OPTIONS, textVal(existingRecord.Picker), "Picker name");
+        const existingPicker = textVal(existingRecord.Picker);
+        $("wr_Picker_wrap").innerHTML = otherSelectMarkup("wr_Picker", CONFIG.PICKER_OPTIONS, existingPicker, "Picker name")
+          + (existingPicker === "" ? pickerHintMarkup(suggestedPickerFor(existingRecord.ID)) : "");
         wireOtherSelect("wr_Picker");
-        $("wr_RequestStatus").value = textVal(existingRecord.Request_Status) === "Done" ? "Done" : "Pending";
+        wireSuggestedPickerBtn();
+        $("wr_RequestStatus").value = ["Done", "Cannot do"].includes(textVal(existingRecord.Request_Status)) ? textVal(existingRecord.Request_Status) : "Pending";
         $("wr_Remarks").value = textVal(existingRecord.Remarks);
 
         const rows = toItemRows(existingRecord.Item);
@@ -1840,9 +1907,21 @@
       document.getElementById("detailDispatchStatus").innerHTML = dispatchStatusHtml(r);
       document.getElementById("detailMarkDispatched").innerHTML = markDispatchedControlHtml(r);
       document.getElementById("detailMarkReceived").innerHTML = markReceivedControlHtml(r);
+      // TR-R2: the evidence panel (quantities match / notes / signature) only makes sense before Received is set.
+      const showEvidence = isTrue(r.Dispatch) && !isTrue(r.Received);
+      document.getElementById("tfReceiveEvidence").classList.toggle("hidden", !showEvidence);
+      if (showEvidence) {
+        document.getElementById("tfQuantitiesMatch").checked = true;
+        document.getElementById("tfDiscrepancyWrap").classList.add("hidden");
+        document.getElementById("tfDiscrepancyNotes").value = "";
+        clearTfSignatureCanvas();
+      }
       wireMarkDispatchedBtn(r);
       wireMarkReceivedBtn(r);
     }
+    document.getElementById("tfQuantitiesMatch").addEventListener("change", (ev) => {
+      document.getElementById("tfDiscrepancyWrap").classList.toggle("hidden", ev.target.checked);
+    });
 
     function wireMarkDispatchedBtn(r) {
       const btn = document.getElementById("markDispatchedBtn");
@@ -1877,19 +1956,86 @@
       });
     }
 
+    // TR-R2 signature pad -- same canvas-to-PNG-file approach the Pack & QC widget's own signature field uses
+    // (ZOHO.CREATOR.FILE.uploadFile, a separate call: Data API payloads can't carry file bytes).
+    const tfSignatureCanvas = document.getElementById("tfSignatureCanvas");
+    const tfSignatureCtx = tfSignatureCanvas.getContext("2d");
+    let tfSignatureDrawing = false, tfSignatureLastPoint = null, tfSignatureDirty = false;
+    function sizeTfSignatureCanvas() {
+      const rect = tfSignatureCanvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      tfSignatureCanvas.width = rect.width * ratio;
+      tfSignatureCanvas.height = 120 * ratio;
+      tfSignatureCtx.scale(ratio, ratio);
+      tfSignatureCtx.lineWidth = 2;
+      tfSignatureCtx.lineCap = "round";
+      tfSignatureCtx.strokeStyle = "#1e293b";
+    }
+    function tfSignaturePoint(ev) {
+      const rect = tfSignatureCanvas.getBoundingClientRect();
+      const touch = ev.touches && ev.touches[0];
+      return { x: (touch ? touch.clientX : ev.clientX) - rect.left, y: (touch ? touch.clientY : ev.clientY) - rect.top };
+    }
+    function tfSignatureStart(ev) { ev.preventDefault(); tfSignatureDrawing = true; tfSignatureLastPoint = tfSignaturePoint(ev); }
+    function tfSignatureMove(ev) {
+      if (!tfSignatureDrawing) return;
+      ev.preventDefault();
+      const p = tfSignaturePoint(ev);
+      tfSignatureCtx.beginPath();
+      tfSignatureCtx.moveTo(tfSignatureLastPoint.x, tfSignatureLastPoint.y);
+      tfSignatureCtx.lineTo(p.x, p.y);
+      tfSignatureCtx.stroke();
+      tfSignatureLastPoint = p;
+      tfSignatureDirty = true;
+    }
+    function tfSignatureEnd() { tfSignatureDrawing = false; tfSignatureLastPoint = null; }
+    tfSignatureCanvas.addEventListener("mousedown", tfSignatureStart);
+    tfSignatureCanvas.addEventListener("mousemove", tfSignatureMove);
+    window.addEventListener("mouseup", tfSignatureEnd);
+    tfSignatureCanvas.addEventListener("touchstart", tfSignatureStart, { passive: false });
+    tfSignatureCanvas.addEventListener("touchmove", tfSignatureMove, { passive: false });
+    tfSignatureCanvas.addEventListener("touchend", tfSignatureEnd);
+    function clearTfSignatureCanvas() {
+      sizeTfSignatureCanvas();
+      tfSignatureCtx.clearRect(0, 0, tfSignatureCanvas.width, tfSignatureCanvas.height);
+      tfSignatureDirty = false;
+    }
+    document.getElementById("tfClearSignatureBtn").addEventListener("click", clearTfSignatureCanvas);
+    function isTfSignatureCanvasBlank() {
+      const blank = document.createElement("canvas");
+      blank.width = tfSignatureCanvas.width;
+      blank.height = tfSignatureCanvas.height;
+      return tfSignatureCanvas.toDataURL() === blank.toDataURL();
+    }
+    function tfSignatureCanvasToFile() {
+      return new Promise((resolve) => {
+        tfSignatureCanvas.toBlob((blob) => resolve(blob ? new File([blob], "signature.png", { type: "image/png" }) : null), "image/png");
+      });
+    }
+
     function wireMarkReceivedBtn(r) {
       const btn = document.getElementById("markReceivedBtn");
       if (!btn) return;
       btn.addEventListener("click", () => {
-        askConfirm("Mark as received?", "This marks the transfer as received and can't be easily undone from here.", "Yes, Received").then((confirmed) => {
+        if (isTfSignatureCanvasBlank()) { toast("Draw the receiver's signature first.", "error"); return; }
+        const quantitiesMatch = document.getElementById("tfQuantitiesMatch").checked;
+        const discrepancyNotes = document.getElementById("tfDiscrepancyNotes").value.trim();
+        if (!quantitiesMatch && !discrepancyNotes) { toast("Add discrepancy notes (Quantities Match is unchecked).", "error"); return; }
+        askConfirm("Mark as received?", "This marks the transfer as received and can't be easily undone from here.", "Yes, Received").then(async (confirmed) => {
           if (!confirmed) return;
           btn.disabled = true;
           btn.textContent = "…";
-          ZOHO.CREATOR.DATA.updateRecords({
-            app_name: CONFIG.APP_NAME,
-            report_name: CONFIG.REPORT_NAME,
-            payload: { criteria: `(ID == ${r.ID})`, data: { Received: true } },
-          }).then((response) => {
+          try {
+            const file = await tfSignatureCanvasToFile();
+            const uploadResp = await ZOHO.CREATOR.FILE.uploadFile({
+              app_name: CONFIG.APP_NAME, report_name: CONFIG.REPORT_NAME, id: String(r.ID), field_name: "Receiver_Signature", file,
+            });
+            if (!uploadResp || uploadResp.code !== 3000) throw new Error("signature-upload-failed");
+            const response = await ZOHO.CREATOR.DATA.updateRecords({
+              app_name: CONFIG.APP_NAME,
+              report_name: CONFIG.REPORT_NAME,
+              payload: { criteria: `(ID == ${r.ID})`, data: { Received: true, Quantities_Match: quantitiesMatch, Discrepancy_Notes: discrepancyNotes } },
+            });
             if (response && response.code === 3000) {
               r.Received = true;
               toast("Marked as received.", "success");
@@ -1898,14 +2044,14 @@
             } else {
               btn.disabled = false;
               btn.textContent = "📥 Mark as Received";
-              toast("Couldn't update received status.", "error");
+              toast(refusalReason(response) || "Couldn't update received status.", "error");
             }
-          }).catch((err) => {
+          } catch (err) {
             console.error(err);
             btn.disabled = false;
             btn.textContent = "📥 Mark as Received";
-            toast("Couldn't update received status.", "error");
-          });
+            toast(refusalReason(err) || "Couldn't update received status.", "error");
+          }
         });
       });
     }
@@ -1942,9 +2088,13 @@
           <td class="py-2 text-slate-500">${escapeHtml(it.pac || "—")}</td>
         </tr>`).join("") : `<tr><td colspan="5" class="py-6 text-center text-sm text-slate-400">No items on this transfer</td></tr>`;
 
-      refreshTransferStatusControls(r);
-
+      // BUG FIX 2026-11-21: showView must run BEFORE refreshTransferStatusControls, not after -- the signature
+      // canvas's own sizing (sizeTfSignatureCanvas, called from clearTfSignatureCanvas) reads
+      // getBoundingClientRect(), which is 0x0 while detailView's ancestor is still "hidden". A 0x0 canvas makes
+      // isTfSignatureCanvasBlank() always true (every 0x0 PNG data-URL is identical), so a real signature could
+      // never be detected as drawn.
       showView("detailView");
+      refreshTransferStatusControls(r);
     }
     document.getElementById("detailBackBtn").addEventListener("click", showBoard);
     document.getElementById("detailEditBtn").addEventListener("click", () => {

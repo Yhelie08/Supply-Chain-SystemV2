@@ -79,6 +79,19 @@ async def test_a_row_that_already_has_a_picker_keeps_it_the_default_only_fills_t
 
 
 @pytest.mark.asyncio
+async def test_per_row_pickers_map_overrides_the_shared_default_picker(hooked_store, raw_store):
+    await _package(hooked_store, raw_store)
+    lamp, shade = await _gates(raw_store)
+    res = await _release(raw_store, {
+        "mode": "selected", "ids": [lamp["ID"], shade["ID"]], "picker": "Hendel",
+        "pickers": {str(lamp["ID"]): "Jazz"},
+    })
+    assert (res["released"], res["skipped"]) == (2, 0)
+    pickers = {g["SKU"]: g["Assign_Picker"] for g in await _gates(raw_store)}
+    assert pickers == {"L-1": "Jazz", "S-1": "Hendel"}   # lamp's own per-row pick wins; shade falls back to the shared default
+
+
+@pytest.mark.asyncio
 async def test_a_package_where_one_item_has_no_picker_and_no_default_is_left_alone_as_a_whole(hooked_store, raw_store):
     await _package(hooked_store, raw_store)
     lamp, shade = await _gates(raw_store)

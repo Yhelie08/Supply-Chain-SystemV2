@@ -10,6 +10,7 @@ import { create_rr_main, create_rr_tony, create_rr_fenteng } from './replacement
 import { preview_procurement_setting, recalculate_shipments, get_procurement_settings } from './settings-hooks.mjs';
 import { get_born_late_rate, get_po_tracking } from './po-spec.mjs';
 import { get_rr_report } from './rr-spec.mjs';
+import { get_forecast_error_report } from './ship-track.mjs';
 import { get_procurement_dashboard } from './dashboard.mjs';
 
 // Custom API name -> the Deluge function it runs (zoho-export/parsed/functions/).
@@ -40,6 +41,7 @@ export const functions = {
   get_po_tracking: 'SpecV14_GetPoTracking',
   get_rr_report: 'SpecV14_GetRrReport',
   get_procurement_dashboard: 'SpecV14_GetProcurementDashboard',
+  get_forecast_error_report: 'SpecV14_GetForecastErrorReport',
 };
 
 export const apis = withPlaceholders(functions, {
@@ -47,4 +49,5 @@ export const apis = withPlaceholders(functions, {
   create_receiving_from_shipment, clone_shipment_for_replacement,
   approve_po_main, approve_po_tony, approve_po_fenteng, Approve_P_O_H_C, create_rr_main, create_rr_tony, create_rr_fenteng,
   preview_procurement_setting, recalculate_shipments, get_procurement_settings, get_born_late_rate, get_po_tracking, get_rr_report, get_procurement_dashboard,
+  get_forecast_error_report,
 });

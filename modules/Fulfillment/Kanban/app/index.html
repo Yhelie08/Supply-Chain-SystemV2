@@ -102,7 +102,7 @@
       <div>
         <h1 class="text-xl font-bold text-slate-900 leading-tight">Fulfillment Board</h1>
         <p class="text-xs text-slate-500 mt-0.5">
-          Pick → Pack → QC → Crating ·
+          Ready → Pick → QC → Rework → Crate → Aggregated → Dispatched ·
           <span class="inline-flex items-center gap-1 text-emerald-600 font-medium">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live
           </span>
@@ -573,6 +573,7 @@
       pick: "Pick1_Report",
       qc: "All_Qc_Reports1",
       crate: "All_Crates",
+      exceptions: "Exception_Control_Report",
     },
     // PICKER_OPTIONS removed 2026-08-18 — Assign_Picker is now chosen on the
     // Sales_Order_Readiness_Gate form itself (Picker stage removed from the
@@ -594,18 +595,23 @@
   };
 
   // Column definitions — order here is the render order on the board.
-  // Rework / Done removed for now (temporary — the underlying QC-rejected/
-  // Crate-done data is still fetched and computed as before, setColumn()
-  // just no-ops for a key with no matching column shell, so re-adding either
-  // of these later is just adding the entry back here). The old "Not
-  // Started" (Picker) column is NOT in this temporary-removal category —
-  // that stage was permanently removed from the real pipeline 2026-07-28,
-  // its report is no longer fetched at all, and its code was deleted below.
+  // 2026-11-21: rebuilt to match the spec's column list (03 Fulfillment / 06 Kanban, Scoreboard and SO Report):
+  // "Ready -> Released -> Pick -> QC -> Rework -> Crate -> Aggregated -> Dispatched". "Pack" is dropped for good
+  // (that stage doesn't exist in the real pipeline since 2026-07-28 -- STAGE_ORDER in app/fulfillment/pipeline.py
+  // has no Pack; this column never loaded live data, see the dead Pack-stage code further down, left in place but
+  // unused). "Released" is NOT added as its own column: nothing in this codebase distinguishes "released, not yet
+  // picked" from "being picked" -- Picking is one stage start to finish (the top-level review doc already flags
+  // this as a known gap in the stage model itself, not something to invent a boundary for here). Ready / Rework /
+  // Aggregated / Dispatched are new, all read-only per the spec's own default ("moving work happens in the stage
+  // screens") -- no detail/edit view, unlike the legacy Pick/QC/Crate columns which predate that rule.
   const COLUMNS = [
-    { key: "pick",       label: "Pick",        color: "blue" },
-    { key: "pack",       label: "Pack",        color: "indigo" },
-    { key: "qc",         label: "QC",          color: "amber" },
-    { key: "crating",    label: "Crating",     color: "violet" },
+    { key: "ready",       label: "Ready",       color: "slate" },
+    { key: "pick",        label: "Pick",        color: "blue" },
+    { key: "qc",          label: "QC",          color: "amber" },
+    { key: "rework",      label: "Rework",      color: "rose" },
+    { key: "crating",     label: "Crate",       color: "violet" },
+    { key: "aggregated",  label: "Aggregated",  color: "indigo" },
+    { key: "dispatched",  label: "Dispatched",  color: "emerald" },
   ];
 
   // ---------------------------------------------------------------------
@@ -639,6 +645,61 @@
     const d = new Date(str);
     return isNaN(d) ? null : d;
   }
+
+  // FS-1 / FS-2 (03 Fulfillment / 03 Pick, QC, Rework and Crate): "Every list uses the same ranking as Order
+  // Readiness ... Never newest first." / Kanban spec (03 Fulfillment / 06 Kanban, Scoreboard and SO Report):
+  // "Cards inside each column are in rank order (same engine)." "Column header shows count, boxes and the oldest
+  // card's age." Same sofQueueMap/sofQueueFor join every other Fulfillment widget's rank code uses, by SO + Package.
+  const SOF_REPORT = "Sales_Order_Fulfillment_Report";
+  const RANK_CATEGORY_ORDER = { broken: 0, late: 1, at_risk: 2, on_time: 3, blocked: 4 };
+  let sofQueueMap = new Map();
+  function sofQueueKey(soNo, pkg) { return `${soNo || ""}::${pkg || ""}`; }
+  function fetchSofQueue() {
+    const config = { app_name: CONFIG.APP_NAME, report_name: SOF_REPORT, field_config: "all", max_records: CONFIG.MAX_RECORDS };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+  function sofQueueFor(so, pkg) { return sofQueueMap.get(sofQueueKey(so, pkg)) || {}; }
+  function rankSortValue(so, pkg) {
+    const q = sofQueueFor(so, pkg);
+    const cat = RANK_CATEGORY_ORDER[String(q.Category || "")];
+    const rank = Number(q.Queue_Rank);
+    return { cat: cat === undefined ? 99 : cat, rank: Number.isFinite(rank) ? rank : Infinity };
+  }
+  function rankCompare(aSo, aPkg, bSo, bPkg, aAdded, bAdded) {
+    const av = rankSortValue(aSo, aPkg), bv = rankSortValue(bSo, bPkg);
+    if (av.cat !== bv.cat) return av.cat - bv.cat;
+    if (av.rank !== bv.rank) return av.rank - bv.rank;
+    return (parseZohoDateTime(bAdded) || new Date(0)) - (parseZohoDateTime(aAdded) || new Date(0));   // fallback: not yet scored
+  }
+  // "boxes and the oldest card's age" for a column's header: boxes = sum of the rows' own Quantity-ish field;
+  // oldest age = the largest Aging_Days among rows whose package is scored (the sorter's own stage-dwell count).
+  function columnHeaderExtra(rows, { so, pkg, qty }) {
+    let boxes = 0, oldestDays = null;
+    for (const r of rows) {
+      boxes += Number(qty(r)) || 0;
+      const days = Number(sofQueueFor(so(r), pkg(r)).Aging_Days);
+      if (Number.isFinite(days) && (oldestDays === null || days > oldestDays)) oldestDays = days;
+    }
+    return { boxes, oldestDays };
+  }
+  // Kanban cards (03 Fulfillment / 06 Kanban, Scoreboard and SO Report): "category colour (Broken purple, Late
+  // red, About to be late amber, On time grey, Blocked black outline), urgent marker." Same sofQueueMap join as
+  // columnHeaderExtra above -- category/urgent already live on Sales_Order_Fulfillment_Report, no new fetch.
+  const CATEGORY_LABEL = { broken: "Broken", late: "Late", at_risk: "About to be late", on_time: "On time", blocked: "Blocked" };
+  const CATEGORY_BADGE_COLOR = { broken: "violet", late: "rose", at_risk: "amber", on_time: "slate" };
+  function categoryMarkersHtml(so, pkg) {
+    const q = sofQueueFor(so, pkg);
+    const cat = String(q.Category || "");
+    const label = CATEGORY_LABEL[cat];
+    if (!label) return "";
+    const badge = cat === "blocked"
+      ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border-2 border-slate-900 text-slate-900">Blocked</span>`
+      : badgePill(label, CATEGORY_BADGE_COLOR[cat] || "slate");
+    const urgent = isTrue(q.Urgent)
+      ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-600 text-white" title="Urgent">⚡ Urgent</span>` : "";
+    return `<div class="flex items-center gap-1 flex-wrap mb-1.5">${badge}${urgent}</div>`;
+  }
+
   function formatDate(str) {
     const d = parseZohoDateTime(str);
     if (!d) return "—";
@@ -740,14 +801,18 @@
             <span class="text-xs font-bold tracking-wide ${p.text} uppercase">${escapeHtml(c.label)}</span>
             <span id="count-${c.key}" class="text-xs font-semibold ${p.text} ${p.badgeBg} rounded-full px-2 py-0.5 min-w-[1.5rem] text-center">0</span>
           </div>
+          <!-- Kanban spec (03 Fulfillment / 06 Kanban, Scoreboard and SO Report): "Column header shows count,
+               boxes and the oldest card's age." Count is above; boxes/age go here, set by setColumn()'s extra arg. -->
+          <div id="extra-${c.key}" class="px-4 pb-2 text-[10px] text-slate-400"></div>
           <div id="col-${c.key}" class="kb-col-body p-3 space-y-2.5"></div>
         </section>`;
     }).join("");
   }
 
-  function setColumn(key, rows, cardFn, emptyLabel) {
+  function setColumn(key, rows, cardFn, emptyLabel, extra) {
     const body = document.getElementById(`col-${key}`);
     const count = document.getElementById(`count-${key}`);
+    const extraEl = document.getElementById(`extra-${key}`);
     // No-ops for a column that's currently removed from COLUMNS (no shell
     // rendered for it) — lets every stage's render function keep calling
     // setColumn() unconditionally without needing to know which columns are
@@ -755,6 +820,7 @@
     if (!body) return;
     body.innerHTML = rows.length ? rows.map(cardFn).join("") : `<div class="py-8 text-center text-xs text-slate-300">${escapeHtml(emptyLabel)}</div>`;
     if (count) count.textContent = rows.length;
+    if (extraEl) extraEl.textContent = extra ? `${extra.boxes} box${extra.boxes === 1 ? "" : "es"}${extra.oldestDays !== null ? " · oldest " + extra.oldestDays + "d" : ""}` : "";
   }
 
   // =======================================================================
@@ -769,7 +835,7 @@
   function loadPickRecords(records) {
     pickRecords = records;
     pickRows = records.filter((r) => !isEmptyPickRow(r)).slice().sort((a, b) =>
-      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+      rankCompare(a.SO, a.Package_Order, b.SO, b.Package_Order, a.Added_Time, b.Added_Time));
   }
 
   // Once "Mark Picked" is confirmed, the row leaves this column — job here
@@ -916,6 +982,7 @@
           <span class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(r.SO))}</span>
           ${badgePill(displayVal(r.Bin_Location), "blue")}
         </div>
+        ${categoryMarkersHtml(r.SO, r.Package_Order)}
         <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(displayVal(r.Item_Name))}</p>
         <p class="kb-mono text-[11px] text-slate-500 mb-2">${escapeHtml(displayVal(r.SKU))} · Qty ${escapeHtml(displayVal(r.Quantity_to_Pick))}</p>
         <div class="flex flex-wrap gap-1 mb-2">${badgePill(displayVal(r.Package_Order), "slate")}</div>
@@ -928,7 +995,7 @@
 
   function renderPickColumn() {
     const rows = pickActiveRows();
-    setColumn("pick", rows, pickCardHtml, "No items");
+    setColumn("pick", rows, pickCardHtml, "No items", columnHeaderExtra(rows, { so: (r) => r.SO, pkg: (r) => r.Package_Order, qty: (r) => r.Quantity_to_Pick }));
     document.querySelectorAll("#col-pick .kb-card").forEach((card) => {
       card.addEventListener("click", () => openPickDetail(card.dataset.id));
     });
@@ -1213,17 +1280,18 @@
   function loadQcRecords(records) {
     qcRecords = records;
     qcRows = records.filter((r) => !isEmptyQcRow(r)).slice().sort((a, b) =>
-      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+      rankCompare(a.SO, a.PAC, b.SO, b.PAC, a.Added_Time, b.Added_Time));
   }
 
   function qcPendingRows() {
     return qcRows.filter((r) => r.QC_Status !== "Approved" && r.QC_Status !== "Rejected")
       .filter((r) => matchesSearch([r.SO, r.PAC, r.Quality_Checker, r.Item_Name, r.SKU]));
   }
-  function qcReworkRows() {
-    return qcRows.filter((r) => r.QC_Status === "Rejected")
-      .filter((r) => matchesSearch([r.SO, r.PAC, r.Quality_Checker, r.Item_Name, r.SKU]));
-  }
+  // qcReworkRows() (QC_Status === "Rejected") removed 2026-11-21 -- a QC record's own status never changes back
+  // once rejected (the recheck is a NEW QC record, app/fulfillment/exception_recheck.py), so filtering on it would
+  // show every rejection ever, forever, not just currently-open rework. The real "Rework" column below reads open
+  // exceptions instead (Exception_Control1, Status Pending/In Rework) -- the same "rework job = an open exception"
+  // decision already made for the Scoreboard and Exception Control widget this session.
 
   function qcStatusHtml(r) {
     return !isBlank(r.QC_Status) ? badgePill(r.QC_Status, QC_STATUS_COLOR[r.QC_Status] || "slate") : badgePill("Pending", "amber");
@@ -1242,6 +1310,7 @@
           <span class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(r.SO))}</span>
           ${qcStatusHtml(r)}
         </div>
+        ${categoryMarkersHtml(r.SO, r.PAC)}
         <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(displayVal(r.Item_Name))}</p>
         <p class="kb-mono text-[11px] text-slate-500 mb-2">${escapeHtml(displayVal(r.SKU))} · Qty ${escapeHtml(displayVal(r.Quantity))}</p>
         <div class="flex flex-wrap gap-1 mb-2">${badgePill(displayVal(r.PAC), "slate")}</div>
@@ -1256,14 +1325,12 @@
 
   function renderQcColumns() {
     const pending = qcPendingRows();
-    const rework = qcReworkRows();
-    setColumn("qc", pending, (r) => qcCardHtml(r), "No items");
-    setColumn("rework", rework, (r) => qcCardHtml(r), "Nothing in rework");
+    setColumn("qc", pending, (r) => qcCardHtml(r), "No items", columnHeaderExtra(pending, { so: (r) => r.SO, pkg: (r) => r.PAC, qty: (r) => r.Quantity }));
 
-    document.querySelectorAll("#col-qc .kb-card, #col-rework .kb-card").forEach((card) => {
+    document.querySelectorAll("#col-qc .kb-card").forEach((card) => {
       card.addEventListener("click", () => openQcEditFromBoard(card.dataset.id));
     });
-    document.querySelectorAll("#col-qc .qc-view-btn, #col-rework .qc-view-btn").forEach((btn) => btn.addEventListener("click", (ev) => { ev.stopPropagation(); openQcEditFromBoard(btn.dataset.id); }));
+    document.querySelectorAll("#col-qc .qc-view-btn").forEach((btn) => btn.addEventListener("click", (ev) => { ev.stopPropagation(); openQcEditFromBoard(btn.dataset.id); }));
   }
 
   // ADDED 2026-09-03, per direct user instruction ("dapat naka edit mode
@@ -1867,7 +1934,7 @@
   function loadCrateRecords(records) {
     crateRecords = records;
     crateRows = records.filter((r) => !isEmptyCrateRow(r)).slice().sort((a, b) =>
-      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+      rankCompare(a.SO, a.Package_Order, b.SO, b.Package_Order, a.Added_Time, b.Added_Time));
   }
   function crateSearchFilter(rows) {
     return rows.filter((r) => matchesSearch([r.SO, r.Package_Order, r.Assign_Crater, r.Assigned_Checker, r.Item_Name, r.SKU]));
@@ -1980,6 +2047,7 @@
           <span class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(r.SO))}</span>
           ${cratingStatusHtml(r)}
         </div>
+        ${categoryMarkersHtml(r.SO, r.Package_Order)}
         <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(displayVal(r.Item_Name))}</p>
         <p class="kb-mono text-[11px] text-slate-500 mb-2">${escapeHtml(displayVal(r.SKU))} · Qty ${escapeHtml(displayVal(r.Quantity))}</p>
         <div class="flex flex-wrap gap-1 mb-2">${badgePill(displayVal(r.Package_Order), "slate")}</div>
@@ -1998,7 +2066,7 @@
   function renderCrateColumns() {
     const crating = crateCratingRows();
     const done = crateDoneRows();
-    setColumn("crating", crating, (r) => crateCardHtml(r, true), "No items");
+    setColumn("crating", crating, (r) => crateCardHtml(r, true), "No items", columnHeaderExtra(crating, { so: (r) => r.SO, pkg: (r) => r.Package_Order, qty: (r) => r.Quantity }));
     setColumn("done", done, (r) => crateCardHtml(r, false), "Nothing done yet");
 
     document.querySelectorAll("#col-crating .kb-card, #col-done .kb-card").forEach((card) => {
@@ -2192,14 +2260,109 @@
   document.getElementById("crtSaveEditBtn").addEventListener("click", saveCrateEditForm);
   document.getElementById("crtSaveEditBtn2").addEventListener("click", saveCrateEditForm);
 
+  // =======================================================================
+  // STAGE: READY / AGGREGATED / DISPATCHED  (package-level, read-only)
+  // Spec default: "Read-only: moving work happens in the stage screens, so
+  // stamps stay tied to real work." -- unlike the legacy Pick/QC/Crate
+  // columns above (which predate that rule and keep their click-through
+  // edit flows as-is), these three are cards only, no detail/edit view.
+  // Built straight from sofQueueMap (Sales_Order_Fulfillment_Report,
+  // already fetched for ranking) -- no extra report needed.
+  // =======================================================================
+  function packageBoxCount(r) {
+    const counted = Number(r.Box_Count);
+    if (counted > 0) return counted;
+    return (Array.isArray(r.Item_Details1) ? r.Item_Details1 : []).reduce((sum, row) => sum + (Number(row.Quantity) || 0), 0);
+  }
+  function stagePackageRows(stage) {
+    return Array.from(sofQueueMap.values())
+      .filter((r) => String(r.Fulfillment_Stage || "") === stage)
+      .filter((r) => matchesSearch([r.SO_No, r.Package, displayVal(r.Customer)]))
+      .sort((a, b) => rankCompare(a.SO_No, a.Package, b.SO_No, b.Package, a.Added_Time, b.Added_Time));
+  }
+  function packageCardHtml(r) {
+    const boxes = packageBoxCount(r);
+    return `
+      <div class="kb-card bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <span class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(r.SO_No))}</span>
+          ${badgePill(displayVal(r.Package), "slate")}
+        </div>
+        ${categoryMarkersHtml(r.SO_No, r.Package)}
+        <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(displayVal(r.Customer))}</p>
+        <p class="kb-mono text-[11px] text-slate-500 mb-2">${boxes} box${boxes === 1 ? "" : "es"}</p>
+        <div class="flex flex-wrap gap-3 text-[11px] text-slate-400">
+          <span>Order: ${escapeHtml(formatDate(r.SO_Created_Date))}</span>
+          <span>Target: ${escapeHtml(formatDate(r.target_delivery_date))}</span>
+        </div>
+      </div>`;
+  }
+  function renderReadyColumn() {
+    const rows = stagePackageRows("Order Readiness");
+    setColumn("ready", rows, packageCardHtml, "Nothing ready", columnHeaderExtra(rows, { so: (r) => r.SO_No, pkg: (r) => r.Package, qty: packageBoxCount }));
+  }
+  function renderAggregatedColumn() {
+    const rows = stagePackageRows("Order Aggregation");
+    setColumn("aggregated", rows, packageCardHtml, "Nothing aggregated", columnHeaderExtra(rows, { so: (r) => r.SO_No, pkg: (r) => r.Package, qty: packageBoxCount }));
+  }
+  // "Dispatched (today)" per spec -- shows every package in For Delivery (this codebase has no live JS fetch of
+  // Stage_Events yet to filter strictly to today's package.dispatched stamps; adding one would mean reading a form
+  // with no declared Zoho Report, untested outside this local server). Documented as a known gap, not guessed at.
+  function renderDispatchedColumn() {
+    const rows = stagePackageRows("For Delivery");
+    setColumn("dispatched", rows, packageCardHtml, "Nothing dispatched", columnHeaderExtra(rows, { so: (r) => r.SO_No, pkg: (r) => r.Package, qty: packageBoxCount }));
+  }
+
+  // =======================================================================
+  // STAGE: REWORK  (Exception_Control1, open exceptions only -- read-only)
+  // "Rework job" = an open exception (owner decision this session: Exception
+  // Control IS the rework job, no separate table). Open = Status blank,
+  // Pending or In Rework -- the same set app/fulfillment/sorter.py's
+  // _is_open_exception() and the Exception Control widget's own board use.
+  // =======================================================================
+  const OPEN_EXCEPTION_STATUSES = new Set(["", "Pending", "In Rework"]);
+  let exceptionRecords = [];
+  function loadExceptionRecords(records) {
+    exceptionRecords = records;
+  }
+  function reworkRows() {
+    return exceptionRecords
+      .filter((r) => OPEN_EXCEPTION_STATUSES.has(String(r.Status || "")))
+      .filter((r) => matchesSearch([r.Sales_Order, r.PAC, r.Item_Name, r.SKU]))
+      .sort((a, b) => rankCompare(a.Sales_Order, a.PAC, b.Sales_Order, b.PAC, a.Added_Time, b.Added_Time));
+  }
+  function reworkCardHtml(r) {
+    const status = displayVal(r.Status) !== "—" ? displayVal(r.Status) : "Pending";
+    return `
+      <div class="kb-card bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <span class="text-sm font-bold text-slate-900">${escapeHtml(displayVal(r.Sales_Order))}</span>
+          ${badgePill(status, "rose")}
+        </div>
+        ${categoryMarkersHtml(r.Sales_Order, r.PAC)}
+        <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(displayVal(r.Item_Name))}</p>
+        <p class="kb-mono text-[11px] text-slate-500 mb-2">${escapeHtml(displayVal(r.SKU))}</p>
+        <div class="flex flex-wrap gap-1 mb-2">${badgePill(displayVal(r.PAC), "slate")}</div>
+        <p class="text-[10px] text-slate-300 mt-2">${escapeHtml(formatDateTime(r.Added_Time))}</p>
+      </div>`;
+  }
+  function renderReworkColumn() {
+    const rows = reworkRows();
+    setColumn("rework", rows, reworkCardHtml, "Nothing in rework", columnHeaderExtra(rows, { so: (r) => r.Sales_Order, pkg: (r) => r.PAC, qty: (r) => Number(r.Qty) || 1 }));
+  }
+
   // ---------------------------------------------------------------------
   // Board rendering — pulls each stage's own bucketed rows into its column
   // ---------------------------------------------------------------------
   function renderBoard() {
+    renderReadyColumn();
     renderPickColumn();
     renderPackColumn();
     renderQcColumns();
+    renderReworkColumn();
     renderCrateColumns();
+    renderAggregatedColumn();
+    renderDispatchedColumn();
   }
 
   // ---------------------------------------------------------------------
@@ -2238,21 +2401,28 @@
 
   function loadAll() {
     renderColumnShells();
-    Promise.all([
+    // Rank data first: every stage loader's own sort (rankCompare) reads sofQueueMap synchronously.
+    fetchSofQueue().then((sofRecords) => {
+      sofQueueMap = new Map(sofRecords.map((s) => [sofQueueKey(s.SO_No, s.Package), s]));
+    }).catch((err) => { console.error(err); }).then(() => Promise.all([
       stageLoadPromise("Pick", CONFIG.REPORTS.pick, loadPickRecords),
       // Pack form retired (Pack and QC are one tab now): no Pack rows to load, the Pack column stays empty.
       stageLoadPromise("QC", CONFIG.REPORTS.qc, loadQcRecords),
       stageLoadPromise("Crate", CONFIG.REPORTS.crate, loadCrateRecords),
-    ]).then(() => {
+      stageLoadPromise("Exceptions", CONFIG.REPORTS.exceptions, loadExceptionRecords),
+    ])).then(() => {
       renderBoard();
       if (DEBUG) {
         console.log("[Kanban] Board render summary:", {
+          ready: stagePackageRows("Order Readiness").length,
           pick: pickActiveRows().length + " (of " + pickRows.length + " non-empty pick rows)",
           pack: packActiveRows().length + " (of " + packRows.length + " non-empty pack rows)",
           qc: qcPendingRows().length,
-          rework: qcReworkRows().length,
+          rework: reworkRows().length,
           crating: crateCratingRows().length,
           done: crateDoneRows().length,
+          aggregated: stagePackageRows("Order Aggregation").length,
+          dispatched: stagePackageRows("For Delivery").length,
         });
       }
     });

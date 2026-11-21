@@ -57,6 +57,13 @@ def _spare_parts(rows) -> dict:
     return {"type": ", ".join(types), "qty": ", ".join(pairs)}
 
 
+async def _item_is_fragile(store, sku: str) -> bool:
+    if sku == "":
+        return False
+    rows = await store.find("Items", lambda r: _text(r.get("SKU")) == sku, criteria=eq("SKU", sku))
+    return any(_is_crate(r.get("Fragile")) for r in rows)
+
+
 async def _supplier_of(store, pr) -> str:
     if pr == "":
         return ""
@@ -189,7 +196,7 @@ async def qc_routing(ctx: dict) -> None:
         return
     if decided_now:
         await log_item_event(ctx["store"], so, qc.get("Item_Name"), sku, "package.qc_passed", actor=ctx.get("user", ""))
-    if _is_crate(qc.get("For_Crate")):
+    if _is_crate(qc.get("For_Crate")) or await _item_is_fragile(ctx["store"], sku):
         await _approved_to_crate(ctx, so, sku, pac, units)
         await advance_stage(ctx["store"], so, qc.get("Item_Name"), sku, "Crate")
     else:

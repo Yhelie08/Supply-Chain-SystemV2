@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fenteng Lighting — Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --green:#16A34A; --green-light:#DCFCE7; --amber:#D97706; --amber-light:#FEF3C7; --red:#DC2626; --red-light:#FEE2E2;
+    --orange:#EA580C; --orange-light:#FFF7ED; --blue:#2563EB; --blue-light:#EFF6FF;
+    --gray-50:#F8FAFC; --gray-100:#F1F5F9; --gray-200:#E2E8F0; --gray-300:#CBD5E1; --gray-400:#94A3B8; --gray-500:#64748B; --gray-700:#334155; --gray-800:#1E293B;
+    --radius:8px; --radius-lg:12px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--gray-800);background:var(--gray-100);-webkit-font-smoothing:antialiased}
+  .page{max-width:900px;margin:0 auto;padding:16px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font-size:20px;font-weight:700}
+  .head p{font-size:12.5px;color:var(--gray-500);margin-top:2px}
+  .head-right{display:flex;align-items:center;gap:10px}
+  .lang-toggle{border:1.5px solid var(--gray-200);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
+  .lang-opt.on{font-weight:700;color:var(--orange)}
+  .pill-supplier{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray-200);border-radius:999px;padding:4px 12px 4px 4px;font-weight:600;font-size:13px}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .row-item{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .row-left{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .row-no{font-weight:700;font-size:14.5px}
+  .row-label{color:var(--gray-500);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+  .row-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .badge{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600}
+  .b-blue{background:var(--blue-light);color:var(--blue)} .b-amber{background:var(--amber-light);color:var(--amber)}
+  .b-red{background:var(--red-light);color:var(--red)} .b-gray{background:var(--gray-100);color:var(--gray-700)}
+  .age{font-size:12px;color:var(--gray-500);min-width:64px;text-align:right}
+  .age.overdue{color:var(--red);font-weight:700}
+  .empty{text-align:center;color:var(--gray-500);padding:40px 10px;background:#fff;border-radius:var(--radius-lg);border:1px dashed var(--gray-300)}
+  .section-count{font-size:12px;color:var(--gray-500);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+  @media(max-width:600px){.page{padding:10px}.row-label{max-width:200px}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1 data-i="title">Today</h1>
+      <p data-i="subtitle">Everything overdue or asked of you, oldest first.</p>
+    </div>
+    <div class="head-right">
+      <button class="lang-toggle" onclick="toggleLang()" title="Switch language / 切换语言"><span class="lang-opt" id="lEn">EN</span> / <span class="lang-opt" id="lZh">中</span></button>
+      <div class="pill-supplier"><span class="avatar">F</span><span>Fenteng Lighting</span></div>
+    </div>
+  </div>
+  <div class="section-count" id="count"></div>
+  <div id="list"></div>
+</div>
+
+<script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+<script>
+/* The "Today" screen of the supplier portal (spec v1.4, 02 Procurement / 07 Supplier Portal: "One list of
+   everything overdue or asked of them, oldest first (mirrors the daily digest)"). Read-only: acting on any
+   of these still happens on that item's own screen (Inquiries / Purchase Request / Purchase Order /
+   Shipments / Replacement Request) -- this is a single combined worklist, not a 6th place to edit things.
+   Every "needs action" condition and field name here is copied verbatim from that item's own widget (not
+   guessed) -- see the 2026-11-21 Change Log entry for where each one was confirmed.
+   Identical to Tony Fan's copy of this file except for CONFIG below (its own report names and the
+   _Supplier2 field suffixes instead of _Supplier1). */
+const CONFIG = {
+  reports: {
+    inquiries: 'Supplier_1_Report',
+    pr: 'Fenteng_Lighting_Purchase_Request_Report',
+    po: 'Fenteng_Lighting_Purchase_Order_Report',
+    rr: 'Fenteng_Lighting_Replacement_Request_Report',
+    shipments: 'Fenteng_Shipment_Report',
+  },
+  prFields: { prNo: 'PR_No_Supplier1', sku: 'sku_Supplier1', desc1: 'Description1_Supplier1', date: 'Target_Delivery_Supplier1', status: 'Response_Status' },
+  poFields: { poNo: 'PO_No_Supplier1', poDate: 'PO_Date_Supplier1', sentOn: 'Sent_On_Supplier1', poStatus: 'PO_Status_Supplier1' },
+  shipmentSubform: 'Supplier1_Shipment_Details',
+};
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+// Dates on these forms come back as either ISO (YYYY-MM-DD...) or Zoho's own "DD-MMM-YYYY" text (e.g. "18-Nov-2026")
+// -- same toISODate() pattern already established in modules/Procurement/Exceptions/app/index.html. A naive
+// slice(0,10) (tried first, then found wrong by live-testing against seeded records) mangles the Zoho-style
+// format into garbage, which silently broke every age calculation below it.
+const MONTHS_NUM = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+function day(v){
+  if(!v) return '';
+  const s = String(v);
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const m = s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);
+  return m ? (m[3]+'-'+(MONTHS_NUM[m[2]]||'01')+'-'+m[1]) : '';
+}
+function ageDays(iso){
+  if(!iso) return null;
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return null;
+  return Math.floor((new Date(todayIso()+'T00:00:00') - d) / 86400000);
+}
+
+const I18N = {
+  en: {
+    title:'Today', subtitle:'Everything overdue or asked of you, oldest first.',
+    empty:'Nothing waiting on you right now.', loading:'Loading…',
+    tInquiry:'Inquiry', tPr:'Purchase Request', tPo:'Purchase Order', tRr:'Replacement Request', tShipment:'Shipment',
+    needsQuote:'Needs a quote', needsAck:'Needs acknowledgement', needsApproval:'Awaiting your approval', linesPending:'line(s) not yet shipped',
+    today:'Today', overdueBy:'days overdue', waiting:'day(s)'
+  },
+  zh: {
+    title:'今日待办', subtitle:'所有逾期或需要您处理的事项，按最早排序。',
+    empty:'目前没有需要处理的事项。', loading:'加载中…',
+    tInquiry:'询价', tPr:'采购申请', tPo:'采购单', tRr:'换货申请', tShipment:'发运单',
+    needsQuote:'需要报价', needsAck:'需要确认', needsApproval:'等待您的批准', linesPending:'项尚未发货',
+    today:'今天', overdueBy:'天逾期', waiting:'天'
+  }
+};
+let LANG = 'en'; try { LANG = localStorage.getItem('supplierPortalLang') || 'en'; } catch (e) {}
+const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+function applyLang(){
+  document.querySelectorAll('[data-i]').forEach((el) => { el.textContent = t(el.getAttribute('data-i')); });
+  $('lEn').classList.toggle('on', LANG === 'en'); $('lZh').classList.toggle('on', LANG === 'zh');
+  document.documentElement.lang = LANG === 'zh' ? 'zh' : 'en';
+  render();
+}
+function toggleLang(){ LANG = LANG === 'en' ? 'zh' : 'en'; try { localStorage.setItem('supplierPortalLang', LANG); } catch (e) {} applyLang(); }
+
+function fetchAll(reportName){
+  return ZOHO.CREATOR.DATA.getRecords({ report_name: reportName, page: 1, pageSize: 200, field_config: 'all' })
+    .then((resp) => (resp && String(resp.code) === '3000' && Array.isArray(resp.data) ? resp.data : []), () => []);
+}
+function lookupLabel(v){ return (v && typeof v === 'object') ? (v.zc_display_value || v.display_value || '') : (v || ''); }
+function extractSubformRows(raw){
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') { if (Array.isArray(raw.data)) return raw.data; if (Array.isArray(raw.records)) return raw.records; if (Object.keys(raw).length) return [raw]; }
+  return [];
+}
+
+// Each builder returns only the items that "need action" today, in the Today list's own shape:
+// { type, typeLabel, no, label, dateIso, badgeCls, badgeText }. The needs-action condition and field names
+// are each copied from that item's own widget (confirmed against the real code, not assumed).
+function fromInquiries(rows){
+  return rows.filter((r) => { const s = r.Response_Status || 'Waiting'; return s === 'Waiting' || s === 'Submit Response'; })
+    .map((r) => ({ type: 'inquiry', typeLabel: t('tInquiry'), no: r.INQ_No_Supplier || '', label: lookupLabel(r.Items_Supplier), dateIso: day(r.Target_Date_Supplier), badgeCls: 'b-blue', badgeText: t('needsQuote') }));
+}
+function fromPr(rows){
+  const F = CONFIG.prFields;
+  return rows.filter((r) => { const s = r[F.status] || 'Waiting'; return s === 'Waiting' || s === 'Submit Response'; })
+    .map((r) => ({ type: 'pr', typeLabel: t('tPr'), no: r[F.prNo] || '', label: (r[F.desc1] || r[F.sku] || ''), dateIso: day(r[F.date]), badgeCls: 'b-blue', badgeText: t('needsQuote') }));
+}
+function fromPo(rows){
+  const F = CONFIG.poFields;
+  return rows.filter((r) => { const raw = r[F.poStatus] || ''; const status = raw === 'Confirmed' ? 'Confirmed' : (r[F.sentOn] ? 'Sent' : 'Draft'); return status === 'Sent'; })
+    .map((r) => ({ type: 'po', typeLabel: t('tPo'), no: r[F.poNo] || '', label: '', dateIso: day(r[F.sentOn] || r[F.poDate]), badgeCls: 'b-amber', badgeText: t('needsAck') }));
+}
+function fromRr(rows){
+  return rows.filter((r) => (r.RR_Status || 'Open') === 'Open')
+    .map((r) => { const sr = (Array.isArray(r.Replacement_Summary) && r.Replacement_Summary.length) ? r.Replacement_Summary[0] : {}; return { type: 'rr', typeLabel: t('tRr'), no: r.RR_No || '', label: sr.Item || '', dateIso: day(r.RR_Date), badgeCls: 'b-amber', badgeText: t('needsApproval') }; });
+}
+function fromShipments(rows){
+  return rows.map((r) => { const items = extractSubformRows(r[CONFIG.shipmentSubform]); const total = items.length; const shipped = items.filter((it) => it.Synced === true || it.Synced === 'true').length; return { shipmentNo: r.Shipment_No || '', pending: total - shipped, addedTime: r.Added_Time || '' }; })
+    .filter((s) => s.pending > 0)
+    .map((s) => ({ type: 'shipment', typeLabel: t('tShipment'), no: s.shipmentNo, label: s.pending + ' ' + t('linesPending'), dateIso: day(s.addedTime), badgeCls: 'b-gray', badgeText: t('tShipment') }));
+}
+
+let ITEMS = [];
+function load(){
+  $('list').innerHTML = '<div class="empty">' + esc(t('loading')) + '</div>';
+  Promise.all([
+    fetchAll(CONFIG.reports.inquiries), fetchAll(CONFIG.reports.pr), fetchAll(CONFIG.reports.po),
+    fetchAll(CONFIG.reports.rr), fetchAll(CONFIG.reports.shipments),
+  ]).then(([inq, pr, po, rr, ship]) => {
+    ITEMS = [].concat(fromInquiries(inq), fromPr(pr), fromPo(po), fromRr(rr), fromShipments(ship));
+    render();
+  });
+}
+function rowHtml(it){
+  const age = ageDays(it.dateIso);
+  const overdue = age !== null && age > 0;
+  const ageText = age === null ? '—' : age === 0 ? t('today') : overdue ? (age + ' ' + t('overdueBy')) : (Math.abs(age) + ' ' + t('waiting'));
+  return '<div class="row-item">'
+    + '<div class="row-left"><span class="row-no">' + esc(it.typeLabel) + ' ' + esc(it.no) + '</span>'
+    + (it.label ? '<span class="row-label">' + esc(it.label) + '</span>' : '') + '</div>'
+    + '<div class="row-right"><span class="badge ' + it.badgeCls + '">' + esc(it.badgeText) + '</span>'
+    + '<span class="age' + (overdue ? ' overdue' : '') + '">' + esc(ageText) + '</span></div></div>';
+}
+function render(){
+  const rows = ITEMS.slice().sort((a, b) => (a.dateIso || '9999-99-99').localeCompare(b.dateIso || '9999-99-99'));
+  $('count').textContent = rows.length;
+  $('list').innerHTML = rows.length ? rows.map(rowHtml).join('') : '<div class="empty">' + esc(t('empty')) + '</div>';
+}
+applyLang();
+load();
+</script>
+</body>
+</html>

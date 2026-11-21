@@ -60,6 +60,33 @@ async def test_qc_approved_with_nothing_on_the_record_is_refused_and_lists_every
     assert await _status(raw_store, QC, id_, "QC_Status") == ""
 
 
+# ---------- QC-R1: checklist per item category (Checklist_Templates narrows QC-R2's mandatory groups) ----------
+async def test_an_item_with_no_category_template_still_requires_every_group_unchanged(hooked_store, raw_store):
+    await raw_store.add_record("Items", {"SKU": "L-1", "item_name": "Lamp", "category": "Lighting"})
+    id_ = await _qc(raw_store, **{PHOTO: "/uploads/1.jpg", SIGNATURE: "/uploads/2.png"})
+    msg = await _refused(hooked_store, QC, id_, {"QC_Status": "Approved"})
+    for word in ("Fixture Body", "LED", "Uniformity"):
+        assert word in msg
+
+
+async def test_a_category_template_narrows_the_mandatory_groups_to_what_it_lists(hooked_store, raw_store):
+    await raw_store.add_record("Items", {"SKU": "M-1", "item_name": "Mirror", "category": "Mirror"})
+    await raw_store.add_record("Checklist_Templates", {"Kind": "qc", "Item_Category": "Mirror", "Lines": ["Fixture Body"]})
+    id_ = await raw_store.add_record(QC, {"SO": "SO-1", "PAC": "PAC-1", "SKU": "M-1", "Item_Name": "Mirror", "Quantity": "1",
+                                          "Fixture_Body_Checklist": ["Walang yupi, gasgas, bitak o basag"], PHOTO: "/uploads/1.jpg", SIGNATURE: "/uploads/2.png"})
+    await hooked_store.update_record(QC, id_, {"QC_Status": "Approved"}, by_form=True)
+    assert await _status(raw_store, QC, id_, "QC_Status") == "Approved"
+
+
+async def test_a_category_template_with_no_lines_requires_none_of_the_three_groups(hooked_store, raw_store):
+    await raw_store.add_record("Items", {"SKU": "G-1", "item_name": "Glass Panel", "category": "Glass"})
+    await raw_store.add_record("Checklist_Templates", {"Kind": "qc", "Item_Category": "Glass", "Lines": []})
+    id_ = await raw_store.add_record(QC, {"SO": "SO-1", "PAC": "PAC-1", "SKU": "G-1", "Item_Name": "Glass Panel", "Quantity": "1",
+                                          PHOTO: "/uploads/1.jpg", SIGNATURE: "/uploads/2.png"})
+    await hooked_store.update_record(QC, id_, {"QC_Status": "Approved"}, by_form=True)
+    assert await _status(raw_store, QC, id_, "QC_Status") == "Approved"
+
+
 @pytest.mark.parametrize("missing,word", [(PHOTO, "photo"), (SIGNATURE, "signature"), ("Fixture_Body_Checklist", "Fixture Body"), ("LED_Checklist", "LED"), ("Uniformity", "Uniformity")])
 async def test_qc_approved_is_refused_when_just_one_thing_is_missing(hooked_store, raw_store, missing, word):
     id_ = await _qc(raw_store, **{k: v for k, v in GOOD_QC.items() if k != missing})

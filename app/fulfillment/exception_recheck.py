@@ -15,7 +15,7 @@
 # exception's "Checked By".
 from app.deluge import blank, truthy
 from app.fulfillment.events import log_item_event
-from app.fulfillment.pipeline import advance_stage
+from app.fulfillment.pipeline import advance_stage, next_visit_no
 from app.fulfillment.where import eq
 from app.workflows import register
 
@@ -73,7 +73,8 @@ async def repaired_to_qc(args: dict) -> None:
         if exc_id not in linked:
             await store.update_record(QC, pending["ID"], {"Quantity": str(_count(pending.get("Quantity")) + units), "Recheck_Exceptions": [*linked, exc_id]}, by_form=True)
     else:
-        qc_id = await store.add_record(QC, {"SO": so, "PAC": pac, "SKU": sku, **header, "Quantity": str(units), "Quality_Checker": _text(exc.get("Checker")), "Recheck_Exceptions": [exc_id]}, user)
+        visit_no = await next_visit_no(store, so, sku, pac)
+        qc_id = await store.add_record(QC, {"SO": so, "PAC": pac, "SKU": sku, "Visit_No": visit_no, **header, "Quantity": str(units), "Quality_Checker": _text(exc.get("Checker")), "Recheck_Exceptions": [exc_id]}, user)
 
     await store.update_record(EXC, exc_id, {"Sent_To_QC": True, "QC_Record": str(qc_id)}, by_form=True)
     await log_item_event(store, so, header["Item_Name"], sku, "package.rework_done", actor=user)   # the repair is finished and the unit goes back to QC

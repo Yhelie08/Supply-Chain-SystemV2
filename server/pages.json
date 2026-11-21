@@ -93,6 +93,12 @@
     "label": "Tony Fan",
     "tabs": [
       {
+        "page": "Tony_Today",
+        "label": "Today",
+        "widget": "Tony Fan/Today",
+        "entry": "index.html"
+      },
+      {
         "page": "Tony_Fan_Inquiries",
         "label": "Inquiries",
         "widget": "Tony Fan/Inquiries",
@@ -139,6 +145,12 @@
     "id": "fenteng-lighting",
     "label": "Fenteng Lighting",
     "tabs": [
+      {
+        "page": "Fenteng_Today",
+        "label": "Today",
+        "widget": "Fenteng Lighting/Today",
+        "entry": "index.html"
+      },
       {
         "page": "Fenteng_Lighting_Inquiries",
         "label": "Inquiries",

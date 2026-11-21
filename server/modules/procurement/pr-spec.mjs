@@ -70,8 +70,15 @@ export function recommend({ lb, sel, names, settings, supplierRows, target, mode
 }
 
 // ---------- before the save ----------
-async function beforeSave({ input, previous, store, user }) {
+async function beforeSave({ input, previous, id, store, user }) {
   for (const f of PR_SERVER_ONLY) delete input[f];
+  // DT-4: changing the target delivery needs a reason; logged with the old and new date (DT-5: the forecast never does this by itself).
+  if (previous && 'Target_Delivery' in input && !blank(previous.Target_Delivery) && text(input.Target_Delivery) !== text(previous.Target_Delivery)) {
+    const reason = text(input.Target_Change_Reason).trim();
+    if (reason === '') throw new ZohoError(2001, 'Give a reason for changing the target date.');
+    targetPending.set(String(id), { old: text(previous.Target_Delivery), new: text(input.Target_Delivery), reason });
+  }
+  if ('Target_Change_Reason' in input) input.Target_Change_Reason = '';
   const rec = { ...(previous || {}), ...input };
   // PR-R7: hold / cancel need a reason; a held PR cannot be grouped, a cancelled one is closed
   const was = text(previous?.Hold_Status), now = text(rec.Hold_Status);
@@ -120,10 +127,16 @@ async function beforeSave({ input, previous, store, user }) {
 }
 
 // ---------- after the save ----------
+const targetPending = new Map(); // pr id -> { old, new, reason } to log after the save (DT-4)
 const EVENT_OF = { held: 'pr.held', resumed: 'pr.resumed', cancelled: 'pr.cancelled', converted: 'pr.converted', ready_for_po: 'pr.ready_for_po' };
 async function afterSave({ id, record, previous, store, user }) {
   const log = (event, note = '') => logEvent(store, { recordType: 'pr', recordId: id, recordNo: record.PR_No, event, occurredAt: zohoNow(), source: 'user', actor: user || '', note });
   if (!previous) await logEvent(store, { recordType: 'pr', recordId: id, recordNo: record.PR_No, event: 'pr.created', occurredAt: text(record.Added_Time) || zohoNow(), source: 'user', actor: user || '' });
+  const t = targetPending.get(String(id));
+  if (t) {
+    targetPending.delete(String(id));
+    await store.addRecord('Target_Date_Changes', { Record_Type: 'pr', Record_Id: String(id), Record_No: record.PR_No, Old_Date: t.old, New_Date: t.new, Reason: t.reason, Changed_By: user || '', Customer_Told: false, Changed_At: zohoNow(), Via: 'person' });
+  }
   const before = previous ? prState(previous) : null, after = prState(record);
   if (before !== after) {
     if (after === 'on_hold') await log(EVENT_OF.held, text(record.Hold_Reason));

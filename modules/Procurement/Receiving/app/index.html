@@ -558,6 +558,8 @@ var PRHold = (function(){
     <div class="card" id="rcvEventsCard">
       <h3>Receiving events <span style="font-weight:400;text-transform:none;color:var(--gray-400);font-size:11.5px">(stamped by the server: Received = counted and binned)</span></h3>
       <div class="totals-bar">
+        <div class="t-item"><div class="n" id="evOrderDate" style="font-size:13px">&mdash;</div><div class="l">Order Date</div></div>
+        <div class="t-item"><div class="n" id="evForecast" style="font-size:13px">&mdash;</div><div class="l">Forecast</div></div>
         <div class="t-item"><div class="n" id="evArrived" style="font-size:13px">&mdash;</div><div class="l">Arrived</div></div>
         <div class="t-item"><div class="n" id="evCounted" style="font-size:13px">&mdash;</div><div class="l">Counted</div></div>
         <div class="t-item"><div class="n" id="evBinned" style="font-size:13px">&mdash;</div><div class="l">Binned</div></div>
@@ -2830,10 +2832,47 @@ function openDetail(id){
   });
 }
 
+/* DT-3 (05 Shared Engines/03): Order Age = today - Order Date, frozen at Available_At once the goods are
+   pickable -- Receiving's own closest thing to "delivered" within Procurement's scope (Shipments freezes
+   at Received_At the same way). */
+function rcvOrderAge(r){
+  var start = Date.parse(String(r.Order_Date||'').slice(0,10)+'T00:00:00');
+  if(isNaN(start)) return null;
+  var end = r.Available_At ? Date.parse(r.Available_At) : NaN;
+  if(isNaN(end)) end = Date.now();
+  return Math.max(0, Math.floor((end - start) / 86400000));
+}
+/* Display format per spec v1.4 (00 Overview/01 System Overview): "13 Nov 2026 14:05" -- 24-hour, no AM/PM.
+   Storage stays as today's local-time Zoho string (that half of the spec's TZ rule is a separate, cross-module
+   decision, not attempted here: display only, owner decision 2026-11-21). */
+var RCV_STAMP_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function rcvFmtWhen(s){
+  s = String(s || '').trim();
+  if(!s) return '';
+  var ap = null, apM = s.match(/\s*(AM|PM)\s*$/i);
+  if(apM){ ap = apM[1].toUpperCase(); s = s.slice(0, apM.index).trim(); }
+  function to24(h){ if(!ap) return h; if(ap === 'AM') return h === 12 ? 0 : h; return h === 12 ? 12 : h + 12; }
+  var d = null;
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(m) d = new Date(+m[1], +m[2]-1, +m[3], to24(+m[4]), +m[5], +(m[6]||0));
+  else {
+    var m2 = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if(m2){
+      var mon = RCV_STAMP_MON.findIndex(function(x){ return x.toLowerCase() === m2[2].slice(0,3).toLowerCase(); });
+      if(mon > -1) d = new Date(+m2[3], mon, +m2[1], to24(+m2[4]), +m2[5], +(m2[6]||0));
+    }
+  }
+  if(!d || isNaN(d.getTime())) return s;
+  var pad = function(n){ return String(n).padStart(2, '0'); };
+  return d.getDate() + ' ' + RCV_STAMP_MON[d.getMonth()] + ' ' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
 function rcvRenderEvents(){
   var r = CURRENT_RECORD || {};
   var set = function(id, v){ var el = document.getElementById(id); if(el) el.textContent = v || '\u2014'; };
-  set('evArrived', r.Arrived_At); set('evCounted', r.Counted_At); set('evBinned', r.Binned_At); set('evAvailable', r.Available_At);
+  var age = rcvOrderAge(r);
+  set('evOrderDate', r.Order_Date ? (r.Order_Date + (age != null ? ' (' + age + 'd)' : '')) : '');
+  set('evForecast', r.Rcv_Forecast_Pickable);
+  set('evArrived', rcvFmtWhen(r.Arrived_At)); set('evCounted', rcvFmtWhen(r.Counted_At)); set('evBinned', rcvFmtWhen(r.Binned_At)); set('evAvailable', rcvFmtWhen(r.Available_At));
   document.getElementById('rcvArrivedOn').max = new Date().toISOString().slice(0,10);
   /* the supplier's production / shipment photos next to the damage/missing evidence photos, so the fault can be
      traced (spec ST-R4): real thumbnails, not just a link, and every production photo (the field now holds a

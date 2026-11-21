@@ -1,0 +1,13 @@
+{
+  "name": "Order_Aggregation1",
+  "extends": true,
+  "_about": "Field added by the HomeCartel spec v1.4 (03 Fulfillment / 04 Order Aggregation and Pre-Delivery Gate, OA-R2): confirms all of the package's boxes are physically at the loading area. Owner decision 2026-11-21: the package.aggregated Stage_Events stamp keeps firing on arrival at the Order Aggregation stage (unchanged, the Scoreboard and Delivery Analytics #7 both read it) -- this field is a separate widget-side confirmation gate, not a new stamp.",
+  "fields": [
+    {
+      "name": "Aggregated",
+      "label": "Aggregated (all boxes at loading area)",
+      "type": "checkbox",
+      "helpText": "OA-R2: check this once every box of the package is confirmed at the loading area. The widget asks for this before Dispatch Selected can be checked."
+    }
+  ]
+}

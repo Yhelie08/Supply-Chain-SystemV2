@@ -130,6 +130,7 @@
           <thead>
             <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
               <th class="px-5 py-2.5 font-bold">Crating Status</th>
+              <th class="px-3 py-2.5 font-bold">Rank</th>
               <th class="px-3 py-2.5 font-bold">Next Step</th>
               <th class="px-3 py-2.5 font-bold">SO #</th>
               <th class="px-3 py-2.5 font-bold">PACK #</th>
@@ -140,6 +141,7 @@
               <th class="px-3 py-2.5 font-bold">Assigned Checker</th>
               <th class="px-3 py-2.5 font-bold">Order Type</th>
               <th class="px-3 py-2.5 font-bold">Forecast</th>
+              <th class="px-3 py-2.5 font-bold">Since</th>
               <th class="px-5 py-2.5 font-bold">Added Time</th>
             </tr>
           </thead>
@@ -377,6 +379,7 @@
   const CONFIG = {
     APP_NAME: "supply-chain-app",
     REPORT_NAME: "All_Crates",
+    SOF_REPORT: "Sales_Order_Fulfillment_Report",   // FS-1/FS-2 (03 Fulfillment / 03 Pick, QC, Rework and Crate): same rank the sorter writes, joined by SO + PAC
     MAX_RECORDS: 1000,   // JS API v2 single-call ceiling; add cursor pagination if this app ever exceeds it
   };
 
@@ -782,8 +785,40 @@
   document.getElementById("saveEditBtn2").addEventListener("click", saveEditForm);
 
   // ---------------------------------------------------------------------
-  // Ordering (latest Added_Time first) — flat list, no grouping (the report
-  // has no "group by" clause).
+  // FS-1 / FS-2 (03 Fulfillment / 03 Pick, QC, Rework and Crate): "Every list uses the same ranking as Order Readiness
+  // (oldest Order Date first inside categories). Never newest first." / "Every row shows rank and reason on hover ...
+  // and 'in this stage since'." Same sofQueueMap/sofQueueFor join Order Readiness's own widget uses, by SO + Package;
+  // Aging_Days is the sorter's own stage-dwell count, read straight off Sales_Order_Fulfillment ("in stage since").
+  // This is a SEPARATE bulk fetch from the existing on-demand Sales_Order_Fulfillment lookup used for Box_Count in
+  // the detail/edit form (openEditForm) -- different purpose, kept apart rather than risking that one.
+  // ---------------------------------------------------------------------
+  const RANK_CATEGORY_ORDER = { broken: 0, late: 1, at_risk: 2, on_time: 3, blocked: 4 };
+  let sofQueueMap = new Map();
+  function sofQueueKey(soNo, pkg) { return `${soNo || ""}::${pkg || ""}`; }
+  function fetchSofQueue() {
+    const config = { app_name: CONFIG.APP_NAME, report_name: CONFIG.SOF_REPORT, field_config: "all", max_records: CONFIG.MAX_RECORDS };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+  function sofQueueFor(so, pkg) { return sofQueueMap.get(sofQueueKey(so, pkg)) || {}; }
+  function rankBadgeHtml(so, pkg) {
+    const q = sofQueueFor(so, pkg);
+    if (q.Queue_Rank === undefined || q.Queue_Rank === null || q.Queue_Rank === "") return `<span class="text-slate-300">—</span>`;
+    const reason = String(q.Priority_Reason || "").trim();
+    return `<span class="inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold" title="${escapeHtml(reason || ("Rank " + q.Queue_Rank))}">#${escapeHtml(String(q.Queue_Rank))}</span>`;
+  }
+  function sinceCellHtml(so, pkg) {
+    const days = Number(sofQueueFor(so, pkg).Aging_Days);
+    return Number.isFinite(days) ? `${days}d` : `<span class="text-slate-300">—</span>`;
+  }
+  function rankSortValue(so, pkg) {
+    const q = sofQueueFor(so, pkg);
+    const cat = RANK_CATEGORY_ORDER[String(q.Category || "")];
+    const rank = Number(q.Queue_Rank);
+    return { cat: cat === undefined ? 99 : cat, rank: Number.isFinite(rank) ? rank : Infinity };
+  }
+
+  // ---------------------------------------------------------------------
+  // Ordering — flat list, no grouping (the report has no "group by" clause).
   // ---------------------------------------------------------------------
   function isEmptyRecord(r) {
     return isBlank(r.SO) && isBlank(r.PR_if_any) && isBlank(r.RR_if_any)
@@ -791,8 +826,12 @@
   }
 
   function computeOrderedRows(records) {
-    return records.filter((r) => !isEmptyRecord(r)).slice().sort((a, b) =>
-      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+    return records.filter((r) => !isEmptyRecord(r)).slice().sort((a, b) => {
+      const av = rankSortValue(a.SO, a.Package_Order), bv = rankSortValue(b.SO, b.Package_Order);
+      if (av.cat !== bv.cat) return av.cat - bv.cat;
+      if (av.rank !== bv.rank) return av.rank - bv.rank;
+      return (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0));   // fallback: not yet scored
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -1028,6 +1067,7 @@ function forecastCell(r) {
     return `
       <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}">
         <td class="px-5 py-2.5">${cratingStatusHtml(r)}</td>
+        <td class="px-3 py-2.5">${rankBadgeHtml(r.SO, r.Package_Order)}</td>
         <td class="px-3 py-2.5">${nextStepCell(r.ID, nextStepFor(r))}</td>
         <td class="px-3 py-2.5 text-slate-700 font-medium">${escapeHtml(displayVal(r.SO))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Package_Order))}</td>
@@ -1038,6 +1078,7 @@ function forecastCell(r) {
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Assigned_Checker))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Order_Type))}</td>
         <td class="px-3 py-2.5">${forecastCell(r)}</td>
+        <td class="px-3 py-2.5 text-slate-500">${sinceCellHtml(r.SO, r.Package_Order)}</td>
         <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
       </tr>`;
   }
@@ -1048,7 +1089,7 @@ function forecastCell(r) {
 
     tableBody.innerHTML = filtered.length
       ? filtered.map(dataRow).join("")
-      : `<tr><td colspan="12" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+      : `<tr><td colspan="14" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
 
     tableBody.querySelectorAll(".record-row").forEach((row) => {
       row.addEventListener("click", () => switchToDetail(row.dataset.id));
@@ -1380,7 +1421,8 @@ function forecastCell(r) {
   }
 
   function loadLive() {
-    fetchAllRecords().then((records) => {
+    Promise.all([fetchAllRecords(), fetchSofQueue()]).then(([records, sofRecords]) => {
+      sofQueueMap = new Map(sofRecords.map((s) => [sofQueueKey(s.SO_No, s.Package), s]));
       allRecords = records;
       orderedRows = computeOrderedRows(allRecords);
       renderAll();

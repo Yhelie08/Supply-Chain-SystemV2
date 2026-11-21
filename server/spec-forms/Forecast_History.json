@@ -1,0 +1,14 @@
+{
+  "name": "Forecast_History",
+  "label": "Forecast History",
+  "_about": "FC-2 (05 Shared Engines / 03, Dates and Forecast): 'Every change is kept in forecast_history with the event that caused it.' Shipments is the one place a shipment's forecast is actually computed (rescoreShipments in ship-track.mjs) -- PR/PO/Receiving/RR's own forecast fields are derived copies of a shipment's Forecast_Pickable (rollupPrForecast, rollupPoCategories, rescoreReceivings, the RR forecast update), not independent computations, so a row here against the shipment already covers the reason their copies changed too. A row is written only when the forecast value actually changes, never on every rescore.",
+  "fields": [
+    { "name": "Record_Type", "label": "Record Type", "type": "text", "helpText": "'shipment' today -- the one real computation site." },
+    { "name": "Record_Id", "label": "Record ID", "type": "text" },
+    { "name": "Record_No", "label": "Record No", "type": "text" },
+    { "name": "Old_Forecast", "label": "Old Forecast", "type": "date" },
+    { "name": "New_Forecast", "label": "New Forecast", "type": "date" },
+    { "name": "Caused_By", "label": "Caused By", "type": "text", "helpText": "The event name that triggered the rescore, e.g. shipment.shipped_out, or 'nightly' / 'pr.hold_status_changed' when it wasn't a single stage event." },
+    { "name": "Occurred_At", "label": "Occurred At", "type": "datetime" }
+  ]
+}

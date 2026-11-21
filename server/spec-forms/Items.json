@@ -1,0 +1,13 @@
+{
+  "name": "Items",
+  "extends": true,
+  "_about": "Field added by the HomeCartel spec v1.4 (03 Fulfillment / 05 Crate and Dispatch, CR-R1): the catalog had no way to flag an item as fragile. QC routing ORs this flag with the QC record's own For_Crate checkbox, so a fragile item is routed to Crate automatically even when nobody ticked For_Crate by hand.",
+  "fields": [
+    {
+      "name": "Fragile",
+      "label": "Fragile",
+      "type": "checkbox",
+      "helpText": "CR-R1: items flagged fragile are routed to Crate at QC approval, even if For_Crate was left unchecked."
+    }
+  ]
+}

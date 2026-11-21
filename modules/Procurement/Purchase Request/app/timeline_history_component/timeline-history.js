@@ -104,12 +104,15 @@
     }
     return null;
   }
+  /* Display format per spec v1.4 (00 Overview/01 System Overview): "13 Nov 2026 14:05" -- 24-hour, no AM/PM,
+     space-separated. Storage stays as today's local-time Zoho string (that half of the spec's TZ rule is a
+     separate, cross-module decision, not attempted here: display only, owner decision 2026-11-21). */
   function fmtWhen(s){
     var d = parseWhen(s);
     if(!d || isNaN(d.getTime())) return String(s || '');
-    var h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM', h12 = (h % 12) || 12;
+    var pad = function(n){ return String(n).padStart(2, '0'); };
     return d.getDate() + ' ' + TL_MONTHS[d.getMonth()] + ' ' + d.getFullYear()
-         + ' · ' + h12 + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ap;
+         + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
   function timeOf(e){
     var d = parseWhen(val(e.Logged_On));

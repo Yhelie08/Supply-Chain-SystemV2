@@ -1819,6 +1819,19 @@ function parseRecTime(r){
   if(!isNaN(numId)) return numId;
   return 0;
 }
+/* Shared Engine 01 sort key (SE-1): order_date asc, then target_delivery asc, then record number — same tie-break
+   order as the PR / Shipments / Receiving queues (sorting.mjs's rank()). Manual urgency (M1) isn't built anywhere
+   in this system yet, so it's correctly left out here too, consistent with those other queues. */
+function targetTime(r){
+  var t = Date.parse(val(r.target_date)||'');
+  return isNaN(t) ? Infinity : t;
+}
+function inqSeq(r){
+  var m = String(val(r.INQ_No)||'').match(/\d+/);
+  if(m) return parseInt(m[0], 10);
+  var numId = parseInt(String(r.ID||''), 10);
+  return isNaN(numId) ? Infinity : numId;
+}
 /* Lookup-type fields (e.g. Items, Customer) come back as {ID, zc_display_value, ...} — val() prefers
    the display text, so pull the actual linked record ID separately for save-back use. */
 function lookupId(v){
@@ -2547,7 +2560,8 @@ function filteredRecords(){
     return (listState.filter === 'all' || st === listState.filter) && (!q || rowSearchText(r).includes(q));
   });
   return list.sort(function(a,b){
-    return parseRecTime(a) - parseRecTime(b); // oldest first (spec 01 Inquiry): the one that has waited longest is on top
+    // oldest first (spec 01 Inquiry), then target_delivery asc, then record number (SE-1) when the order_date ties
+    return parseRecTime(a) - parseRecTime(b) || targetTime(a) - targetTime(b) || inqSeq(a) - inqSeq(b);
   });
 }
 function ageText(r){

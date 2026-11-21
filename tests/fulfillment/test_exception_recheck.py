@@ -88,6 +88,18 @@ async def test_a_repaired_unit_goes_back_once_even_if_saved_or_completed_again(h
 
 
 @pytest.mark.asyncio
+async def test_visit_no_numbers_the_recheck_after_whatever_qc_rows_already_exist(hooked_store, raw_store):
+    # QC-R5: "a second QC after rework is visit 2." The genuine visit-1 stamp (on the very first QC,
+    # created by picked_to_qc) is covered in test_pipeline.py -- this test's _add_qc helper bypasses
+    # that real path, so it only checks that the recheck's Visit_No counts every existing QC row.
+    await _split_two_one(hooked_store, raw_store)
+    e1 = (await _excs(raw_store))[0]
+    await hooked_store.update_record(EXC, e1["ID"], {"Status": "Completed"}, by_form=True)
+    recheck = [c for c in await _qcs(raw_store) if isinstance(c.get("Recheck_Exceptions"), list)][0]
+    assert str(recheck["Visit_No"]) == "2"
+
+
+@pytest.mark.asyncio
 async def test_two_repaired_units_share_one_pending_qc_record_with_quantity_2(hooked_store, raw_store):
     await _add_package(raw_store)
     id_ = await _add_qc(hooked_store)

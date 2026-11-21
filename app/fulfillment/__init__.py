@@ -20,7 +20,10 @@ import app.fulfillment.release_guard  # noqa: F401
 import app.fulfillment.exception_hold  # noqa: F401
 import app.fulfillment.scoreboard  # noqa: F401
 import app.fulfillment.delivery_failures  # noqa: F401
+import app.fulfillment.warehouse_request  # noqa: F401
+import app.fulfillment.transfer  # noqa: F401
 from app.fulfillment.sorter import rescore_all
+from app.fulfillment.warehouse_request import check_warehouse_request_silence
 from app.forecast.schedule import run_backfill_pre_order, run_forecast_stamp_daily
 
 FORMS = [
@@ -35,4 +38,5 @@ SCHEDULES = [
     {"name": "Forecast_Stamp_Daily", "at": "01:00", "time_zone": "Asia/Manila", "run": lambda store, log: run_forecast_stamp_daily(store, log=log)},
     {"name": "Backfill_PreOrder_Forecas", "at": "01:00", "time_zone": "Asia/Manila", "run": lambda store, log: run_backfill_pre_order(store, log=log)},
     {"name": "Recalculate_Fulfillment_Queue", "at": "05:00", "time_zone": "Asia/Manila", "run": lambda store, log: rescore_all(store, trigger="nightly")},
+    {"name": "Warehouse_Request_Silence_Daily", "at": "06:00", "time_zone": "Asia/Manila", "run": lambda store, log: check_warehouse_request_silence(store)},
 ]

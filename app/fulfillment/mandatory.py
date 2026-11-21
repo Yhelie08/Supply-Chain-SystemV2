@@ -16,6 +16,7 @@ import json
 
 from app.criteria import ZohoError
 from app.deluge import blank
+from app.fulfillment.where import eq
 from app.workflows import register
 
 QC = "Checker_Checklist"
@@ -23,8 +24,32 @@ CRATE = "Crate_Checklist"
 PHOTO = "Image_Upload_max_10_JPG_JPEG_PNG"
 CODE = 3100
 
-# field -> the name shown to the user
+# field -> the name shown to the user (and the Checklist_Templates.Lines option it's picked by, QC-R1)
 QC_CHECKLIST_GROUPS = {"Fixture_Body_Checklist": "Fixture Body", "LED_Checklist": "LED", "Uniformity": "Uniformity"}
+
+
+async def _qc_required_groups(store, sku: str) -> dict:
+    """QC-R1: 'checklist per item category, stored as a template so categories can have different checks.' Looks up the
+    item's category (Items.category, by SKU) and then a Checklist_Templates row for it (Kind='qc'). No category, no
+    matching row, or a lookup problem -- falls back to requiring every group, exactly like before this existed (an
+    un-templated category is not accidentally left with nothing mandatory). A row WITH an empty Lines list means the
+    admin deliberately requires none of these groups for that category -- that is honored as-is, not treated as "no row"."""
+    sku = str(sku or "").strip()
+    if sku == "":
+        return QC_CHECKLIST_GROUPS
+    try:
+        items = await store.find("Items", lambda r: str(r.get("SKU") or "").strip() == sku, criteria=eq("SKU", sku))
+        category = str((items[0].get("category") if items else "") or "").strip()
+        if category == "":
+            return QC_CHECKLIST_GROUPS
+        templates = await store.find("Checklist_Templates", lambda r: str(r.get("Kind") or "") == "qc" and str(r.get("Item_Category") or "").strip() == category, criteria=eq("Item_Category", category))
+        if not templates:
+            return QC_CHECKLIST_GROUPS
+        lines = templates[0].get("Lines")
+        lines = lines if isinstance(lines, list) else []
+        return {field: label for field, label in QC_CHECKLIST_GROUPS.items() if label in lines}
+    except Exception:
+        return QC_CHECKLIST_GROUPS
 
 
 def _present(v) -> bool:
@@ -75,7 +100,8 @@ async def _qc_mandatory(args: dict) -> None:
     merged = {**(args.get("previous") or {}), **(args.get("input") or {})}
     missing = []
     if status == "Approved":
-        empty = [label for field, label in QC_CHECKLIST_GROUPS.items() if not _present(merged.get(field))]
+        required_groups = await _qc_required_groups(args["store"], merged.get("SKU"))
+        empty = [label for field, label in required_groups.items() if not _present(merged.get(field))]
         if empty:
             missing.append("checklist lines ticked in " + ", ".join(empty))
         if not _present(merged.get(PHOTO)):

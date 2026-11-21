@@ -1,0 +1,14 @@
+{
+  "name": "Exception_Control1",
+  "extends": true,
+  "_about": "Field added by the HomeCartel spec v1.4 (03 Fulfillment / 06 Kanban, Scoreboard and SO Report, RW-R4: rework rate split by rework type and fault origin; 05 Shared Engines / 05 Exceptions, EX-2: fault_origin options). Edited inline in the Exception Control widget, next to Rework and Status; optional, filled in whenever known (same as Rework). Read by app/fulfillment/scoreboard.py for the rework-rate-by-origin breakdown.",
+  "fields": [
+    {
+      "name": "Fault_Origin",
+      "label": "Fault Origin",
+      "type": "picklist",
+      "options": ["supplier", "transit", "warehouse", "site", "unknown"],
+      "helpText": "Where the defect was caused, not where it was found (EX-2). Optional; blank counts as \"Not chosen yet\" on the Scoreboard."
+    }
+  ]
+}

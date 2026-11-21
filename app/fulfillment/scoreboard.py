@@ -14,8 +14,13 @@
 #                            days where the Pick rows name a picker. The spec says "from pick stamps and shift hours"; there is no shift record,
 #                            so the hours come from Capacity_Days.
 #   Rework rate              packages with at least one exception / packages through QC (a QC passed or QC rejected event), per week (Monday
-#                            start), last 4 weeks, split by the exceptions' rework type. MY READING: the exception is the rework job (there is no
-#                            separate rework job yet). The split by fault origin is not made (the exception has no fault origin field).
+#                            start), last 4 weeks, split by the exceptions' rework type AND by fault origin (RW-R4). MY READING: the exception
+#                            is the rework job (there is no separate rework job yet). Both splits are optional fields filled in later from the
+#                            Exception Control widget (not at QC rejection time), so "Not chosen yet" / "Select" counts as its own bucket.
+#                            BUG FIX 2026-11-21: this used to read Rework_Type, a field nothing ever writes (only Node's sample seed did);
+#                            the Exception Control widget actually edits `Rework` (RW-R1 types since 2026-11-21: Select/Paint/Repair/Replace
+#                            Part/Other; was Select/OK/Repair/Rewire/Repaint before that). `Fault_Origin` is new
+#                            (server/spec-forms/Exception_Control1.json; EX-2 options: supplier, transit, warehouse, site, unknown).
 #   On-time dispatch         packages dispatched on or before their target delivery date, over the window; packages with no target are counted apart
 #                            and left out of the percentage.
 # A row with a time that cannot be read is skipped; the API never raises for bad data.
@@ -151,7 +156,11 @@ async def scoreboard_numbers(payload: dict, store, ctx: dict) -> dict:
         so, pkg = _text(sof.get("SO_No")), _text(sof.get("Package"))
         return [e for e in exceptions if _text(e.get("Sales_Order")) == so and (_text(e.get("PAC")) in ("", pkg))]
 
-    weeks, by_type, seen_rework = [], {}, set()
+    def _bucket(e: dict, field: str) -> str:
+        v = _text(e.get(field))
+        return v if v not in ("", "Select") else "Not chosen yet"
+
+    weeks, by_type, by_origin, seen_rework = [], {}, {}, set()
     this_monday = _monday(today_d)
     for w in range(3, -1, -1):
         start = this_monday - timedelta(days=7 * w)
@@ -159,8 +168,8 @@ async def scoreboard_numbers(payload: dict, store, ctx: dict) -> dict:
         with_rework = {pid for pid in through if exceptions_of(pid)}
         for pid in with_rework - seen_rework:
             for e in exceptions_of(pid):
-                label = _text(e.get("Rework_Type")) or "Not chosen yet"
-                by_type[label] = by_type.get(label, 0) + 1
+                by_type[_bucket(e, "Rework")] = by_type.get(_bucket(e, "Rework"), 0) + 1
+                by_origin[_bucket(e, "Fault_Origin")] = by_origin.get(_bucket(e, "Fault_Origin"), 0) + 1
         seen_rework |= with_rework
         weeks.append({"weekStart": start.isoformat(), "throughQc": len(through), "withRework": len(with_rework),
                       "ratePct": round(100 * len(with_rework) / len(through), 1) if through else None})
@@ -187,7 +196,7 @@ async def scoreboard_numbers(payload: dict, store, ctx: dict) -> dict:
         "boxesOut": {"today": box_days[-1]["boxes"], "days": box_days},
         "capacityUsed": capacity,
         "boxesPerPersonPerHour": per_person,
-        "reworkRate": {"weeks": weeks, "byType": by_type},
+        "reworkRate": {"weeks": weeks, "byType": by_type, "byOrigin": by_origin},
         "onTimeDispatch": {"dispatched": with_target + no_target, "onTime": on_time, "late": late, "noTarget": no_target,
                            "pct": round(100 * on_time / with_target, 1) if with_target else None},
     }

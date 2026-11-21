@@ -125,11 +125,12 @@ async def test_with_schedules_on_the_loop_runs_what_is_due_and_stop_ends_it(db_c
     assert log == ["A"]
 
 
-def test_the_fulfillment_module_lists_its_three_schedules_with_the_zoho_names_and_times():
+def test_the_fulfillment_module_lists_its_four_schedules_with_the_zoho_names_and_times():
     assert [(s["name"], s["at"], s["time_zone"]) for s in FULFILLMENT_SCHEDULES] == [
         ("Forecast_Stamp_Daily", "01:00", "Asia/Manila"),
         ("Backfill_PreOrder_Forecas", "01:00", "Asia/Manila"),
         ("Recalculate_Fulfillment_Queue", "05:00", "Asia/Manila"),
+        ("Warehouse_Request_Silence_Daily", "06:00", "Asia/Manila"),   # WR-R2 (03 Fulfillment / 05 Warehouse Request and Transfer)
     ]
 
 

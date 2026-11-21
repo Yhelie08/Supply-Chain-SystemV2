@@ -99,7 +99,8 @@ const I18N = {
     reason:'Reason', newDate:'New expected date', needPhoto:'Add a photo first, then you can report production finished.', photoOk:'Photo added', noPhoto:'No photo yet',
     viewPhoto:'View photo', chooseFile:'Choose a photo first', tooBig:'The file is bigger than 10 MB', badType:'Use a JPG, PNG, HEIC, WebP or PDF file',
     delayNeed:'Give the new expected date and a reason', done:'Saved', uploaded:'Photo uploaded', failed:'Could not save', empty:'Nothing here.', loading:'Loading…',
-    po:'PO', blankIsToday:'Blank date = today'
+    po:'PO', blankIsToday:'Blank date = today',
+    actPartial:'Report a partial quantity', chooseSku:'Choose an item', btnPartial:'Report', partialNeed:'Choose the item and the quantity actually being shipped', partialReason:'Reason (optional)'
   },
   zh: {
     title:'生产', subtitle:'针对每个发运单：告诉我们生产何时开始和完成，上传产品照片，并在延误时报告新的日期。',
@@ -111,7 +112,8 @@ const I18N = {
     reason:'原因', newDate:'新的预计日期', needPhoto:'请先上传照片，然后才能报告生产已完成。', photoOk:'已添加照片', noPhoto:'还没有照片',
     viewPhoto:'查看照片', chooseFile:'请先选择照片', tooBig:'文件超过 10 MB', badType:'请使用 JPG、PNG、HEIC、WebP 或 PDF 文件',
     delayNeed:'请填写新的预计日期和原因', done:'已保存', uploaded:'照片已上传', failed:'保存失败', empty:'这里没有内容。', loading:'加载中…',
-    po:'采购单', blankIsToday:'日期留空 = 今天'
+    po:'采购单', blankIsToday:'日期留空 = 今天',
+    actPartial:'报告部分数量', chooseSku:'选择产品', btnPartial:'报告', partialNeed:'请选择产品和实际发货数量', partialReason:'原因（可选）'
   }
 };
 let LANG = 'en'; try { LANG = localStorage.getItem('supplierPortalLang') || 'en'; } catch (e) {}
@@ -130,9 +132,11 @@ const day = (v) => String(v || '').slice(0, 10);
 let ROWS = [], FILTER = 'toStart', STICKY = '';
 
 function normalise(r){
+  let lineData = [];
+  try { lineData = JSON.parse(r.Prod_Lines_Data || '[]'); } catch (e) { lineData = []; }
   return { id: String(r.ID), shipNo: r.Shipment_No || '', po: r.Prod_Po_No || '', status: r.Prod_Status || 'not_started',
     start: day(r.Prod_Planned_Start), end: day(r.Prod_Planned_End), startedOn: day(r.Prod_Started_On), finishedOn: day(r.Prod_Finished_On),
-    expected: day(r.Prod_Expected_Date), lines: r.Prod_Lines || '', photo: r.Prod_Photo || '' };
+    expected: day(r.Prod_Expected_Date), lines: r.Prod_Lines || '', lineData: lineData, photo: r.Prod_Photo || '' };
 }
 /* SP-R2: a shipment shows only after its PO is acknowledged (a shipment with no PO shows at once). Read from this supplier's own PO copy. */
 function gate(rows){
@@ -183,7 +187,7 @@ function cardHtml(r){
       + '<button class="btn" data-act="start" data-id="' + id + '">' + esc(t('btnStart')) + '</button></div><div class="hint">' + esc(t('blankIsToday')) + '</div></div>';
   }
   if (r.status === 'not_started' || r.status === 'in_production') {
-    acts += '<div class="act"><h4>' + esc(t('actPhoto')) + '</h4><div class="row"><input type="file" id="f-photo-' + id + '" accept=".jpg,.jpeg,.png,.heic,.webp,.pdf,image/*" />'
+    acts += '<div class="act"><h4>' + esc(t('actPhoto')) + '</h4><div class="row"><input type="file" id="f-photo-' + id + '" accept=".jpg,.jpeg,.png,.heic,.webp,.pdf,image/*" multiple />'
       + '<button class="btn ghost" data-act="upload" data-id="' + id + '">' + esc(t('btnUpload')) + '</button></div>'
       + '<div class="hint photo">' + (r.photo ? '✔ ' + esc(t('photoOk')) + ' — <a href="' + esc(r.photo) + '" target="_blank" rel="noopener">' + esc(t('viewPhoto')) + '</a>' : esc(t('noPhoto'))) + '</div></div>';
     acts += '<div class="act"><h4>' + esc(t('actFinish')) + '</h4><div class="row"><input type="date" id="d-finish-' + id + '" max="' + todayIso() + '" />'
@@ -192,6 +196,14 @@ function cardHtml(r){
     acts += '<div class="act"><h4>' + esc(t('actDelay')) + '</h4><div class="row"><input type="date" id="d-delay-' + id + '" min="' + todayIso() + '" />'
       + '<input type="text" id="t-delay-' + id + '" placeholder="' + esc(t('reason')) + '" />'
       + '<button class="btn ghost" data-act="delay" data-id="' + id + '">' + esc(t('btnDelay')) + '</button></div></div>';
+    if (r.lineData && r.lineData.length) {
+      acts += '<div class="act"><h4>' + esc(t('actPartial')) + '</h4><div class="row">'
+        + '<select id="s-partial-' + id + '"><option value="">' + esc(t('chooseSku')) + '</option>'
+        + r.lineData.map(function(l){ return '<option value="' + esc(l.SKU) + '">' + esc(l.SKU) + ' ' + esc(l.Item_Name) + ' (/' + esc(l.Ordered_QTY) + ')</option>'; }).join('')
+        + '</select><input type="number" min="1" id="n-partial-' + id + '" placeholder="' + esc(t('items')) + '" />'
+        + '<input type="text" id="t-partial-' + id + '" placeholder="' + esc(t('partialReason')) + '" />'
+        + '<button class="btn ghost" data-act="partial" data-id="' + id + '">' + esc(t('btnPartial')) + '</button></div></div>';
+    }
   }
   return '<div class="card"><div class="card-top"><div><span class="ship-no">' + esc(r.shipNo) + '</span>' + (r.po ? '<span class="po">' + esc(t('po')) + ' ' + esc(r.po) + '</span>' : '') + '</div>'
     + '<div><span class="badge ' + cls + '">' + esc(label) + '</span>' + lateBadge + '</div></div>'
@@ -209,6 +221,29 @@ function save(id, data, okMsg){
     toast((resp && resp.message) || (t('failed') + ' — ' + (resp && resp.code))); return false;
   }).catch((err) => { toast((err && err.message) || t('failed')); return false; });
 }
+// Several production photos in one go (spec 02 Procurement / 07 Supplier Portal, 04 Ship and Track: "Hindi pa: maraming
+// photo bawat shipment, isa lang ang tinatanggap ng upload"). Uploaded one at a time, in order -- the server already
+// appends every Prod_Photo write to the parent Shipment's own Production_Photos list (production-portal.mjs), so this
+// is a widget-only fix: let the supplier pick several files, send them sequentially instead of only files[0].
+function uploadPhotos(id, files){
+  let ok = 0, failed = [];
+  const next = (i) => {
+    if (i >= files.length) {
+      if (ok) toast(ok === files.length ? t('uploaded') : t('uploaded') + ' (' + ok + '/' + files.length + ')');
+      if (failed.length) toast(t('failed') + ': ' + failed.join(', '));
+      STICKY = id; load();
+      return;
+    }
+    const f = files[i];
+    if (f.size > MAX_BYTES) { failed.push(f.name); next(i + 1); return; }
+    if (!/\.(jpe?g|png|heic|webp|pdf)$/i.test(f.name)) { failed.push(f.name); next(i + 1); return; }
+    ZOHO.CREATOR.FILE.uploadFile({ report_name: REPORT_NAME, id: id, field_name: 'Prod_Photo', file: f }).then((r) => {
+      if (r && String(r.code) === '3000') ok++; else failed.push(f.name);
+      next(i + 1);
+    }).catch(() => { failed.push(f.name); next(i + 1); });
+  };
+  next(0);
+}
 function act(kind, id){
   const val = (p) => { const el = $(p + id); return el ? el.value : ''; };
   if (kind === 'start') return save(id, { Report_Prod_Event: 'production_started', Report_Prod_Date: val('d-start-') }, t('done'));
@@ -218,14 +253,15 @@ function act(kind, id){
     if (!d || !r) { toast(t('delayNeed')); return; }
     return save(id, { Delay_New_Date: d, Delay_Reason: r }, t('done'));
   }
+  if (kind === 'partial') {
+    const sku = val('s-partial-'), qty = val('n-partial-'), reason = val('t-partial-').trim();
+    if (!sku || !(Number(qty) > 0)) { toast(t('partialNeed')); return; }
+    return save(id, { Report_Partial_SKU: sku, Report_Partial_Qty: qty, Report_Partial_Reason: reason }, t('done'));
+  }
   if (kind === 'upload') {
-    const el = $('f-photo-' + id), f = el && el.files[0];
-    if (!f) { toast(t('chooseFile')); return; }
-    if (f.size > MAX_BYTES) { toast(t('tooBig')); return; }
-    if (!/\.(jpe?g|png|heic|webp|pdf)$/i.test(f.name)) { toast(t('badType')); return; }
-    ZOHO.CREATOR.FILE.uploadFile({ report_name: REPORT_NAME, id: id, field_name: 'Prod_Photo', file: f }).then((r) => {
-      if (r && String(r.code) === '3000') { toast(t('uploaded')); STICKY = id; load(); } else toast((r && r.message) || t('failed'));
-    }).catch(() => toast(t('failed')));
+    const el = $('f-photo-' + id), files = el && el.files ? Array.from(el.files) : [];
+    if (!files.length) { toast(t('chooseFile')); return; }
+    uploadPhotos(id, files);
   }
 }
 applyLang();

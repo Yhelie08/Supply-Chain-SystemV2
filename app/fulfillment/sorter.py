@@ -10,7 +10,8 @@ from datetime import date, datetime, timedelta, timezone
 from app.criteria import zoho_now
 from app.deluge import blank
 from app.fulfillment.delivery_failures import FAILURE_LABEL, broken_failures, open_sales_returns
-from app.fulfillment.aging import log_block_change, aging_level, close_left_behind_aging_exceptions, days_in_stage, parse_time, tell_about_aging, tell_about_category_change
+from app.fulfillment.aging import log_block_change, aging_level, close_left_behind_aging_exceptions, days_in_stage, parse_time, tell_about_aging, tell_about_category_change, tell_about_at_risk_morning_list
+from app.fulfillment.silence import check_silence
 from app.fulfillment.pipeline import STAGE_ORDER
 from app.fulfillment.urgency import urgent_orders
 from app.fulfillment.workflows import needs_payment_approval
@@ -360,6 +361,8 @@ async def rescore_all(store, *, trigger: str = "event", now=None) -> dict:
             await tell_about_category_change(store, e["sof"], e["category"], e)
             await log_block_change(store, e["sof"], e["category"], e)
         await close_left_behind_aging_exceptions(store, scored)
+        await check_silence(store, scored, now or datetime.now())
+        await tell_about_at_risk_morning_list(store, scored, now or datetime.now())
     except Exception as err:
         if trigger != "event":
             await _log_run(store, trigger, started, "failed", 0, str(err))
@@ -396,7 +399,11 @@ async def capacity_summary(store, *, days: int = 3) -> dict:
     ranked, meta = await _score_all_open_packages(store)
     cap = await capacity_for(store, date.today().strftime("%Y-%m-%d"))
     boxes = lambda es: sum(effective_boxes(e["sof"]) for e in es)  # noqa: E731
-    wip = boxes(e for e in ranked if _is_wip(e["sof"]))
+    wip_entries = [e for e in ranked if _is_wip(e["sof"])]
+    wip = boxes(wip_entries)
+    # PKG-R3 acceptance: "a package without a counted box count shows 'estimated' in every capacity figure" --
+    # inProgressBoxes blends counted and estimated numbers (effective_boxes), so this count lets the widget flag it.
+    wip_estimated_count = sum(1 for e in wip_entries if _text(e["sof"].get("Box_Count_Source")) != "counted")
     open_boxes = boxes(e for e in ranked if not _is_released(e["sof"]) or _is_wip(e["sof"]))   # not yet finished: waiting to be released, or in the warehouse
     due = boxes(e for e in ranked if e["category"] in ("broken", "late", "at_risk") and (not _is_released(e["sof"]) or _is_wip(e["sof"])))
     per_person_day = cap["boxesPerHour"] * cap["hoursPerDay"]
@@ -404,7 +411,7 @@ async def capacity_summary(store, *, days: int = 3) -> dict:
     backlog = backlog_days(open_boxes, cap["capacityBoxes"])
     return {
         "capacityBoxes": cap["capacityBoxes"], "people": cap["people"], "boxesPerHour": cap["boxesPerHour"], "hoursPerDay": cap["hoursPerDay"],
-        "inProgressBoxes": wip, "freeBoxes": max(0, cap["capacityBoxes"] - wip), "overCapacityBy": max(0, wip - cap["capacityBoxes"]),
+        "inProgressBoxes": wip, "inProgressEstimatedCount": wip_estimated_count, "freeBoxes": max(0, cap["capacityBoxes"] - wip), "overCapacityBy": max(0, wip - cap["capacityBoxes"]),
         "suggestedBoxes": boxes(e for e in ranked if e["suggestedRelease"]), "suggestedCount": sum(1 for e in ranked if e["suggestedRelease"]),
         "openBoxes": open_boxes, "backlogDays": None if backlog == float("inf") else round(backlog, 1),
         "dueBoxes": due, "crewDays": days, "peopleNeeded": None if needed == float("inf") else round(needed, 1),

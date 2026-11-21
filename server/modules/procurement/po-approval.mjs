@@ -144,7 +144,7 @@ export async function shipmentAndReceivingFor(store, ctx, S, poNo, shipExtra = {
     const fresh = await store.getRecordById('Shipments', ship.ID, { raw: true });
     const plan = await st.planPatch(store, fresh, await pl.loadSettings(store));
     if (Object.keys(plan).length) await store.updateRecord('Shipments', ship.ID, plan, { byForm: true });
-    await st.rescoreShipments(store);
+    await st.rescoreShipments(store, { cause: 'po.approved' });
   }
   if (isNewShipment && S.ship) { // HC System (local) has no supplier copy of the shipment
     await store.addRecord(S.ship, {

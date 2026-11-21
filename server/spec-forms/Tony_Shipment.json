@@ -89,6 +89,30 @@
       "label": "Report Production: the day it happened",
       "type": "date",
       "helpText": "Write-only. Blank = today. Never in the future."
+    },
+    {
+      "name": "Prod_Lines_Data",
+      "label": "Items (structured)",
+      "type": "text",
+      "helpText": "Server-written view field: JSON [{SKU, Item_Name, Ordered_QTY}], for the partial-quantity picker below."
+    },
+    {
+      "name": "Report_Partial_SKU",
+      "label": "Report partial quantity: SKU",
+      "type": "text",
+      "helpText": "Write-only. Which line this partial report is for."
+    },
+    {
+      "name": "Report_Partial_Qty",
+      "label": "Report partial quantity: actual quantity",
+      "type": "number",
+      "helpText": "Write-only. The quantity actually being shipped for that SKU (must not be more than ordered)."
+    },
+    {
+      "name": "Report_Partial_Reason",
+      "label": "Report partial quantity: reason",
+      "type": "text",
+      "helpText": "Write-only, optional."
     }
   ]
 }

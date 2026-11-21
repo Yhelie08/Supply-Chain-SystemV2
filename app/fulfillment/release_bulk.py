@@ -3,6 +3,8 @@
 # Custom API release_gate_records. Payload:
 #   mode     "selected" (the Gate rows in `ids` / `idsCsv`) or "suggested" (every package the sorting engine marks Suggested_Release)
 #   picker   optional default picker: it fills ONLY the items that have no picker; an item that already has one keeps its own
+#   pickers  optional {gate row id: picker name} -- PK-R1-style per-row suggestion ("Release all suggested" dialog); a row's own
+#            entry here wins over the single `picker` default; an item that already has a picker keeps its own either way
 #   preview  true: say what WOULD happen (skips, boxes, how far over capacity) and write nothing; the screen asks this before it confirms
 # The release of each item is the same write the single Release button makes (Assign_Picker + Release on the Gate row, through the hooked
 # store), so Pick rows, the notification, the stage change, Stage_Events (package.released) and the re-score are the same hooks.
@@ -97,6 +99,7 @@ async def release_gate_records(payload: dict, store, ctx: dict) -> dict:
     payload = payload if isinstance(payload, dict) else {}
     mode = _text(payload.get("mode"))
     picker = _text(payload.get("picker"))
+    pickers = payload.get("pickers") if isinstance(payload.get("pickers"), dict) else {}
     preview = truthy(payload.get("preview"))
     user = (ctx or {}).get("user") or ""
     if mode not in ("selected", "suggested"):
@@ -104,6 +107,9 @@ async def release_gate_records(payload: dict, store, ctx: dict) -> dict:
     ids = _ids(payload) if mode == "selected" else []
     if mode == "selected" and not ids:
         return {"status": "error", "message": "Choose at least one row to release."}
+
+    def picker_for(gate_id) -> str:
+        return _text(pickers.get(str(gate_id))) or picker
 
     await rescore_all(store)   # fresh Blocked / Suggested marks: an old mark must not decide
     sofs = await store.find(SOF)
@@ -142,7 +148,7 @@ async def release_gate_records(payload: dict, store, ctx: dict) -> dict:
         if not items:
             continue
         sof = _package_of(sofs, *key)
-        problems = {g["ID"]: _problem(g, sof, picker) for g in items}
+        problems = {g["ID"]: _problem(g, sof, picker_for(g["ID"])) for g in items}
         first = next((p for p in problems.values() if p), "")
         if first:
             for g in items:
@@ -160,7 +166,7 @@ async def release_gate_records(payload: dict, store, ctx: dict) -> dict:
         hooked = create_hooked_store(store)
         for _, items in to_release:
             for g in items:
-                await _release_row(hooked, g, picker, user)
+                await _release_row(hooked, g, picker_for(g["ID"]), user)
                 results.append(_row(g, "released"))
         over = (await capacity_summary(store))["overCapacityBy"] if to_release else cap["overCapacityBy"]
 

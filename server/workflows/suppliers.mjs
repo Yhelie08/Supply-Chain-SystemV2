@@ -4,9 +4,11 @@ import { unbracket, truthy } from './deluge.mjs';
 // Each portal: the Books vendor id that identifies the supplier, the name its rows carry, and where its copies live.
 export const SUPPLIERS = [
   { key: 'tony', n: '2', name: 'Tony Fan', form: 'Supplier_2', booksId: '2680178000002735078', nameToken: 'tony', imageField: 'Product_Image_Supplier2_INQ',
-    notifications: 'Tony_Notifications', page: 'Tony_Fan_Inquiries', param: 'tonyinquiriesid', emailEnv: 'TONY_PORTAL_EMAIL', prForm: 'Tony_Fan_Purchase_Request' },
+    notifications: 'Tony_Notifications', page: 'Tony_Fan_Inquiries', param: 'tonyinquiriesid', emailEnv: 'TONY_PORTAL_EMAIL', prForm: 'Tony_Fan_Purchase_Request',
+    poForm: 'Tony_Fan_Purchase_Order', rrForm: 'Tony_Fan_Replacement_Request', shipmentForm: 'Tony_Shipment' },
   { key: 'fenteng', n: '1', name: 'Fenteng Lighting', form: 'Supplier_1', booksId: '2680178000049168001', nameToken: 'fenteng', imageField: 'Product_Image_Supplier1_INQ',
-    notifications: 'Fenteng_Notifications', page: 'Fenteng_Lighting_Inquiries', param: 'fentenginquiriesid', emailEnv: 'FENTENG_PORTAL_EMAIL', prForm: 'Fenteng_Lighting_Purchase_Request' },
+    notifications: 'Fenteng_Notifications', page: 'Fenteng_Lighting_Inquiries', param: 'fentenginquiriesid', emailEnv: 'FENTENG_PORTAL_EMAIL', prForm: 'Fenteng_Lighting_Purchase_Request',
+    poForm: 'Fenteng_Lighting_Purchase_Order', rrForm: 'Fenteng_Lighting_Replacement_Request', shipmentForm: 'Fenteng_Shipment' },
 ];
 
 // Which portal a supplier name belongs to: "Tony" and "Tony Fan" are ONE supplier, "Fenteng" and "Fenteng Lighting" are ONE supplier (owner,

@@ -57,7 +57,7 @@ async function history({ record, store, user }) {
   const oldV = shown(wasValue.get(key));
   wasValue.delete(key);
   if (oldV === text(record.Value)) return;
-  const r = await rescoreShipments(store); // CP-R3: the change takes effect now
+  const r = await rescoreShipments(store, { cause: `settings.${key}_changed` }); // CP-R3: the change takes effect now
   await store.addRecord('Procurement_Settings_History', { Setting_Key: key, Old_Value: oldV, New_Value: text(record.Value), Changed_By: user || '', Changed_At: zohoNow(), Reason: text(record.Change_Reason), Effect: `${r.changed} shipment(s) re-scored` });
 }
 
@@ -73,7 +73,7 @@ register(FORM, {
     const now = shown(values(await settingsInUse(store))[key]);
     await store.addRecord('Procurement_Settings_History', { Setting_Key: key, Old_Value: wasValue.get(`del:${key}`) ?? text(previous.Value), New_Value: now, Changed_By: user || '', Changed_At: zohoNow(), Reason: 'Back to the default' });
     wasValue.delete(`del:${key}`);
-    await rescoreShipments(store);
+    await rescoreShipments(store, { cause: `settings.${key}_reset` });
   },
 });
 
@@ -96,7 +96,7 @@ export async function preview_procurement_setting({ key, value }, store) {
 
 // Custom API: "Recalculate now" (full re-read of the PO and Sales Order dates, then rank everything again).
 export async function recalculate_shipments(_payload, store) {
-  const r = await rescoreShipments(store, { full: true });
+  const r = await rescoreShipments(store, { full: true, cause: 'user.recalculate_now' });
   return ok(`Recalculated ${r.scored} shipment(s); ${r.changed} changed.`, r);
 }
 

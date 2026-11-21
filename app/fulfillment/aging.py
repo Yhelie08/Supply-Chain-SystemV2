@@ -17,6 +17,7 @@ from app.criteria import zoho_now
 from app.deluge import blank
 from app.fulfillment.events import log_package_event, stage_event_names
 from app.fulfillment.stage import stage_slug
+from app.fulfillment.where import eq
 
 NOTES = "App_Notifications"
 INBOX = "homecartelff@gmail.com"   # the Fulfillment inbox the other Fulfillment notifications already use
@@ -143,13 +144,51 @@ async def log_block_change(store, sof: dict, category: str, entry: dict) -> None
         await log_package_event(store, sof["ID"], "package.unblocked")
 
 
+# OR-R6: "About to be late -> supervisor's morning list" -- a digest, not an instant per-package alert like Late/Blocked above. One
+# notification a day listing every currently at_risk, not-yet-released package, deduped per calendar day: a rescore later the same day
+# (this runs on every rescore_all, event-triggered like the rest of this file -- there is no Fulfillment-only "morning" schedule to hang
+# this off instead) finds the day's row already there and sends nothing more. The 05:00 nightly recalculation is normally the day's
+# first rescore, so in practice this lands before business hours the same way a real morning list would.
+async def tell_about_at_risk_morning_list(store, scored: list, now: datetime) -> bool:
+    at_risk = [e for e in scored if e.get("category") == "at_risk"]
+    if not at_risk:
+        return False
+    key = f"morning-list:{now.strftime('%Y-%m-%d')}"
+    told = await store.find(NOTES, lambda n: n.get("Notification_Type") == "About To Be Late Morning List" and n.get("Source_Record_No") == key)
+    if told:
+        return False
+    lines = "; ".join(f"{e['sof'].get('SO_No') or ''} ({e['sof'].get('Package') or 'no package'})" for e in at_risk)
+    await store.add_record(NOTES, {
+        "Recipient_Email": INBOX, "Notification_Type": "About To Be Late Morning List", "Created_On": zoho_now(), "Read": False, "Target_URL": "",
+        "Message": f"{len(at_risk)} package(s) about to be late: {lines}. For: Fulfillment supervisor.",
+        "Source_Record_No": key, "Source_Record_ID": "",
+    })
+    return True
+
+
+async def sales_agent_of(store, so: str) -> str:
+    """OR-R6: the named sales agent of an SO, for the "Already late" notification -- name-only (owner decision
+    2026-11-21: same pattern as Blocked's owner-by-name, not a real email route). Sales_Order.Sales_Agent is a real
+    field matched by Sales_Order_Number, but nothing in this codebase writes to the Sales_Order form yet -- this
+    returns "" (falling back to the old generic wording) until that form actually has data."""
+    if so == "":
+        return ""
+    try:
+        rows = await store.find("Sales_Order", lambda r: str(r.get("Sales_Order_Number") or "") == so, criteria=eq("Sales_Order_Number", so))
+        return str(rows[0].get("Sales_Agent") or "").strip() if rows else ""
+    except Exception:
+        return ""
+
+
 async def tell_about_category_change(store, sof: dict, category: str, entry: dict) -> bool:
     before = str(sof.get("Category") or "")
     if before == "" or before == category or category not in ("late", "blocked"):
         return False
     so, pkg = sof.get("SO_No") or "", sof.get("Package") or "no package"
     if category == "late":
-        kind, message = "Order Late", f"{so} ({pkg}) is now Already late: {entry.get('priorityReason') or ''}. For: Fulfillment supervisor and the sales agent."
+        agent = await sales_agent_of(store, so)
+        who = f"sales agent {agent}" if agent else "the sales agent"
+        kind, message = "Order Late", f"{so} ({pkg}) is now Already late: {entry.get('priorityReason') or ''}. For: Fulfillment supervisor and {who}."
     else:
         kind, message = "Order Blocked", f"{so} ({pkg}) is now Blocked: {entry.get('blockedReason') or ''}. For: {entry.get('blockedOwner') or 'the owner of the block'}."
     await store.add_record(NOTES, {

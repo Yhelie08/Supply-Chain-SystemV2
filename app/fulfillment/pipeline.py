@@ -41,6 +41,16 @@ def _text(v) -> str:
     return "" if (blank(v) or str(v) == "null") else str(v)
 
 
+# QC-R5: "a second QC after rework is visit 2; both visits are kept." A Checker_Checklist (QC) record
+# is never overwritten across a recheck (exception_recheck.py always adds a new row instead), so this
+# just numbers them in creation order per SO+SKU+PAC. Every place that creates a QC record stamps
+# Visit_No itself via this helper -- it can't be a QC-form beforeAdd hook, because a hook-to-hook write
+# goes through the raw store (app/workflows.py: "they do not fire hooks again").
+async def next_visit_no(store, so, sku, pac) -> str:
+    existing = await store.find("Checker_Checklist", lambda c: _text(c.get("SO")) == so and _text(c.get("SKU")) == sku and _text(c.get("PAC")) == pac, criteria=eq("SO", so))
+    return str(len(existing) + 1)
+
+
 async def advance_stage(store, so, item_name, sku, stage) -> None:
     target = STAGE_ORDER.index(stage)
     for sof in await store.find(SOF, lambda r: r.get("SO_No") == so, criteria=eq("SO_No", so)):
@@ -190,7 +200,9 @@ async def picked_to_qc(args: dict) -> None:
         for c in pending:
             await store.update_record(QC, c["ID"], fields, by_form=True)
     else:
-        await store.add_record(QC, {"SO": so, "PAC": pac, "SKU": _text(pick.get("SKU")), **fields}, user)
+        qc_sku = _text(pick.get("SKU"))
+        visit_no = await next_visit_no(store, so, qc_sku, pac)
+        await store.add_record(QC, {"SO": so, "PAC": pac, "SKU": qc_sku, "Visit_No": visit_no, **fields}, user)
     await advance_stage(store, so, pick.get("Item_Name"), pick.get("SKU"), "Pack & QC")
 
 

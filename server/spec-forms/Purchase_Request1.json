@@ -21,6 +21,7 @@
     { "name": "Priority_Reason", "label": "Priority Reason", "type": "text" },
     { "name": "Suggested_Action", "label": "Suggested Action", "type": "text" },
     { "name": "Scored_At", "label": "Scored At", "type": "datetime" },
-    { "name": "Pr_Forecast_Pickable", "label": "Forecast Pickable", "type": "date", "helpText": "The forecast pickable date of this PR's own shipment(s), not only the shipment record itself (2026-11-18)." }
+    { "name": "Pr_Forecast_Pickable", "label": "Forecast Pickable", "type": "date", "helpText": "The forecast pickable date of this PR's own shipment(s), not only the shipment record itself (2026-11-18)." },
+    { "name": "Target_Change_Reason", "label": "Reason for changing the target", "type": "text", "helpText": "Write-only: required when Target_Delivery changes (spec DT-4). The server logs it in Target_Date_Changes and clears it." }
   ]
 }

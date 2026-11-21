@@ -29,7 +29,8 @@ export const SERVER_ONLY = [
   'Stage', 'Order_Date', 'PO_Date', 'Production_Start_Planned', 'Production_End_Planned', 'Shipout_Planned', 'Arrival_Planned', 'Receive_Planned',
   'Production_Started_At', 'Production_Finished_At', 'Shipped_Out_At', 'Arrived_Port_At', 'Customs_Cleared_At', 'Arrived_Warehouse_At', 'Received_At',
   'Last_Supplier_Update_At', 'Last_Chase_At', 'Category', 'Blocked_Reason', 'Queue_Rank', 'Priority_Reason', 'Suggested_Action', 'Date_Needed',
-  'Forecast_Pickable', 'Slack_Days', 'Days_Late', 'Scored_At', 'Risk_Status', 'Supplier_Expected_Date', 'Delay_Reason',
+  'Forecast_Pickable', 'Slack_Days', 'Days_Late', 'Scored_At', 'Risk_Status', 'Supplier_Expected_Date', 'Delay_Reason', 'Forecast_Error_Days',
+  'Forecast_Window_Low', 'Forecast_Window_High',
 ];
 const TRANSIENT = ['Report_Event', 'Report_Occurred_At', 'Report_Source', 'Report_Note', 'Target_Change_Reason', 'Report_Delay_Date', 'Report_Delay_Reason'];
 
@@ -178,6 +179,9 @@ export async function refreshSupplierView(store, shipId) {
     Prod_Planned_Start: text(ship.Production_Start_Planned), Prod_Planned_End: text(ship.Production_End_Planned),
     Prod_Started_On: text(ship.Production_Started_At), Prod_Finished_On: text(ship.Production_Finished_At), Prod_Expected_Date: text(ship.Supplier_Expected_Date),
     Prod_Lines: (ship.PO_Shipments || []).map((l) => `${text(l.SKU)} ${text(l.Item_Name)} x${text(l.Shipment_QTY) || text(l.Ordered_QTY)}`.trim()).join('\n'),
+    // Structured copy of the same lines, for the Production widget's own partial-quantity picker (JSON text, same
+    // shape convention as other "view field the widget parses" fields already in this codebase).
+    Prod_Lines_Data: JSON.stringify((ship.PO_Shipments || []).map((l) => ({ SKU: text(l.SKU), Item_Name: text(l.Item_Name), Ordered_QTY: text(l.Ordered_QTY) }))),
   };
   for (const form of PORTAL_COPIES) {
     for (const copy of await store.find(form, (c) => text(c.Parent_Shipment_ID) === String(shipId), { criteria: `(Parent_Shipment_ID == "${String(shipId).replace(/["\\]/g, '')}")` })) {
@@ -203,7 +207,41 @@ export async function reportShipmentDelay(store, shipId, { date, reason, source 
   const { patch, event } = buildDelay(ship, date, reason, source);
   await store.updateRecord(SHIP, shipId, { ...patch, ...(await planPatch(store, { ...ship, ...patch }, await loadSettings(store))) }, { byForm: true });
   await logEvent(store, { recordType: 'shipment', recordId: shipId, recordNo: ship.Shipment_No, event: `shipment.${event.event}`, occurredAt: event.occurredAt, bound: event.bound, source: event.source, note: event.note });
-  await rescoreShipments(store);
+  await rescoreShipments(store, { cause: `shipment.${event.event}` });
+  await refreshSupplierView(store, shipId);
+  return true;
+}
+
+// Partial quantity report (02 Procurement / 07 Supplier Portal, Production screen: "report partial quantities ...
+// with a new date"). Owner decision 2026-11-21: reduce the matching PO_Shipments line's Shipment_QTY to what is
+// actually being shipped, Remaining_QTY is the shortfall, Line_Status becomes "Partial" -- a real choice this field
+// already had (In Transit / Partial / Arrived / Received) but nothing had ever written. This flags the line for the
+// buyer (visible in the Shipments widget's own line grid); no automatic new shipment or PO is created for the shortfall.
+export async function reportPartialQuantity(store, shipId, { sku, qty, reason = '', source = 'user' } = {}) {
+  const ship = await store.getRecordById(SHIP, shipId, { raw: true }).catch(() => null);
+  if (!ship) throw new ZohoError(2001, 'Shipment not found.');
+  if (LAST_STAGES.includes(effectiveStage(ship))) throw new ZohoError(2001, 'This shipment has already arrived at the warehouse.');
+  const skuText = text(sku).trim();
+  if (skuText === '') throw new ZohoError(2001, 'Say which item (SKU) this is for.');
+  const qtyNum = toNum(qty);
+  if (!(qtyNum > 0)) throw new ZohoError(2001, 'Give the quantity actually being shipped (a number above 0).');
+  const lines = ship.PO_Shipments || [];
+  const idx = lines.findIndex((l) => text(l.SKU) === skuText);
+  if (idx < 0) throw new ZohoError(2001, `No line for SKU "${skuText}" on this shipment.`);
+  const ordered = toNum(lines[idx].Ordered_QTY);
+  if (ordered > 0 && qtyNum > ordered) throw new ZohoError(2001, `Quantity cannot be more than the ordered amount (${ordered}).`);
+  const newLines = lines.map((l, i) => (i !== idx ? l : {
+    ...l,
+    Shipment_QTY: String(qtyNum),
+    Remaining_QTY: String(Math.max(0, ordered - qtyNum)),
+    Line_Status: ordered > 0 && qtyNum < ordered ? 'Partial' : text(l.Line_Status),
+  }));
+  const patch = { PO_Shipments: newLines };
+  if (source === 'supplier') patch.Last_Supplier_Update_At = zohoNow();
+  await store.updateRecord(SHIP, shipId, patch, { byForm: true });
+  const note = `${skuText}: reported ${qtyNum} of ${ordered || '?'}${text(reason).trim() ? ` — ${text(reason).trim()}` : ''}`;
+  await logEvent(store, { recordType: 'shipment', recordId: shipId, recordNo: ship.Shipment_No, event: 'shipment.partial_quantity_reported', occurredAt: zohoNow(), bound: 'exact', source, note });
+  await rescoreShipments(store, { cause: 'shipment.partial_quantity_reported' });
   await refreshSupplierView(store, shipId);
   return true;
 }
@@ -217,7 +255,7 @@ export async function applyShipmentEvent(store, shipId, event, { occurredAt = ''
   const { patch, events } = buildEvent(ship, ship, event, occurred, source, note, { gate });
   await store.updateRecord(SHIP, shipId, { ...patch, ...(await planPatch(store, { ...ship, ...patch }, await loadSettings(store))) }, { byForm: true });
   for (const e of events) await logEvent(store, { recordType: 'shipment', recordId: shipId, recordNo: ship.Shipment_No, event: `shipment.${e.event}`, occurredAt: e.occurredAt, bound: e.bound, source: e.source, note: e.note });
-  await rescoreShipments(store);
+  await rescoreShipments(store, { cause: `shipment.${event}` });
   await refreshSupplierView(store, shipId);
   return true;
 }
@@ -278,12 +316,14 @@ async function afterSave({ id, store, user }) {
     await store.addRecord('Target_Date_Changes', { Record_Type: 'shipment', Record_Id: String(id), Record_No: ship.Shipment_No, Old_Date: t.old, New_Date: t.new, Reason: t.reason, Changed_By: user || '', Customer_Told: false, Changed_At: zohoNow(), Via: 'person' });
   }
   const events = pending.get(String(id));
+  let cause = 'shipment.saved';
   if (events) {
     pending.delete(String(id));
     const ship = await store.getRecordById(SHIP, id, { raw: true });
     for (const e of events) await logEvent(store, { recordType: 'shipment', recordId: id, recordNo: ship.Shipment_No, event: `shipment.${e.event}`, occurredAt: e.occurredAt, bound: e.bound, source: e.source, actor: e.actor, note: e.note });
+    cause = events.map((e) => `shipment.${e.event}`).join(', ');
   }
-  await rescoreShipments(store);
+  await rescoreShipments(store, { cause });
   await refreshSupplierView(store, id);
 }
 
@@ -292,7 +332,7 @@ register(SHIP, { beforeAdd: beforeSave, beforeUpdate: beforeSave, afterAdd: afte
 // A PR put on hold (or released / cancelled) changes which shipments are blocked: re-score at once, not at the next nightly run.
 register('Purchase_Request1', {
   afterUpdate: async ({ record, previous, store }) => {
-    if (text(record.Hold_Status) !== text(previous?.Hold_Status)) await rescoreShipments(store);
+    if (text(record.Hold_Status) !== text(previous?.Hold_Status)) await rescoreShipments(store, { cause: 'pr.hold_status_changed' });
   },
 });
 
@@ -318,7 +358,7 @@ async function heldPrs(store) {
 // full = also re-read the PO and the Sales Order dates (the nightly run); the per-save run uses the dates already on the shipment.
 // settings = values to try instead of the saved ones; dryRun = write nothing and answer what each shipment would become (the
 // "show the effect before saving" of the Control Panel, CP-R4).
-export async function rescoreShipments(store, { today = todayDate(), full = false, settings: tryOut = null, dryRun = false } = {}) {
+export async function rescoreShipments(store, { today = todayDate(), full = false, settings: tryOut = null, dryRun = false, cause = 'shipment.saved' } = {}) {
   const settings = await loadSettings(store, tryOut);
   const supplierRows = await store.find('Suppliers');
   const [ships, held, ladder] = [await store.find(SHIP), await heldPrs(store), await store.find('Ladder_Events')];
@@ -364,7 +404,7 @@ export async function rescoreShipments(store, { today = todayDate(), full = fals
 
   if (dryRun) return { scored: rows.length, results: rows.map((r) => ({ id: String(r.s.ID), no: r.s.Shipment_No, category: r.scored.category, slack_days: r.scored.slack_days })) };
   let changed = 0;
-  for (const { s, row, scored, daysLate, forecast, item } of rows) {
+  for (const { s, row, scored, daysLate, forecast, item, stage } of rows) {
     const want = {
       Category: scored.category, Blocked_Reason: scored.blocked_reason, Queue_Rank: ranks.get(item.id) ?? '', Priority_Reason: scored.priority_reason,
       Suggested_Action: scored.suggested_action, Date_Needed: scored.date_needed ?? '', Forecast_Pickable: forecast ? ymd(forecast.pickable) : '',
@@ -372,11 +412,34 @@ export async function rescoreShipments(store, { today = todayDate(), full = fals
       // Risk Status used to be a manual pick; it now follows the forecast: misses the date needed = Delayed, little slack = At Risk
       Risk_Status: item.noRank || scored.slack_days == null ? '' : scored.slack_days < 0 ? 'Delayed' : scored.slack_days <= settings.proc_watch_slack_days ? 'At Risk' : 'On Track',
     };
+    // FC-3: a range, not a single date, while uncertain -- "at sea" (shipped out, not yet at the port): a display-only
+    // band around Forecast_Pickable, separate from the (much wider) min/max transit settings used to compute it.
+    if (stage === 'shipped_out' && forecast) {
+      const win = settings.forecast_window_sea_days ?? 3;
+      want.Forecast_Window_Low = ymd(addDays(forecast.pickable, -win));
+      want.Forecast_Window_High = ymd(addDays(forecast.pickable, win));
+    } else {
+      want.Forecast_Window_Low = '';
+      want.Forecast_Window_High = '';
+    }
     if (full) for (const k of ['PO_Date', 'Order_Date', 'Production_Start_Planned', 'Production_End_Planned', 'Shipout_Planned', 'Arrival_Planned', 'Receive_Planned']) if (row[k] !== undefined && !same(row[k], s[k])) want[k] = row[k];
+    // Forecast chain / FC-4, Procurement's own portion (not the full spec concept -- "delivered to the customer" is a
+    // Fulfillment/Delivery Management stage this module never sees): the first rescore after Received_At is stamped
+    // freezes the error between that actual date and the last Forecast_Pickable while still in transit. Computed once,
+    // from the PRE-update s.Forecast_Pickable (the forecast in effect right before this rescore), never recomputed after.
+    if (s.Received_At && blank(s.Forecast_Error_Days) && !blank(s.Forecast_Pickable)) {
+      const err = dayDiff(toDay(s.Received_At), toDay(s.Forecast_Pickable));
+      if (err != null && !Number.isNaN(err)) want.Forecast_Error_Days = String(err);
+    }
     const diff = Object.fromEntries(Object.entries(want).filter(([k, v]) => !same(v, s[k])));
     if (Object.keys(diff).length === 0) continue;
     diff.Scored_At = zohoNow();
     await store.updateRecord(SHIP, s.ID, diff, { byForm: true });
+    // FC-2: Shipments is the one place a forecast is actually computed (not derived from elsewhere) -- log a row
+    // only when it changed, with the event that caused this rescore.
+    if ('Forecast_Pickable' in diff) {
+      await store.addRecord('Forecast_History', { Record_Type: 'shipment', Record_Id: String(s.ID), Record_No: s.Shipment_No, Old_Forecast: text(s.Forecast_Pickable).slice(0, 10), New_Forecast: text(diff.Forecast_Pickable).slice(0, 10), Caused_By: cause, Occurred_At: zohoNow() });
+    }
     changed++;
   }
   // the PO list by category: each PO takes the most urgent category of its shipments (spec 03, PO list)
@@ -406,7 +469,7 @@ export async function runShipmentLadder(store, { log = () => {}, today = todayDa
   const have = await store.find('Ladder_Events');
   const fired = (id, kind, rung) => have.some((l) => text(l.Record_Id) === String(id) && l.Kind === kind && toNum(l.Rung) === rung);
   const notices = await store.find('App_Notifications', (n) => n.Notification_Type === 'Shipment Overdue');
-  await rescoreShipments(store, { today, full: true });
+  await rescoreShipments(store, { today, full: true, cause: 'nightly' });
 
   for (const s of await store.find(SHIP)) {
     if (!SHIPMENT_STAGES.includes(s.Stage)) continue; // older rows: no alerts (T-9)
@@ -447,4 +510,24 @@ export async function runShipmentLadder(store, { log = () => {}, today = todayDa
   out.unacknowledged = await checkPosAcknowledged(store, settings, today);
   log(`${out.rungs} ladder rung(s), ${out.decisions} decision(s), ${out.overdue} overdue alert(s), ${out.escalated} escalated, ${out.unacknowledged} PO(s) not acknowledged`);
   return out;
+}
+
+// ---------- FC-4: monthly forecast error report (05 Shared Engines/03), Procurement's own portion ----------
+// "Forecast error by stage, reported monthly, so the defaults can be tightened." Frozen at Received (arrival at
+// our warehouse) per Forecast_Error_Days -- not at "delivered to the customer" (a Fulfillment/Delivery stage this
+// module never sees, owner decision 2026-11-21). Grouped by Shipment_Mode (available on every row) rather than by
+// a true per-stage breakdown, which would need a forecast snapshot kept at EVERY stage transition, not just the
+// one frozen at receiving -- a bigger change, not built here.
+const okBody = (message, data) => ({ code: 3000, message, data });
+export async function get_forecast_error_report(payload, store) {
+  const now = new Date();
+  const month = /^\d{4}-\d{2}$/.test(String(payload?.month || '')) ? String(payload.month) : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const ships = (await store.find(SHIP)).filter((s) => !blank(s.Forecast_Error_Days) && text(s.Received_At).startsWith(month));
+  const errors = ships.map((s) => Number(s.Forecast_Error_Days));
+  const avg = errors.length ? Math.round((errors.reduce((a, b) => a + b, 0) / errors.length) * 10) / 10 : null;
+  const bucketOf = (n) => (n < 0 ? 'early' : n === 0 ? 'on_time' : 'late');
+  const by_bucket = ['early', 'on_time', 'late'].map((name) => ({ name, count: errors.filter((e) => bucketOf(e) === name).length }));
+  const byMode = ships.reduce((m, s) => { const k = modeOf(s) || 'unknown'; (m[k] = m[k] || []).push(Number(s.Forecast_Error_Days)); return m; }, {});
+  const by_mode = Object.entries(byMode).map(([name, list]) => ({ name, count: list.length, avg_error_days: Math.round((list.reduce((a, b) => a + b, 0) / list.length) * 10) / 10 }));
+  return okBody(`Forecast error report for ${month} (Procurement's own portion: frozen at Received, not at customer delivery).`, { month, total: ships.length, avg_error_days: avg, by_bucket, by_mode });
 }

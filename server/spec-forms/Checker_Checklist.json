@@ -1,0 +1,13 @@
+{
+  "name": "Checker_Checklist",
+  "extends": true,
+  "_about": "Field added by the HomeCartel spec v1.4 (03 Fulfillment / 03 Pick, QC, Rework and Crate, QC-R5): 'a second QC after rework is visit 2; both visits are kept.' Checker_Checklist records are never overwritten across a recheck (a new row is added instead, see app/fulfillment/exception_recheck.py), so Visit_No just numbers them in creation order per SO+SKU+PAC.",
+  "fields": [
+    {
+      "name": "Visit_No",
+      "label": "Visit #",
+      "type": "number",
+      "helpText": "QC-R5: 1 for the first QC of this item/package, 2 for the QC after its first rework, and so on. Stamped once when the record is created, never changed afterward."
+    }
+  ]
+}

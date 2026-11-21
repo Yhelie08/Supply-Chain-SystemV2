@@ -82,6 +82,19 @@ async def test_approved_and_for_crating_goes_to_crate_not_to_ship(hooked_store, 
 
 
 @pytest.mark.asyncio
+async def test_approved_not_for_crating_but_item_is_fragile_goes_to_crate_anyway(hooked_store, raw_store):
+    await _add_package(raw_store)
+    await raw_store.add_record("Items", {"SKU": "L-1", "item_name": "Lamp", "Fragile": True})
+    id_ = await _add_qc(hooked_store)
+    await _decide(hooked_store, id_, "Approved", 3, {"Quality_Checker": "Kurt"})
+    crate = await raw_store.find(CRATE)
+    assert len(crate) == 1
+    assert (crate[0]["SO"], crate[0]["Package_Order"]) == ("SO-1", "PAC-1")
+    assert await raw_store.find(AGG) == []
+    assert await _stage(raw_store) == "Crate"
+
+
+@pytest.mark.asyncio
 async def test_rejected_one_exception_record_per_unit_numbered(hooked_store, raw_store):
     await _add_package(raw_store)
     id_ = await _add_qc(hooked_store)
@@ -142,6 +155,12 @@ async def test_pending_or_blank_status_does_nothing(hooked_store, raw_store):
     await hooked_store.update_record(QC, id_, {"Remarks": "draft"}, by_form=True)
     assert len(await raw_store.find(AGG)) + len(await raw_store.find(CRATE)) + len(await raw_store.find(EXC)) == 0
     assert await _stage(raw_store) == "Pack & QC"
+
+
+async def test_the_aggregated_column_exists(raw_store):
+    id_ = await raw_store.add_record(AGG, {"SO": "SO-A", "PAC": "PAC-A", "Item_Details": [], "Aggregated": True})
+    r = await raw_store.get_record_by_id(AGG, id_, raw=True)
+    assert r["Aggregated"] is True or str(r["Aggregated"]).lower() == "true"
 
 
 @pytest.mark.asyncio

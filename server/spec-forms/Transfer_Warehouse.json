@@ -1,0 +1,37 @@
+{
+  "name": "Transfer_Warehouse",
+  "extends": true,
+  "_about": "Fields added by the HomeCartel spec v1.4 (03 Fulfillment / 05 Warehouse Request and Transfer, TR-R2): 'Sent stamps when the sender confirms loading; Received stamps when the receiver confirms quantities and signs. Differences create an exception.' Sent_At / Received_At are stamped by the server (T-2), not typed in. The Item_to_transfer grid cannot be given a new per-line field through this spec-forms mechanism (it only adds top-level fields to a form; a grid's own nested fields are not touched), so the quantity confirmation is whole-transfer, not per line: Quantities_Match (checked by the receiver) and Discrepancy_Notes (required when it is not checked) -- read by app/fulfillment/transfer.py.",
+  "fields": [
+    {
+      "name": "Sent_At",
+      "label": "Sent At",
+      "type": "datetime",
+      "helpText": "Stamped by the server the first time Dispatch is checked."
+    },
+    {
+      "name": "Received_At",
+      "label": "Received At",
+      "type": "datetime",
+      "helpText": "Stamped by the server the first time Received is checked."
+    },
+    {
+      "name": "Receiver_Signature",
+      "label": "Receiver Signature",
+      "type": "signature",
+      "helpText": "Required to mark Received (TR-R2)."
+    },
+    {
+      "name": "Quantities_Match",
+      "label": "Quantities Match",
+      "type": "checkbox",
+      "helpText": "The receiver confirms the quantities received match what was sent. Required to mark Received."
+    },
+    {
+      "name": "Discrepancy_Notes",
+      "label": "Discrepancy Notes",
+      "type": "textarea",
+      "helpText": "Required when Quantities Match is unchecked; becomes the exception's description (TR-R2: 'differences create an exception')."
+    }
+  ]
+}

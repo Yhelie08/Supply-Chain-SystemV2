@@ -182,6 +182,44 @@ test('Production screen: finishing needs a production photo (ST-R3); with the ph
   assert.equal((await view(copy)).Prod_Status, 'finished');
 });
 
+// ---------- partial quantities (owner decision 2026-11-21: reduce Shipment_QTY, flag the line as Partial, no auto new shipment/PO) ----------
+test('Production screen: a partial quantity report reduces Shipment_QTY, sets Remaining_QTY and flags the line Partial', async () => {
+  const { id, copy } = await withCopy();
+  const c0 = await view(copy);
+  assert.match(c0.Prod_Lines_Data, /"SKU":"L-1"/, 'the structured line data is there for the widget to pick a SKU from');
+  await store.updateRecord('Tony_Shipment', copy, { Report_Partial_SKU: 'L-1', Report_Partial_Qty: 1, Report_Partial_Reason: 'Short on raw material' });
+  const s = await ship(id);
+  const line = s.PO_Shipments.find((l) => l.SKU === 'L-1');
+  assert.equal(String(line.Shipment_QTY), '1');
+  assert.equal(String(line.Remaining_QTY), '1');
+  assert.equal(line.Line_Status, 'Partial');
+  assert.ok(s.Last_Supplier_Update_At, 'a supplier report counts as a supplier update');
+  const [e] = await raw.find('Stage_Events', (x) => String(x.Record_Id) === String(id) && x.Event === 'shipment.partial_quantity_reported');
+  assert.match(e.Note, /L-1: reported 1 of 2/);
+  assert.match(e.Note, /Short on raw material/);
+  assert.equal(e.Source, 'supplier');
+  const c = await view(copy);
+  assert.ok(!c.Report_Partial_SKU && !c.Report_Partial_Qty && !c.Report_Partial_Reason, 'the transient fields are cleared');
+});
+
+test('Production screen: reporting the full ordered quantity is not treated as partial', async () => {
+  const { id, copy } = await withCopy();
+  await store.updateRecord('Tony_Shipment', copy, { Report_Partial_SKU: 'L-1', Report_Partial_Qty: 2 });
+  const line = (await ship(id)).PO_Shipments.find((l) => l.SKU === 'L-1');
+  assert.equal(String(line.Shipment_QTY), '2');
+  assert.equal(String(line.Remaining_QTY), '0');
+  assert.notEqual(line.Line_Status, 'Partial');
+});
+
+test('Production screen: a partial quantity needs both the SKU and a quantity above 0; more than ordered is quietly refused (same swallow convention as the delay report\'s deeper checks)', async () => {
+  const { id, copy } = await withCopy();
+  await assert.rejects(() => store.updateRecord('Tony_Shipment', copy, { Report_Partial_SKU: 'L-1' }), (e) => /quantity actually being shipped/.test(e.message));
+  await assert.rejects(() => store.updateRecord('Tony_Shipment', copy, { Report_Partial_Qty: 1 }), (e) => /which item/.test(e.message));
+  await store.updateRecord('Tony_Shipment', copy, { Report_Partial_SKU: 'L-1', Report_Partial_Qty: 99 });
+  const line = (await ship(id)).PO_Shipments.find((l) => l.SKU === 'L-1');
+  assert.equal(String(line.Shipment_QTY), '2', 'more than ordered never applies -- the deeper check in reportPartialQuantity() swallows, same as a delay after arrival');
+});
+
 test('Production screen: a date in the future, an unknown report, or a shipment that already left Production is refused', async () => {
   const { id, copy } = await withCopy();
   const bad = (patch, re) => assert.rejects(() => store.updateRecord('Tony_Shipment', copy, patch), (e) => re.test(e.message));

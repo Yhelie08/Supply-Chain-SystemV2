@@ -8,7 +8,7 @@ import { createHookedStore } from '../server/workflows/index.mjs';
 import { workflows } from '../server/workflows/all.mjs';
 import { addDays, ymd, todayDate } from '../server/workflows/deluge.mjs';
 
-const FORMS = ['Purchase_Request1', 'Suppliers', 'Sales_Order', 'Sales_Order_Fulfillment', 'Stage_Events', 'App_Notifications', 'Procurement_Settings', 'Procurement_Settings_History', 'Forecast_Settings', 'Tony_Fan_Purchase_Request', 'Fenteng_Lighting_Purchase_Request', 'Approval_Queue'];
+const FORMS = ['Purchase_Request1', 'Suppliers', 'Sales_Order', 'Sales_Order_Fulfillment', 'Stage_Events', 'App_Notifications', 'Procurement_Settings', 'Procurement_Settings_History', 'Forecast_Settings', 'Tony_Fan_Purchase_Request', 'Fenteng_Lighting_Purchase_Request', 'Approval_Queue', 'Target_Date_Changes'];
 let db, raw, store;
 before(async () => {
   db = new PGlite();
@@ -156,4 +156,32 @@ test('the queue: oldest Sales Order first inside a category, impossible = Act no
   assert.match(n.Blocked_Reason, /no supplier selected|no price/);
   assert.match(o.Priority_Reason, /SO dated/);
   assert.ok(o.Suggested_Action);
+});
+
+// ---------- DT-4 (05 Shared Engines / 03): changing the target needs a reason, logged with old/new/who ----------
+test('DT-4: changing an existing Target_Delivery without a reason is refused', async () => {
+  const id = await pr({ target: 70 });
+  await rejects(() => store.updateRecord('Purchase_Request1', id, { Target_Delivery: day(90) }), /reason/i);
+  assert.equal((await get(id)).Target_Delivery, day(70), 'unchanged');
+});
+
+test('DT-4: changing it with a reason is logged (old, new, who) and the write-only field clears itself', async () => {
+  const id = await pr({ target: 70 });
+  await store.updateRecord('Purchase_Request1', id, { Target_Delivery: day(90), Target_Change_Reason: 'Customer moved the install date' }, { user: 'buyer1' });
+  const p = await get(id);
+  assert.equal(p.Target_Delivery, day(90));
+  assert.equal(p.Target_Change_Reason, '');
+  const [change] = await raw.find('Target_Date_Changes', (r) => r.Record_Type === 'pr' && String(r.Record_Id) === String(id));
+  assert.ok(change);
+  assert.equal(change.Old_Date, day(70));
+  assert.equal(change.New_Date, day(90));
+  assert.equal(change.Reason, 'Customer moved the install date');
+  assert.equal(change.Changed_By, 'buyer1');
+});
+
+test('DT-4: setting the target for the first time (no previous value) needs no reason', async () => {
+  const id = await pr({ target: null });
+  await store.updateRecord('Purchase_Request1', id, { Target_Delivery: day(90) });
+  assert.equal((await get(id)).Target_Delivery, day(90));
+  assert.equal((await raw.find('Target_Date_Changes', (r) => String(r.Record_Id) === String(id))).length, 0);
 });

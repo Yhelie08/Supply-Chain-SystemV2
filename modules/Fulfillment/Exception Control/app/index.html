@@ -98,9 +98,10 @@
         <div class="flex items-center gap-2">
           <select id="reworkFilter" class="text-sm rounded-full border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 pl-3 pr-8 py-2">
             <option value="All">All Rework</option>
+            <option value="Paint">Paint</option>
             <option value="Repair">Repair</option>
-            <option value="Rewire">Rewire</option>
-            <option value="Repaint">Repaint</option>
+            <option value="Replace Part">Replace Part</option>
+            <option value="Other">Other</option>
           </select>
           <div class="relative">
             <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -117,6 +118,7 @@
           <thead>
             <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
               <th class="px-5 py-2.5 font-bold">Exception #</th>
+              <th class="px-3 py-2.5 font-bold">Rank</th>
               <th class="px-3 py-2.5 font-bold">Next Step</th>
               <th class="px-3 py-2.5 font-bold">SO#</th>
               <th class="px-3 py-2.5 font-bold">PAC#</th>
@@ -125,11 +127,13 @@
               <th class="px-3 py-2.5 font-bold">Supplier</th>
               <th class="px-3 py-2.5 font-bold text-right">Qty</th>
               <th class="px-3 py-2.5 font-bold">Rework</th>
+              <th class="px-3 py-2.5 font-bold">Fault Origin</th>
               <th class="px-3 py-2.5 font-bold">Status</th>
               <th class="px-3 py-2.5 font-bold">Create RR</th>
               <th class="px-3 py-2.5 font-bold">RR#</th>
               <th class="px-3 py-2.5 font-bold">Modified Time</th>
               <th class="px-3 py-2.5 font-bold">Modified User</th>
+              <th class="px-3 py-2.5 font-bold">Since</th>
               <th class="px-5 py-2.5 font-bold">Added Time</th>
             </tr>
           </thead>
@@ -303,6 +307,7 @@
   const CONFIG = {
     APP_NAME: "supply-chain-app",
     REPORT_NAME: "Exception_Control_Report",
+    SOF_REPORT: "Sales_Order_Fulfillment_Report",   // FS-1/FS-2 (03 Fulfillment / 03 Pick, QC, Rework and Crate): same rank the sorter writes, joined by SO + PAC
     FORM_NAME: "Exception_Control1",
     MAX_RECORDS: 1000,
     IMAGE_FIELD: "Image_max_10_JPG_JPEG_PNG",
@@ -316,9 +321,20 @@
     MEDIA_REPORT: "Exception_Control_Media_Report",
   };
 
-  const REWORK_CHOICES = ["Select", "OK", "Repair", "Rewire", "Repaint"];
-  const STATUS_CHOICES = ["Pending", "In Rework", "Completed", "Unrepairable"];
-  const FILTER_PILLS = ["All", "Pending", "In Rework", "Completed", "Unrepairable"];
+  // RW-R1 (03 Fulfillment / 03 Pick, QC, Rework and Crate): "Types: paint, repair, replace part, other" -- changed 2026-11-21 from the
+  // old Select/OK/Repair/Rewire/Repaint list to match the spec's own 4 types (owner decision: replace, not keep the old wording).
+  const REWORK_CHOICES = ["Select", "Paint", "Repair", "Replace Part", "Other"];
+  // ADDED 2026-11-21, spec v1.4 (03 Fulfillment / 06 Kanban, Scoreboard and SO Report, RW-R4; 05 Shared Engines / 05
+  // Exceptions, EX-2 fault_origin options) — read by the Scoreboard's rework-rate-by-origin split. Optional, like Rework.
+  const FAULT_ORIGIN_CHOICES = ["Select", "supplier", "transit", "warehouse", "site", "unknown"];
+  // QC-R3 (03 Fulfillment / 03 Pick, QC, Rework and Crate): "Rejected ... creates an exception ... The checker
+  // chooses: rework, replace (RR), or return to pick (wrong item)." Rework = the Rework field; replace (RR) =
+  // Unrepairable + Create RR (already built); "Return to Pick" added 2026-11-21 as the third choice, for a wrong
+  // item picked (not a quality defect). It is a classification only -- it does NOT automatically re-queue the item
+  // on the Pick screen (the pipeline is forward-only everywhere else in this app, on purpose; re-picking is a
+  // manual supervisor action, same as "Unrepairable" does not auto-create its RR either).
+  const STATUS_CHOICES = ["Pending", "In Rework", "Completed", "Unrepairable", "Return to Pick"];
+  const FILTER_PILLS = ["All", "Pending", "In Rework", "Completed", "Unrepairable", "Return to Pick"];
 
   let allRecords = [];
   let orderedRows = [];
@@ -946,10 +962,43 @@
     return `${datePart} ${timePart}`;
   }
 
+  // FS-1 / FS-2 (03 Fulfillment / 03 Pick, QC, Rework and Crate): "Every list uses the same ranking as Order Readiness
+  // (oldest Order Date first inside categories). Never newest first." / "Every row shows rank and reason on hover ...
+  // and 'in this stage since'." Same sofQueueMap/sofQueueFor join Order Readiness's own widget uses, by SO + PAC;
+  // Aging_Days is the sorter's own stage-dwell count, read straight off Sales_Order_Fulfillment ("in stage since").
+  // This covers the Rework queue too (RW-R2): it is this same widget's "In Rework" filtered view, no separate screen.
+  const RANK_CATEGORY_ORDER = { broken: 0, late: 1, at_risk: 2, on_time: 3, blocked: 4 };
+  let sofQueueMap = new Map();
+  function sofQueueKey(soNo, pkg) { return `${soNo || ""}::${pkg || ""}`; }
+  function fetchSofQueue() {
+    const config = { app_name: CONFIG.APP_NAME, report_name: CONFIG.SOF_REPORT, field_config: "all", max_records: CONFIG.MAX_RECORDS };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+  function sofQueueFor(so, pkg) { return sofQueueMap.get(sofQueueKey(so, pkg)) || {}; }
+  function rankBadgeHtml(so, pkg) {
+    const q = sofQueueFor(so, pkg);
+    if (q.Queue_Rank === undefined || q.Queue_Rank === null || q.Queue_Rank === "") return `<span class="text-slate-300">—</span>`;
+    const reason = String(q.Priority_Reason || "").trim();
+    return `<span class="inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold" title="${escapeHtml(reason || ("Rank " + q.Queue_Rank))}">#${escapeHtml(String(q.Queue_Rank))}</span>`;
+  }
+  function sinceCellHtml(so, pkg) {
+    const days = Number(sofQueueFor(so, pkg).Aging_Days);
+    return Number.isFinite(days) ? `${days}d` : `<span class="text-slate-300">—</span>`;
+  }
+  function rankSortValue(so, pkg) {
+    const q = sofQueueFor(so, pkg);
+    const cat = RANK_CATEGORY_ORDER[String(q.Category || "")];
+    const rank = Number(q.Queue_Rank);
+    return { cat: cat === undefined ? 99 : cat, rank: Number.isFinite(rank) ? rank : Infinity };
+  }
+
   function computeOrderedRows(records) {
-    const withTime = records.map((r) => ({ r, t: (parseZohoDateTime(r.Added_Time) || new Date(0)).getTime() }));
-    withTime.sort((a, b) => b.t - a.t);
-    return withTime.map(({ r }) => r);
+    return records.slice().sort((a, b) => {
+      const av = rankSortValue(a.Sales_Order, a.PAC), bv = rankSortValue(b.Sales_Order, b.PAC);
+      if (av.cat !== bv.cat) return av.cat - bv.cat;
+      if (av.rank !== bv.rank) return av.rank - bv.rank;
+      return (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0));   // fallback: not yet scored
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -1024,6 +1073,7 @@
     if (status === "Unrepairable") return "text-rose-600 bg-rose-50 border-rose-200";
     if (status === "Completed") return "text-emerald-600 bg-emerald-50 border-emerald-200";
     if (status === "In Rework") return "text-amber-600 bg-amber-50 border-amber-200";
+    if (status === "Return to Pick") return "text-blue-600 bg-blue-50 border-blue-200";
     return "text-slate-500 bg-slate-50 border-slate-200";
   }
 
@@ -1111,16 +1161,19 @@
       ? { here: "Unrepairable", action: "Replacement from supplier (" + r.RR_No + ")", who: "Supplier", tone: "wait" }
       : { here: "Unrepairable", action: "Create a Replacement (RR)", who: "Warehouse", tone: "next" };
     if (st === "In Rework") return { here: "In Rework", action: "Finish the repair, then set Completed", who: "Warehouse", tone: "next" };
-    return { here: "Exception Pending", action: "Set Rework, or mark Unrepairable", who: "Warehouse", tone: "next" };
+    if (st === "Return to Pick") return { here: "Return to Pick", action: "Wrong item -- re-add it to the Pick list", who: "Picker", tone: "wait" };
+    return { here: "Exception Pending", action: "Set Rework, mark Unrepairable, or Return to Pick", who: "Warehouse", tone: "next" };
   }
   function dataRow(r) {
     const reworkOpts = REWORK_CHOICES.map((c) => `<option value="${c}" ${(r.Rework || "Select") === c ? "selected" : ""}>${c}</option>`).join("");
+    const faultOriginOpts = FAULT_ORIGIN_CHOICES.map((c) => `<option value="${c}" ${(r.Fault_Origin || "Select") === c ? "selected" : ""}>${c}</option>`).join("");
     const statusVal = r.Status || "Pending";
     const statusOpts = STATUS_CHOICES.map((c) => `<option value="${c}" ${statusVal === c ? "selected" : ""}>${c}</option>`).join("");
     const canCreateRR = statusVal === "Unrepairable" && !(r.RR_No && r.RR_No !== "—");
     return `
       <tr class="record-row hover:bg-slate-50 transition cursor-pointer" data-id="${r.ID}" onclick="switchToDetail('${r.ID}')">
         <td class="px-5 py-2.5 text-slate-600 font-mono text-xs" data-id="${r.ID}">${escapeHtml(displayVal(r.Exception_Number))}</td>
+        <td class="px-3 py-2.5">${rankBadgeHtml(r.Sales_Order, r.PAC)}</td>
         <td class="px-3 py-2.5">${nextStepCell(r.ID, nextStepFor(r))}</td>
         <td class="px-3 py-2.5 text-slate-700 font-medium" data-id="${r.ID}">${escapeHtml(displayVal(r.Sales_Order))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.PAC))}</td>
@@ -1132,6 +1185,9 @@
           <select class="rework-input text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 px-2 py-1.5" data-id="${r.ID}">${reworkOpts}</select>
         </td>
         <td class="px-3 py-2.5" onclick="event.stopPropagation()">
+          <select class="fault-origin-input text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 px-2 py-1.5" data-id="${r.ID}">${faultOriginOpts}</select>
+        </td>
+        <td class="px-3 py-2.5" onclick="event.stopPropagation()">
           <select class="status-input text-sm rounded-lg border font-medium px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-300 ${statusBadgeClass(statusVal)}" data-id="${r.ID}">${statusOpts}</select>
         </td>
         <td class="px-3 py-2.5" onclick="event.stopPropagation()">
@@ -1140,6 +1196,7 @@
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.RR_No))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(formatDateTime(r.Modified_Time))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Modified_By))}</td>
+        <td class="px-3 py-2.5 text-slate-500">${sinceCellHtml(r.Sales_Order, r.PAC)}</td>
         <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
       </tr>`;
   }
@@ -1148,10 +1205,13 @@
     const filtered = getFilteredRows();
     tableBody.innerHTML = filtered.length
       ? filtered.map(dataRow).join("")
-      : `<tr><td colspan="15" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+      : `<tr><td colspan="18" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
 
     tableBody.querySelectorAll(".rework-input").forEach((el) => {
       el.addEventListener("change", () => saveInlineField(el.dataset.id, "Rework", el.value));
+    });
+    tableBody.querySelectorAll(".fault-origin-input").forEach((el) => {
+      el.addEventListener("change", () => saveInlineField(el.dataset.id, "Fault_Origin", el.value));
     });
     tableBody.querySelectorAll(".status-input").forEach((el) => {
       const recId = el.dataset.id;
@@ -1694,7 +1754,8 @@
   // failure/no-SDK case, allRecords simply stays empty and the table's own
   // existing empty-state row does the rest.
   function loadLive() {
-    fetchAllRecords().then((records) => {
+    Promise.all([fetchAllRecords(), fetchSofQueue()]).then(([records, sofRecords]) => {
+      sofQueueMap = new Map(sofRecords.map((s) => [sofQueueKey(s.SO_No, s.Package), s]));
       allRecords = records;
       orderedRows = computeOrderedRows(allRecords);
       renderSourceTabs();

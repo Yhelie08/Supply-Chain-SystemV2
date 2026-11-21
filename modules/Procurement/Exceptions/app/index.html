@@ -491,6 +491,17 @@
           <div class="sec-body" id="dCtxEvidence"></div>
         </div>
 
+        <!-- C3 - SUPPLIER'S OWN PRODUCTION / SHIPMENT PHOTOS, FOR COMPARISON (spec ST-R4: "photos ay makikita sa
+             Shipment, Receiving at Exception"). Same pattern as Receiving/app/index.html's own supplierPhotosRow;
+             hidden unless the linked shipment actually has any. -->
+        <div class="sec-card" id="supplierPhotosCard" style="display:none">
+          <div class="sec-header">
+            <span class="sec-title">Supplier's Own Photos</span>
+            <span class="sec-hint">For comparison with the evidence above</span>
+          </div>
+          <div class="sec-body"><div id="supplierPhotosThumbs" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
+        </div>
+
         <!-- D - PROBLEM DETAILS -->
         <div class="sec-card">
           <div class="sec-header">
@@ -1916,6 +1927,38 @@ function refreshCreateRRGateLive(){
   updateCreateRRGate(liveExc);
 }
 
+/* The supplier's own production / shipment photos, next to the damage/missing evidence above, so the fault can be
+   traced (spec ST-R4: "photos ay makikita sa Shipment, Receiving at Exception"). Same lookup-by-Shipment_No and
+   same growing-list handling as Receiving/app/index.html's own supplierPhotosRow -- Shipment_No on the Exception
+   is a plain text copy of the shipment's own number (set once, at auto-exception creation), not a lookup ID. */
+function loadSupplierPhotos(shipmentNo){
+  var card = $('supplierPhotosCard'), thumbs = $('supplierPhotosThumbs');
+  if(!card || !thumbs) return;
+  card.style.display = 'none';
+  thumbs.innerHTML = '';
+  if(!shipmentNo) return;
+  ZOHO.CREATOR.DATA.getRecords({ report_name: 'All_Shipments', criteria: 'Shipment_No == "'+String(shipmentNo).replace(/"/g,'\\"')+'"', field_config: 'all', max_records: 1 }).then(function(resp){
+    var sh = resp && resp.code === 3000 && Array.isArray(resp.data) ? resp.data[0] : null;
+    if(!sh) return;
+    var photos = [];
+    var raw = sh.Production_Photos;
+    if(Array.isArray(raw)) photos = photos.concat(raw);
+    else if(typeof raw === 'string' && raw){ try{ var parsed = JSON.parse(raw); photos = photos.concat(Array.isArray(parsed) ? parsed : [raw]); }catch(e){ photos.push(raw); } }
+    if(sh.Shipment_Photos) photos.push(sh.Shipment_Photos);
+    if(!photos.length) return;
+    card.style.display = '';
+    photos.forEach(function(url, i){
+      var img = document.createElement('img');
+      img.className = 'ctx-ev-photo';
+      img.title = 'Supplier photo '+(i+1);
+      img.onclick = function(){ openLightbox(img.src); };
+      img.onerror = function(){ ctxPhotoFallback(img); };
+      thumbs.appendChild(img);
+      applyEvidencePhotoImg(img, url);
+    });
+  }).catch(function(){});
+}
+
 function renderDetail(exc){
   _currentExcObj = exc;
   renderNextStepBanner("nsBanner", exc.id, nextStepFor(exc));
@@ -1939,6 +1982,7 @@ function renderDetail(exc){
   $('dShipmentNo').value = exc.shipmentNo;
   $('dReceiveNo').value = exc.receiveNo;
   $('dReceivingLineId').value = exc.receivingLineId;
+  loadSupplierPhotos(exc.shipmentNo);
 
   // C
   $('dCtxTbody').innerHTML = exc.ctxRows.length

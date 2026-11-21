@@ -1,0 +1,14 @@
+{
+  "name": "Checklist_Templates",
+  "label": "Checklist Templates",
+  "_about": "QC-R1 (03 Fulfillment / 03 Pick, QC, Rework and Crate): 'checklist per item category, stored as a template so categories can have different checks.' Matches the real target schema (08 Design Doc / 01 Database, checklist_templates: kind, item_category, lines). Admin-editable, same pattern as Suggested_Actions -- no custom widget, edited directly. A row here NARROWS which of the mandatory QC-R2 checklist groups apply to that category; a category with NO row here still requires every group, exactly like today, before any template exists for it. Kind is 'qc' for every row today (crate/vehicle templates are not built -- only the QC groups are mandatory-checked anywhere in this codebase).",
+  "fields": [
+    { "name": "Kind", "label": "Kind", "type": "text", "helpText": "qc, crate or vehicle (only qc is read anywhere today)." },
+    { "name": "Item_Category", "label": "Item category", "type": "text", "helpText": "Must match an Items.category value exactly." },
+    {
+      "name": "Lines", "label": "Required checklist groups", "type": "list",
+      "options": ["Fixture Body", "LED", "Uniformity"],
+      "helpText": "Which QC-R2 groups this category must have ticked to be Approved. Leave empty to require none of them (not the same as no row at all, which requires every group)."
+    }
+  ]
+}

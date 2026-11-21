@@ -233,6 +233,7 @@
           <thead>
             <tr class="text-left text-[11px] uppercase tracking-wide text-slate-900 border-b border-slate-100">
               <th class="px-5 py-2.5 font-bold">QC Status</th>
+              <th class="px-3 py-2.5 font-bold">Rank</th>
               <th class="px-3 py-2.5 font-bold">Next Step</th>
               <th class="px-3 py-2.5 font-bold">SO #</th>
               <th class="px-3 py-2.5 font-bold">PAC #</th>
@@ -243,6 +244,7 @@
               <th class="px-3 py-2.5 font-bold">Date Checked</th>
               <th class="px-3 py-2.5 font-bold">Order Type</th>
               <th class="px-3 py-2.5 font-bold">Forecast</th>
+              <th class="px-3 py-2.5 font-bold">Since</th>
               <th class="px-5 py-2.5 font-bold">Added Time</th>
               <th class="px-5 py-2.5 font-bold text-right">Action</th>
             </tr>
@@ -553,6 +555,14 @@
               <input type="radio" name="qcStatus" id="f_QC_Status_None" value=""> Pending
             </label>
           </div>
+          <!-- CR-R1 (03 Fulfillment / 03 Pick, QC, Rework and Crate): "for_crate is set from item flags (fragile)
+               or by the supervisor." The item-flag half is automatic (Items.Fragile, ORed in server-side by
+               qc_routing.py). This checkbox is the manual half -- the only place anyone can set it, since the
+               field had no editable control anywhere before. Plain field, no reason/approval tracking (the real
+               target schema's packages.for_crate is a plain column, not an audited override like the payment one). -->
+          <label class="flex items-center gap-2 text-sm text-slate-700 mt-4 pt-4 border-t border-slate-100">
+            <input type="checkbox" id="f_For_Crate"> For Crate (needs crating before it ships — e.g. fragile, oversized)
+          </label>
         </div>
 
       </div>
@@ -649,6 +659,7 @@
   const CONFIG = {
     APP_NAME: "supply-chain-app",
     REPORT_NAME: "All_Qc_Reports1",
+    SOF_REPORT: "Sales_Order_Fulfillment_Report",   // FS-1/FS-2 (03 Fulfillment / 03 Pick, QC, Rework and Crate): same rank the sorter writes, joined by SO + PAC
     MAX_RECORDS: 1000,   // JS API v2 single-call ceiling; add cursor pagination if this app ever exceeds it
     // ADDED 2026-10-29, per user ("tanggalin na natin yung pack... sa qc dun na
     // mamimili ng packer") — the Pack stage is gone from the pipeline; Pick1
@@ -1453,6 +1464,7 @@
     document.getElementById("f_QC_Status_Approved").checked = status === "Approved";
     document.getElementById("f_QC_Status_Rejected").checked = status === "Rejected";
     document.getElementById("f_QC_Status_None").checked = status !== "Approved" && status !== "Rejected";
+    document.getElementById("f_For_Crate").checked = r.For_Crate === true || r.For_Crate === "true";
 
     document.getElementById("signatureStatusNote").textContent = !isBlank(r.Signature)
       ? "Existing signature on file. Draw below to replace it."
@@ -1505,6 +1517,7 @@
       Spare_part_type: readSpareParts(),
       Remarks: document.getElementById("f_Remarks").value,
       QC_Status: statusEl ? statusEl.value : "",
+      For_Crate: document.getElementById("f_For_Crate").checked,
     };
   }
 
@@ -1888,8 +1901,38 @@
   document.getElementById("saveEditBtn2").addEventListener("click", saveEditForm);
 
   // ---------------------------------------------------------------------
-  // Ordering (latest Added_Time first) — flat list, no grouping (the report
-  // has no "group by" clause).
+  // FS-1 / FS-2 (03 Fulfillment / 03 Pick, QC, Rework and Crate): "Every list uses the same ranking as Order Readiness
+  // (oldest Order Date first inside categories). Never newest first." / "Every row shows rank and reason on hover ...
+  // and 'in this stage since'." Same sofQueueMap/sofQueueFor join Order Readiness's own widget uses, by SO + Package;
+  // Aging_Days is the sorter's own stage-dwell count, read straight off Sales_Order_Fulfillment ("in stage since").
+  // ---------------------------------------------------------------------
+  const RANK_CATEGORY_ORDER = { broken: 0, late: 1, at_risk: 2, on_time: 3, blocked: 4 };
+  let sofQueueMap = new Map();
+  function sofQueueKey(soNo, pkg) { return `${soNo || ""}::${pkg || ""}`; }
+  function fetchSofQueue() {
+    const config = { app_name: CONFIG.APP_NAME, report_name: CONFIG.SOF_REPORT, field_config: "all", max_records: CONFIG.MAX_RECORDS };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+  function sofQueueFor(so, pkg) { return sofQueueMap.get(sofQueueKey(so, pkg)) || {}; }
+  function rankBadgeHtml(so, pkg) {
+    const q = sofQueueFor(so, pkg);
+    if (q.Queue_Rank === undefined || q.Queue_Rank === null || q.Queue_Rank === "") return `<span class="text-slate-300">—</span>`;
+    const reason = String(q.Priority_Reason || "").trim();
+    return `<span class="inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold" title="${escapeHtml(reason || ("Rank " + q.Queue_Rank))}">#${escapeHtml(String(q.Queue_Rank))}</span>`;
+  }
+  function sinceCellHtml(so, pkg) {
+    const days = Number(sofQueueFor(so, pkg).Aging_Days);
+    return Number.isFinite(days) ? `${days}d` : `<span class="text-slate-300">—</span>`;
+  }
+  function rankSortValue(so, pkg) {
+    const q = sofQueueFor(so, pkg);
+    const cat = RANK_CATEGORY_ORDER[String(q.Category || "")];
+    const rank = Number(q.Queue_Rank);
+    return { cat: cat === undefined ? 99 : cat, rank: Number.isFinite(rank) ? rank : Infinity };
+  }
+
+  // ---------------------------------------------------------------------
+  // Ordering — flat list, no grouping (the report has no "group by" clause).
   // ---------------------------------------------------------------------
   function isEmptyRecord(r) {
     return isBlank(r.SO) && isBlank(r.PR) && isBlank(r.RR)
@@ -1897,8 +1940,12 @@
   }
 
   function computeOrderedRows(records) {
-    return records.filter((r) => !isEmptyRecord(r)).slice().sort((a, b) =>
-      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+    return records.filter((r) => !isEmptyRecord(r)).slice().sort((a, b) => {
+      const av = rankSortValue(a.SO, a.PAC), bv = rankSortValue(b.SO, b.PAC);
+      if (av.cat !== bv.cat) return av.cat - bv.cat;
+      if (av.rank !== bv.rank) return av.rank - bv.rank;
+      return (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0));   // fallback: not yet scored
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -2335,6 +2382,7 @@ function forecastCell(r) {
     return `
       <tr class="record-row hover:bg-slate-50 cursor-pointer transition" data-id="${r.ID}">
         <td class="px-5 py-2.5">${qcStatusHtml(r)}${rrRecheckBadgeHtml(r)}</td>
+        <td class="px-3 py-2.5">${rankBadgeHtml(r.SO, r.PAC)}</td>
         <td class="px-3 py-2.5">${nextStepCell(r.ID, nextStepFor(r))}</td>
         <td class="px-3 py-2.5 text-slate-700 font-medium">${escapeHtml(displayVal(r.SO))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.PAC))}</td>
@@ -2345,6 +2393,7 @@ function forecastCell(r) {
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(formatDate(r.Date_Checked))}</td>
         <td class="px-3 py-2.5 text-slate-500">${escapeHtml(displayVal(r.Order_Type))}</td>
         <td class="px-3 py-2.5">${forecastCell(r)}</td>
+        <td class="px-3 py-2.5 text-slate-500">${sinceCellHtml(r.SO, r.PAC)}</td>
         <td class="px-5 py-2.5 text-slate-400">${escapeHtml(formatDateTime(r.Added_Time))}</td>
         <td class="qc-action-cell px-5 py-2.5 text-right">${qcOpenBtnHtml(r)}</td>
       </tr>`;
@@ -2356,7 +2405,7 @@ function forecastCell(r) {
 
     tableBody.innerHTML = filtered.length
       ? filtered.map(dataRow).join("")
-      : `<tr><td colspan="13" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
+      : `<tr><td colspan="15" class="px-5 py-10 text-center text-sm text-slate-400">No records found</td></tr>`;
 
     // Clicking anywhere on the row is still a shortcut into the QC form, but
     // it now respects the same packer gate the QC button does — otherwise the
@@ -2747,8 +2796,10 @@ function forecastCell(r) {
     document.getElementById("detailBreadcrumb").textContent = `${displayVal(r.SO)} · ${displayVal(r.Customer_Name)}`;
     document.getElementById("detailSoNo").textContent = displayVal(r.SO) !== "—" ? displayVal(r.SO) : "QC Report";
     document.getElementById("detailCustomer").textContent = displayVal(r.Customer_Name);
+    const visitNo = Number(r.Visit_No) > 0 ? Number(r.Visit_No) : null;
     document.getElementById("detailSubline").innerHTML =
       `${escapeHtml(displayVal(r.Order_Type))} · ${escapeHtml(displayVal(r.Delivery_Type))}` +
+      (visitNo && visitNo > 1 ? ` · <span class="font-semibold text-amber-700">Visit ${visitNo}</span>` : "") +
       (isBlank(r.RR) ? "" : ` · 🔁 <span>Recheck</span> (<span>was</span> ${escapeHtml(displayVal(r.RR))})`);
 
     const fieldsHtml = [
@@ -2759,6 +2810,7 @@ function forecastCell(r) {
       ["Demo #", displayVal(r.Demo)],
       ["Order Type", displayVal(r.Order_Type)],
       ["Delivery Type", displayVal(r.Delivery_Type)],
+      ["Visit #", visitNo ? String(visitNo) : "—"],
       ["Added Time", escapeHtml(formatDateTime(r.Added_Time))],
     ];
     document.getElementById("detailFields").innerHTML = fieldsHtml.map(([label, val]) => `
@@ -2913,7 +2965,8 @@ function forecastCell(r) {
   }
 
   function loadLive() {
-    fetchAllRecords().then((records) => {
+    Promise.all([fetchAllRecords(), fetchSofQueue()]).then(([records, sofRecords]) => {
+      sofQueueMap = new Map(sofRecords.map((s) => [sofQueueKey(s.SO_No, s.Package), s]));
       allRecords = records;
       orderedRows = computeOrderedRows(allRecords);
       renderAll();

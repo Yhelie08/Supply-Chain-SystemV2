@@ -441,6 +441,16 @@
               <span id="detailAddedTime" class="text-sm text-slate-800 font-medium"></span>
             </div>
           </div>
+          <!-- OA-R2 (03 Fulfillment / 04 Order Aggregation and Pre-Delivery Gate): confirms all boxes are at the
+               loading area, box count shown. Owner decision 2026-11-21: this is a separate confirmation gate in
+               front of Dispatch Selected Items -- it does NOT change when the package.aggregated stamp fires
+               (still on arrival at the Order Aggregation stage, unchanged for the Scoreboard / Delivery Analytics). -->
+          <div class="flex items-center justify-between mb-2 pb-3 border-b border-slate-100">
+            <label class="flex items-center gap-2 text-xs text-slate-600 font-medium">
+              <input type="checkbox" id="f_Aggregated"> Aggregated (all boxes at loading area)
+            </label>
+            <span id="detailBoxCount" class="text-xs text-slate-400"></span>
+          </div>
           <p id="dispatchHint" class="text-[11px] text-slate-400 mb-2"></p>
           <button id="dispatchBtn" class="w-full text-sm font-semibold bg-indigo-600 text-white rounded-lg px-4 py-2.5 hover:bg-indigo-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
             🚚 Dispatch Selected Items
@@ -570,6 +580,7 @@
   const CONFIG = {
     APP_NAME: "supply-chain-app",
     REPORT_NAME: "Order_Aggregation1_Report",
+    SOF_REPORT: "Sales_Order_Fulfillment_Report",   // FS-1/FS-2 (03 Fulfillment / 03 Pick, QC, Rework and Crate): same rank the sorter writes, joined by SO + PAC
     MAX_RECORDS: 1000,   // JS API v2 single-call ceiling; add cursor pagination if this app ever exceeds it
     // CHANGED 2026-10-27, per user ("Initial Scheduling — dito papasok lahat nang
     // galing sa Order Aggregation") — a dispatch now lands in STAGE 1 of the DMS
@@ -823,7 +834,55 @@
 
   // ---------------------------------------------------------------------
   // Ordering — flat list (the report has no "group by" clause).
+  //
+  // FS-1 / FS-2 (03 Fulfillment / 03 Pick, QC, Rework and Crate): "Every list uses the same ranking as Order
+  // Readiness ... Never newest first." / "Every row shows rank and reason on hover ... and 'in this stage since'."
+  // This record is NOT 1:1 with a package (a single Order_Aggregation1 row can carry several packages' Item_Details
+  // lines — see the DISPATCH notes near the top of this file), so there is no single Queue_Rank to read directly.
+  // Owner decision 2026-11-21: rank the row by the LOWEST (highest-priority) Queue_Rank among its own packages, so a
+  // row is never hidden behind lower-priority siblings just because it also carries other packages.
   // ---------------------------------------------------------------------
+  const RANK_CATEGORY_ORDER = { broken: 0, late: 1, at_risk: 2, on_time: 3, blocked: 4 };
+  let sofQueueMap = new Map();
+  function sofQueueKey(soNo, pkg) { return `${soNo || ""}::${pkg || ""}`; }
+  function fetchSofQueue() {
+    const config = { app_name: CONFIG.APP_NAME, report_name: CONFIG.SOF_REPORT, field_config: "all", max_records: CONFIG.MAX_RECORDS };
+    return ZOHO.CREATOR.DATA.getRecords(config).then((response) => (response && response.data) || []);
+  }
+  function sofQueueFor(so, pkg) { return sofQueueMap.get(sofQueueKey(so, pkg)) || {}; }
+  function packagesOf(r) {
+    const pacs = new Set((r.Item_Details || []).map((l) => displayVal(l && l.PAC)).filter((p) => p && p !== "—"));
+    if (!pacs.size && !isBlank(r.PAC)) pacs.add(displayVal(r.PAC));
+    return [...pacs];
+  }
+  function bestRankInfo(r) {
+    const so = displayVal(r.SO);
+    let best = null;
+    for (const pac of packagesOf(r)) {
+      const q = sofQueueFor(so, pac);
+      const rank = Number(q.Queue_Rank);
+      if (!Number.isFinite(rank)) continue;
+      if (!best || rank < best.rank) best = { rank, q };
+    }
+    return best;
+  }
+  function rankBadgeHtml(r) {
+    const best = bestRankInfo(r);
+    if (!best) return `<span class="text-slate-300">—</span>`;
+    const reason = String(best.q.Priority_Reason || "").trim();
+    return `<span class="inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold" title="${escapeHtml(reason || ("Rank " + best.rank))}">#${escapeHtml(String(best.rank))}</span>`;
+  }
+  function sinceCellHtml(r) {
+    const best = bestRankInfo(r);
+    const days = best ? Number(best.q.Aging_Days) : NaN;
+    return Number.isFinite(days) ? `${days}d` : `<span class="text-slate-300">—</span>`;
+  }
+  function rankSortValue(r) {
+    const best = bestRankInfo(r);
+    const cat = best ? RANK_CATEGORY_ORDER[String(best.q.Category || "")] : undefined;
+    return { cat: cat === undefined ? 99 : cat, rank: best ? best.rank : Infinity };
+  }
+
   function isEmptyRecord(r) {
     return isBlank(r.SO) && isBlank(r.PR) && isBlank(r.Customer_Name);
   }
@@ -833,8 +892,12 @@
     // button on Done cards to hide a completed order from the board without
     // deleting it) filtered out here, at the single point every list/search
     // view already reads from — no other code needs to know about it.
-    return records.filter((r) => !isEmptyRecord(r) && !isTrue(r.Archived)).slice().sort((a, b) =>
-      (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0)));
+    return records.filter((r) => !isEmptyRecord(r) && !isTrue(r.Archived)).slice().sort((a, b) => {
+      const av = rankSortValue(a), bv = rankSortValue(b);
+      if (av.cat !== bv.cat) return av.cat - bv.cat;
+      if (av.rank !== bv.rank) return av.rank - bv.rank;
+      return (parseZohoDateTime(b.Added_Time) || new Date(0)) - (parseZohoDateTime(a.Added_Time) || new Date(0));   // fallback: not yet scored
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -1128,9 +1191,12 @@ function forecastCell(r) {
   let listFilter = "all";
   // key: which column; dir: "asc" | "desc". "added" = the board's own default
   // order (newest record first), so List opens showing exactly what Board does.
-  let listSort = { key: "added", dir: "desc" };
+  // FS-1: default is rank order (oldest/highest-priority first, never newest first); a user may still click any
+  // other sortable column header to re-sort for their own session (unchanged below).
+  let listSort = { key: "rank", dir: "asc" };
 
   const LIST_COLUMNS = [
+    { key: "rank",     label: "Rank",          sortable: true },
     { key: "status",   label: "Status",        sortable: true },
     { key: "customer", label: "Customer",      sortable: true },
     { key: "pac",      label: "PAC #",         sortable: true },
@@ -1140,6 +1206,7 @@ function forecastCell(r) {
     { key: "next",     label: "Next Step",     sortable: false },
     { key: "target",   label: "Target Date",   sortable: true },
     { key: "forecast", label: "Forecast",      sortable: true },
+    { key: "since",    label: "Since",         sortable: false },
     { key: "act",      label: "Action",        sortable: false },
   ];
 
@@ -1173,6 +1240,7 @@ function forecastCell(r) {
 
   function listSortValue(r, key, state) {
     switch (key) {
+      case "rank":     { const best = bestRankInfo(r); return best ? best.rank : null; }
       case "status":   return STATE_RANK[state];
       case "customer": return displayVal(r.Customer_Name).toLowerCase();
       case "pac":      return displayVal(r.PAC).toLowerCase();
@@ -1230,6 +1298,7 @@ function forecastCell(r) {
       : "";
     return `
       <tr class="list-row" data-id="${r.ID}">
+        <td class="list-td">${rankBadgeHtml(r)}</td>
         <td class="list-td"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full ${st.cls} text-[10px] font-bold"><span class="h-1.5 w-1.5 rounded-full ${st.dot}"></span>${st.label}</span></td>
         <td class="list-td font-semibold text-slate-900">${escapeHtml(displayVal(r.Customer_Name))}${isTrue(r.For_Crate) ? ` <span class="text-[10px] font-semibold text-amber-600 whitespace-nowrap">📦 Crate</span>` : ""}</td>
         <td class="list-td text-blue-600 font-medium whitespace-nowrap">${escapeHtml(displayVal(r.PAC))}</td>
@@ -1239,6 +1308,7 @@ function forecastCell(r) {
         <td class="list-td">${nextStepCell(r.ID, nextStepFor(r, state))}</td>
         <td class="list-td text-slate-500 whitespace-nowrap">${target === "—" ? dash : escapeHtml(target)}</td>
         <td class="list-td whitespace-nowrap">${forecastBlank_(r) ? dash : forecastCell(r)}</td>
+        <td class="list-td text-slate-500 whitespace-nowrap">${sinceCellHtml(r)}</td>
         <td class="list-td text-center whitespace-nowrap">${state === "done"
           ? `<button type="button" class="archive-row-btn text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg px-2.5 py-1 transition" data-id="${r.ID}">🗄 Archive</button>`
           : ""}</td>
@@ -1280,7 +1350,7 @@ function forecastCell(r) {
       th.addEventListener("click", () => {
         const key = th.dataset.sort;
         if (listSort.key === key) listSort.dir = listSort.dir === "asc" ? "desc" : "asc";
-        else listSort = { key: key, dir: (key === "customer" || key === "pac" || key === "so" || key === "type") ? "asc" : "desc" };
+        else listSort = { key: key, dir: (key === "customer" || key === "pac" || key === "so" || key === "type" || key === "rank") ? "asc" : "desc" };
         renderBoard();
       });
     });
@@ -1413,6 +1483,28 @@ function forecastCell(r) {
     if (circle) setItemSelected(Number(circle.dataset.rowIdx), circle.getAttribute("aria-checked") !== "true");
   });
 
+  // OA-R2: "Aggregated" is a plain field save (not a stage stamp -- see the HTML comment above it).
+  async function setAggregated(checked) {
+    const r = currentDetailRecord;
+    if (!r) return;
+    const el = document.getElementById("f_Aggregated");
+    try {
+      const response = await ZOHO.CREATOR.DATA.updateRecords({
+        app_name: CONFIG.APP_NAME,
+        report_name: CONFIG.REPORT_NAME,
+        payload: { criteria: `(ID == ${r.ID})`, data: { Aggregated: checked } },
+      });
+      if (!response || response.code !== 3000) throw new Error("update-failed");
+      r.Aggregated = checked;
+      renderDispatchPanel(r);
+    } catch (err) {
+      console.error(err);
+      el.checked = !checked;
+      toast(refusalReason(err) || "Couldn't update Aggregated.", "error");
+    }
+  }
+  document.getElementById("f_Aggregated").addEventListener("change", (ev) => setAggregated(ev.target.checked));
+
   // ADDED 2026-07-30 — "Awaiting Items" indicator, detail view half. Reuses
   // awaitingItemLinesHtml() from a prior task — same rendering, no toggle needed
   // here (unlike the card, this panel has room to just always show).
@@ -1475,6 +1567,9 @@ function forecastCell(r) {
       ? badgePill("Yes", "bg-amber-50 text-amber-700 border-amber-200")
       : badgePill("No", "bg-slate-50 text-slate-500 border-slate-200");
     document.getElementById("detailAddedTime").textContent = formatDateTime(r.Added_Time);
+    document.getElementById("f_Aggregated").checked = isTrue(r.Aggregated);
+    const totalBoxes = allItems.reduce((sum, row) => sum + (Number(row.QTY) || 0), 0);
+    document.getElementById("detailBoxCount").textContent = `${totalBoxes} box${totalBoxes === 1 ? "" : "es"}`;
 
     const btn = document.getElementById("dispatchBtn");
     const hint = document.getElementById("dispatchHint");
@@ -1485,6 +1580,12 @@ function forecastCell(r) {
       btn.disabled = true;
       hint.className = HINT_DEFAULT;
       hint.textContent = "Nothing left on this order to dispatch.";
+    } else if (!isTrue(r.Aggregated)) {
+      // OA-R2: checked before the payment/exception/selection gates so it is never silently masked by them.
+      btn.textContent = "🚚 Dispatch Selected Items";
+      btn.disabled = true;
+      hint.className = HINT_BLOCKED;
+      hint.textContent = "Check \"Aggregated\" (all boxes confirmed at the loading area) before dispatching.";
     } else if (blockedItems.length > 0 || exceptionBlocked.length > 0) {
       // ADDED 2026-07-31, per user — at least one SELECTED item's own real PAC
       // (looked up by SO+SKU, not the record's header field — see
@@ -2670,7 +2771,8 @@ function forecastCell(r) {
   }
 
   function loadLive() {
-    Promise.all([fetchAllRecords(), fetchAwaitingItems(), fetchPaymentStatusRows()]).then(async ([records, awaitingResult, paymentRows]) => {
+    Promise.all([fetchAllRecords(), fetchAwaitingItems(), fetchPaymentStatusRows(), fetchSofQueue()]).then(async ([records, awaitingResult, paymentRows, sofRecords]) => {
+      sofQueueMap = new Map(sofRecords.map((s) => [sofQueueKey(s.SO_No, s.Package), s]));
       allRecords = records;
       awaitingBySO = awaitingResult.awaitingMap;
       exceptionBySOSKU = awaitingResult.exceptionSKUMap;

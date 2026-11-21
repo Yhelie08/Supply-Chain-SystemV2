@@ -542,6 +542,16 @@ function esc(s){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
 }
+/* DT-3 (05 Shared Engines/03): Order Age = today - Order Date, frozen at Replacement_Received_At once the
+   replacement has arrived -- same "stops counting at delivery" treatment as Shipments (Received_At) and
+   Receiving (Available_At). */
+function rrOrderAge(r){
+  var start = Date.parse(String(r.Order_Date||'').slice(0,10)+'T00:00:00');
+  if(isNaN(start)) return null;
+  var end = r.Replacement_Received_At ? Date.parse(r.Replacement_Received_At) : NaN;
+  if(isNaN(end)) end = Date.now();
+  return Math.max(0, Math.floor((end - start) / 86400000));
+}
 
 function invokeApi(apiName, publicKey, payload){
   return ZOHO.CREATOR.DATA.invokeCustomApi({
@@ -872,7 +882,7 @@ function renderList(){
       '<td>' + esc(sr.Original_PO_No) + '</td>' +
       '<td>' + esc(r.RR_Date || '—') + '</td>' +
       '<td>' + (ack ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-gray">No</span>') + '</td>' +
-      '<td style="white-space:nowrap">' + esc(String(r.Order_Date || '—').slice(0,10)) + '</td>' +
+      '<td style="white-space:nowrap">' + esc(String(r.Order_Date || '—').slice(0,10)) + (rrOrderAge(r) != null ? ' <span style="color:#94a3b8;font-size:11px">(' + rrOrderAge(r) + 'd)</span>' : '') + '</td>' +
       '<td style="white-space:nowrap">' + esc(String(r.Target_Delivery || '—').slice(0,10)) + '</td>' +
       '<td style="white-space:nowrap">' + esc(String(r.Rr_Forecast_Pickable || '—').slice(0,10)) + '</td>' +
       '</tr>';

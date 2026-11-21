@@ -3808,8 +3808,10 @@ function renderDetailView(r,d,info={}){
       <div class="sec-header"><span class="sec-title">Shipment &amp; Timeline</span></div>
       <div class="sec-body">
         <div class="fg fg-5">
-          <div><div class="fi-lbl">Shipping Mode</div><div class="fi-val" id="dvShipMode"><span class="badge-pill ship-badge">&#9679; ${r.shipMode}</span></div></div>
+          <div><div class="fi-lbl">Order Date</div><div class="fi-val">${fmtDateShort(r.orderDate||'')}${(function(){var a=prOrderAge(r.orderDate);return a!=null?' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">('+a+' day(s) old)</span>':'';})()}</div></div>
           <div><div class="fi-lbl">Target Delivery</div><div class="fi-val">${r.targetDelivery||r.targetDate||'—'}</div></div>
+          <div><div class="fi-lbl">Forecast Delivery</div><div class="fi-val">${fmtDateShort(r.forecastPickable||'')}</div></div>
+          <div><div class="fi-lbl">Shipping Mode</div><div class="fi-val" id="dvShipMode"><span class="badge-pill ship-badge">&#9679; ${r.shipMode}</span></div></div>
           <div><div class="fi-lbl">Remaining Days</div><div class="fi-val ${daysClass}">${daysText}</div></div>
           <div><div class="fi-lbl">Required Days (lead)</div><div class="fi-val">${d.leadDays} days</div></div>
           <div><div class="fi-lbl">Delay Status</div><div class="fi-val" id="dvDelayStatusF">${delayBadge(r.delay)}</div></div>
@@ -6256,6 +6258,7 @@ function mapPR(r, idx){
     recServer:        v('Recommended_Supplier'),
     recReason:        v('Recommendation_Reason'),
     orderDate:        v('Order_Date'),
+    forecastPickable: v('Pr_Forecast_Pickable'),
     pricingStatus:    v('Pricing_Status'),
     status:           status,
     urgent:           pri === 'HIGH',
@@ -6283,6 +6286,16 @@ function mapPR(r, idx){
   };
 }
 
+/* DT-3 (05 Shared Engines/03): Order Age = today - Order Date. A PR's own lifecycle never reaches
+   "delivered" (it either converts to a PO and the order continues downstream, or is cancelled) --
+   unlike Shipments, there's no delivery-adjacent stamp to freeze at here, so this always counts to
+   today while the PR exists. */
+function prOrderAge(orderDateIso){
+  if(!orderDateIso || !/^\d{4}-\d{2}-\d{2}/.test(String(orderDateIso))) return null;
+  var start = Date.parse(String(orderDateIso).slice(0,10)+'T00:00:00');
+  if(isNaN(start)) return null;
+  return Math.max(0, Math.floor((Date.now() - start) / 86400000));
+}
 function fmtDateShort(v){
   if(!v) return '—';
   /* YYYY-MM-DD → Apr 20, 2026 */

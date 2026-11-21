@@ -386,6 +386,7 @@ function ScoreboardSection({ sb }){
   );
   var weeks = sb.reworkRate.weeks, thisWeek = weeks[weeks.length - 1];
   var types = Object.keys(sb.reworkRate.byType);
+  var origins = Object.keys(sb.reworkRate.byOrigin);
   var perPerson = sb.boxesPerPersonPerHour;
   var onTime = sb.onTimeDispatch;
   return (
@@ -423,6 +424,9 @@ function ScoreboardSection({ sb }){
           </div>
           <p className="text-[11.5px] text-slate-400 mt-3">
             {types.length ? "By rework type: " + types.map(function(t){ return t + " " + sb.reworkRate.byType[t]; }).join(", ") : "No rework in these weeks."}
+          </p>
+          <p className="text-[11.5px] text-slate-400 mt-1">
+            {origins.length ? "By fault origin: " + origins.map(function(o){ return o + " " + sb.reworkRate.byOrigin[o]; }).join(", ") : ""}
           </p>
         </SectionCard>
       </div>
